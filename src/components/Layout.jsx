@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext'
 import { 
   LayoutDashboard, 
   Phone, 
-  Handshake, 
+  Target, 
   Settings, 
   LogOut,
   User,
@@ -39,7 +39,7 @@ function Layout() {
     {
       name: 'Closing',
       path: '/closing',
-      icon: Handshake,
+      icon: Target,
       show: isCloser() || isAdmin()
     },
     {
