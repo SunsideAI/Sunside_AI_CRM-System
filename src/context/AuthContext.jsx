@@ -1,54 +1,72 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 
-// Context erstellen
 const AuthContext = createContext(null)
 
-// Provider Komponente
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  // Beim Start: User aus localStorage laden
   useEffect(() => {
-    const savedUser = localStorage.getItem('sunside_user')
-    if (savedUser) {
-      setUser(JSON.parse(savedUser))
+    // User aus localStorage laden
+    const storedUser = localStorage.getItem('sunside_user')
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser))
+      } catch (e) {
+        localStorage.removeItem('sunside_user')
+      }
     }
     setLoading(false)
   }, [])
 
-  // Login Funktion
   const login = (userData) => {
     setUser(userData)
     localStorage.setItem('sunside_user', JSON.stringify(userData))
   }
 
-  // Logout Funktion
   const logout = () => {
     setUser(null)
     localStorage.removeItem('sunside_user')
   }
 
-  // Rollen-Check Funktionen
-  const hasRole = (role) => {
-    if (!user || !user.rolle) return false
-    return user.rolle.includes(role)
+  // Rollen-Mapping: Airtable "Coldcaller" → App "Setter"
+  const normalizeRole = (role) => {
+    if (role === 'Coldcaller') return 'Setter'
+    return role
   }
 
+  // Normalisierte Rollen
+  const getNormalizedRoles = () => {
+    if (!user?.rolle) return []
+    return user.rolle.map(normalizeRole)
+  }
+
+  // Prüft ob User eine bestimmte Rolle hat
+  const hasRole = (role) => {
+    const normalizedRoles = getNormalizedRoles()
+    // "Setter" matcht sowohl "Setter" als auch "Coldcaller"
+    if (role === 'Setter') {
+      return normalizedRoles.includes('Setter') || user?.rolle?.includes('Coldcaller')
+    }
+    return normalizedRoles.includes(role)
+  }
+
+  // Convenience-Funktionen
+  const isAdmin = () => hasRole('Admin')
   const isSetter = () => hasRole('Setter')
   const isCloser = () => hasRole('Closer')
-  const isAdmin = () => hasRole('Admin')
 
   const value = {
     user,
-    loading,
     login,
     logout,
+    loading,
+    isAuthenticated: !!user,
     hasRole,
+    isAdmin,
     isSetter,
     isCloser,
-    isAdmin,
-    isAuthenticated: !!user
+    getNormalizedRoles
   }
 
   return (
@@ -58,11 +76,10 @@ export function AuthProvider({ children }) {
   )
 }
 
-// Custom Hook für einfachen Zugriff
 export function useAuth() {
   const context = useContext(AuthContext)
   if (!context) {
-    throw new Error('useAuth muss innerhalb von AuthProvider verwendet werden')
+    throw new Error('useAuth must be used within an AuthProvider')
   }
   return context
 }
