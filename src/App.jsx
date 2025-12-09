@@ -10,6 +10,7 @@ import ForgotPassword from './pages/ForgotPassword'
 import Dashboard from './pages/Dashboard'
 import Kaltakquise from './pages/Kaltakquise'
 import Closing from './pages/Closing'
+import Termine from './pages/Termine'
 import Profil from './pages/Profil'
 import Einstellungen from './pages/Einstellungen'
 
@@ -29,7 +30,6 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
     return <Navigate to="/login" replace />
   }
 
-  // Wenn Rollen definiert sind, prüfen
   if (allowedRoles.length > 0) {
     const hasAccess = allowedRoles.some(role => hasRole(role))
     if (!hasAccess) {
@@ -45,7 +45,6 @@ function App() {
 
   return (
     <Routes>
-      {/* Public Routes */}
       <Route 
         path="/login" 
         element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} 
@@ -55,7 +54,6 @@ function App() {
         element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} 
       />
 
-      {/* Protected Routes mit Layout */}
       <Route
         path="/"
         element={
@@ -64,16 +62,10 @@ function App() {
           </ProtectedRoute>
         }
       >
-        {/* Redirect von / zu /dashboard */}
         <Route index element={<Navigate to="/dashboard" replace />} />
-        
-        {/* Dashboard - für alle */}
         <Route path="dashboard" element={<Dashboard />} />
-        
-        {/* Profil - für alle eingeloggten User */}
         <Route path="profil" element={<Profil />} />
         
-        {/* Kaltakquise - nur Setter und Admin */}
         <Route 
           path="kaltakquise" 
           element={
@@ -83,7 +75,6 @@ function App() {
           } 
         />
         
-        {/* Closing - nur Closer und Admin */}
         <Route 
           path="closing" 
           element={
@@ -93,7 +84,8 @@ function App() {
           } 
         />
         
-        {/* Einstellungen - nur Admin */}
+        <Route path="termine" element={<Termine />} />
+        
         <Route 
           path="einstellungen" 
           element={
@@ -104,7 +96,6 @@ function App() {
         />
       </Route>
 
-      {/* 404 */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   )
