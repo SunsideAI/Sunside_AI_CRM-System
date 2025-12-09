@@ -17,6 +17,11 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
   // Editierbare Kontaktdaten
   const [contactEmail, setContactEmail] = useState(lead?.email || '')
   const [contactPhone, setContactPhone] = useState(lead?.telefon || '')
+  
+  // Calendly Pflichtfelder
+  const [unternehmensname, setUnternehmensname] = useState(lead?.unternehmensname || '')
+  const [taetigkeit, setTaetigkeit] = useState('Makler') // Makler oder Sachverständiger
+  const [problemstellung, setProblemstellung] = useState('')
 
   // Closer laden
   useEffect(() => {
@@ -93,6 +98,24 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
   const bookTermin = async () => {
     if (!selectedCloser || !selectedSlot || !lead) return
     
+    // Validierung
+    if (!contactEmail || !contactEmail.includes('@')) {
+      setError('Bitte gültige E-Mail-Adresse eingeben')
+      return
+    }
+    if (!contactPhone || contactPhone.length < 6) {
+      setError('Bitte gültige Telefonnummer eingeben')
+      return
+    }
+    if (!unternehmensname) {
+      setError('Bitte Unternehmensname eingeben')
+      return
+    }
+    if (!problemstellung) {
+      setError('Bitte Problemstellung & Ziele eingeben')
+      return
+    }
+    
     setBooking(true)
     setError('')
     
@@ -105,8 +128,8 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           calendarId: calendarId,
-          title: `Erstgespräch: ${lead.unternehmensname}`,
-          description: `Lead: ${lead.unternehmensname}\nStadt: ${lead.stadt || '-'}\nTelefon: ${lead.telefon || '-'}\nE-Mail: ${lead.email || '-'}\n\nGebucht über Sunside CRM`,
+          title: `Erstgespräch: ${unternehmensname}`,
+          description: `Unternehmen: ${unternehmensname}\nTätigkeit: ${taetigkeit}\nStadt: ${lead.stadt || '-'}\nTelefon: ${contactPhone}\nE-Mail: ${contactEmail}\n\nProblemstellung & Ziele:\n${problemstellung}\n\nGebucht über Sunside CRM`,
           startTime: selectedSlot.start,
           endTime: selectedSlot.end,
           leadId: lead.id
@@ -128,14 +151,16 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
             action: 'calendly-book',
             eventTypeUri: 'https://api.calendly.com/event_types/b7fa6cb8-8dcf-42f9-a8cf-9e73a776c57c',
             startTime: selectedSlot.start,
-            inviteeName: lead.unternehmensname,
-            inviteeEmail: contactEmail || 'noemail@sunside.ai',
-            inviteePhone: contactPhone || '+49',
+            inviteeName: unternehmensname,
+            inviteeEmail: contactEmail,
+            inviteePhone: contactPhone,
             leadInfo: {
-              firma: lead.unternehmensname,
+              firma: unternehmensname,
               stadt: lead.stadt,
-              telefon: contactPhone || lead.telefon,
-              kategorie: lead.kategorie
+              telefon: contactPhone,
+              kategorie: lead.kategorie,
+              taetigkeit: taetigkeit,
+              problemstellung: problemstellung
             }
           })
         })
@@ -289,41 +314,111 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
 
       {/* Kontaktdaten für den Termin */}
       {selectedCloser && (
-        <div className="space-y-3">
+        <div className="space-y-4">
           <label className="block text-sm font-medium text-gray-700">
-            Kontaktdaten für den Termin
+            Kontaktdaten für den Termin <span className="text-red-500">*</span>
           </label>
+          
+          {/* E-Mail und Telefon */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs text-gray-500 mb-1">
                 <Mail className="w-3 h-3 inline mr-1" />
-                E-Mail
+                E-Mail <span className="text-red-500">*</span>
               </label>
               <input
                 type="email"
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
                 placeholder="E-Mail für Terminbestätigung"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
+                  !contactEmail || !contactEmail.includes('@') 
+                    ? 'border-red-300 bg-red-50' 
+                    : 'border-gray-300'
+                }`}
               />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">
                 <Phone className="w-3 h-3 inline mr-1" />
-                Telefon
+                Telefon <span className="text-red-500">*</span>
               </label>
               <input
                 type="tel"
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
                 placeholder="Telefonnummer"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
+                  !contactPhone || contactPhone.length < 6
+                    ? 'border-red-300 bg-red-50' 
+                    : 'border-gray-300'
+                }`}
               />
             </div>
           </div>
-          <p className="text-xs text-gray-400">
-            Diese Daten werden für die Termineinladung verwendet
-          </p>
+
+          {/* Unternehmensname */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">
+              Unternehmensname <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={unternehmensname}
+              onChange={(e) => setUnternehmensname(e.target.value)}
+              placeholder="Name des Unternehmens"
+              className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
+                !unternehmensname ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
+            />
+          </div>
+
+          {/* Makler oder Sachverständiger */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-2">
+              Tätigkeit <span className="text-red-500">*</span>
+            </label>
+            <div className="flex gap-4">
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="taetigkeit"
+                  value="Makler"
+                  checked={taetigkeit === 'Makler'}
+                  onChange={(e) => setTaetigkeit(e.target.value)}
+                  className="w-4 h-4 text-sunside-primary border-gray-300 focus:ring-sunside-primary"
+                />
+                <span className="ml-2 text-sm text-gray-700">Makler</span>
+              </label>
+              <label className="flex items-center cursor-pointer">
+                <input
+                  type="radio"
+                  name="taetigkeit"
+                  value="Sachverständiger"
+                  checked={taetigkeit === 'Sachverständiger'}
+                  onChange={(e) => setTaetigkeit(e.target.value)}
+                  className="w-4 h-4 text-sunside-primary border-gray-300 focus:ring-sunside-primary"
+                />
+                <span className="ml-2 text-sm text-gray-700">Sachverständiger</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Problemstellung & Ziele */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">
+              Problemstellung & Ziele <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={problemstellung}
+              onChange={(e) => setProblemstellung(e.target.value)}
+              placeholder="Was sind die Herausforderungen und Ziele des Kunden?"
+              rows={3}
+              className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none ${
+                !problemstellung ? 'border-red-300 bg-red-50' : 'border-gray-300'
+              }`}
+            />
+          </div>
         </div>
       )}
 
@@ -417,7 +512,17 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
         </button>
         <button
           onClick={bookTermin}
-          disabled={!selectedCloser || !selectedSlot || booking}
+          disabled={
+            !selectedCloser || 
+            !selectedSlot || 
+            booking || 
+            !contactEmail || 
+            !contactEmail.includes('@') || 
+            !contactPhone || 
+            contactPhone.length < 6 ||
+            !unternehmensname ||
+            !problemstellung
+          }
           className="px-6 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
         >
           {booking ? (
