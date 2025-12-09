@@ -15,7 +15,6 @@ import Einstellungen from './pages/Einstellungen'
 // Protected Route Komponente
 function ProtectedRoute({ children, allowedRoles = [] }) {
   const { isAuthenticated, hasRole, loading } = useAuth()
-  
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -23,11 +22,9 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
       </div>
     )
   }
-  
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />
   }
-  
   // Wenn Rollen definiert sind, prüfen
   if (allowedRoles.length > 0) {
     const hasAccess = allowedRoles.some(role => hasRole(role))
@@ -35,13 +32,11 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
       return <Navigate to="/dashboard" replace />
     }
   }
-  
   return children
 }
 
 function App() {
   const { isAuthenticated } = useAuth()
-  
   return (
     <Routes>
       {/* Public Routes */}
@@ -53,7 +48,6 @@ function App() {
         path="/passwort-vergessen" 
         element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} 
       />
-      
       {/* Protected Routes mit Layout */}
       <Route
         path="/"
@@ -105,7 +99,6 @@ function App() {
           } 
         />
       </Route>
-      
       {/* 404 */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
