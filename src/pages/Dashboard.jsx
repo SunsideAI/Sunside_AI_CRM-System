@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { useDashboardCache } from '../context/DashboardCacheContext'
 import { 
   Phone, 
   Calendar, 
@@ -12,51 +11,84 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
+// Cache im localStorage
+const CACHE_KEY = 'dashboard_cache'
+const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
+
+function getCache() {
+  try {
+    const stored = localStorage.getItem(CACHE_KEY)
+    if (stored) {
+      const parsed = JSON.parse(stored)
+      if (parsed.timestamp && Date.now() - parsed.timestamp < CACHE_DURATION) {
+        return parsed.data
+      }
+    }
+  } catch (e) {
+    console.error('Cache read error:', e)
+  }
+  return null
+}
+
+function setCache(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({
+      data,
+      timestamp: Date.now()
+    }))
+  } catch (e) {
+    console.error('Cache write error:', e)
+  }
+}
+
 function Dashboard() {
   const { user, isSetter, isCloser, isAdmin } = useAuth()
-  const { cache, loading, fetchDashboardData, refreshInBackground, isCacheValid } = useDashboardCache()
+  const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [data, setData] = useState({
     zugewiesenLeads: 0,
     callsHeute: 0,
     termineWoche: 0,
     abschluesseMonat: 0
   })
-  const [initialLoading, setInitialLoading] = useState(!cache)
 
   useEffect(() => {
     loadData()
   }, [])
 
-  const loadData = async () => {
-    const userName = user?.vor_nachname || ''
-    const userRole = isAdmin() ? 'Admin' : isSetter() ? 'Setter' : 'Closer'
-
-    // Wenn Cache vorhanden, sofort anzeigen
-    if (cache) {
-      updateDataFromResult(cache)
+  const loadData = async (forceRefresh = false) => {
+    // Versuche Cache zu laden
+    const cached = getCache()
+    
+    if (cached && !forceRefresh) {
+      updateDataFromResult(cached)
       setInitialLoading(false)
-      
-      // Im Hintergrund aktualisieren wenn Cache älter als 1 Minute
-      if (!isCacheValid) {
-        refreshInBackground(userName, userRole)
-      }
-    } else {
-      // Kein Cache - normal laden
-      setInitialLoading(true)
-      const result = await fetchDashboardData(userName, userRole)
-      if (result) {
+      return
+    }
+
+    // Kein Cache oder Force-Refresh - von API laden
+    setLoading(true)
+    if (!cached) setInitialLoading(true)
+
+    try {
+      const params = new URLSearchParams()
+      params.append('userName', user?.vor_nachname || '')
+      params.append('userRole', isAdmin() ? 'Admin' : isSetter() ? 'Setter' : 'Closer')
+
+      const response = await fetch(`/.netlify/functions/dashboard?${params.toString()}`)
+      const result = await response.json()
+
+      if (response.ok) {
+        setCache(result)
         updateDataFromResult(result)
       }
+    } catch (err) {
+      console.error('Dashboard load error:', err)
+    } finally {
+      setLoading(false)
       setInitialLoading(false)
     }
   }
-
-  // Cache-Updates beobachten
-  useEffect(() => {
-    if (cache) {
-      updateDataFromResult(cache)
-    }
-  }, [cache])
 
   const updateDataFromResult = (result) => {
     const userStats = result.vertriebler?.find(v => v.name === user?.vor_nachname)
@@ -67,12 +99,6 @@ function Dashboard() {
       termineWoche: result.termineWoche || 0,
       abschluesseMonat: 0
     })
-  }
-
-  const handleManualRefresh = async () => {
-    const userName = user?.vor_nachname || ''
-    const userRole = isAdmin() ? 'Admin' : isSetter() ? 'Setter' : 'Closer'
-    await fetchDashboardData(userName, userRole, true) // force refresh
   }
 
   // Statistik-Karten mit echten Daten
@@ -140,7 +166,7 @@ function Dashboard() {
           </p>
         </div>
         <button
-          onClick={handleManualRefresh}
+          onClick={() => loadData(true)}
           disabled={loading}
           className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
           title="Daten aktualisieren"
