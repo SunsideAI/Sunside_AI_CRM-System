@@ -24,13 +24,14 @@ import {
   LineChart, Line, Legend, PieChart, Pie, Cell
 } from 'recharts'
 
-// Cache im localStorage
-const CACHE_KEY = 'dashboard_cache'
+// ==========================================
+// CACHE HELPERS
+// ==========================================
 const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
 
-function getCache() {
+function getCache(key) {
   try {
-    const stored = localStorage.getItem(CACHE_KEY)
+    const stored = localStorage.getItem(key)
     if (stored) {
       const parsed = JSON.parse(stored)
       if (parsed.timestamp && Date.now() - parsed.timestamp < CACHE_DURATION) {
@@ -43,9 +44,9 @@ function getCache() {
   return null
 }
 
-function setCache(data) {
+function setCache(key, data) {
   try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify({
+    localStorage.setItem(key, JSON.stringify({
       data,
       timestamp: Date.now()
     }))
@@ -155,7 +156,8 @@ function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
   }, [])
 
   const loadData = async (forceRefresh = false) => {
-    const cached = getCache()
+    const cacheKey = 'dashboard_uebersicht'
+    const cached = getCache(cacheKey)
     
     if (cached && !forceRefresh) {
       updateDataFromResult(cached)
@@ -175,7 +177,7 @@ function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
       const result = await response.json()
 
       if (response.ok) {
-        setCache(result)
+        setCache(cacheKey, result)
         updateDataFromResult(result)
       }
     } catch (err) {
@@ -334,6 +336,12 @@ function SettingAnalytics({ user, isAdmin }) {
   const [dateRange, setDateRange] = useState('3months')
   const [refreshing, setRefreshing] = useState(false)
 
+  // Cache Key enthält auch userName für user-spezifischen Cache
+  const getCacheKey = () => {
+    const userPart = isAdmin() ? 'admin' : (user?.vor_nachname || 'user')
+    return `dashboard_setting_${dateRange}_${userPart}`
+  }
+
   useEffect(() => {
     loadStats()
   }, [dateRange])
@@ -365,18 +373,29 @@ function SettingAnalytics({ user, isAdmin }) {
     }
   }
 
-  const loadStats = async () => {
+  const loadStats = async (forceRefresh = false) => {
+    const cacheKey = getCacheKey()
+    const cached = getCache(cacheKey)
+
+    if (cached && !forceRefresh) {
+      setStats(cached)
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
       setError(null)
 
       const { startDate, endDate } = getDateRange()
       const userEmail = user?.email_geschaeftlich || user?.email
+      const userName = user?.vor_nachname // NEU: User-Name für Filter
 
       const params = new URLSearchParams({
         type: 'setting',
         admin: isAdmin().toString(),
         ...(userEmail && !isAdmin() && { email: userEmail }),
+        ...(userName && !isAdmin() && { userName }), // NEU
         ...(startDate && { startDate }),
         ...(endDate && { endDate })
       })
@@ -384,6 +403,7 @@ function SettingAnalytics({ user, isAdmin }) {
       const res = await fetch(`/.netlify/functions/analytics?${params}`)
       if (res.ok) {
         const data = await res.json()
+        setCache(cacheKey, data)
         setStats(data)
       } else {
         throw new Error('Fehler beim Laden')
@@ -399,7 +419,7 @@ function SettingAnalytics({ user, isAdmin }) {
 
   const handleRefresh = () => {
     setRefreshing(true)
-    loadStats()
+    loadStats(true)
   }
 
   const formatPercent = (value) => `${value.toFixed(1)}%`
@@ -575,6 +595,12 @@ function ClosingAnalytics({ user, isAdmin }) {
   const [dateRange, setDateRange] = useState('3months')
   const [refreshing, setRefreshing] = useState(false)
 
+  // Cache Key enthält auch userEmail für user-spezifischen Cache
+  const getCacheKey = () => {
+    const userPart = isAdmin() ? 'admin' : (user?.email_geschaeftlich || user?.email || 'user')
+    return `dashboard_closing_${dateRange}_${userPart}`
+  }
+
   useEffect(() => {
     loadStats()
   }, [dateRange])
@@ -606,7 +632,16 @@ function ClosingAnalytics({ user, isAdmin }) {
     }
   }
 
-  const loadStats = async () => {
+  const loadStats = async (forceRefresh = false) => {
+    const cacheKey = getCacheKey()
+    const cached = getCache(cacheKey)
+
+    if (cached && !forceRefresh) {
+      setStats(cached)
+      setLoading(false)
+      return
+    }
+
     try {
       setLoading(true)
       setError(null)
@@ -625,6 +660,7 @@ function ClosingAnalytics({ user, isAdmin }) {
       const res = await fetch(`/.netlify/functions/analytics?${params}`)
       if (res.ok) {
         const data = await res.json()
+        setCache(cacheKey, data)
         setStats(data)
       } else {
         throw new Error('Fehler beim Laden')
@@ -640,7 +676,7 @@ function ClosingAnalytics({ user, isAdmin }) {
 
   const handleRefresh = () => {
     setRefreshing(true)
-    loadStats()
+    loadStats(true)
   }
 
   const formatCurrency = (value) => {
