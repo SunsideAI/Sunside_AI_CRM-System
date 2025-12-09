@@ -339,9 +339,7 @@ exports.handler = async (event) => {
             let answer = ''
             const questionName = question.name?.toLowerCase() || ''
             
-            if (questionName.includes('telefon') || questionName.includes('phone')) {
-              answer = inviteePhone || leadInfo?.telefon || '+49'
-            } else if (questionName.includes('unternehmen') || questionName.includes('company')) {
+            if (questionName.includes('unternehmen') || questionName.includes('company')) {
               answer = leadInfo?.firma || inviteeName
             } else if (questionName.includes('makler') || questionName.includes('sachverständiger')) {
               answer = 'Makler' // Default
@@ -349,9 +347,9 @@ exports.handler = async (event) => {
               answer = 'Interesse an KI-gestützter Vertriebsassistenz - Termin über CRM gebucht'
             }
             
-            if (answer && question.uuid) {
+            if (answer) {
               questionAnswers.push({
-                question_uuid: question.uuid,
+                question: question.name,
                 answer: answer
               })
             }
@@ -364,9 +362,15 @@ exports.handler = async (event) => {
             invitee: {
               email: inviteeEmail,
               first_name: firstName,
-              last_name: lastName
+              last_name: lastName,
+              timezone: 'Europe/Berlin'
             },
-            questions: questionAnswers
+            questions: questionAnswers,
+            // Location für outbound_call - Telefonnummer des Leads
+            location: {
+              kind: 'outbound_call',
+              location: inviteePhone || '+49'
+            }
           }
 
           console.log('Calendly Request:', JSON.stringify(requestBody, null, 2))
