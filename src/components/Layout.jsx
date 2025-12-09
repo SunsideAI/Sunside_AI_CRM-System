@@ -86,13 +86,20 @@ function Layout() {
 
             {/* User Menu */}
             <div className="flex items-center space-x-4">
-              <div className="hidden sm:flex items-center text-sm">
+              <NavLink 
+                to="/profil"
+                className={({ isActive }) =>
+                  `hidden sm:flex items-center text-sm hover:text-sunside-primary transition-colors ${
+                    isActive ? 'text-sunside-primary' : ''
+                  }`
+                }
+              >
                 <User className="w-4 h-4 mr-2 text-gray-400" />
                 <span className="text-gray-700">{user?.vor_nachname || user?.vorname}</span>
                 <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-500">
                   {user?.rolle?.join(', ')}
                 </span>
-              </div>
+              </NavLink>
               
               <button
                 onClick={handleLogout}
@@ -135,6 +142,20 @@ function Layout() {
                 </NavLink>
               ))}
               <hr className="my-2" />
+              <NavLink
+                to="/profil"
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `flex items-center px-4 py-3 rounded-lg text-sm font-medium ${
+                    isActive
+                      ? 'bg-sunside-primary text-white'
+                      : 'text-gray-600 hover:bg-gray-100'
+                  }`
+                }
+              >
+                <User className="w-5 h-5 mr-3" />
+                Mein Profil
+              </NavLink>
               <button
                 onClick={handleLogout}
                 className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-lg"
