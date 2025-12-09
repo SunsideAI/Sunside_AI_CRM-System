@@ -82,8 +82,22 @@ export async function handler(event) {
     }
 
     const record = searchData.records[0]
-    const userEmail = record.fields['E-Mail'] || record.fields['E-Mail_Geschäftlich']
+    // Geschäftliche E-Mail bevorzugen, dann private
+    const rawEmail = record.fields['E-Mail_Geschäftlich'] || record.fields['E-Mail']
+    const userEmail = rawEmail ? rawEmail.trim() : null
     const userName = record.fields.Vorname || 'User'
+
+    // E-Mail validieren
+    if (!userEmail || !userEmail.includes('@')) {
+      console.error('Invalid email in Airtable:', rawEmail)
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ success: true, message: successMessage })
+      }
+    }
+
+    console.log('Sending password reset to:', userEmail)
 
     // Temporäres Passwort generieren
     const tempPassword = generateTempPassword()
@@ -116,7 +130,7 @@ export async function handler(event) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: 'Sunside CRM <onboarding@resend.dev>',
+          from: 'Sunside CRM <onboarding@resend.dev>',  // TODO: Nach Domain-Verifizierung ändern zu noreply@sunsideai.de
           to: [userEmail],
           subject: 'Dein neues Passwort - Sunside CRM',
           html: `
