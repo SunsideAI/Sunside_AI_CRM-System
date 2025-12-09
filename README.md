@@ -1,97 +1,117 @@
 # Sunside CRM
 
-Internes CRM-System für Sunside AI – Vertriebsprozess von Kaltakquise bis Abschluss.
+Internes CRM-System für das Vertriebsteam von Sunside AI.
 
 ## 🚀 Tech Stack
 
-| Komponente | Technologie |
-|------------|-------------|
-| **Frontend** | React 18 + Vite |
-| **Styling** | Tailwind CSS |
-| **Backend** | Netlify Functions (Serverless) |
-| **Datenbank** | Airtable |
-| **Authentifizierung** | bcrypt (gehashte Passwörter) |
-| **E-Mail** | Resend API |
-| **Hosting** | Netlify |
+| Technologie | Verwendung |
+|-------------|------------|
+| React + Vite | Frontend |
+| Tailwind CSS | Styling |
+| Netlify Functions | Serverless Backend |
+| Airtable | Datenbank |
+| Resend | E-Mail-Versand |
+| bcrypt | Passwort-Hashing |
 
 ## 📁 Projektstruktur
 
 ```
 sunside-crm/
 ├── src/
-│   ├── components/           # Wiederverwendbare UI-Komponenten
-│   │   ├── Layout.jsx        # Hauptlayout mit Navigation
-│   │   └── PasswordManager.jsx # Admin: Passwörter verwalten
-│   │
-│   ├── pages/                # Seiten der Anwendung
-│   │   ├── Login.jsx         # Login-Seite
-│   │   ├── ForgotPassword.jsx # Passwort vergessen
-│   │   ├── Dashboard.jsx     # Übersicht
-│   │   ├── Kaltakquise.jsx   # Lead-Liste für Setter
-│   │   ├── Closing.jsx       # Termine für Closer
-│   │   ├── Profil.jsx        # User-Profil + Passwort ändern
-│   │   └── Einstellungen.jsx # Admin-Bereich
-│   │
-│   ├── context/              # React Context
-│   │   └── AuthContext.jsx   # Authentifizierung & Rollen
-│   │
-│   ├── hooks/                # Custom React Hooks
-│   ├── services/             # API Services
-│   ├── App.jsx               # Routing
-│   ├── main.jsx              # Entry Point
-│   └── index.css             # Globale Styles
-│
-├── netlify/
-│   └── functions/            # Serverless Backend
-│       ├── auth.js           # Login mit Hash-Vergleich
-│       ├── set-password.js   # Admin: Passwort setzen
-│       ├── change-password.js # User: Passwort ändern
-│       ├── forgot-password.js # Passwort-Reset per E-Mail
-│       ├── users.js          # User-Liste laden
-│       └── leads.js          # Leads API
-│
-├── public/
-│   └── favicon.svg
-│
-├── package.json
-├── vite.config.js
-├── tailwind.config.js
-├── postcss.config.js
-├── netlify.toml
-└── .env.example
+│   ├── components/
+│   │   └── Layout.jsx          # Header, Navigation, Sidebar
+│   ├── context/
+│   │   └── AuthContext.jsx     # Authentifizierung & Rollen
+│   ├── pages/
+│   │   ├── Login.jsx           # Login-Seite
+│   │   ├── ForgotPassword.jsx  # Passwort vergessen
+│   │   ├── Dashboard.jsx       # Übersicht mit KPIs
+│   │   ├── Kaltakquise.jsx     # Lead-Management für Setter
+│   │   ├── Closing.jsx         # Termine für Closer
+│   │   ├── Einstellungen.jsx   # Admin-Einstellungen
+│   │   └── Profil.jsx          # User-Profil & Passwort ändern
+│   ├── App.jsx                 # Routing & Provider
+│   └── main.jsx                # Entry Point
+├── netlify/functions/
+│   ├── auth.js                 # Login-Authentifizierung
+│   ├── users.js                # User-Verwaltung
+│   ├── set-password.js         # Passwort setzen (Admin)
+│   ├── forgot-password.js      # Passwort-Reset per E-Mail
+│   ├── change-password.js      # Passwort ändern (User)
+│   ├── leads.js                # Lead-Verwaltung
+│   └── dashboard.js            # Dashboard Analytics
+└── public/
 ```
 
-## 🔐 Rollen-System
+## 👥 Rollen-System
 
 | Rolle | Zugriff |
 |-------|---------|
-| **Setter** | Dashboard, Kaltakquise, Profil |
-| **Closer** | Dashboard, Closing, Profil |
-| **Setter + Closer** | Dashboard, Kaltakquise, Closing, Profil |
-| **Admin** | Alles + Einstellungen |
+| **Admin** | Alle Funktionen, User-Verwaltung, alle Leads |
+| **Setter (Coldcaller)** | Kaltakquise, eigene Leads |
+| **Closer** | Closing, zugewiesene Termine |
 
-Die Rollen werden in Airtable als Multi-Select gespeichert, sodass ein User mehrere Rollen haben kann.
+Ein User kann mehrere Rollen haben.
 
-## 🔑 Authentifizierung
+## 🔐 Authentifizierung
 
 ### Passwort-Sicherheit
-- Passwörter werden mit **bcrypt** gehasht gespeichert
-- Hash-Format: `$2b$10$...` (nicht umkehrbar)
-- Salt Rounds: 10
+- **bcrypt** mit 10 Salt Rounds
+- Hash-Format: `$2b$10$...`
+- Sichere Passwort-Validierung
 
 ### Login-Flow
 1. User gibt E-Mail + Passwort ein
-2. Backend sucht User in Airtable
-3. Passwort wird mit bcrypt verglichen
-4. Bei Erfolg: User-Daten werden zurückgegeben (ohne Passwort)
+2. `auth.js` sucht in `User_Datenbank` (E-Mail oder E-Mail_Geschäftlich)
+3. bcrypt vergleicht Hash
+4. Bei Erfolg: User-Daten werden zurückgegeben
+5. Frontend speichert in localStorage
 
 ### Passwort-Reset
-1. User klickt "Passwort vergessen"
-2. Gibt E-Mail ein
-3. System generiert temporäres Passwort
+1. User gibt E-Mail auf `/passwort-vergessen` ein
+2. `forgot-password.js` generiert temporäres 10-stelliges Passwort
+3. Passwort wird gehasht und in Airtable gespeichert
 4. E-Mail wird via Resend API gesendet
-5. User kann sich mit temporärem Passwort einloggen
-6. User sollte Passwort in Profileinstellungen ändern
+5. User loggt sich ein und ändert Passwort in Profil
+
+### Passwort ändern
+- User kann eigenes Passwort in `/profil` ändern
+- Aktuelles Passwort muss bestätigt werden
+- Neues Passwort muss min. 8 Zeichen haben
+
+## 📊 Dashboard
+
+Das Dashboard zeigt personalisierte KPIs:
+
+| Metrik | Beschreibung |
+|--------|--------------|
+| Zugewiesene Leads | Anzahl Leads für diesen User |
+| Calls heute | Heute kontaktierte Leads |
+| Termine diese Woche | Erstgespräche diese Woche |
+| Abschlüsse Monat | (Für Closer) |
+
+### Caching
+- Daten werden im localStorage gecached (5 Minuten)
+- Sofortige Anzeige beim Seitenwechsel
+- Manueller Refresh-Button verfügbar
+
+## 📞 Kaltakquise
+
+Lead-Verwaltung für Setter und Admins.
+
+### Features
+- **Lead-Tabelle** mit Pagination (50 pro Seite)
+- **Suche** nach Firma oder Stadt
+- **Filter:** Status, Ergebnis, Vertriebler
+- **Admin-Toggle:** "Meine Leads" / "Alle Leads"
+- **Quick-Action:** Mit einem Klick als kontaktiert markieren
+- **Detail-Modal:** Alle Lead-Infos, Bearbeitung
+
+### Ergebnis-Optionen
+- Nicht erreicht
+- Kein Interesse
+- Erstgespräch
+- Unterlage bereitstellen
 
 ## 🗄️ Airtable Struktur
 
@@ -99,233 +119,140 @@ Die Rollen werden in Airtable als Multi-Select gespeichert, sodass ein User mehr
 
 | Feld | Typ | Beschreibung |
 |------|-----|--------------|
-| ID | Auto Number | Eindeutige ID |
-| Name | Text | Nachname |
-| Vorname | Text | Vorname |
-| Vor_Nachname | Formula/Text | **Primary Field** für Verknüpfungen |
+| Vor_Nachname | Text (Primary) | Vollständiger Name |
 | E-Mail | Email | Private E-Mail |
 | E-Mail_Geschäftlich | Email | @sunsideai.de Adresse |
-| Telefon | Phone | Telefonnummer |
-| Rolle | Multi Select | Setter, Closer, Admin |
+| Rolle | Multi Select | Admin, Coldcaller, Closer |
 | Passwort | Text | bcrypt Hash |
-| Straße, PLZ, Ort, Bundesland | Text | Adressdaten |
-| Zugewiesene_Leads | Link to Leads | Verknüpfung zu Leads |
+| Status | Checkbox | Aktiv-Status |
+| Telefon | Phone | Telefonnummer |
+| Bundesland | Text | Standort |
 
 ### Immobilienmakler_Leads
 
 | Feld | Typ | Beschreibung |
 |------|-----|--------------|
-| Unternehmensname | Text | Firmenname |
+| Unternehmensname | Text (Primary) | Firmenname |
 | Stadt | Text | Standort |
-| Kategorie | Single Select | Branche |
+| Kategorie | Text | Branche |
 | Mail | Email | Kontakt-E-Mail |
 | Website | URL | Webseite |
-| Telefonnummer | Phone | Telefon |
-| User_Datenbank | Link to Users | Zugewiesener Vertriebler |
-| Bereits kontaktiert | Checkbox | Status |
-| Datum | Date | Letzter Kontakt |
-| Ergebnis | Single Select | Call-Ergebnis |
+| Telefonnummer | Phone | Kontaktnummer |
+| User_Datenbank | Link | Zugewiesener Vertriebler |
+| Bereits_kontaktiert | Text | "X" oder leer |
+| Datum | Date | Kontaktdatum |
+| Ergebnis | Single Select | Gesprächsergebnis |
 | Kommentar | Long Text | Notizen |
 
-## 🛠️ Setup
+## 🔌 API Endpoints
 
-### 1. Repository klonen
+### Authentifizierung
 
-```bash
-git clone https://github.com/SunsideAI/Sunside_AI_CRM-System.git
-cd Sunside_AI_CRM-System
-```
+| Endpoint | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/.netlify/functions/auth` | POST | Login |
+| `/.netlify/functions/forgot-password` | POST | Passwort-Reset anfordern |
+| `/.netlify/functions/change-password` | POST | Eigenes Passwort ändern |
 
-### 2. Dependencies installieren
+### Leads
 
-```bash
-npm install
-```
+| Endpoint | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/.netlify/functions/leads` | GET | Leads laden (mit Filter) |
+| `/.netlify/functions/leads` | PATCH | Lead aktualisieren |
 
-### 3. Environment Variables
+### Dashboard
 
-Erstelle `.env` Datei (oder in Netlify Dashboard):
+| Endpoint | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/.netlify/functions/dashboard` | GET | Analytics laden |
 
-```env
-AIRTABLE_API_KEY=pat_xxxxxxxxxxxxx
-AIRTABLE_BASE_ID=appxxxxxxxxxxxxx
-RESEND_API_KEY=re_xxxxxxxxxxxxx
-```
+### Admin
 
-### 4. Lokal starten
+| Endpoint | Methode | Beschreibung |
+|----------|---------|--------------|
+| `/.netlify/functions/users` | GET | Alle User laden |
+| `/.netlify/functions/set-password` | POST | Passwort setzen |
 
-```bash
-npm run dev
-```
+## ⚙️ Environment Variables
 
-Die App läuft unter `http://localhost:3000`
+In Netlify unter Site Settings → Environment Variables:
 
-### 5. Mit Netlify Functions testen
-
-```bash
-npx netlify dev
-```
-
-## 🚀 Deployment
-
-### Netlify Setup
-
-1. Gehe zu [app.netlify.com](https://app.netlify.com)
-2. "Add new site" → "Import an existing project"
-3. GitHub Repository auswählen
-4. Build settings (automatisch erkannt):
-   - Build command: `npm run build`
-   - Publish directory: `dist`
-5. Environment Variables hinzufügen:
-   - `AIRTABLE_API_KEY`
-   - `AIRTABLE_BASE_ID`
-   - `RESEND_API_KEY` (optional, für E-Mail)
-
-### Manuelles Deployment
-
-```bash
-npm run build
-npx netlify deploy --prod
-```
-
-## 📡 API Endpoints
-
-### POST `/.netlify/functions/auth`
-Login mit E-Mail und Passwort
-
-**Request:**
-```json
-{
-  "email": "name@sunsideai.de",
-  "password": "GeheimesPasswort123"
-}
-```
-
-**Response:**
-```json
-{
-  "user": {
-    "id": "recXXXXXX",
-    "vorname": "Max",
-    "name": "Mustermann",
-    "vor_nachname": "Max Mustermann",
-    "email": "max@sunsideai.de",
-    "rolle": ["Setter", "Admin"]
-  }
-}
-```
-
-### POST `/.netlify/functions/set-password`
-Admin: Passwort für User setzen
-
-**Request:**
-```json
-{
-  "userId": "recXXXXXX",
-  "password": "NeuesPasswort123",
-  "adminId": "recYYYYYY"
-}
-```
-
-### POST `/.netlify/functions/change-password`
-User: Eigenes Passwort ändern
-
-**Request:**
-```json
-{
-  "userId": "recXXXXXX",
-  "currentPassword": "AltesPasswort",
-  "newPassword": "NeuesPasswort123"
-}
-```
-
-### POST `/.netlify/functions/forgot-password`
-Passwort-Reset per E-Mail
-
-**Request:**
-```json
-{
-  "email": "name@sunsideai.de"
-}
-```
-
-### GET `/.netlify/functions/users`
-Alle User laden (für Admin)
-
-### GET `/.netlify/functions/leads`
-Leads laden
-
-**Query Parameter:**
-- `page` - Seitennummer (default: 1)
-- `limit` - Einträge pro Seite (default: 25, max: 100)
-- `userId` - Filter nach User
-- `search` - Suchbegriff
+| Variable | Beschreibung |
+|----------|--------------|
+| `AIRTABLE_API_KEY` | Airtable Personal Access Token |
+| `AIRTABLE_BASE_ID` | Base ID (beginnt mit `app...`) |
+| `RESEND_API_KEY` | Resend API Key für E-Mail |
 
 ## 🎨 Styling
 
-### Farben (Tailwind Config)
+### Farben (Tailwind)
 
 ```javascript
+// tailwind.config.js
 colors: {
-  'sunside': {
-    primary: '#7C3AED',    // Lila (Hauptfarbe)
-    secondary: '#1a1a2e',  // Dunkelblau
-    accent: '#F59E0B',     // Orange
-    light: '#F3F4F6',      // Hellgrau
-    dark: '#111827',       // Fast Schwarz
-  }
+  'sunside-primary': '#7C3AED',  // Lila
+  'sunside-dark': '#1a1a2e',     // Dunkelblau
 }
 ```
 
-### Verwendung
+### Komponenten-Klassen
 
-```jsx
-<button className="bg-sunside-primary text-white">
-  Button
-</button>
+| Element | Klassen |
+|---------|---------|
+| Primary Button | `bg-sunside-primary hover:bg-purple-700 text-white` |
+| Card | `bg-white rounded-xl border border-gray-200 p-6` |
+| Input | `border border-gray-300 rounded-lg px-4 py-2.5 focus:ring-2 focus:ring-sunside-primary` |
+| Modal Overlay | `fixed inset-0 bg-black/50 z-[9999]` (mit React Portal) |
+
+## 🚀 Deployment
+
+### Lokal entwickeln
+
+```bash
+npm install
+npm run dev
 ```
 
-## 📋 Entwicklung
+### Netlify CLI
 
-### Neue Seite hinzufügen
-
-1. Komponente in `src/pages/` erstellen
-2. Route in `src/App.jsx` hinzufügen
-3. Navigation in `src/components/Layout.jsx` ergänzen
-
-### Neue API Function
-
-1. Datei in `netlify/functions/` erstellen
-2. Export `handler` Funktion
-3. Aufruf über `/.netlify/functions/<name>`
-
-### Icon hinzufügen
-
-Wir nutzen [Lucide React](https://lucide.dev/icons/):
-
-```jsx
-import { IconName } from 'lucide-react'
-
-<IconName className="w-5 h-5" />
+```bash
+netlify dev  # Lokaler Server mit Functions
 ```
 
-## 🔄 Roadmap
+### Production Deploy
 
-| Phase | Features | Status |
-|-------|----------|--------|
-| **MVP** | Login, Dashboard, Grundstruktur | ✅ |
-| **Phase 1** | Passwort-System mit Hashing | ✅ |
-| **Phase 2** | Leads anzeigen, filtern, bearbeiten | 🔄 |
-| **Phase 3** | Dashboard KPIs, Statistiken | ⬜ |
-| **Phase 4** | Calendly-Integration, Termine | ⬜ |
-| **Phase 5** | E-Mail-Automationen | ⬜ |
-| **Phase 6** | Notion-Migration, Angebote | ⬜ |
+```bash
+git add .
+git commit -m "Update"
+git push  # Auto-Deploy auf Netlify
+```
 
-## 👥 Team
+## 📋 Roadmap
 
-- **Paul Probodziak** - Admin
-- **Niklas Schwerin** - Admin
+| Phase | Status | Features |
+|-------|--------|----------|
+| MVP | ✅ | Login, Rollen, Passwort-Hashing |
+| Phase 1 | ✅ | Passwort-Reset, E-Mail-Versand |
+| Phase 2 | ✅ | Lead-Verwaltung, Filter, Suche |
+| Phase 3 | ✅ | Dashboard Analytics, Caching |
+| Phase 4 | 🔜 | Closing-Seite, Termine |
+| Phase 5 | 🔜 | Calendly-Integration |
+| Phase 6 | 🔜 | Notion-Migration, Angebote |
 
-## 📄 Lizenz
+## 📝 Changelog
 
-Proprietär - Sunside AI © 2025
+### 2024-12-09
+- ✅ Passwort-Reset per E-Mail (Resend)
+- ✅ Profil-Seite mit Passwort ändern
+- ✅ Kaltakquise-Seite mit echten Leads
+- ✅ Lead-Filter (Status, Ergebnis, Vertriebler)
+- ✅ User-Namen Auflösung für Link-Felder
+- ✅ Dashboard mit echten Analytics
+- ✅ Dashboard-Caching (5 Min localStorage)
+- ✅ React Portal für Modals
+- ✅ Verbesserte Loading-States
+
+---
+
+**Sunside AI** - Unlocking Intelligence Together
