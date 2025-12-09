@@ -116,7 +116,7 @@ export async function handler(event) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: 'Sunside CRM <noreply@sunsideai.de>',
+          from: 'Sunside CRM <onboarding@resend.dev>',
           to: [userEmail],
           subject: 'Dein neues Passwort - Sunside CRM',
           html: `
