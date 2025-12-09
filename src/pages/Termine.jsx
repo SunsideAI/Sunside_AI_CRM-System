@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, User, Phone, Mail, Loader2, Plus, ExternalLink } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, User, Loader2, ExternalLink } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 function Termine() {
+  const { user } = useAuth()
   const [events, setEvents] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -9,13 +11,18 @@ function Termine() {
   const [view, setView] = useState('week') // 'week' oder 'day'
   const [selectedEvent, setSelectedEvent] = useState(null)
   
-  // User aus localStorage
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
-  const calendarId = user.google_calendar_id
+  // Calendar ID aus User
+  const calendarId = user?.google_calendar_id
+  
+  // Debug
+  console.log('Termine - User:', user)
+  console.log('Termine - CalendarId:', calendarId)
 
   useEffect(() => {
     if (calendarId) {
       loadEvents()
+    } else {
+      setLoading(false)
     }
   }, [currentDate, calendarId])
 
