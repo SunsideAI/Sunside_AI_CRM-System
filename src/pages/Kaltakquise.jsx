@@ -343,6 +343,12 @@ function Kaltakquise() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
                     Standort
                   </th>
+                  {/* Vertriebler-Spalte nur bei "Alle Leads" */}
+                  {isAdmin() && viewMode === 'all' && (
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
+                      Vertriebler
+                    </th>
+                  )}
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
                     Kontakt
                   </th>
@@ -392,6 +398,22 @@ function Kaltakquise() {
                         {lead.stadt}
                       </div>
                     </td>
+
+                    {/* Vertriebler - nur bei "Alle Leads" */}
+                    {isAdmin() && viewMode === 'all' && (
+                      <td className="px-4 py-3 hidden lg:table-cell">
+                        {lead.zugewiesenAn && lead.zugewiesenAn.length > 0 ? (
+                          <div className="flex items-center text-gray-600">
+                            <UserIcon className="w-4 h-4 mr-1.5 text-gray-400" />
+                            <span className="truncate max-w-[150px]">
+                              {lead.zugewiesenAn.join(', ')}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 text-sm">—</span>
+                        )}
+                      </td>
+                    )}
 
                     {/* Kontakt */}
                     <td className="px-4 py-3 hidden lg:table-cell">
@@ -521,6 +543,16 @@ function Kaltakquise() {
                   <MapPin className="w-5 h-5 text-sunside-primary mr-3" />
                   <span className="text-gray-900">{selectedLead.stadt}</span>
                 </div>
+                {/* Vertriebler anzeigen wenn vorhanden */}
+                {selectedLead.zugewiesenAn && selectedLead.zugewiesenAn.length > 0 && (
+                  <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                    <UserIcon className="w-5 h-5 text-sunside-primary mr-3" />
+                    <div>
+                      <span className="text-xs text-gray-400">Zugewiesen an</span>
+                      <p className="text-gray-900">{selectedLead.zugewiesenAn.join(', ')}</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Status & Bearbeitung */}
