@@ -32,7 +32,7 @@ exports.handler = async (event) => {
     const isAdmin = params.admin === 'true'
     const userEmail = params.email
     const userName = params.userName
-    const filterUserName = params.filterUserName // NEU: Admin filtert nach Vertriebler
+    const filterUserName = params.filterUserName
     const startDate = params.startDate ? new Date(params.startDate) : null
     const endDate = params.endDate ? new Date(params.endDate) : null
 
@@ -118,30 +118,53 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
 
   for (const record of allRecords) {
     const fields = record.fields
-    const status = (fields.Status || '').toLowerCase()
+    
+    // Status auslesen und normalisieren
+    const statusRaw = fields.Status || ''
+    const status = statusRaw.toLowerCase().trim()
+    
+    // Umsatz-Felder
     const setup = parseFloat(fields.Setup) || 0
     const retainer = parseFloat(fields.Retainer) || 0
     const laufzeit = parseInt(fields.Laufzeit) || 1
-    const hinzugefuegt = fields.Hinzugefügt || fields.Hinzugefuegt || fields['Hinzugefügt']
-    const closerEmail = fields.Weitere_Teilnehmer || fields['Weitere_Teilnehmer']
+    
+    // Datum-Felder
+    // Hinzugefügt = Erstellungsdatum (für Filter und nicht-gewonnene)
+    const hinzugefuegt = fields.Hinzugefügt || fields.Hinzugefuegt || fields['Hinzugefügt'] || fields.Hinzugefugt
+    // Kunde_seit = Abschlussdatum (für gewonnene Deals in Timeline)
+    const kundeSeit = fields.Kunde_seit || fields['Kunde_seit']
+    
+    // Closer E-Mail
+    const closerEmail = fields.Weitere_Teilnehmer || fields['Weitere_Teilnehmer'] || ''
 
-    if (hinzugefuegt) {
-      const recordDate = new Date(hinzugefuegt)
+    // Prüfen ob es ein gewonnener Deal ist
+    const istGewonnen = status.includes('abgeschlossen')
+
+    // Datum-Filter basierend auf relevantem Datum
+    // Für gewonnene: Kunde_seit, sonst Hinzugefügt
+    const relevantDateStr = istGewonnen ? (kundeSeit || hinzugefuegt) : hinzugefuegt
+    
+    if (relevantDateStr) {
+      const recordDate = new Date(relevantDateStr)
       if (startDate && recordDate < startDate) continue
       if (endDate && recordDate > endDate) continue
     }
 
+    // User-Filter (wenn nicht Admin)
     if (!isAdmin && userEmail && closerEmail) {
       if (!closerEmail.toLowerCase().includes(userEmail.toLowerCase())) continue
     }
 
-    if (status.includes('abgeschlossen') || status.includes('gewonnen')) {
+    // Status kategorisieren
+    if (istGewonnen) {
       gewonnen++
       const dealWert = setup + (retainer * laufzeit)
       umsatzGesamt += dealWert
 
-      if (hinzugefuegt) {
-        const date = new Date(hinzugefuegt)
+      // Zeitverlauf: Kunde_seit für gewonnene Deals
+      const timelineDateStr = kundeSeit || hinzugefuegt
+      if (timelineDateStr) {
+        const date = new Date(timelineDateStr)
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
         if (!zeitverlaufMap[monthKey]) {
           zeitverlaufMap[monthKey] = { count: 0, umsatz: 0 }
@@ -150,6 +173,7 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
         zeitverlaufMap[monthKey].umsatz += dealWert
       }
 
+      // Per User Stats (Admin)
       if (closerEmail && isAdmin) {
         if (!perUserMap[closerEmail]) {
           perUserMap[closerEmail] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
@@ -157,7 +181,9 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
         perUserMap[closerEmail].gewonnen++
         perUserMap[closerEmail].umsatz += dealWert
       }
-    } else if (status.includes('verloren')) {
+    } 
+    // Verloren
+    else if (status === 'verloren') {
       verloren++
       if (closerEmail && isAdmin) {
         if (!perUserMap[closerEmail]) {
@@ -165,9 +191,9 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
         }
         perUserMap[closerEmail].verloren++
       }
-    } else if (status.includes('no-show') || status.includes('no show')) {
-      noShow++
-    } else {
+    } 
+    // Offen: "Lead", "Angebot versendet", oder alles andere
+    else {
       offen++
       if (closerEmail && isAdmin) {
         if (!perUserMap[closerEmail]) {
@@ -178,11 +204,14 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
     }
   }
 
+  // Closing Quote berechnen (gewonnen / (gewonnen + verloren))
   const totalEntschieden = gewonnen + verloren
   const closingQuote = totalEntschieden > 0 ? (gewonnen / totalEntschieden) * 100 : 0
 
+  // Zeitverlauf formatieren
   const zeitverlauf = formatZeitverlauf(zeitverlaufMap)
 
+  // Per User formatieren und sortieren
   const perUser = Object.entries(perUserMap).map(([email, stats]) => ({
     email,
     name: extractNameFromEmail(email),
@@ -210,13 +239,13 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
 async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate }) {
   const tableName = 'Immobilienmakler_Leads'
   
-  // User Record ID holen wenn nicht Admin ODER wenn Admin nach User filtert
+  // User Record ID holen wenn nicht Admin
   let userRecordId = null
   if (!isAdmin && userName) {
     userRecordId = await getUserRecordId(userName)
   }
   
-  // NEU: Wenn Admin nach bestimmtem Vertriebler filtert
+  // Admin filtert nach bestimmtem Vertriebler
   let filterUserRecordId = null
   if (isAdmin && filterUserName) {
     filterUserRecordId = await getUserRecordId(filterUserName)
@@ -282,7 +311,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       if (!assignedIds.includes(userRecordId)) continue
     }
 
-    // NEU: Admin filtert nach bestimmtem Vertriebler
+    // Admin filtert nach bestimmtem Vertriebler
     if (isAdmin && filterUserRecordId) {
       const assignedIds = Array.isArray(zugewiesenAn) ? zugewiesenAn : [zugewiesenAn]
       if (!assignedIds.includes(filterUserRecordId)) continue
@@ -320,7 +349,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       zeitverlaufMap[monthKey].count++
     }
 
-    // Per User Stats (für Admins) - ERWEITERT mit allen Ergebnis-Typen
+    // Per User Stats (für Admins)
     if (isAdmin && zugewiesenAn && zugewiesenAn.length > 0) {
       const oderId = Array.isArray(zugewiesenAn) ? zugewiesenAn[0] : zugewiesenAn
       if (!perUserMap[oderId]) {
