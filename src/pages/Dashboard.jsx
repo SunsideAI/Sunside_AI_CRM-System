@@ -1,82 +1,106 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
+import { useDashboardCache } from '../context/DashboardCacheContext'
 import { 
   Phone, 
   Calendar, 
   TrendingUp, 
   Users,
   ArrowRight,
-  Loader2
+  Loader2,
+  RefreshCw
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 function Dashboard() {
   const { user, isSetter, isCloser, isAdmin } = useAuth()
-  const [loading, setLoading] = useState(true)
+  const { cache, loading, fetchDashboardData, refreshInBackground, isCacheValid } = useDashboardCache()
   const [data, setData] = useState({
     zugewiesenLeads: 0,
     callsHeute: 0,
     termineWoche: 0,
     abschluesseMonat: 0
   })
+  const [initialLoading, setInitialLoading] = useState(!cache)
 
   useEffect(() => {
-    loadDashboardData()
+    loadData()
   }, [])
 
-  const loadDashboardData = async () => {
-    try {
-      const params = new URLSearchParams()
-      params.append('userName', user?.vor_nachname || '')
-      params.append('userRole', isAdmin() ? 'Admin' : isSetter() ? 'Setter' : 'Closer')
+  const loadData = async () => {
+    const userName = user?.vor_nachname || ''
+    const userRole = isAdmin() ? 'Admin' : isSetter() ? 'Setter' : 'Closer'
 
-      const response = await fetch(`/.netlify/functions/dashboard?${params.toString()}`)
-      const result = await response.json()
-
-      if (response.ok) {
-        // Finde die Stats für den aktuellen User
-        const userStats = result.vertriebler?.find(v => v.name === user?.vor_nachname)
-        
-        setData({
-          zugewiesenLeads: userStats?.gesamt || 0,
-          callsHeute: result.heute || 0,
-          termineWoche: result.termineWoche || 0,
-          abschluesseMonat: 0 // Später: wenn Closing implementiert
-        })
+    // Wenn Cache vorhanden, sofort anzeigen
+    if (cache) {
+      updateDataFromResult(cache)
+      setInitialLoading(false)
+      
+      // Im Hintergrund aktualisieren wenn Cache älter als 1 Minute
+      if (!isCacheValid) {
+        refreshInBackground(userName, userRole)
       }
-    } catch (err) {
-      console.error('Dashboard load error:', err)
-    } finally {
-      setLoading(false)
+    } else {
+      // Kein Cache - normal laden
+      setInitialLoading(true)
+      const result = await fetchDashboardData(userName, userRole)
+      if (result) {
+        updateDataFromResult(result)
+      }
+      setInitialLoading(false)
     }
+  }
+
+  // Cache-Updates beobachten
+  useEffect(() => {
+    if (cache) {
+      updateDataFromResult(cache)
+    }
+  }, [cache])
+
+  const updateDataFromResult = (result) => {
+    const userStats = result.vertriebler?.find(v => v.name === user?.vor_nachname)
+    
+    setData({
+      zugewiesenLeads: userStats?.gesamt || 0,
+      callsHeute: result.heute || 0,
+      termineWoche: result.termineWoche || 0,
+      abschluesseMonat: 0
+    })
+  }
+
+  const handleManualRefresh = async () => {
+    const userName = user?.vor_nachname || ''
+    const userRole = isAdmin() ? 'Admin' : isSetter() ? 'Setter' : 'Closer'
+    await fetchDashboardData(userName, userRole, true) // force refresh
   }
 
   // Statistik-Karten mit echten Daten
   const stats = [
     {
       name: 'Zugewiesene Leads',
-      value: loading ? '...' : data.zugewiesenLeads.toLocaleString('de-DE'),
+      value: initialLoading ? '...' : data.zugewiesenLeads.toLocaleString('de-DE'),
       icon: Users,
       color: 'bg-blue-500',
       show: isSetter() || isAdmin()
     },
     {
       name: 'Calls heute',
-      value: loading ? '...' : data.callsHeute.toLocaleString('de-DE'),
+      value: initialLoading ? '...' : data.callsHeute.toLocaleString('de-DE'),
       icon: Phone,
       color: 'bg-green-500',
       show: isSetter() || isAdmin()
     },
     {
       name: 'Termine diese Woche',
-      value: loading ? '...' : data.termineWoche.toLocaleString('de-DE'),
+      value: initialLoading ? '...' : data.termineWoche.toLocaleString('de-DE'),
       icon: Calendar,
       color: 'bg-purple-500',
       show: true
     },
     {
       name: 'Abschlüsse Monat',
-      value: loading ? '...' : data.abschluesseMonat.toLocaleString('de-DE'),
+      value: initialLoading ? '...' : data.abschluesseMonat.toLocaleString('de-DE'),
       icon: TrendingUp,
       color: 'bg-orange-500',
       show: isCloser() || isAdmin()
@@ -106,13 +130,23 @@ function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Begrüßung */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">
-          Hallo, {user?.vorname || 'User'}! 👋
-        </h1>
-        <p className="mt-1 text-gray-500">
-          Hier ist dein Überblick für heute.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Hallo, {user?.vorname || 'User'}! 👋
+          </h1>
+          <p className="mt-1 text-gray-500">
+            Hier ist dein Überblick für heute.
+          </p>
+        </div>
+        <button
+          onClick={handleManualRefresh}
+          disabled={loading}
+          className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          title="Daten aktualisieren"
+        >
+          <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
 
       {/* Statistiken */}
@@ -126,7 +160,7 @@ function Dashboard() {
               <div>
                 <p className="text-sm text-gray-500">{stat.name}</p>
                 <p className="mt-1 text-3xl font-bold text-gray-900">
-                  {loading ? (
+                  {initialLoading ? (
                     <span className="inline-block w-8 h-8">
                       <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
                     </span>
