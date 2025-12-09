@@ -16,7 +16,8 @@ import {
   XCircle,
   Clock,
   ChevronDown,
-  LayoutDashboard
+  LayoutDashboard,
+  Filter
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
@@ -63,8 +64,7 @@ function Dashboard() {
   const isCloser = () => hasRole('Closer')
   const isAdmin = () => hasRole('Admin')
 
-  // Bestimme welche Tabs sichtbar sind
-  const showSettingTab = isSetter() || isAdmin()
+  const showKaltakquiseTab = isSetter() || isAdmin()
   const showClosingTab = isCloser() || isAdmin()
 
   return (
@@ -75,7 +75,7 @@ function Dashboard() {
           <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
           <p className="mt-1 text-gray-500">
             {activeView === 'uebersicht' && 'Hier ist dein Überblick für heute.'}
-            {activeView === 'setting' && 'Kaltakquise Performance-Analyse'}
+            {activeView === 'kaltakquise' && 'Kaltakquise Performance-Analyse'}
             {activeView === 'closing' && 'Closing Performance-Analyse'}
           </p>
         </div>
@@ -94,17 +94,17 @@ function Dashboard() {
             Übersicht
           </button>
           
-          {showSettingTab && (
+          {showKaltakquiseTab && (
             <button
-              onClick={() => setActiveView('setting')}
+              onClick={() => setActiveView('kaltakquise')}
               className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                activeView === 'setting'
+                activeView === 'kaltakquise'
                   ? 'bg-white text-purple-600 shadow-sm'
                   : 'text-gray-600 hover:text-gray-900'
               }`}
             >
               <Phone className="h-4 w-4" />
-              Setting
+              Kaltakquise
             </button>
           )}
           
@@ -128,8 +128,8 @@ function Dashboard() {
       {activeView === 'uebersicht' && (
         <UebersichtContent user={user} isSetter={isSetter} isCloser={isCloser} isAdmin={isAdmin} />
       )}
-      {activeView === 'setting' && (
-        <SettingAnalytics user={user} isAdmin={isAdmin} />
+      {activeView === 'kaltakquise' && (
+        <KaltakquiseAnalytics user={user} isAdmin={isAdmin} />
       )}
       {activeView === 'closing' && (
         <ClosingAnalytics user={user} isAdmin={isAdmin} />
@@ -327,44 +327,88 @@ function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
 }
 
 // ==========================================
-// SETTING ANALYTICS
+// KALTAKQUISE ANALYTICS (ehemals Setting)
 // ==========================================
-function SettingAnalytics({ user, isAdmin }) {
+function KaltakquiseAnalytics({ user, isAdmin }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [stats, setStats] = useState(null)
-  const [dateRange, setDateRange] = useState('3months')
+  const [dateRange, setDateRange] = useState('7days')
+  const [selectedUser, setSelectedUser] = useState('all') // NEU: Vertriebler-Filter
+  const [vertriebler, setVertriebler] = useState([]) // NEU: Liste aller Vertriebler
   const [refreshing, setRefreshing] = useState(false)
 
-  // Cache Key enthält auch userName für user-spezifischen Cache
+  // Cache Key
   const getCacheKey = () => {
-    const userPart = isAdmin() ? 'admin' : (user?.vor_nachname || 'user')
-    return `dashboard_setting_${dateRange}_${userPart}`
+    const userPart = isAdmin() ? `admin_${selectedUser}` : (user?.vor_nachname || 'user')
+    return `dashboard_kaltakquise_${dateRange}_${userPart}`
   }
 
   useEffect(() => {
     loadStats()
-  }, [dateRange])
+  }, [dateRange, selectedUser])
 
+  // Erweiterte Zeitraum-Optionen
   const getDateRange = () => {
     const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     let startDate = null
 
     switch (dateRange) {
-      case '1month':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())
+      case 'today':
+        startDate = today
         break
+      case 'yesterday':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 1)
+        return {
+          startDate: startDate.toISOString().split('T')[0],
+          endDate: today.toISOString().split('T')[0]
+        }
+      case 'thisWeek':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - startDate.getDay() + 1) // Montag
+        break
+      case 'lastWeek':
+        const lastWeekEnd = new Date(today)
+        lastWeekEnd.setDate(lastWeekEnd.getDate() - lastWeekEnd.getDay()) // Letzter Sonntag
+        const lastWeekStart = new Date(lastWeekEnd)
+        lastWeekStart.setDate(lastWeekStart.getDate() - 6)
+        return {
+          startDate: lastWeekStart.toISOString().split('T')[0],
+          endDate: lastWeekEnd.toISOString().split('T')[0]
+        }
+      case '7days':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 7)
+        break
+      case '14days':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 14)
+        break
+      case '30days':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 30)
+        break
+      case 'thisMonth':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+        break
+      case 'lastMonth':
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+        return {
+          startDate: lastMonthStart.toISOString().split('T')[0],
+          endDate: lastMonthEnd.toISOString().split('T')[0]
+        }
       case '3months':
         startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
         break
-      case '6months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate())
-        break
-      case 'year':
-        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
+      case 'all':
+        startDate = null
         break
       default:
-        startDate = null
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 7)
     }
 
     return {
@@ -379,6 +423,9 @@ function SettingAnalytics({ user, isAdmin }) {
 
     if (cached && !forceRefresh) {
       setStats(cached)
+      if (cached.perUser) {
+        setVertriebler(cached.perUser)
+      }
       setLoading(false)
       return
     }
@@ -389,13 +436,15 @@ function SettingAnalytics({ user, isAdmin }) {
 
       const { startDate, endDate } = getDateRange()
       const userEmail = user?.email_geschaeftlich || user?.email
-      const userName = user?.vor_nachname // NEU: User-Name für Filter
+      const userName = user?.vor_nachname
 
       const params = new URLSearchParams({
         type: 'setting',
         admin: isAdmin().toString(),
         ...(userEmail && !isAdmin() && { email: userEmail }),
-        ...(userName && !isAdmin() && { userName }), // NEU
+        ...(userName && !isAdmin() && { userName }),
+        // NEU: Wenn Admin einen Vertriebler auswählt
+        ...(isAdmin() && selectedUser !== 'all' && { filterUserName: selectedUser }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate })
       })
@@ -405,11 +454,14 @@ function SettingAnalytics({ user, isAdmin }) {
         const data = await res.json()
         setCache(cacheKey, data)
         setStats(data)
+        if (data.perUser && isAdmin()) {
+          setVertriebler(data.perUser)
+        }
       } else {
         throw new Error('Fehler beim Laden')
       }
     } catch (err) {
-      console.error('Setting Analytics Error:', err)
+      console.error('Kaltakquise Analytics Error:', err)
       setError('Fehler beim Laden der Analytics')
     } finally {
       setLoading(false)
@@ -424,6 +476,14 @@ function SettingAnalytics({ user, isAdmin }) {
 
   const formatPercent = (value) => `${value.toFixed(1)}%`
 
+  // Farben für Charts
+  const RESULT_COLORS = {
+    erstgespraech: '#10B981', // Grün
+    unterlagen: '#F59E0B',    // Gelb
+    keinInteresse: '#EF4444', // Rot
+    nichtErreicht: '#6B7280'  // Grau
+  }
+
   if (loading && !refreshing) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -434,24 +494,62 @@ function SettingAnalytics({ user, isAdmin }) {
 
   return (
     <div className="space-y-6">
-      {/* Filter Bar */}
-      <div className="flex items-center justify-between">
+      {/* Filter Bar - Erweitert für Admins */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <p className="text-sm text-gray-500">
-          {isAdmin() ? 'Übersicht aller Setter' : 'Deine Kaltakquise Performance'}
+          {isAdmin() 
+            ? (selectedUser === 'all' ? 'Übersicht aller Vertriebler' : `Performance: ${selectedUser}`)
+            : 'Deine Kaltakquise Performance'
+          }
         </p>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* NEU: Vertriebler-Filter für Admins */}
+          {isAdmin() && vertriebler.length > 0 && (
+            <div className="relative">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2">
+                <Filter className="h-4 w-4 text-gray-400" />
+              </div>
+              <select
+                value={selectedUser}
+                onChange={(e) => setSelectedUser(e.target.value)}
+                className="appearance-none bg-white border border-gray-300 rounded-lg pl-9 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                <option value="all">Alle Vertriebler</option>
+                {vertriebler.map((v) => (
+                  <option key={v.id || v.name} value={v.name}>{v.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+            </div>
+          )}
+
+          {/* Zeitraum-Filter - Erweitert */}
           <div className="relative">
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
               className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
-              <option value="1month">Letzter Monat</option>
-              <option value="3months">Letzte 3 Monate</option>
-              <option value="6months">Letzte 6 Monate</option>
-              <option value="year">Letztes Jahr</option>
-              <option value="all">Gesamt</option>
+              <optgroup label="Tage">
+                <option value="today">Heute</option>
+                <option value="yesterday">Gestern</option>
+                <option value="7days">Letzte 7 Tage</option>
+                <option value="14days">Letzte 14 Tage</option>
+                <option value="30days">Letzte 30 Tage</option>
+              </optgroup>
+              <optgroup label="Wochen">
+                <option value="thisWeek">Diese Woche</option>
+                <option value="lastWeek">Letzte Woche</option>
+              </optgroup>
+              <optgroup label="Monate">
+                <option value="thisMonth">Dieser Monat</option>
+                <option value="lastMonth">Letzter Monat</option>
+                <option value="3months">Letzte 3 Monate</option>
+              </optgroup>
+              <optgroup label="Gesamt">
+                <option value="all">Gesamter Zeitraum</option>
+              </optgroup>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
@@ -484,7 +582,7 @@ function SettingAnalytics({ user, isAdmin }) {
             <KPICard title="Nicht erreicht" value={stats.summary.nichtErreicht} icon={TrendingDown} color="gray" />
           </div>
 
-          {/* Charts */}
+          {/* Charts Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Conversion Funnel */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
@@ -513,56 +611,105 @@ function SettingAnalytics({ user, isAdmin }) {
               </ResponsiveContainer>
             </div>
 
-            {/* Aktivität Zeitverlauf */}
+            {/* Ergebnis Verteilung Pie */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Aktivität im Zeitverlauf</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Ergebnis Verteilung</h3>
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={stats.zeitverlauf}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: 'Erstgespräch', value: stats.summary.erstgespraech },
+                      { name: 'Unterlagen', value: stats.summary.unterlagen },
+                      { name: 'Kein Interesse', value: stats.summary.keinInteresse },
+                      { name: 'Nicht erreicht', value: stats.summary.nichtErreicht }
+                    ].filter(d => d.value > 0)}
+                    cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
+                    <Cell fill={RESULT_COLORS.erstgespraech} />
+                    <Cell fill={RESULT_COLORS.unterlagen} />
+                    <Cell fill={RESULT_COLORS.keinInteresse} />
+                    <Cell fill={RESULT_COLORS.nichtErreicht} />
+                  </Pie>
                   <Tooltip />
-                  <Legend />
-                  <Line type="monotone" dataKey="count" name="Kontakte" stroke="#7C3AED" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                </LineChart>
+                </PieChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          {/* Ergebnis Verteilung */}
+          {/* Aktivität Zeitverlauf */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-4">Ergebnis Verteilung</h3>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={[
-                    { name: 'Erstgespräch', value: stats.summary.erstgespraech },
-                    { name: 'Unterlagen', value: stats.summary.unterlagen },
-                    { name: 'Kein Interesse', value: stats.summary.keinInteresse },
-                    { name: 'Nicht erreicht', value: stats.summary.nichtErreicht }
-                  ].filter(d => d.value > 0)}
-                  cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value"
-                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                >
-                  <Cell fill="#10B981" />
-                  <Cell fill="#F59E0B" />
-                  <Cell fill="#EF4444" />
-                  <Cell fill="#6B7280" />
-                </Pie>
+            <h3 className="text-sm font-medium text-gray-700 mb-4">Aktivität im Zeitverlauf</h3>
+            <ResponsiveContainer width="100%" height={250}>
+              <LineChart data={stats.zeitverlauf}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
-              </PieChart>
+                <Legend />
+                <Line type="monotone" dataKey="count" name="Kontakte" stroke="#7C3AED" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+              </LineChart>
             </ResponsiveContainer>
           </div>
 
-          {/* Per User Stats (Admin only) */}
-          {isAdmin() && stats.perUser && stats.perUser.length > 0 && (
+          {/* NEU: Gestapeltes Balkendiagramm - Performance pro Vertriebler (Admin only) */}
+          {isAdmin() && stats.perUser && stats.perUser.length > 0 && selectedUser === 'all' && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Performance pro Setter</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Ergebnisse pro Vertriebler (gestapelt)</h3>
+              <ResponsiveContainer width="100%" height={Math.max(400, stats.perUser.length * 50)}>
+                <BarChart 
+                  data={stats.perUser.slice(0, 20)} 
+                  layout="vertical"
+                  margin={{ left: 20, right: 20 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis type="number" />
+                  <YAxis 
+                    dataKey="name" 
+                    type="category" 
+                    width={140} 
+                    tick={{ fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    formatter={(value, name) => {
+                      const labels = {
+                        erstgespraech: 'Erstgespräch',
+                        unterlagen: 'Unterlagen',
+                        keinInteresse: 'Kein Interesse',
+                        nichtErreicht: 'Nicht erreicht'
+                      }
+                      return [value, labels[name] || name]
+                    }}
+                  />
+                  <Legend 
+                    formatter={(value) => {
+                      const labels = {
+                        erstgespraech: 'Erstgespräch',
+                        unterlagen: 'Unterlagen',
+                        keinInteresse: 'Kein Interesse',
+                        nichtErreicht: 'Nicht erreicht'
+                      }
+                      return labels[value] || value
+                    }}
+                  />
+                  <Bar dataKey="erstgespraech" stackId="a" fill={RESULT_COLORS.erstgespraech} name="erstgespraech" />
+                  <Bar dataKey="unterlagen" stackId="a" fill={RESULT_COLORS.unterlagen} name="unterlagen" />
+                  <Bar dataKey="keinInteresse" stackId="a" fill={RESULT_COLORS.keinInteresse} name="keinInteresse" />
+                  <Bar dataKey="nichtErreicht" stackId="a" fill={RESULT_COLORS.nichtErreicht} name="nichtErreicht" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {/* Einwahlen pro Vertriebler (Admin only, wenn "alle" ausgewählt) */}
+          {isAdmin() && stats.perUser && stats.perUser.length > 0 && selectedUser === 'all' && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Einwahlen & Erstgespräche pro Vertriebler</h3>
               <ResponsiveContainer width="100%" height={Math.max(300, stats.perUser.length * 40)}>
                 <BarChart data={stats.perUser.slice(0, 15)} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
+                  <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 12 }} />
                   <Tooltip />
                   <Legend />
                   <Bar dataKey="einwahlen" name="Einwahlen" fill="#7C3AED" />
@@ -578,7 +725,7 @@ function SettingAnalytics({ user, isAdmin }) {
         <div className="text-center py-12">
           <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Keine Daten verfügbar</h3>
-          <p className="text-gray-500">Es gibt noch keine Setting-Daten für den ausgewählten Zeitraum.</p>
+          <p className="text-gray-500">Es gibt noch keine Kaltakquise-Daten für den ausgewählten Zeitraum.</p>
         </div>
       )}
     </div>
@@ -592,10 +739,9 @@ function ClosingAnalytics({ user, isAdmin }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [stats, setStats] = useState(null)
-  const [dateRange, setDateRange] = useState('3months')
+  const [dateRange, setDateRange] = useState('30days')
   const [refreshing, setRefreshing] = useState(false)
 
-  // Cache Key enthält auch userEmail für user-spezifischen Cache
   const getCacheKey = () => {
     const userPart = isAdmin() ? 'admin' : (user?.email_geschaeftlich || user?.email || 'user')
     return `dashboard_closing_${dateRange}_${userPart}`
@@ -607,17 +753,27 @@ function ClosingAnalytics({ user, isAdmin }) {
 
   const getDateRange = () => {
     const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     let startDate = null
 
     switch (dateRange) {
-      case '1month':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())
+      case '7days':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 7)
+        break
+      case '14days':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 14)
+        break
+      case '30days':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 30)
+        break
+      case 'thisMonth':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
         break
       case '3months':
         startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
-        break
-      case '6months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate())
         break
       case 'year':
         startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
@@ -690,7 +846,7 @@ function ClosingAnalytics({ user, isAdmin }) {
 
   const formatPercent = (value) => `${value.toFixed(1)}%`
 
-  const COLORS = ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#6366F1', '#EC4899']
+  const COLORS = ['#10B981', '#EF4444', '#6B7280', '#F59E0B']
 
   if (loading && !refreshing) {
     return (
@@ -715,9 +871,11 @@ function ClosingAnalytics({ user, isAdmin }) {
               onChange={(e) => setDateRange(e.target.value)}
               className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
-              <option value="1month">Letzter Monat</option>
+              <option value="7days">Letzte 7 Tage</option>
+              <option value="14days">Letzte 14 Tage</option>
+              <option value="30days">Letzte 30 Tage</option>
+              <option value="thisMonth">Dieser Monat</option>
               <option value="3months">Letzte 3 Monate</option>
-              <option value="6months">Letzte 6 Monate</option>
               <option value="year">Letztes Jahr</option>
               <option value="all">Gesamt</option>
             </select>
@@ -784,7 +942,7 @@ function ClosingAnalytics({ user, isAdmin }) {
                       { name: 'Offen', value: stats.summary.offen },
                       { name: 'No-Show', value: stats.summary.noShow }
                     ].filter(d => d.value > 0)}
-                    cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value"
+                    cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
                     {COLORS.map((color, index) => (<Cell key={`cell-${index}`} fill={color} />))}
