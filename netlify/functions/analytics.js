@@ -32,6 +32,7 @@ exports.handler = async (event) => {
     const isAdmin = params.admin === 'true'
     const userEmail = params.email
     const userName = params.userName
+    const filterUserName = params.filterUserName // NEU: Admin filtert nach Vertriebler
     const startDate = params.startDate ? new Date(params.startDate) : null
     const endDate = params.endDate ? new Date(params.endDate) : null
 
@@ -43,7 +44,7 @@ exports.handler = async (event) => {
         body: JSON.stringify(result)
       }
     } else {
-      const result = await getSettingStats({ isAdmin, userEmail, userName, startDate, endDate })
+      const result = await getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate })
       return {
         statusCode: 200,
         headers: corsHeaders,
@@ -206,14 +207,19 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
 // ==========================================
 // SETTING STATS (Kaltakquise Leads)
 // ==========================================
-async function getSettingStats({ isAdmin, userEmail, userName, startDate, endDate }) {
+async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate }) {
   const tableName = 'Immobilienmakler_Leads'
   
-  // User Record ID holen wenn nicht Admin
+  // User Record ID holen wenn nicht Admin ODER wenn Admin nach User filtert
   let userRecordId = null
   if (!isAdmin && userName) {
     userRecordId = await getUserRecordId(userName)
-    console.log('User Record ID für', userName, ':', userRecordId)
+  }
+  
+  // NEU: Wenn Admin nach bestimmtem Vertriebler filtert
+  let filterUserRecordId = null
+  if (isAdmin && filterUserName) {
+    filterUserRecordId = await getUserRecordId(filterUserName)
   }
 
   // Alle Leads laden
@@ -261,8 +267,6 @@ async function getSettingStats({ isAdmin, userEmail, userName, startDate, endDat
 
     const ergebnis = (fields.Ergebnis || '').toLowerCase()
     const datum = fields.Datum
-    
-    // KORREKTUR: Das Feld heißt "User_Datenbank", nicht "Zugewiesen an"
     const zugewiesenAn = fields['User_Datenbank'] || fields.User_Datenbank || []
 
     // Datum-Filter
@@ -272,25 +276,36 @@ async function getSettingStats({ isAdmin, userEmail, userName, startDate, endDat
       if (endDate && recordDate > endDate) continue
     }
 
-    // User-Filter: Prüfen ob der User zugewiesen ist
+    // User-Filter: Nicht-Admin sieht nur eigene
     if (!isAdmin && userRecordId) {
       const assignedIds = Array.isArray(zugewiesenAn) ? zugewiesenAn : [zugewiesenAn]
       if (!assignedIds.includes(userRecordId)) continue
     }
 
+    // NEU: Admin filtert nach bestimmtem Vertriebler
+    if (isAdmin && filterUserRecordId) {
+      const assignedIds = Array.isArray(zugewiesenAn) ? zugewiesenAn : [zugewiesenAn]
+      if (!assignedIds.includes(filterUserRecordId)) continue
+    }
+
     einwahlen++
 
     // Ergebnis kategorisieren
-    if (ergebnis.includes('nicht erreicht')) {
+    const istNichtErreicht = ergebnis.includes('nicht erreicht')
+    const istErstgespraech = ergebnis.includes('erstgespräch') || ergebnis.includes('erstgespraech') || ergebnis.includes('termin')
+    const istUnterlagen = ergebnis.includes('unterlage')
+    const istKeinInteresse = ergebnis.includes('kein interesse') || ergebnis.includes('absage')
+
+    if (istNichtErreicht) {
       nichtErreicht++
     } else {
       erreicht++
       
-      if (ergebnis.includes('erstgespräch') || ergebnis.includes('erstgespraech') || ergebnis.includes('termin')) {
+      if (istErstgespraech) {
         erstgespraech++
-      } else if (ergebnis.includes('unterlage')) {
+      } else if (istUnterlagen) {
         unterlagen++
-      } else if (ergebnis.includes('kein interesse') || ergebnis.includes('absage')) {
+      } else if (istKeinInteresse) {
         keinInteresse++
       }
     }
@@ -305,7 +320,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, startDate, endDat
       zeitverlaufMap[monthKey].count++
     }
 
-    // Per User Stats (für Admins)
+    // Per User Stats (für Admins) - ERWEITERT mit allen Ergebnis-Typen
     if (isAdmin && zugewiesenAn && zugewiesenAn.length > 0) {
       const oderId = Array.isArray(zugewiesenAn) ? zugewiesenAn[0] : zugewiesenAn
       if (!perUserMap[oderId]) {
@@ -313,14 +328,24 @@ async function getSettingStats({ isAdmin, userEmail, userName, startDate, endDat
           id: oderId,
           einwahlen: 0, 
           erreicht: 0, 
-          erstgespraech: 0 
+          erstgespraech: 0,
+          unterlagen: 0,
+          keinInteresse: 0,
+          nichtErreicht: 0
         }
       }
       perUserMap[oderId].einwahlen++
-      if (!ergebnis.includes('nicht erreicht')) {
+      
+      if (istNichtErreicht) {
+        perUserMap[oderId].nichtErreicht++
+      } else {
         perUserMap[oderId].erreicht++
-        if (ergebnis.includes('erstgespräch') || ergebnis.includes('erstgespraech') || ergebnis.includes('termin')) {
+        if (istErstgespraech) {
           perUserMap[oderId].erstgespraech++
+        } else if (istUnterlagen) {
+          perUserMap[oderId].unterlagen++
+        } else if (istKeinInteresse) {
+          perUserMap[oderId].keinInteresse++
         }
       }
     }
