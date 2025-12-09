@@ -6,9 +6,11 @@ import Layout from './components/Layout'
 
 // Pages
 import Login from './pages/Login'
+import ForgotPassword from './pages/ForgotPassword'
 import Dashboard from './pages/Dashboard'
 import Kaltakquise from './pages/Kaltakquise'
 import Closing from './pages/Closing'
+import Profil from './pages/Profil'
 import Einstellungen from './pages/Einstellungen'
 
 // Protected Route Komponente
@@ -43,10 +45,14 @@ function App() {
 
   return (
     <Routes>
-      {/* Login Route */}
+      {/* Public Routes */}
       <Route 
         path="/login" 
         element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} 
+      />
+      <Route 
+        path="/passwort-vergessen" 
+        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} 
       />
 
       {/* Protected Routes mit Layout */}
@@ -63,6 +69,9 @@ function App() {
         
         {/* Dashboard - für alle */}
         <Route path="dashboard" element={<Dashboard />} />
+        
+        {/* Profil - für alle eingeloggten User */}
+        <Route path="profil" element={<Profil />} />
         
         {/* Kaltakquise - nur Setter und Admin */}
         <Route 
