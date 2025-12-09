@@ -16,8 +16,7 @@ import {
   XCircle,
   Clock,
   ChevronDown,
-  LayoutDashboard,
-  PieChart as PieChartIcon
+  LayoutDashboard
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
@@ -57,55 +56,91 @@ function setCache(data) {
 
 function Dashboard() {
   const { user, hasRole } = useAuth()
-  const [activeTab, setActiveTab] = useState('uebersicht')
+  const [activeView, setActiveView] = useState('uebersicht')
   
-  // Legacy helper functions for old dashboard code
   const isSetter = () => hasRole('Setter')
   const isCloser = () => hasRole('Closer')
   const isAdmin = () => hasRole('Admin')
 
-  const tabs = [
-    { id: 'uebersicht', name: 'Übersicht', icon: LayoutDashboard },
-    { id: 'analytics', name: 'Analytics', icon: PieChartIcon }
-  ]
+  // Bestimme welche Tabs sichtbar sind
+  const showSettingTab = isSetter() || isAdmin()
+  const showClosingTab = isCloser() || isAdmin()
 
   return (
     <div className="space-y-6">
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="flex space-x-8">
-          {tabs.map((tab) => (
+      {/* Header mit Toggle */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="mt-1 text-gray-500">
+            {activeView === 'uebersicht' && 'Hier ist dein Überblick für heute.'}
+            {activeView === 'setting' && 'Kaltakquise Performance-Analyse'}
+            {activeView === 'closing' && 'Closing Performance-Analyse'}
+          </p>
+        </div>
+
+        {/* Toggle Buttons */}
+        <div className="flex items-center bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setActiveView('uebersicht')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeView === 'uebersicht'
+                ? 'bg-white text-purple-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <LayoutDashboard className="h-4 w-4" />
+            Übersicht
+          </button>
+          
+          {showSettingTab && (
             <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === tab.id
-                  ? 'border-purple-600 text-purple-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              onClick={() => setActiveView('setting')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeView === 'setting'
+                  ? 'bg-white text-purple-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              <tab.icon className="h-4 w-4" />
-              {tab.name}
+              <Phone className="h-4 w-4" />
+              Setting
             </button>
-          ))}
-        </nav>
+          )}
+          
+          {showClosingTab && (
+            <button
+              onClick={() => setActiveView('closing')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+                activeView === 'closing'
+                  ? 'bg-white text-purple-600 shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Target className="h-4 w-4" />
+              Closing
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'uebersicht' && (
-        <UebersichtTab user={user} isSetter={isSetter} isCloser={isCloser} isAdmin={isAdmin} />
+      {/* Content */}
+      {activeView === 'uebersicht' && (
+        <UebersichtContent user={user} isSetter={isSetter} isCloser={isCloser} isAdmin={isAdmin} />
       )}
-      {activeTab === 'analytics' && (
-        <AnalyticsTab user={user} hasRole={hasRole} isAdmin={isAdmin} isCloser={isCloser} isSetter={isSetter} />
+      {activeView === 'setting' && (
+        <SettingAnalytics user={user} isAdmin={isAdmin} />
+      )}
+      {activeView === 'closing' && (
+        <ClosingAnalytics user={user} isAdmin={isAdmin} />
       )}
     </div>
   )
 }
 
 // ==========================================
-// ÜBERSICHT TAB (Altes Dashboard)
+// ÜBERSICHT CONTENT
 // ==========================================
-function UebersichtTab({ user, isSetter, isCloser, isAdmin }) {
+function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
   const [data, setData] = useState({
@@ -217,12 +252,9 @@ function UebersichtTab({ user, isSetter, isCloser, isAdmin }) {
       {/* Begrüßung */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-xl font-semibold text-gray-900">
             Hallo, {user?.vorname || 'User'}! 👋
-          </h1>
-          <p className="mt-1 text-gray-500">
-            Hier ist dein Überblick für heute.
-          </p>
+          </h2>
         </div>
         <button
           onClick={() => loadData(true)}
@@ -293,18 +325,17 @@ function UebersichtTab({ user, isSetter, isCloser, isAdmin }) {
 }
 
 // ==========================================
-// ANALYTICS TAB (Neues Dashboard)
+// SETTING ANALYTICS
 // ==========================================
-function AnalyticsTab({ user, hasRole, isAdmin, isCloser, isSetter }) {
+function SettingAnalytics({ user, isAdmin }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [closingStats, setClosingStats] = useState(null)
-  const [settingStats, setSettingStats] = useState(null)
+  const [stats, setStats] = useState(null)
   const [dateRange, setDateRange] = useState('3months')
   const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
-    loadAnalytics()
+    loadStats()
   }, [dateRange])
 
   const getDateRange = () => {
@@ -334,7 +365,7 @@ function AnalyticsTab({ user, hasRole, isAdmin, isCloser, isSetter }) {
     }
   }
 
-  const loadAnalytics = async () => {
+  const loadStats = async () => {
     try {
       setLoading(true)
       setError(null)
@@ -342,42 +373,23 @@ function AnalyticsTab({ user, hasRole, isAdmin, isCloser, isSetter }) {
       const { startDate, endDate } = getDateRange()
       const userEmail = user?.email_geschaeftlich || user?.email
 
-      // Closing Stats laden (für Closer und Admins)
-      if (isCloser() || isAdmin()) {
-        const closingParams = new URLSearchParams({
-          type: 'closing',
-          admin: isAdmin().toString(),
-          ...(userEmail && !isAdmin() && { email: userEmail }),
-          ...(startDate && { startDate }),
-          ...(endDate && { endDate })
-        })
+      const params = new URLSearchParams({
+        type: 'setting',
+        admin: isAdmin().toString(),
+        ...(userEmail && !isAdmin() && { email: userEmail }),
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate })
+      })
 
-        const closingRes = await fetch(`/.netlify/functions/analytics?${closingParams}`)
-        if (closingRes.ok) {
-          const data = await closingRes.json()
-          setClosingStats(data)
-        }
+      const res = await fetch(`/.netlify/functions/analytics?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setStats(data)
+      } else {
+        throw new Error('Fehler beim Laden')
       }
-
-      // Setting Stats laden (für Setter und Admins)
-      if (isSetter() || isAdmin()) {
-        const settingParams = new URLSearchParams({
-          type: 'setting',
-          admin: isAdmin().toString(),
-          ...(userEmail && !isAdmin() && { email: userEmail }),
-          ...(startDate && { startDate }),
-          ...(endDate && { endDate })
-        })
-
-        const settingRes = await fetch(`/.netlify/functions/analytics?${settingParams}`)
-        if (settingRes.ok) {
-          const data = await settingRes.json()
-          setSettingStats(data)
-        }
-      }
-
     } catch (err) {
-      console.error('Analytics Error:', err)
+      console.error('Setting Analytics Error:', err)
       setError('Fehler beim Laden der Analytics')
     } finally {
       setLoading(false)
@@ -387,23 +399,10 @@ function AnalyticsTab({ user, hasRole, isAdmin, isCloser, isSetter }) {
 
   const handleRefresh = () => {
     setRefreshing(true)
-    loadAnalytics()
+    loadStats()
   }
 
-  const formatCurrency = (value) => {
-    return new Intl.NumberFormat('de-DE', {
-      style: 'currency',
-      currency: 'EUR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0
-    }).format(value)
-  }
-
-  const formatPercent = (value) => {
-    return `${value.toFixed(1)}%`
-  }
-
-  const COLORS = ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#6366F1', '#EC4899']
+  const formatPercent = (value) => `${value.toFixed(1)}%`
 
   if (loading && !refreshing) {
     return (
@@ -415,24 +414,18 @@ function AnalyticsTab({ user, hasRole, isAdmin, isCloser, isSetter }) {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-500 mt-1">
-            {isAdmin() ? 'Übersicht aller Vertriebsaktivitäten' : 
-             isCloser() && isSetter() ? 'Deine Setting & Closing Performance' :
-             isCloser() ? 'Deine Closing Performance' : 'Deine Setting Performance'}
-          </p>
-        </div>
+      {/* Filter Bar */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">
+          {isAdmin() ? 'Übersicht aller Setter' : 'Deine Kaltakquise Performance'}
+        </p>
 
         <div className="flex items-center gap-3">
-          {/* Zeitraum Filter */}
           <div className="relative">
             <select
               value={dateRange}
               onChange={(e) => setDateRange(e.target.value)}
-              className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             >
               <option value="1month">Letzter Monat</option>
               <option value="3months">Letzte 3 Monate</option>
@@ -443,7 +436,6 @@ function AnalyticsTab({ user, hasRole, isAdmin, isCloser, isSetter }) {
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           </div>
 
-          {/* Refresh Button */}
           <button
             onClick={handleRefresh}
             disabled={refreshing}
@@ -460,78 +452,283 @@ function AnalyticsTab({ user, hasRole, isAdmin, isCloser, isSetter }) {
         </div>
       )}
 
-      {/* Closing Section */}
-      {(isCloser() || isAdmin()) && closingStats && (
-        <div className="space-y-6">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Target className="h-5 w-5 text-purple-600" />
-            Closing Performance
-          </h2>
-
-          {/* Closing KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-            <KPICard
-              title="Closing Quote"
-              value={formatPercent(closingStats.summary.closingQuote)}
-              icon={TrendingUp}
-              color="purple"
-              subtitle={`${closingStats.summary.gewonnen} von ${closingStats.summary.gewonnen + closingStats.summary.verloren}`}
-            />
-            <KPICard
-              title="Umsatz Gesamt"
-              value={formatCurrency(closingStats.summary.umsatzGesamt)}
-              icon={DollarSign}
-              color="green"
-            />
-            <KPICard
-              title="Ø Umsatz"
-              value={formatCurrency(closingStats.summary.umsatzDurchschnitt)}
-              icon={BarChart3}
-              color="blue"
-            />
-            <KPICard
-              title="Gewonnen"
-              value={closingStats.summary.gewonnen}
-              icon={Award}
-              color="green"
-            />
-            <KPICard
-              title="Verloren"
-              value={closingStats.summary.verloren}
-              icon={XCircle}
-              color="red"
-            />
-            <KPICard
-              title="No-Show"
-              value={closingStats.summary.noShow}
-              icon={Clock}
-              color="yellow"
-            />
-            <KPICard
-              title="Offen"
-              value={closingStats.summary.offen}
-              icon={Target}
-              color="gray"
-            />
+      {stats && (
+        <>
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+            <KPICard title="Einwahlen" value={stats.summary.einwahlen} icon={Phone} color="purple" />
+            <KPICard title="Erreicht" value={stats.summary.erreicht} icon={Users} color="blue" subtitle={formatPercent(stats.summary.erreichQuote)} />
+            <KPICard title="Erstgespräche" value={stats.summary.erstgespraech} icon={Calendar} color="green" subtitle={formatPercent(stats.summary.erstgespraechQuote)} />
+            <KPICard title="Unterlagen" value={stats.summary.unterlagen} icon={Target} color="yellow" subtitle={formatPercent(stats.summary.unterlagenQuote)} />
+            <KPICard title="Kein Interesse" value={stats.summary.keinInteresse} icon={XCircle} color="red" />
+            <KPICard title="Nicht erreicht" value={stats.summary.nichtErreicht} icon={TrendingDown} color="gray" />
           </div>
 
-          {/* Closing Charts */}
+          {/* Charts */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Conversion Funnel */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Conversion Funnel</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart 
+                  data={[
+                    { name: 'Einwahlen', value: stats.summary.einwahlen },
+                    { name: 'Erreicht', value: stats.summary.erreicht },
+                    { name: 'Erstgespräch', value: stats.summary.erstgespraech },
+                    { name: 'Unterlagen', value: stats.summary.unterlagen }
+                  ]}
+                  layout="vertical"
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="name" type="category" width={100} />
+                  <Tooltip />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    <Cell fill="#7C3AED" />
+                    <Cell fill="#6366F1" />
+                    <Cell fill="#10B981" />
+                    <Cell fill="#F59E0B" />
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Aktivität Zeitverlauf */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Aktivität im Zeitverlauf</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={stats.zeitverlauf}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="count" name="Kontakte" stroke="#7C3AED" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Ergebnis Verteilung */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 className="text-sm font-medium text-gray-700 mb-4">Ergebnis Verteilung</h3>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={[
+                    { name: 'Erstgespräch', value: stats.summary.erstgespraech },
+                    { name: 'Unterlagen', value: stats.summary.unterlagen },
+                    { name: 'Kein Interesse', value: stats.summary.keinInteresse },
+                    { name: 'Nicht erreicht', value: stats.summary.nichtErreicht }
+                  ].filter(d => d.value > 0)}
+                  cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value"
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                >
+                  <Cell fill="#10B981" />
+                  <Cell fill="#F59E0B" />
+                  <Cell fill="#EF4444" />
+                  <Cell fill="#6B7280" />
+                </Pie>
+                <Tooltip />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          {/* Per User Stats (Admin only) */}
+          {isAdmin() && stats.perUser && stats.perUser.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Performance pro Setter</h3>
+              <ResponsiveContainer width="100%" height={Math.max(300, stats.perUser.length * 40)}>
+                <BarChart data={stats.perUser.slice(0, 15)} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Bar dataKey="einwahlen" name="Einwahlen" fill="#7C3AED" />
+                  <Bar dataKey="erstgespraech" name="Erstgespräche" fill="#10B981" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </>
+      )}
+
+      {!stats && !loading && (
+        <div className="text-center py-12">
+          <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-gray-900 mb-2">Keine Daten verfügbar</h3>
+          <p className="text-gray-500">Es gibt noch keine Setting-Daten für den ausgewählten Zeitraum.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ==========================================
+// CLOSING ANALYTICS
+// ==========================================
+function ClosingAnalytics({ user, isAdmin }) {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [stats, setStats] = useState(null)
+  const [dateRange, setDateRange] = useState('3months')
+  const [refreshing, setRefreshing] = useState(false)
+
+  useEffect(() => {
+    loadStats()
+  }, [dateRange])
+
+  const getDateRange = () => {
+    const now = new Date()
+    let startDate = null
+
+    switch (dateRange) {
+      case '1month':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate())
+        break
+      case '3months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
+        break
+      case '6months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate())
+        break
+      case 'year':
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
+        break
+      default:
+        startDate = null
+    }
+
+    return {
+      startDate: startDate ? startDate.toISOString().split('T')[0] : null,
+      endDate: now.toISOString().split('T')[0]
+    }
+  }
+
+  const loadStats = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+
+      const { startDate, endDate } = getDateRange()
+      const userEmail = user?.email_geschaeftlich || user?.email
+
+      const params = new URLSearchParams({
+        type: 'closing',
+        admin: isAdmin().toString(),
+        ...(userEmail && !isAdmin() && { email: userEmail }),
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate })
+      })
+
+      const res = await fetch(`/.netlify/functions/analytics?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setStats(data)
+      } else {
+        throw new Error('Fehler beim Laden')
+      }
+    } catch (err) {
+      console.error('Closing Analytics Error:', err)
+      setError('Fehler beim Laden der Analytics')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
+
+  const handleRefresh = () => {
+    setRefreshing(true)
+    loadStats()
+  }
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('de-DE', {
+      style: 'currency',
+      currency: 'EUR',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value)
+  }
+
+  const formatPercent = (value) => `${value.toFixed(1)}%`
+
+  const COLORS = ['#7C3AED', '#10B981', '#F59E0B', '#EF4444', '#6366F1', '#EC4899']
+
+  if (loading && !refreshing) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Filter Bar */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-gray-500">
+          {isAdmin() ? 'Übersicht aller Closer' : 'Deine Closing Performance'}
+        </p>
+
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+              className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            >
+              <option value="1month">Letzter Monat</option>
+              <option value="3months">Letzte 3 Monate</option>
+              <option value="6months">Letzte 6 Monate</option>
+              <option value="year">Letztes Jahr</option>
+              <option value="all">Gesamt</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          </div>
+
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`h-5 w-5 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+      </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {stats && (
+        <>
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+            <KPICard title="Closing Quote" value={formatPercent(stats.summary.closingQuote)} icon={TrendingUp} color="purple" subtitle={`${stats.summary.gewonnen} von ${stats.summary.gewonnen + stats.summary.verloren}`} />
+            <KPICard title="Umsatz Gesamt" value={formatCurrency(stats.summary.umsatzGesamt)} icon={DollarSign} color="green" />
+            <KPICard title="Ø Umsatz" value={formatCurrency(stats.summary.umsatzDurchschnitt)} icon={BarChart3} color="blue" />
+            <KPICard title="Gewonnen" value={stats.summary.gewonnen} icon={Award} color="green" />
+            <KPICard title="Verloren" value={stats.summary.verloren} icon={XCircle} color="red" />
+            <KPICard title="No-Show" value={stats.summary.noShow} icon={Clock} color="yellow" />
+            <KPICard title="Offen" value={stats.summary.offen} icon={Target} color="gray" />
+          </div>
+
+          {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Umsatz Zeitverlauf */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Umsatz & Closings im Zeitverlauf</h3>
               <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={closingStats.zeitverlauf}>
+                <BarChart data={stats.zeitverlauf}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                   <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
-                  <Tooltip 
-                    formatter={(value, name) => [
-                      name === 'umsatz' ? formatCurrency(value) : value,
-                      name === 'umsatz' ? 'Umsatz' : 'Closings'
-                    ]}
-                  />
+                  <Tooltip formatter={(value, name) => [name === 'umsatz' ? formatCurrency(value) : value, name === 'umsatz' ? 'Umsatz' : 'Closings']} />
                   <Legend />
                   <Bar yAxisId="left" dataKey="umsatz" name="Umsatz" fill="#7C3AED" radius={[4, 4, 0, 0]} />
                   <Bar yAxisId="right" dataKey="count" name="Closings" fill="#10B981" radius={[4, 4, 0, 0]} />
@@ -546,22 +743,15 @@ function AnalyticsTab({ user, hasRole, isAdmin, isCloser, isSetter }) {
                 <PieChart>
                   <Pie
                     data={[
-                      { name: 'Gewonnen', value: closingStats.summary.gewonnen },
-                      { name: 'Verloren', value: closingStats.summary.verloren },
-                      { name: 'Offen', value: closingStats.summary.offen },
-                      { name: 'No-Show', value: closingStats.summary.noShow }
+                      { name: 'Gewonnen', value: stats.summary.gewonnen },
+                      { name: 'Verloren', value: stats.summary.verloren },
+                      { name: 'Offen', value: stats.summary.offen },
+                      { name: 'No-Show', value: stats.summary.noShow }
                     ].filter(d => d.value > 0)}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={100}
-                    paddingAngle={2}
-                    dataKey="value"
+                    cx="50%" cy="50%" innerRadius={60} outerRadius={100} paddingAngle={2} dataKey="value"
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                   >
-                    {COLORS.map((color, index) => (
-                      <Cell key={`cell-${index}`} fill={color} />
-                    ))}
+                    {COLORS.map((color, index) => (<Cell key={`cell-${index}`} fill={color} />))}
                   </Pie>
                   <Tooltip />
                 </PieChart>
@@ -570,20 +760,15 @@ function AnalyticsTab({ user, hasRole, isAdmin, isCloser, isSetter }) {
           </div>
 
           {/* Per Closer Stats (Admin only) */}
-          {isAdmin() && closingStats.perUser && closingStats.perUser.length > 0 && (
+          {isAdmin() && stats.perUser && stats.perUser.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Performance pro Closer</h3>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={closingStats.perUser.slice(0, 10)} layout="vertical">
+                <BarChart data={stats.perUser.slice(0, 10)} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis type="number" />
                   <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                  <Tooltip 
-                    formatter={(value, name) => [
-                      name === 'umsatz' ? formatCurrency(value) : value,
-                      name === 'umsatz' ? 'Umsatz' : name === 'gewonnen' ? 'Gewonnen' : 'Verloren'
-                    ]}
-                  />
+                  <Tooltip formatter={(value, name) => [name === 'umsatz' ? formatCurrency(value) : value, name === 'umsatz' ? 'Umsatz' : name === 'gewonnen' ? 'Gewonnen' : 'Verloren']} />
                   <Legend />
                   <Bar dataKey="gewonnen" name="Gewonnen" fill="#10B981" stackId="a" />
                   <Bar dataKey="verloren" name="Verloren" fill="#EF4444" stackId="a" />
@@ -591,125 +776,14 @@ function AnalyticsTab({ user, hasRole, isAdmin, isCloser, isSetter }) {
               </ResponsiveContainer>
             </div>
           )}
-        </div>
+        </>
       )}
 
-      {/* Setting Section */}
-      {(isSetter() || isAdmin()) && settingStats && (
-        <div className="space-y-6">
-          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-            <Phone className="h-5 w-5 text-blue-600" />
-            Setting Performance (Kaltakquise)
-          </h2>
-
-          {/* Setting KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <KPICard
-              title="Einwahlen"
-              value={settingStats.summary.einwahlen}
-              icon={Phone}
-              color="purple"
-            />
-            <KPICard
-              title="Erreicht"
-              value={settingStats.summary.erreicht}
-              icon={Users}
-              color="blue"
-              subtitle={formatPercent(settingStats.summary.erreichQuote)}
-            />
-            <KPICard
-              title="Erstgespräche"
-              value={settingStats.summary.erstgespraech}
-              icon={Calendar}
-              color="green"
-              subtitle={formatPercent(settingStats.summary.erstgespraechQuote)}
-            />
-            <KPICard
-              title="Unterlagen"
-              value={settingStats.summary.unterlagen}
-              icon={Target}
-              color="yellow"
-              subtitle={formatPercent(settingStats.summary.unterlagenQuote)}
-            />
-            <KPICard
-              title="Kein Interesse"
-              value={settingStats.summary.keinInteresse}
-              icon={XCircle}
-              color="red"
-            />
-            <KPICard
-              title="Nicht erreicht"
-              value={settingStats.summary.nichtErreicht}
-              icon={TrendingDown}
-              color="gray"
-            />
-          </div>
-
-          {/* Setting Charts */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Conversion Funnel */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Conversion Funnel</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart 
-                  data={[
-                    { name: 'Einwahlen', value: settingStats.summary.einwahlen, fill: '#7C3AED' },
-                    { name: 'Erreicht', value: settingStats.summary.erreicht, fill: '#6366F1' },
-                    { name: 'Erstgespräch', value: settingStats.summary.erstgespraech, fill: '#10B981' },
-                    { name: 'Unterlagen', value: settingStats.summary.unterlagen, fill: '#F59E0B' }
-                  ]}
-                  layout="vertical"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} />
-                  <Tooltip />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                    {[
-                      { fill: '#7C3AED' },
-                      { fill: '#6366F1' },
-                      { fill: '#10B981' },
-                      { fill: '#F59E0B' }
-                    ].map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-
-            {/* Aktivität Zeitverlauf */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Aktivität im Zeitverlauf</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={settingStats.zeitverlauf}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Line 
-                    type="monotone" 
-                    dataKey="count" 
-                    name="Kontakte" 
-                    stroke="#7C3AED" 
-                    strokeWidth={2}
-                    dot={{ r: 4 }}
-                    activeDot={{ r: 6 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Empty State */}
-      {!closingStats && !settingStats && !loading && (
+      {!stats && !loading && (
         <div className="text-center py-12">
           <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
           <h3 className="text-lg font-medium text-gray-900 mb-2">Keine Daten verfügbar</h3>
-          <p className="text-gray-500">Es gibt noch keine Analytics-Daten für den ausgewählten Zeitraum.</p>
+          <p className="text-gray-500">Es gibt noch keine Closing-Daten für den ausgewählten Zeitraum.</p>
         </div>
       )}
     </div>
@@ -738,9 +812,7 @@ function KPICard({ title, value, icon: Icon, color, subtitle }) {
         <div className="min-w-0">
           <p className="text-xs text-gray-500 truncate">{title}</p>
           <p className="text-xl font-bold text-gray-900">{value}</p>
-          {subtitle && (
-            <p className="text-xs text-gray-400">{subtitle}</p>
-          )}
+          {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
         </div>
       </div>
     </div>
