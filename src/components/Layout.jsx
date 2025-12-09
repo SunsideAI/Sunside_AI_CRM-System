@@ -3,7 +3,8 @@ import { useAuth } from '../context/AuthContext'
 import { 
   LayoutDashboard, 
   Phone, 
-  Target, 
+  Target,
+  Calendar,
   Settings, 
   LogOut,
   User,
@@ -12,7 +13,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 
-function Layout() {
+function Layout({ children }) {
   const { user, logout, isSetter, isCloser, isAdmin } = useAuth()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -40,6 +41,12 @@ function Layout() {
       name: 'Closing',
       path: '/closing',
       icon: Target,
+      show: isCloser() || isAdmin()
+    },
+    {
+      name: 'Termine',
+      path: '/termine',
+      icon: Calendar,
       show: isCloser() || isAdmin()
     },
     {
@@ -171,7 +178,7 @@ function Layout() {
       {/* Main Content */}
       <main className="pt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <Outlet />
+          {children}
         </div>
       </main>
     </div>
