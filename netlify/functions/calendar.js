@@ -388,7 +388,9 @@ exports.handler = async (event) => {
             location: {
               kind: 'outbound_call',
               location: formattedPhone
-            }
+            },
+            // Closer als zusätzlicher Teilnehmer
+            event_guests: leadInfo?.closerEmail ? [leadInfo.closerEmail] : []
           }
 
           console.log('Calendly Request:', JSON.stringify(requestBody, null, 2))
