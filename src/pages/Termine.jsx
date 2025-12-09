@@ -249,7 +249,7 @@ function Termine() {
                   </div>
                 )}
 
-                {selectedEvent.attendees?.length > 0 && (
+                {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
                   <div className="flex items-start gap-3">
                     <User className="w-5 h-5 text-gray-400 mt-0.5" />
                     <div>
@@ -279,7 +279,7 @@ function Termine() {
 
               <div className="flex gap-3 mt-6 pt-4 border-t">
                 {selectedEvent.htmlLink && (
-                  
+                  <a
                     href={selectedEvent.htmlLink}
                     target="_blank"
                     rel="noopener noreferrer"
