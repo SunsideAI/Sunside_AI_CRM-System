@@ -1,42 +1,82 @@
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { 
   Phone, 
   Calendar, 
   TrendingUp, 
   Users,
-  ArrowRight
+  ArrowRight,
+  Loader2
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 function Dashboard() {
   const { user, isSetter, isCloser, isAdmin } = useAuth()
+  const [loading, setLoading] = useState(true)
+  const [data, setData] = useState({
+    zugewiesenLeads: 0,
+    callsHeute: 0,
+    termineWoche: 0,
+    abschluesseMonat: 0
+  })
 
-  // Statistik-Karten (später mit echten Daten)
+  useEffect(() => {
+    loadDashboardData()
+  }, [])
+
+  const loadDashboardData = async () => {
+    try {
+      const params = new URLSearchParams()
+      params.append('userName', user?.vor_nachname || '')
+      params.append('userRole', isAdmin() ? 'Admin' : isSetter() ? 'Setter' : 'Closer')
+
+      const response = await fetch(`/.netlify/functions/dashboard?${params.toString()}`)
+      const result = await response.json()
+
+      if (response.ok) {
+        // Finde die Stats für den aktuellen User
+        const userStats = result.vertriebler?.find(v => v.name === user?.vor_nachname)
+        
+        setData({
+          zugewiesenLeads: userStats?.gesamt || 0,
+          callsHeute: result.heute || 0,
+          termineWoche: result.termineWoche || 0,
+          abschluesseMonat: 0 // Später: wenn Closing implementiert
+        })
+      }
+    } catch (err) {
+      console.error('Dashboard load error:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Statistik-Karten mit echten Daten
   const stats = [
     {
       name: 'Zugewiesene Leads',
-      value: '—',
+      value: loading ? '...' : data.zugewiesenLeads.toLocaleString('de-DE'),
       icon: Users,
       color: 'bg-blue-500',
       show: isSetter() || isAdmin()
     },
     {
       name: 'Calls heute',
-      value: '—',
+      value: loading ? '...' : data.callsHeute.toLocaleString('de-DE'),
       icon: Phone,
       color: 'bg-green-500',
       show: isSetter() || isAdmin()
     },
     {
       name: 'Termine diese Woche',
-      value: '—',
+      value: loading ? '...' : data.termineWoche.toLocaleString('de-DE'),
       icon: Calendar,
       color: 'bg-purple-500',
       show: true
     },
     {
       name: 'Abschlüsse Monat',
-      value: '—',
+      value: loading ? '...' : data.abschluesseMonat.toLocaleString('de-DE'),
       icon: TrendingUp,
       color: 'bg-orange-500',
       show: isCloser() || isAdmin()
@@ -85,7 +125,15 @@ function Dashboard() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-gray-500">{stat.name}</p>
-                <p className="mt-1 text-3xl font-bold text-gray-900">{stat.value}</p>
+                <p className="mt-1 text-3xl font-bold text-gray-900">
+                  {loading ? (
+                    <span className="inline-block w-8 h-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
+                    </span>
+                  ) : (
+                    stat.value
+                  )}
+                </p>
               </div>
               <div className={`p-3 rounded-lg ${stat.color}`}>
                 <stat.icon className="w-6 h-6 text-white" />
@@ -121,15 +169,6 @@ function Dashboard() {
           </div>
         </div>
       )}
-
-      {/* Info Box für Entwicklung */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-6">
-        <h3 className="font-medium text-blue-900">🚧 In Entwicklung</h3>
-        <p className="mt-1 text-sm text-blue-700">
-          Das Dashboard wird mit echten Daten aus Airtable befüllt, sobald die API-Verbindung steht.
-          Aktuell siehst du die Grundstruktur.
-        </p>
-      </div>
     </div>
   )
 }
