@@ -6,13 +6,14 @@ import ForgotPassword from './pages/ForgotPassword'
 import Dashboard from './pages/Dashboard'
 import Kaltakquise from './pages/Kaltakquise'
 import Closing from './pages/Closing'
+import Termine from './pages/Termine'
 import Einstellungen from './pages/Einstellungen'
 import Profil from './pages/Profil'
 
 // Protected Route Component
 function ProtectedRoute({ children, allowedRoles }) {
   const { user, loading, hasRole } = useAuth()
-
+  
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -20,11 +21,11 @@ function ProtectedRoute({ children, allowedRoles }) {
       </div>
     )
   }
-
+  
   if (!user) {
     return <Navigate to="/login" replace />
   }
-
+  
   // Wenn Rollen definiert sind, prüfe ob User eine davon hat
   if (allowedRoles && allowedRoles.length > 0) {
     const hasAllowedRole = allowedRoles.some(role => hasRole(role))
@@ -32,14 +33,14 @@ function ProtectedRoute({ children, allowedRoles }) {
       return <Navigate to="/dashboard" replace />
     }
   }
-
+  
   return children
 }
 
 // App Routes
 function AppRoutes() {
   const { user } = useAuth()
-
+  
   return (
     <Routes>
       {/* Public Routes */}
@@ -51,7 +52,7 @@ function AppRoutes() {
         path="/passwort-vergessen" 
         element={user ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} 
       />
-
+      
       {/* Protected Routes */}
       <Route
         path="/dashboard"
@@ -63,7 +64,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
+      
       <Route
         path="/kaltakquise"
         element={
@@ -74,7 +75,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
+      
       <Route
         path="/closing"
         element={
@@ -85,7 +86,18 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
+      
+      <Route
+        path="/termine"
+        element={
+          <ProtectedRoute allowedRoles={['Admin', 'Closer']}>
+            <Layout>
+              <Termine />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      
       <Route
         path="/einstellungen"
         element={
@@ -96,7 +108,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
+      
       <Route
         path="/profil"
         element={
@@ -107,7 +119,7 @@ function AppRoutes() {
           </ProtectedRoute>
         }
       />
-
+      
       {/* Default Route */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
