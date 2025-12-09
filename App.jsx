@@ -1,6 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
-import { DashboardCacheProvider } from './context/DashboardCacheContext'
 import Layout from './components/Layout'
 import Login from './pages/Login'
 import ForgotPassword from './pages/ForgotPassword'
@@ -118,11 +117,9 @@ function AppRoutes() {
 function App() {
   return (
     <AuthProvider>
-      <DashboardCacheProvider>
-        <Router>
-          <AppRoutes />
-        </Router>
-      </DashboardCacheProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
     </AuthProvider>
   )
 }
