@@ -188,6 +188,64 @@ exports.handler = async (event) => {
         }
       }
 
+      // Termine für einen Zeitraum abrufen
+      if (action === 'events') {
+        if (!calendarId) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'calendarId erforderlich' })
+          }
+        }
+
+        // Standard: aktuelle Woche
+        const startDate = date ? new Date(date) : new Date()
+        startDate.setHours(0, 0, 0, 0)
+        
+        const endDate = new Date(startDate)
+        endDate.setDate(endDate.getDate() + 7)
+        endDate.setHours(23, 59, 59, 999)
+
+        const eventsResponse = await calendar.events.list({
+          calendarId: calendarId,
+          timeMin: startDate.toISOString(),
+          timeMax: endDate.toISOString(),
+          singleEvents: true,
+          orderBy: 'startTime',
+          maxResults: 50
+        })
+
+        const events = eventsResponse.data.items?.map(event => ({
+          id: event.id,
+          title: event.summary || 'Kein Titel',
+          description: event.description || '',
+          start: event.start.dateTime || event.start.date,
+          end: event.end.dateTime || event.end.date,
+          allDay: !event.start.dateTime,
+          location: event.location || '',
+          attendees: event.attendees?.map(a => ({
+            email: a.email,
+            name: a.displayName,
+            status: a.responseStatus
+          })) || [],
+          htmlLink: event.htmlLink,
+          // CRM-spezifische Daten aus extendedProperties
+          leadId: event.extendedProperties?.private?.leadId || null,
+          source: event.extendedProperties?.private?.source || null
+        })) || []
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            calendarId,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            events
+          })
+        }
+      }
+
       if (action === 'slots') {
         // Freie Slots für ein Datum abrufen
         if (!calendarId || !date) {
