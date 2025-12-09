@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
+import TerminPicker from '../components/TerminPicker'
 import {
   Search,
   Filter,
@@ -67,6 +68,7 @@ function Kaltakquise() {
   const [selectedLead, setSelectedLead] = useState(null)
   const [editMode, setEditMode] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [showTerminPicker, setShowTerminPicker] = useState(false)
   const [editForm, setEditForm] = useState({
     kontaktiert: false,
     ergebnis: '',
@@ -159,6 +161,7 @@ function Kaltakquise() {
       kommentar: lead.kommentar
     })
     setEditMode(false)
+    setShowTerminPicker(false)
   }
 
   // Lead speichern
@@ -523,7 +526,7 @@ function Kaltakquise() {
                 <p className="text-sm text-gray-500">{selectedLead.kategorie}</p>
               </div>
               <button
-                onClick={() => setSelectedLead(null)}
+                onClick={() => { setSelectedLead(null); setShowTerminPicker(false); }}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5 text-gray-500" />
@@ -532,6 +535,20 @@ function Kaltakquise() {
 
             {/* Modal Content */}
             <div className="px-6 py-4 overflow-y-auto max-h-[calc(90vh-200px)]">
+              {showTerminPicker ? (
+                // Termin-Picker anzeigen
+                <TerminPicker
+                  lead={selectedLead}
+                  onTerminBooked={(termin) => {
+                    setShowTerminPicker(false)
+                    setSelectedLead(null)
+                    setEditMode(false)
+                    loadLeads() // Leads neu laden
+                  }}
+                  onCancel={() => setShowTerminPicker(false)}
+                />
+              ) : (
+                <>
               {/* Kontaktdaten */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {selectedLead.telefon && (
@@ -609,6 +626,17 @@ function Kaltakquise() {
                           <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                       </select>
+                      
+                      {/* Termin buchen Button bei Erstgespräch */}
+                      {editForm.ergebnis === 'Erstgespräch' && (
+                        <button
+                          onClick={() => setShowTerminPicker(true)}
+                          className="mt-3 w-full flex items-center justify-center px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        >
+                          <Calendar className="w-4 h-4 mr-2" />
+                          Termin mit Closer buchen
+                        </button>
+                      )}
                     </div>
 
                     {/* Kommentar */}
@@ -664,9 +692,12 @@ function Kaltakquise() {
                   </div>
                 )}
               </div>
+                </>
+              )}
             </div>
 
-            {/* Modal Footer */}
+            {/* Modal Footer - nur zeigen wenn kein TerminPicker */}
+            {!showTerminPicker && (
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
               {editMode ? (
                 <>
@@ -690,7 +721,7 @@ function Kaltakquise() {
               ) : (
                 <>
                   <button
-                    onClick={() => setSelectedLead(null)}
+                    onClick={() => { setSelectedLead(null); setShowTerminPicker(false); }}
                     className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
                   >
                     Schließen
@@ -704,6 +735,7 @@ function Kaltakquise() {
                 </>
               )}
             </div>
+            )}
           </div>
         </div>,
         document.body
