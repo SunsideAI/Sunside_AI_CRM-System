@@ -27,8 +27,8 @@ export async function handler(event) {
   }
 
   try {
-    // User aus Airtable laden
-    const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/User_Datenbank?fields[]=Vor_Nachname&fields[]=E-Mail&fields[]=E-Mail_Geschäftlich&fields[]=Rolle&fields[]=Status&fields[]=Telefon&fields[]=Google_Calendar_ID`
+    // User aus Airtable laden - inkl. Passwort-Feld für Status-Check
+    const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/User_Datenbank?fields[]=Vor_Nachname&fields[]=E-Mail&fields[]=E-Mail_Geschäftlich&fields[]=Rolle&fields[]=Status&fields[]=Telefon&fields[]=Google_Calendar_ID&fields[]=Passwort`
     
     const response = await fetch(url, {
       headers: {
@@ -51,7 +51,9 @@ export async function handler(event) {
       rolle: record.fields.Rolle || [],
       status: record.fields.Status || false,
       telefon: record.fields.Telefon || '',
-      google_calendar_id: record.fields.Google_Calendar_ID || ''
+      google_calendar_id: record.fields.Google_Calendar_ID || '',
+      // Nur boolean ob Passwort gesetzt ist, nicht das Passwort selbst!
+      hasPassword: !!(record.fields.Passwort && record.fields.Passwort.length > 0)
     }))
 
     // Nach Name sortieren
