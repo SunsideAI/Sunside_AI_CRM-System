@@ -77,10 +77,10 @@ function Kaltakquise() {
 
     try {
       const params = new URLSearchParams()
-      params.append('userId', user?.id || '')
+      params.append('userName', user?.vor_nachname || '')
       params.append('userRole', isAdmin() ? 'Admin' : 'Setter')
       params.append('view', viewMode)
-      params.append('limit', '25')
+      params.append('limit', '50')
       
       if (search) params.append('search', search)
       if (filterContacted !== 'all') params.append('contacted', filterContacted)
@@ -107,7 +107,7 @@ function Kaltakquise() {
     } finally {
       setLoading(false)
     }
-  }, [user?.id, isAdmin, viewMode, search, filterContacted, filterResult, offset])
+  }, [user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, offset])
 
   // Initial laden
   useEffect(() => {
@@ -389,7 +389,7 @@ function Kaltakquise() {
                     <td className="px-4 py-3 hidden md:table-cell">
                       <div className="flex items-center text-gray-600">
                         <MapPin className="w-4 h-4 mr-1.5 text-gray-400" />
-                        {lead.stadt}{lead.bundesland ? `, ${lead.bundesland}` : ''}
+                        {lead.stadt}
                       </div>
                     </td>
 
@@ -519,9 +519,7 @@ function Kaltakquise() {
                 )}
                 <div className="flex items-center p-3 bg-gray-50 rounded-lg">
                   <MapPin className="w-5 h-5 text-sunside-primary mr-3" />
-                  <span className="text-gray-900">
-                    {selectedLead.stadt}{selectedLead.bundesland ? `, ${selectedLead.bundesland}` : ''}
-                  </span>
+                  <span className="text-gray-900">{selectedLead.stadt}</span>
                 </div>
               </div>
 
