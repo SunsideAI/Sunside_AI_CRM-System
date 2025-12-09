@@ -31,6 +31,7 @@ exports.handler = async (event) => {
     const type = params.type || 'setting'
     const isAdmin = params.admin === 'true'
     const userEmail = params.email
+    const userName = params.userName // NEU: User-Name für Setting-Filter
     const startDate = params.startDate ? new Date(params.startDate) : null
     const endDate = params.endDate ? new Date(params.endDate) : null
 
@@ -42,7 +43,7 @@ exports.handler = async (event) => {
         body: JSON.stringify(result)
       }
     } else {
-      const result = await getSettingStats({ isAdmin, userEmail, startDate, endDate })
+      const result = await getSettingStats({ isAdmin, userEmail, userName, startDate, endDate })
       return {
         statusCode: 200,
         headers: corsHeaders,
@@ -61,12 +62,32 @@ exports.handler = async (event) => {
 }
 
 // ==========================================
+// USER RECORD ID HOLEN
+// ==========================================
+async function getUserRecordId(userName) {
+  if (!userName) return null
+  
+  const tableName = 'User_Datenbank'
+  const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
+  url.searchParams.append('filterByFormula', `{Vor_Nachname} = "${userName}"`)
+  url.searchParams.append('maxRecords', '1')
+
+  const response = await fetch(url.toString(), { headers })
+  const data = await response.json()
+
+  if (data.records && data.records.length > 0) {
+    return data.records[0].id
+  }
+  return null
+}
+
+// ==========================================
 // CLOSING STATS (Hot Leads)
 // ==========================================
 async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
   const tableName = 'Immobilienmakler_Hot_Leads'
   
-  // Alle Hot Leads laden (ohne Filter - filtern in JS)
+  // Alle Hot Leads laden
   let allRecords = []
   let offset = null
 
@@ -123,7 +144,6 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
       const dealWert = setup + (retainer * laufzeit)
       umsatzGesamt += dealWert
 
-      // Zeitverlauf (nur für gewonnene)
       if (hinzugefuegt) {
         const date = new Date(hinzugefuegt)
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
@@ -134,7 +154,6 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
         zeitverlaufMap[monthKey].umsatz += dealWert
       }
 
-      // Per User Stats
       if (closerEmail && isAdmin) {
         if (!perUserMap[closerEmail]) {
           perUserMap[closerEmail] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
@@ -163,14 +182,11 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
     }
   }
 
-  // Closing Quote berechnen
   const totalEntschieden = gewonnen + verloren
   const closingQuote = totalEntschieden > 0 ? (gewonnen / totalEntschieden) * 100 : 0
 
-  // Zeitverlauf formatieren (letzte 6 Monate)
   const zeitverlauf = formatZeitverlauf(zeitverlaufMap)
 
-  // Per User formatieren
   const perUser = Object.entries(perUserMap).map(([email, stats]) => ({
     email,
     name: extractNameFromEmail(email),
@@ -195,10 +211,16 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
 // ==========================================
 // SETTING STATS (Kaltakquise Leads)
 // ==========================================
-async function getSettingStats({ isAdmin, userEmail, startDate, endDate }) {
+async function getSettingStats({ isAdmin, userEmail, userName, startDate, endDate }) {
   const tableName = 'Immobilienmakler_Leads'
   
-  // Alle Leads laden (ohne Airtable-Filter - wir filtern in JS)
+  // User Record ID holen wenn nicht Admin
+  let userRecordId = null
+  if (!isAdmin && userName) {
+    userRecordId = await getUserRecordId(userName)
+  }
+
+  // Alle Leads laden
   let allRecords = []
   let offset = null
 
@@ -232,14 +254,13 @@ async function getSettingStats({ isAdmin, userEmail, startDate, endDate }) {
   for (const record of allRecords) {
     const fields = record.fields
     
-    // Verschiedene mögliche Feldnamen für "kontaktiert" prüfen
+    // Kontaktiert prüfen
     const kontaktiert = fields['Bereits kontaktiert'] || 
                         fields['Bereits_kontaktiert'] || 
                         fields.Bereits_kontaktiert ||
                         fields.kontaktiert ||
                         false
 
-    // Nur kontaktierte Leads zählen
     if (!kontaktiert) continue
 
     const ergebnis = (fields.Ergebnis || '').toLowerCase()
@@ -251,6 +272,12 @@ async function getSettingStats({ isAdmin, userEmail, startDate, endDate }) {
       const recordDate = new Date(datum)
       if (startDate && recordDate < startDate) continue
       if (endDate && recordDate > endDate) continue
+    }
+
+    // User-Filter: Prüfen ob der User zugewiesen ist
+    if (!isAdmin && userRecordId) {
+      const assignedIds = Array.isArray(zugewiesenAn) ? zugewiesenAn : [zugewiesenAn]
+      if (!assignedIds.includes(userRecordId)) continue
     }
 
     einwahlen++
@@ -306,14 +333,17 @@ async function getSettingStats({ isAdmin, userEmail, startDate, endDate }) {
   const erstgespraechQuote = erreicht > 0 ? (erstgespraech / erreicht) * 100 : 0
   const unterlagenQuote = erreicht > 0 ? (unterlagen / erreicht) * 100 : 0
 
-  // Zeitverlauf formatieren
   const zeitverlauf = formatZeitverlauf(zeitverlaufMap)
 
-  // Per User formatieren
-  const perUser = Object.values(perUserMap).map(stats => ({
-    ...stats,
-    name: `User ${String(stats.id).substring(0, 6)}`
-  })).sort((a, b) => b.einwahlen - a.einwahlen)
+  // Per User: Namen aus User-Tabelle holen (für Admin)
+  let perUser = []
+  if (isAdmin && Object.keys(perUserMap).length > 0) {
+    const userNames = await getUserNames(Object.keys(perUserMap))
+    perUser = Object.values(perUserMap).map(stats => ({
+      ...stats,
+      name: userNames[stats.id] || `User ${String(stats.id).substring(0, 6)}`
+    })).sort((a, b) => b.einwahlen - a.einwahlen)
+  }
 
   return {
     summary: {
@@ -328,8 +358,46 @@ async function getSettingStats({ isAdmin, userEmail, startDate, endDate }) {
       unterlagenQuote
     },
     zeitverlauf,
-    perUser: isAdmin ? perUser : []
+    perUser
   }
+}
+
+// ==========================================
+// USER NAMEN HOLEN (für Admin-Ansicht)
+// ==========================================
+async function getUserNames(recordIds) {
+  if (!recordIds || recordIds.length === 0) return {}
+  
+  const tableName = 'User_Datenbank'
+  const names = {}
+
+  // Alle User laden und filtern
+  let allUsers = []
+  let offset = null
+
+  do {
+    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
+    if (offset) {
+      url.searchParams.append('offset', offset)
+    }
+
+    const response = await fetch(url.toString(), { headers })
+    const data = await response.json()
+
+    if (data.records) {
+      allUsers = allUsers.concat(data.records)
+    }
+    offset = data.offset
+  } while (offset)
+
+  // Namen zuordnen
+  for (const user of allUsers) {
+    if (recordIds.includes(user.id)) {
+      names[user.id] = user.fields.Vor_Nachname || user.fields['Vor_Nachname'] || 'Unbekannt'
+    }
+  }
+
+  return names
 }
 
 // ==========================================
