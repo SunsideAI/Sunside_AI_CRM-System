@@ -1,5 +1,4 @@
-// Users Function - Lädt alle User für Admin-Dropdown
-
+// Netlify Function: User-Verwaltung
 export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -13,33 +12,24 @@ export async function handler(event) {
   }
 
   if (event.httpMethod !== 'GET') {
+    return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) }
+  }
+
+  const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
+  const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
+
+  if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
     return {
-      statusCode: 405,
+      statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Method not allowed' })
+      body: JSON.stringify({ error: 'Server nicht konfiguriert' })
     }
   }
 
   try {
-    const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-    const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
-    const AIRTABLE_TABLE_NAME = 'User_Datenbank'
-
-    if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
-      return {
-        statusCode: 503,
-        headers,
-        body: JSON.stringify({ error: 'Airtable nicht konfiguriert', users: [] })
-      }
-    }
-
-    // Alle User laden
-    const fields = ['Vorname', 'Name', 'Vor_Nachname', 'E-Mail', 'E-Mail_Geschäftlich', 'Rolle', 'Passwort']
-    let url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}?`
-    fields.forEach(field => {
-      url += `fields[]=${encodeURIComponent(field)}&`
-    })
-
+    // User aus Airtable laden
+    const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/User_Datenbank?fields[]=Vor_Nachname&fields[]=E-Mail&fields[]=E-Mail_Geschäftlich&fields[]=Rolle&fields[]=Status&fields[]=Telefon&fields[]=Google_Calendar_ID`
+    
     const response = await fetch(url, {
       headers: {
         'Authorization': `Bearer ${AIRTABLE_API_KEY}`
@@ -47,21 +37,25 @@ export async function handler(event) {
     })
 
     if (!response.ok) {
-      throw new Error('Airtable API Fehler')
+      throw new Error('Airtable Fehler')
     }
 
     const data = await response.json()
 
-    // User formatieren (ohne Passwort, aber mit hasPassword Flag)
+    // User-Daten formatieren
     const users = data.records.map(record => ({
       id: record.id,
-      vorname: record.fields.Vorname || '',
-      name: record.fields.Name || '',
-      vor_nachname: record.fields.Vor_Nachname || `${record.fields.Vorname} ${record.fields.Name}`,
-      email: record.fields['E-Mail'] || record.fields['E-Mail_Geschäftlich'] || '',
+      vor_nachname: record.fields.Vor_Nachname || '',
+      email: record.fields['E-Mail'] || '',
+      email_geschaeftlich: record.fields['E-Mail_Geschäftlich'] || '',
       rolle: record.fields.Rolle || [],
-      hasPassword: !!(record.fields.Passwort && record.fields.Passwort.length > 0)
+      status: record.fields.Status || false,
+      telefon: record.fields.Telefon || '',
+      google_calendar_id: record.fields.Google_Calendar_ID || ''
     }))
+
+    // Nach Name sortieren
+    users.sort((a, b) => a.vor_nachname.localeCompare(b.vor_nachname))
 
     return {
       statusCode: 200,
@@ -74,7 +68,7 @@ export async function handler(event) {
     return {
       statusCode: 500,
       headers,
-      body: JSON.stringify({ error: 'Interner Server-Fehler', users: [] })
+      body: JSON.stringify({ error: error.message })
     }
   }
 }
