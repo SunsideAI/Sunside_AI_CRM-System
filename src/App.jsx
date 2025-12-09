@@ -1,22 +1,19 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
-import { useAuth } from './context/AuthContext'
-
-// Layout
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './context/AuthContext'
 import Layout from './components/Layout'
-
-// Pages
 import Login from './pages/Login'
 import ForgotPassword from './pages/ForgotPassword'
 import Dashboard from './pages/Dashboard'
 import Kaltakquise from './pages/Kaltakquise'
 import Closing from './pages/Closing'
-import Profil from './pages/Profil'
+import Termine from './pages/Termine'
 import Einstellungen from './pages/Einstellungen'
+import Profil from './pages/Profil'
 
-// Protected Route Komponente
-function ProtectedRoute({ children, allowedRoles = [] }) {
-  const { isAuthenticated, hasRole, loading } = useAuth()
-
+// Protected Route Component
+function ProtectedRoute({ children, allowedRoles }) {
+  const { user, loading, hasRole } = useAuth()
+  
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -24,89 +21,118 @@ function ProtectedRoute({ children, allowedRoles = [] }) {
       </div>
     )
   }
-
-  if (!isAuthenticated) {
+  
+  if (!user) {
     return <Navigate to="/login" replace />
   }
-
-  // Wenn Rollen definiert sind, prüfen
-  if (allowedRoles.length > 0) {
-    const hasAccess = allowedRoles.some(role => hasRole(role))
-    if (!hasAccess) {
+  
+  // Wenn Rollen definiert sind, prüfe ob User eine davon hat
+  if (allowedRoles && allowedRoles.length > 0) {
+    const hasAllowedRole = allowedRoles.some(role => hasRole(role))
+    if (!hasAllowedRole) {
       return <Navigate to="/dashboard" replace />
     }
   }
-
+  
   return children
 }
 
-function App() {
-  const { isAuthenticated } = useAuth()
-
+// App Routes
+function AppRoutes() {
+  const { user } = useAuth()
+  
   return (
     <Routes>
       {/* Public Routes */}
       <Route 
         path="/login" 
-        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />} 
+        element={user ? <Navigate to="/dashboard" replace /> : <Login />} 
       />
       <Route 
         path="/passwort-vergessen" 
-        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} 
+        element={user ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} 
       />
-
-      {/* Protected Routes mit Layout */}
+      
+      {/* Protected Routes */}
       <Route
-        path="/"
+        path="/dashboard"
         element={
           <ProtectedRoute>
-            <Layout />
+            <Layout>
+              <Dashboard />
+            </Layout>
           </ProtectedRoute>
         }
-      >
-        {/* Redirect von / zu /dashboard */}
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        
-        {/* Dashboard - für alle */}
-        <Route path="dashboard" element={<Dashboard />} />
-        
-        {/* Profil - für alle eingeloggten User */}
-        <Route path="profil" element={<Profil />} />
-        
-        {/* Kaltakquise - nur Setter und Admin */}
-        <Route 
-          path="kaltakquise" 
-          element={
-            <ProtectedRoute allowedRoles={['Setter', 'Admin']}>
+      />
+      
+      <Route
+        path="/kaltakquise"
+        element={
+          <ProtectedRoute allowedRoles={['Admin', 'Setter']}>
+            <Layout>
               <Kaltakquise />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Closing - nur Closer und Admin */}
-        <Route 
-          path="closing" 
-          element={
-            <ProtectedRoute allowedRoles={['Closer', 'Admin']}>
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/closing"
+        element={
+          <ProtectedRoute allowedRoles={['Admin', 'Closer']}>
+            <Layout>
               <Closing />
-            </ProtectedRoute>
-          } 
-        />
-        
-        {/* Einstellungen - nur Admin */}
-        <Route 
-          path="einstellungen" 
-          element={
-            <ProtectedRoute allowedRoles={['Admin']}>
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/termine"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Termine />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/einstellungen"
+        element={
+          <ProtectedRoute allowedRoles={['Admin']}>
+            <Layout>
               <Einstellungen />
-            </ProtectedRoute>
-          } 
-        />
-      </Route>
-
-      {/* 404 */}
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      
+      <Route
+        path="/profil"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Profil />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      
+      {/* Default Route */}
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppRoutes />
+      </Router>
+    </AuthProvider>
   )
 }
 
