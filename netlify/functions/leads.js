@@ -14,12 +14,38 @@ export async function handler(event) {
   const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
   const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
   const LEADS_TABLE = 'Immobilienmakler_Leads'
+  const USERS_TABLE = 'User_Datenbank'
 
   if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
     return {
       statusCode: 500,
       headers,
       body: JSON.stringify({ error: 'Server nicht konfiguriert' })
+    }
+  }
+
+  // Hilfsfunktion: Alle User laden für Name-Mapping
+  async function loadUserMap() {
+    try {
+      const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USERS_TABLE)}?fields[]=Vor_Nachname`
+      const response = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
+      })
+      if (!response.ok) {
+        console.error('Failed to load users')
+        return {}
+      }
+      
+      const data = await response.json()
+      const userMap = {}
+      data.records.forEach(record => {
+        userMap[record.id] = record.fields.Vor_Nachname || 'Unbekannt'
+      })
+      console.log('Loaded users:', Object.keys(userMap).length)
+      return userMap
+    } catch (err) {
+      console.error('Error loading users:', err)
+      return {}
     }
   }
 
@@ -34,8 +60,12 @@ export async function handler(event) {
         search,        // Suchbegriff
         contacted,     // 'true' oder 'false'
         result,        // Ergebnis-Filter
+        vertriebler,   // Filter nach Vertriebler (Name)
         offset         // Pagination offset
       } = params
+
+      // User-Map laden für Namen-Auflösung
+      const userMap = await loadUserMap()
 
       // Basis-URL
       let url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}`
@@ -48,8 +78,12 @@ export async function handler(event) {
       
       if (needsUserFilter && userName) {
         // Filter über den angezeigten Namen im Link-Feld
-        // Das Link-Feld zeigt den Primary Field Wert (Vor_Nachname)
         filters.push(`FIND("${userName}", ARRAYJOIN({User_Datenbank}, ","))`)
+      }
+
+      // Vertriebler-Filter (für Admins) - filtert nach Name
+      if (vertriebler && vertriebler !== 'all') {
+        filters.push(`FIND("${vertriebler}", ARRAYJOIN({User_Datenbank}, ","))`)
       }
 
       // Kontaktiert-Filter (Feld ist Text: "X" oder leer)
@@ -108,7 +142,6 @@ export async function handler(event) {
       }
 
       const fullUrl = `${url}?${queryParams.toString()}`
-      console.log('Fetching leads with filters:', { userName, userRole, view, needsUserFilter })
       
       const response = await fetch(fullUrl, {
         headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
@@ -122,28 +155,61 @@ export async function handler(event) {
 
       const data = await response.json()
 
-      // Leads formatieren
-      const leads = data.records.map(record => ({
-        id: record.id,
-        unternehmensname: record.fields.Unternehmensname || '',
-        stadt: record.fields.Stadt || '',
-        kategorie: record.fields.Kategorie || '',
-        email: record.fields.Mail || '',
-        website: record.fields.Website || '',
-        telefon: record.fields.Telefonnummer || '',
-        zugewiesenAn: record.fields.User_Datenbank || [],
-        // "Bereits_kontaktiert" ist Text-Feld: "X" = true, "" = false
-        kontaktiert: record.fields['Bereits_kontaktiert'] === 'X' || record.fields['Bereits_kontaktiert'] === true,
-        datum: record.fields.Datum || null,
-        ergebnis: record.fields.Ergebnis || '',
-        kommentar: record.fields.Kommentar || ''
-      }))
+      // Leads formatieren mit aufgelösten User-Namen
+      const leads = data.records.map(record => {
+        // User IDs aus Link-Feld auflösen zu Namen
+        const userField = record.fields.User_Datenbank || []
+        
+        // Debug: Log ersten Lead
+        if (data.records.indexOf(record) === 0) {
+          console.log('First lead User_Datenbank field:', userField)
+        }
+        
+        // userField könnte Array von IDs oder Array von Namen sein
+        let userNames = []
+        let userIds = []
+        
+        if (Array.isArray(userField)) {
+          userField.forEach(item => {
+            // Prüfen ob es eine Record ID ist (beginnt mit "rec")
+            if (typeof item === 'string' && item.startsWith('rec')) {
+              userIds.push(item)
+              userNames.push(userMap[item] || item)
+            } else if (typeof item === 'string') {
+              // Es ist bereits ein Name
+              userNames.push(item)
+            }
+          })
+        }
+        
+        return {
+          id: record.id,
+          unternehmensname: record.fields.Unternehmensname || '',
+          stadt: record.fields.Stadt || '',
+          kategorie: record.fields.Kategorie || '',
+          email: record.fields.Mail || '',
+          website: record.fields.Website || '',
+          telefon: record.fields.Telefonnummer || '',
+          zugewiesenAn: userNames,
+          zugewiesenAnIds: userIds,
+          kontaktiert: record.fields['Bereits_kontaktiert'] === 'X' || record.fields['Bereits_kontaktiert'] === true,
+          datum: record.fields.Datum || null,
+          ergebnis: record.fields.Ergebnis || '',
+          kommentar: record.fields.Kommentar || ''
+        }
+      })
+
+      // User-Liste für Filter mitgeben (sortiert nach Name)
+      const users = Object.entries(userMap)
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name))
 
       return {
         statusCode: 200,
         headers,
         body: JSON.stringify({
           leads,
+          users,
           offset: data.offset || null,
           hasMore: !!data.offset
         })
