@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, User, Loader2, Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Calendar, Clock, User, Loader2, Check, ChevronLeft, ChevronRight, Mail, Phone } from 'lucide-react'
 
 function TerminPicker({ lead, onTerminBooked, onCancel }) {
   const [closers, setClosers] = useState([])
@@ -13,6 +13,10 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [weekOffset, setWeekOffset] = useState(0)
+  
+  // Editierbare Kontaktdaten
+  const [contactEmail, setContactEmail] = useState(lead?.email || '')
+  const [contactPhone, setContactPhone] = useState(lead?.telefon || '')
 
   // Closer laden
   useEffect(() => {
@@ -125,11 +129,13 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
             eventTypeUri: 'https://api.calendly.com/event_types/b7fa6cb8-8dcf-42f9-a8cf-9e73a776c57c',
             startTime: selectedSlot.start,
             inviteeName: lead.unternehmensname,
-            inviteeEmail: lead.email || 'noemail@placeholder.com',
+            inviteeEmail: contactEmail || 'noemail@sunside.ai',
+            inviteePhone: contactPhone || '+49',
             leadInfo: {
               firma: lead.unternehmensname,
               stadt: lead.stadt,
-              telefon: lead.telefon
+              telefon: contactPhone || lead.telefon,
+              kategorie: lead.kategorie
             }
           })
         })
@@ -280,6 +286,46 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
           </div>
         )}
       </div>
+
+      {/* Kontaktdaten für den Termin */}
+      {selectedCloser && (
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-gray-700">
+            Kontaktdaten für den Termin
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">
+                <Mail className="w-3 h-3 inline mr-1" />
+                E-Mail
+              </label>
+              <input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                placeholder="E-Mail für Terminbestätigung"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">
+                <Phone className="w-3 h-3 inline mr-1" />
+                Telefon
+              </label>
+              <input
+                type="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="Telefonnummer"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+              />
+            </div>
+          </div>
+          <p className="text-xs text-gray-400">
+            Diese Daten werden für die Termineinladung verwendet
+          </p>
+        </div>
+      )}
 
       {/* Datum Auswahl */}
       {selectedCloser && (
