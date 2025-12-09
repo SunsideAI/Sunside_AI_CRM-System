@@ -47,7 +47,7 @@ function Layout({ children }) {
       name: 'Termine',
       path: '/termine',
       icon: Calendar,
-      show: isCloser() || isAdmin()
+      show: true // Für alle mit Kalender
     },
     {
       name: 'Einstellungen',
