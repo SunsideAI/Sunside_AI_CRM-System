@@ -302,7 +302,7 @@ exports.handler = async (event) => {
           }
         }
 
-        const { eventTypeUri, startTime, inviteeName, inviteeEmail, leadInfo } = body
+        const { eventTypeUri, startTime, inviteeName, inviteeEmail, inviteePhone, leadInfo } = body
 
         if (!eventTypeUri || !startTime || !inviteeName || !inviteeEmail) {
           return {
@@ -312,27 +312,76 @@ exports.handler = async (event) => {
           }
         }
 
+        // Namen aufteilen für Calendly
+        const nameParts = inviteeName.trim().split(' ')
+        const firstName = nameParts[0] || inviteeName
+        const lastName = nameParts.slice(1).join(' ') || firstName
+
         try {
-          // Calendly Scheduling API - Invitee erstellen
-          const response = await fetch('https://api.calendly.com/scheduled_events', {
+          // Erst: Event Type Details abrufen um die Custom Questions zu bekommen
+          const eventTypeResponse = await fetch(eventTypeUri, {
+            headers: {
+              'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          const eventTypeData = await eventTypeResponse.json()
+          console.log('Event Type:', JSON.stringify(eventTypeData, null, 2))
+
+          // Custom Questions aus dem Event Type extrahieren
+          const customQuestions = eventTypeData.resource?.custom_questions || []
+          console.log('Custom Questions:', JSON.stringify(customQuestions, null, 2))
+
+          // Antworten für die Custom Questions vorbereiten
+          const questionAnswers = []
+          
+          for (const question of customQuestions) {
+            let answer = ''
+            const questionName = question.name?.toLowerCase() || ''
+            
+            if (questionName.includes('telefon') || questionName.includes('phone')) {
+              answer = inviteePhone || leadInfo?.telefon || '+49'
+            } else if (questionName.includes('unternehmen') || questionName.includes('company')) {
+              answer = leadInfo?.firma || inviteeName
+            } else if (questionName.includes('makler') || questionName.includes('sachverständiger')) {
+              answer = 'Makler' // Default
+            } else if (questionName.includes('problem') || questionName.includes('ziel')) {
+              answer = 'Interesse an KI-gestützter Vertriebsassistenz - Termin über CRM gebucht'
+            }
+            
+            if (answer && question.uuid) {
+              questionAnswers.push({
+                question_uuid: question.uuid,
+                answer: answer
+              })
+            }
+          }
+
+          // Calendly Scheduling API - POST /invitees
+          const requestBody = {
+            event_type: eventTypeUri,
+            start_time: startTime,
+            invitee: {
+              email: inviteeEmail,
+              first_name: firstName,
+              last_name: lastName
+            },
+            questions: questionAnswers
+          }
+
+          console.log('Calendly Request:', JSON.stringify(requestBody, null, 2))
+
+          const response = await fetch('https://api.calendly.com/invitees', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
               'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-              event_type: eventTypeUri,
-              start_time: startTime,
-              invitee: {
-                name: inviteeName,
-                email: inviteeEmail
-              },
-              // Zusätzliche Infos als Notiz
-              notes: leadInfo ? `Lead: ${leadInfo.firma || ''}\nStadt: ${leadInfo.stadt || ''}\nTelefon: ${leadInfo.telefon || ''}\n\nGebucht via Sunside CRM` : 'Gebucht via Sunside CRM'
-            })
+            body: JSON.stringify(requestBody)
           })
 
           const data = await response.json()
+          console.log('Calendly Response:', response.status, JSON.stringify(data, null, 2))
 
           if (!response.ok) {
             console.error('Calendly Error:', data)
@@ -341,7 +390,7 @@ exports.handler = async (event) => {
               headers,
               body: JSON.stringify({ 
                 error: 'Calendly Buchung fehlgeschlagen',
-                details: data.message || data
+                details: data.message || data.title || data
               })
             }
           }
