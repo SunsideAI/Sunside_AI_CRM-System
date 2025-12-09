@@ -31,7 +31,7 @@ exports.handler = async (event) => {
     const type = params.type || 'setting'
     const isAdmin = params.admin === 'true'
     const userEmail = params.email
-    const userName = params.userName // NEU: User-Name für Setting-Filter
+    const userName = params.userName
     const startDate = params.startDate ? new Date(params.startDate) : null
     const endDate = params.endDate ? new Date(params.endDate) : null
 
@@ -87,7 +87,6 @@ async function getUserRecordId(userName) {
 async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
   const tableName = 'Immobilienmakler_Hot_Leads'
   
-  // Alle Hot Leads laden
   let allRecords = []
   let offset = null
 
@@ -108,7 +107,6 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
     offset = data.offset
   } while (offset)
 
-  // Stats berechnen
   let gewonnen = 0
   let verloren = 0
   let noShow = 0
@@ -126,19 +124,16 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
     const hinzugefuegt = fields.Hinzugefügt || fields.Hinzugefuegt || fields['Hinzugefügt']
     const closerEmail = fields.Weitere_Teilnehmer || fields['Weitere_Teilnehmer']
 
-    // Datum-Filter
     if (hinzugefuegt) {
       const recordDate = new Date(hinzugefuegt)
       if (startDate && recordDate < startDate) continue
       if (endDate && recordDate > endDate) continue
     }
 
-    // User-Filter (wenn nicht Admin)
     if (!isAdmin && userEmail && closerEmail) {
       if (!closerEmail.toLowerCase().includes(userEmail.toLowerCase())) continue
     }
 
-    // Status zählen
     if (status.includes('abgeschlossen') || status.includes('gewonnen')) {
       gewonnen++
       const dealWert = setup + (retainer * laufzeit)
@@ -218,6 +213,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, startDate, endDat
   let userRecordId = null
   if (!isAdmin && userName) {
     userRecordId = await getUserRecordId(userName)
+    console.log('User Record ID für', userName, ':', userRecordId)
   }
 
   // Alle Leads laden
@@ -265,7 +261,9 @@ async function getSettingStats({ isAdmin, userEmail, userName, startDate, endDat
 
     const ergebnis = (fields.Ergebnis || '').toLowerCase()
     const datum = fields.Datum
-    const zugewiesenAn = fields['Zugewiesen an'] || fields.Zugewiesen_an || []
+    
+    // KORREKTUR: Das Feld heißt "User_Datenbank", nicht "Zugewiesen an"
+    const zugewiesenAn = fields['User_Datenbank'] || fields.User_Datenbank || []
 
     // Datum-Filter
     if (datum) {
@@ -371,7 +369,6 @@ async function getUserNames(recordIds) {
   const tableName = 'User_Datenbank'
   const names = {}
 
-  // Alle User laden und filtern
   let allUsers = []
   let offset = null
 
@@ -390,7 +387,6 @@ async function getUserNames(recordIds) {
     offset = data.offset
   } while (offset)
 
-  // Namen zuordnen
   for (const user of allUsers) {
     if (recordIds.includes(user.id)) {
       names[user.id] = user.fields.Vor_Nachname || user.fields['Vor_Nachname'] || 'Unbekannt'
