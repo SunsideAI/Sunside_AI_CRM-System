@@ -90,7 +90,7 @@ function AppRoutes() {
       <Route
         path="/termine"
         element={
-          <ProtectedRoute allowedRoles={['Admin', 'Closer']}>
+          <ProtectedRoute>
             <Layout>
               <Termine />
             </Layout>
