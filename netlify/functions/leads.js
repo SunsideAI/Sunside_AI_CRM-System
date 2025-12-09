@@ -54,9 +54,9 @@ export async function handler(event) {
 
       // Kontaktiert-Filter (Feld ist Text: "X" oder leer)
       if (contacted === 'true') {
-        filters.push(`{Bereits kontaktiert} = 'X'`)
+        filters.push(`{Bereits_kontaktiert} = 'X'`)
       } else if (contacted === 'false') {
-        filters.push(`OR({Bereits kontaktiert} = '', {Bereits kontaktiert} = BLANK())`)
+        filters.push(`OR({Bereits_kontaktiert} = '', {Bereits_kontaktiert} = BLANK())`)
       }
 
       // Ergebnis-Filter
@@ -95,7 +95,7 @@ export async function handler(event) {
         'Website',
         'Telefonnummer',
         'User_Datenbank',
-        'Bereits kontaktiert',
+        'Bereits_kontaktiert',
         'Datum',
         'Ergebnis',
         'Kommentar'
@@ -132,8 +132,8 @@ export async function handler(event) {
         website: record.fields.Website || '',
         telefon: record.fields.Telefonnummer || '',
         zugewiesenAn: record.fields.User_Datenbank || [],
-        // "Bereits kontaktiert" ist Text-Feld: "X" = true, "" = false
-        kontaktiert: record.fields['Bereits kontaktiert'] === 'X' || record.fields['Bereits kontaktiert'] === true,
+        // "Bereits_kontaktiert" ist Text-Feld: "X" = true, "" = false
+        kontaktiert: record.fields['Bereits_kontaktiert'] === 'X' || record.fields['Bereits_kontaktiert'] === true,
         datum: record.fields.Datum || null,
         ergebnis: record.fields.Ergebnis || '',
         kommentar: record.fields.Kommentar || ''
@@ -176,7 +176,7 @@ export async function handler(event) {
 
       if (updates.kontaktiert !== undefined) {
         // Feld ist Text: "X" für kontaktiert, leer für nicht kontaktiert
-        fieldsToUpdate['Bereits kontaktiert'] = updates.kontaktiert ? 'X' : ''
+        fieldsToUpdate['Bereits_kontaktiert'] = updates.kontaktiert ? 'X' : ''
       }
       if (updates.ergebnis !== undefined) {
         fieldsToUpdate['Ergebnis'] = updates.ergebnis
@@ -219,7 +219,7 @@ export async function handler(event) {
           success: true,
           lead: {
             id: data.id,
-            kontaktiert: data.fields['Bereits kontaktiert'] === 'X' || data.fields['Bereits kontaktiert'] === true,
+            kontaktiert: data.fields['Bereits_kontaktiert'] === 'X' || data.fields['Bereits_kontaktiert'] === true,
             ergebnis: data.fields.Ergebnis || '',
             kommentar: data.fields.Kommentar || '',
             datum: data.fields.Datum || null
