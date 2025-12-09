@@ -346,6 +346,7 @@ exports.handler = async (event) => {
           console.log('Custom Questions:', JSON.stringify(customQuestions, null, 2))
 
           // Antworten für die Custom Questions vorbereiten
+          // Format: { question: "Name", answer: "Value", position: 0 }
           const questionsAndAnswers = []
           
           for (const question of customQuestions) {
@@ -363,22 +364,26 @@ exports.handler = async (event) => {
             if (answer) {
               questionsAndAnswers.push({
                 question: question.name,
-                answer: answer
+                answer: answer,
+                position: question.position
               })
             }
           }
           
           console.log('Questions and Answers:', JSON.stringify(questionsAndAnswers, null, 2))
 
-          // Calendly Scheduling API - POST /scheduled_events
+          // Calendly Scheduling API - POST /invitees
           const requestBody = {
             event_type: eventTypeUri,
             start_time: startTime,
-            email: inviteeEmail,
-            first_name: firstName,
-            last_name: lastName,
-            timezone: 'Europe/Berlin',
-            text_reminder_number: formattedPhone,
+            invitee: {
+              name: `${firstName} ${lastName}`.trim(),
+              first_name: firstName,
+              last_name: lastName,
+              email: inviteeEmail,
+              timezone: 'Europe/Berlin',
+              text_reminder_number: formattedPhone
+            },
             questions_and_answers: questionsAndAnswers,
             location: {
               kind: 'outbound_call',
@@ -388,7 +393,7 @@ exports.handler = async (event) => {
 
           console.log('Calendly Request:', JSON.stringify(requestBody, null, 2))
 
-          const response = await fetch('https://api.calendly.com/scheduled_events', {
+          const response = await fetch('https://api.calendly.com/invitees', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
