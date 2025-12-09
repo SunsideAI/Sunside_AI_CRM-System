@@ -12,9 +12,15 @@ function getAuthClient() {
 }
 
 // Freie Slots für einen Tag berechnen
+// WICHTIG: Alle Zeiten in Europe/Berlin!
 function calculateFreeSlots(busyTimes, date, startHour = 7, endHour = 20, slotDuration = 45) {
   const slots = []
   const dateStr = date.toISOString().split('T')[0]
+  
+  // Offset für Europe/Berlin berechnen (MEZ = +01:00, MESZ = +02:00)
+  // Wir nutzen einen Trick: Erstellen ein Datum und prüfen den Offset
+  const testDate = new Date(dateStr + 'T12:00:00Z')
+  const berlinOffset = getBerlinOffset(testDate)
   
   // Alle möglichen Slots generieren (7:00 - 20:00, 45 Min)
   for (let hour = startHour; hour < endHour; hour++) {
@@ -23,10 +29,15 @@ function calculateFreeSlots(busyTimes, date, startHour = 7, endHour = 20, slotDu
       const endMinutes = hour * 60 + minute + slotDuration
       if (endMinutes > endHour * 60) continue
       
-      const slotStart = new Date(dateStr + 'T' + 
-        String(hour).padStart(2, '0') + ':' + 
-        String(minute).padStart(2, '0') + ':00')
-      const slotEnd = new Date(slotStart.getTime() + slotDuration * 60 * 1000)
+      // ISO-String MIT Zeitzone erstellen (Europe/Berlin)
+      // Format: 2024-12-09T13:00:00+01:00
+      const startTimeStr = `${dateStr}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00${berlinOffset}`
+      const endHourCalc = Math.floor(endMinutes / 60)
+      const endMinuteCalc = endMinutes % 60
+      const endTimeStr = `${dateStr}T${String(endHourCalc).padStart(2, '0')}:${String(endMinuteCalc).padStart(2, '0')}:00${berlinOffset}`
+      
+      const slotStart = new Date(startTimeStr)
+      const slotEnd = new Date(endTimeStr)
       
       // Prüfen ob Slot mit busy-Zeiten kollidiert
       const isBusy = busyTimes.some(busy => {
@@ -37,16 +48,39 @@ function calculateFreeSlots(busyTimes, date, startHour = 7, endHour = 20, slotDu
       
       if (!isBusy) {
         slots.push({
-          start: slotStart.toISOString(),
-          end: slotEnd.toISOString(),
+          // ISO-String mit korrekter Zeitzone für Google Calendar
+          start: startTimeStr,
+          end: endTimeStr,
           startTime: String(hour).padStart(2, '0') + ':' + String(minute).padStart(2, '0'),
-          endTime: String(Math.floor(endMinutes / 60)).padStart(2, '0') + ':' + String(endMinutes % 60).padStart(2, '0')
+          endTime: String(endHourCalc).padStart(2, '0') + ':' + String(endMinuteCalc).padStart(2, '0')
         })
       }
     }
   }
   
   return slots
+}
+
+// Berechnet den Offset für Europe/Berlin (MEZ oder MESZ)
+function getBerlinOffset(date) {
+  // Sommerzeitregeln für EU: Letzter Sonntag im März bis letzter Sonntag im Oktober
+  const year = date.getUTCFullYear()
+  const month = date.getUTCMonth()
+  const day = date.getUTCDate()
+  
+  // Letzter Sonntag im März
+  const marchLast = new Date(Date.UTC(year, 2, 31))
+  while (marchLast.getUTCDay() !== 0) marchLast.setUTCDate(marchLast.getUTCDate() - 1)
+  
+  // Letzter Sonntag im Oktober
+  const octLast = new Date(Date.UTC(year, 9, 31))
+  while (octLast.getUTCDay() !== 0) octLast.setUTCDate(octLast.getUTCDate() - 1)
+  
+  // MESZ (Sommerzeit): +02:00
+  // MEZ (Winterzeit): +01:00
+  const isSummerTime = date >= marchLast && date < octLast
+  
+  return isSummerTime ? '+02:00' : '+01:00'
 }
 
 exports.handler = async (event) => {
