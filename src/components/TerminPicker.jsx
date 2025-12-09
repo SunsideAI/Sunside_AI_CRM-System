@@ -95,7 +95,8 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
     try {
       const calendarId = selectedCloser.google_calendar_id || selectedCloser.email
       
-      const response = await fetch('/.netlify/functions/calendar', {
+      // 1. Google Calendar Termin erstellen
+      const gcalResponse = await fetch('/.netlify/functions/calendar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -108,38 +109,66 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
         })
       })
       
-      const data = await response.json()
+      const gcalData = await gcalResponse.json()
       
-      if (response.ok && data.success) {
-        setSuccess(true)
-        
-        // Lead in Airtable aktualisieren
-        await fetch('/.netlify/functions/leads', {
-          method: 'PATCH',
+      if (!gcalResponse.ok || !gcalData.success) {
+        throw new Error(gcalData.error || 'Google Calendar Fehler')
+      }
+
+      // 2. Calendly Termin erstellen (falls konfiguriert)
+      try {
+        const calendlyResponse = await fetch('/.netlify/functions/calendar', {
+          method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            leadId: lead.id,
-            updates: {
-              ergebnis: 'Erstgespräch',
-              kontaktiert: true,
-              kommentar: `Termin gebucht: ${formatDate(selectedDate)} um ${selectedSlot.startTime} Uhr mit ${selectedCloser.vor_nachname}`
+            action: 'calendly-book',
+            eventTypeUri: 'https://api.calendly.com/event_types/b7fa6cb8-8dcf-42f9-a8cf-9e73a776c57c',
+            startTime: selectedSlot.start,
+            inviteeName: lead.unternehmensname,
+            inviteeEmail: lead.email || 'noemail@placeholder.com',
+            leadInfo: {
+              firma: lead.unternehmensname,
+              stadt: lead.stadt,
+              telefon: lead.telefon
             }
           })
         })
         
-        setTimeout(() => {
-          onTerminBooked && onTerminBooked({
-            date: selectedDate,
-            time: selectedSlot.startTime,
-            closer: selectedCloser.vor_nachname,
-            eventLink: data.event?.htmlLink
-          })
-        }, 1500)
-      } else {
-        setError(data.error || 'Fehler beim Buchen')
+        const calendlyData = await calendlyResponse.json()
+        console.log('Calendly Booking Result:', calendlyData)
+        
+      } catch (calendlyError) {
+        // Calendly-Fehler nur loggen, nicht abbrechen
+        console.warn('Calendly Booking fehlgeschlagen:', calendlyError)
       }
+      
+      setSuccess(true)
+      
+      // Lead in Airtable aktualisieren
+      await fetch('/.netlify/functions/leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: lead.id,
+          updates: {
+            ergebnis: 'Erstgespräch',
+            kontaktiert: true,
+            kommentar: `Termin gebucht: ${formatDate(selectedDate)} um ${selectedSlot.startTime} Uhr mit ${selectedCloser.vor_nachname}`
+          }
+        })
+      })
+      
+      setTimeout(() => {
+        onTerminBooked && onTerminBooked({
+          date: selectedDate,
+          time: selectedSlot.startTime,
+          closer: selectedCloser.vor_nachname,
+          eventLink: gcalData.event?.htmlLink
+        })
+      }, 1500)
+      
     } catch (err) {
-      setError('Fehler beim Buchen des Termins')
+      setError(err.message || 'Fehler beim Buchen des Termins')
     } finally {
       setBooking(false)
     }
