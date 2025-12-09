@@ -160,7 +160,8 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
               telefon: contactPhone,
               kategorie: lead.kategorie,
               taetigkeit: taetigkeit,
-              problemstellung: problemstellung
+              problemstellung: problemstellung,
+              closerEmail: selectedCloser.email || selectedCloser.email_geschaeftlich
             }
           })
         })
