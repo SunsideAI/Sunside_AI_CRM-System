@@ -6,42 +6,10 @@ import {
   Bell,
   Shield
 } from 'lucide-react'
+import PasswordManager from '../components/PasswordManager'
 
 function Einstellungen() {
   const { user } = useAuth()
-
-  const settingsGroups = [
-    {
-      title: 'Benutzerverwaltung',
-      icon: Users,
-      description: 'User hinzufügen, Rollen verwalten',
-      status: 'coming-soon'
-    },
-    {
-      title: 'Datenbank',
-      icon: Database,
-      description: 'Airtable-Verbindung konfigurieren',
-      status: 'coming-soon'
-    },
-    {
-      title: 'API-Keys',
-      icon: Key,
-      description: 'Externe Integrationen verwalten',
-      status: 'coming-soon'
-    },
-    {
-      title: 'Benachrichtigungen',
-      icon: Bell,
-      description: 'E-Mail-Benachrichtigungen konfigurieren',
-      status: 'coming-soon'
-    },
-    {
-      title: 'Berechtigungen',
-      icon: Shield,
-      description: 'Rollen und Zugriffsrechte definieren',
-      status: 'coming-soon'
-    }
-  ]
 
   return (
     <div className="space-y-6">
@@ -66,20 +34,40 @@ function Einstellungen() {
         </div>
       </div>
 
-      {/* Settings Grid */}
+      {/* Password Manager */}
+      <PasswordManager />
+
+      {/* Weitere Settings (Coming Soon) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {settingsGroups.map((group) => (
+        {[
+          {
+            title: 'Benutzerverwaltung',
+            icon: Users,
+            description: 'User hinzufügen, Rollen verwalten',
+            status: 'coming-soon'
+          },
+          {
+            title: 'Datenbank',
+            icon: Database,
+            description: 'Airtable-Verbindung konfigurieren',
+            status: 'coming-soon'
+          },
+          {
+            title: 'Benachrichtigungen',
+            icon: Bell,
+            description: 'E-Mail-Benachrichtigungen konfigurieren',
+            status: 'coming-soon'
+          }
+        ].map((group) => (
           <div
             key={group.title}
-            className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden"
+            className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden opacity-60"
           >
-            {group.status === 'coming-soon' && (
-              <div className="absolute top-3 right-3">
-                <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">
-                  Coming Soon
-                </span>
-              </div>
-            )}
+            <div className="absolute top-3 right-3">
+              <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">
+                Coming Soon
+              </span>
+            </div>
             
             <div className="flex items-start">
               <div className="p-3 bg-gray-100 rounded-lg">
@@ -105,6 +93,10 @@ function Einstellungen() {
           <div className="flex justify-between py-2 border-b border-gray-100">
             <span className="text-gray-500">Datenbank</span>
             <span className="text-gray-900 font-medium">Airtable</span>
+          </div>
+          <div className="flex justify-between py-2 border-b border-gray-100">
+            <span className="text-gray-500">Passwort-Sicherheit</span>
+            <span className="text-green-600 font-medium">bcrypt (gehasht)</span>
           </div>
           <div className="flex justify-between py-2 border-b border-gray-100">
             <span className="text-gray-500">Hot Leads</span>
