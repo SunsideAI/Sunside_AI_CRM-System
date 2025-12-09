@@ -1,7 +1,7 @@
-// Auth Function - Prüft User gegen Airtable
+// Auth Function - Prüft User + Passwort (gehasht) gegen Airtable
+import bcrypt from 'bcryptjs'
 
 export async function handler(event) {
-  // CORS Headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -9,12 +9,10 @@ export async function handler(event) {
     'Content-Type': 'application/json'
   }
 
-  // Handle OPTIONS (CORS preflight)
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' }
   }
 
-  // Nur POST erlauben
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
@@ -24,27 +22,25 @@ export async function handler(event) {
   }
 
   try {
-    const { email } = JSON.parse(event.body)
+    const { email, password } = JSON.parse(event.body)
 
-    if (!email) {
+    if (!email || !password) {
       return {
         statusCode: 400,
         headers,
-        body: JSON.stringify({ error: 'E-Mail ist erforderlich' })
+        body: JSON.stringify({ error: 'E-Mail und Passwort sind erforderlich' })
       }
     }
 
-    // Airtable API Konfiguration
     const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
     const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
     const AIRTABLE_TABLE_NAME = 'User_Datenbank'
 
     if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
-      // Fallback für Entwicklung ohne API Key
+      // Demo-Modus
       console.log('Airtable nicht konfiguriert - Demo-Modus')
       
-      // Demo User zurückgeben
-      if (email.includes('@sunsideai.de') || email.includes('admin')) {
+      if (email.includes('@sunsideai.de') && password === 'demo') {
         return {
           statusCode: 200,
           headers,
@@ -64,11 +60,11 @@ export async function handler(event) {
       return {
         statusCode: 401,
         headers,
-        body: JSON.stringify({ error: 'Ungültige E-Mail Adresse' })
+        body: JSON.stringify({ error: 'Ungültige Anmeldedaten' })
       }
     }
 
-    // Airtable Query - Suche nach E-Mail
+    // Airtable Query
     const formula = `OR({E-Mail}='${email}',{E-Mail_Geschäftlich}='${email}')`
     const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`
 
@@ -88,14 +84,43 @@ export async function handler(event) {
       return {
         statusCode: 401,
         headers,
-        body: JSON.stringify({ error: 'User nicht gefunden. Bitte prüfe deine E-Mail Adresse.' })
+        body: JSON.stringify({ error: 'Ungültige Anmeldedaten' })
       }
     }
 
     const record = data.records[0]
     const fields = record.fields
 
-    // User Objekt erstellen
+    // Passwort prüfen
+    const storedPassword = fields.Passwort || ''
+    
+    if (!storedPassword) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Kein Passwort gesetzt. Bitte Admin kontaktieren.' })
+      }
+    }
+
+    // Prüfen ob es ein Hash ist (beginnt mit $2)
+    let isValid = false
+    if (storedPassword.startsWith('$2')) {
+      // Gehashtes Passwort - mit bcrypt vergleichen
+      isValid = await bcrypt.compare(password, storedPassword)
+    } else {
+      // Klartext-Passwort (Legacy) - direkter Vergleich
+      isValid = (storedPassword === password)
+    }
+
+    if (!isValid) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Ungültige Anmeldedaten' })
+      }
+    }
+
+    // User Objekt erstellen (ohne Passwort!)
     const user = {
       id: record.id,
       vorname: fields.Vorname || '',
@@ -104,7 +129,7 @@ export async function handler(event) {
       email: fields['E-Mail'] || fields['E-Mail_Geschäftlich'],
       email_geschaeftlich: fields['E-Mail_Geschäftlich'],
       telefon: fields.Telefon || '',
-      rolle: fields.Rolle || fields.Status || ['Setter'], // Fallback
+      rolle: fields.Rolle || fields.Status || ['Setter'],
       ort: fields.Ort || '',
       bundesland: fields.Bundesland || ''
     }
