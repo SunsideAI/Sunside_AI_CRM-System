@@ -51,7 +51,8 @@ export async function handler(event) {
               name: 'User',
               vor_nachname: 'Demo User',
               email: email,
-              rolle: ['Setter', 'Closer', 'Admin']
+              rolle: ['Setter', 'Closer', 'Admin'],
+              google_calendar_id: ''
             }
           })
         }
@@ -127,11 +128,12 @@ export async function handler(event) {
       name: fields.Name || '',
       vor_nachname: fields.Vor_Nachname || `${fields.Vorname} ${fields.Name}`,
       email: fields['E-Mail'] || fields['E-Mail_Geschäftlich'],
-      email_geschaeftlich: fields['E-Mail_Geschäftlich'],
+      email_geschaeftlich: fields['E-Mail_Geschäftlich'] || '',
       telefon: fields.Telefon || '',
       rolle: fields.Rolle || fields.Status || ['Setter'],
       ort: fields.Ort || '',
-      bundesland: fields.Bundesland || ''
+      bundesland: fields.Bundesland || '',
+      google_calendar_id: fields.Google_Calendar_ID || ''
     }
 
     // Status zu Rolle mappen falls nötig
