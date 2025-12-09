@@ -28,11 +28,11 @@ exports.handler = async (event) => {
 
   try {
     const params = event.queryStringParameters || {}
-    const type = params.type || 'setting' // 'setting' oder 'closing'
+    const type = params.type || 'setting'
     const isAdmin = params.admin === 'true'
     const userEmail = params.email
-    const startDate = params.startDate
-    const endDate = params.endDate
+    const startDate = params.startDate ? new Date(params.startDate) : null
+    const endDate = params.endDate ? new Date(params.endDate) : null
 
     if (type === 'closing') {
       const result = await getClosingStats({ isAdmin, userEmail, startDate, endDate })
@@ -66,34 +66,12 @@ exports.handler = async (event) => {
 async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
   const tableName = 'Immobilienmakler_Hot_Leads'
   
-  // Filter bauen
-  let filterParts = []
-  
-  if (!isAdmin && userEmail) {
-    filterParts.push(`FIND("${userEmail}", {Weitere_Teilnehmer})`)
-  }
-  
-  if (startDate) {
-    filterParts.push(`IS_AFTER({Hinzugefügt}, "${startDate}")`)
-  }
-  
-  if (endDate) {
-    filterParts.push(`IS_BEFORE({Hinzugefügt}, "${endDate}")`)
-  }
-
-  const filterFormula = filterParts.length > 0 
-    ? `AND(${filterParts.join(', ')})` 
-    : ''
-
-  // Alle Hot Leads laden
+  // Alle Hot Leads laden (ohne Filter - filtern in JS)
   let allRecords = []
   let offset = null
 
   do {
     const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
-    if (filterFormula) {
-      url.searchParams.append('filterByFormula', filterFormula)
-    }
     if (offset) {
       url.searchParams.append('offset', offset)
     }
@@ -124,8 +102,20 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
     const setup = parseFloat(fields.Setup) || 0
     const retainer = parseFloat(fields.Retainer) || 0
     const laufzeit = parseInt(fields.Laufzeit) || 1
-    const hinzugefuegt = fields.Hinzugefügt || fields.Hinzugefuegt
-    const closerEmail = fields.Weitere_Teilnehmer
+    const hinzugefuegt = fields.Hinzugefügt || fields.Hinzugefuegt || fields['Hinzugefügt']
+    const closerEmail = fields.Weitere_Teilnehmer || fields['Weitere_Teilnehmer']
+
+    // Datum-Filter
+    if (hinzugefuegt) {
+      const recordDate = new Date(hinzugefuegt)
+      if (startDate && recordDate < startDate) continue
+      if (endDate && recordDate > endDate) continue
+    }
+
+    // User-Filter (wenn nicht Admin)
+    if (!isAdmin && userEmail && closerEmail) {
+      if (!closerEmail.toLowerCase().includes(userEmail.toLowerCase())) continue
+    }
 
     // Status zählen
     if (status.includes('abgeschlossen') || status.includes('gewonnen')) {
@@ -208,26 +198,12 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
 async function getSettingStats({ isAdmin, userEmail, startDate, endDate }) {
   const tableName = 'Immobilienmakler_Leads'
   
-  // Filter: Nur kontaktierte Leads
-  let filterParts = ['{Bereits kontaktiert} = TRUE()']
-  
-  if (startDate) {
-    filterParts.push(`IS_AFTER({Datum}, "${startDate}")`)
-  }
-  
-  if (endDate) {
-    filterParts.push(`IS_BEFORE({Datum}, "${endDate}")`)
-  }
-
-  const filterFormula = `AND(${filterParts.join(', ')})`
-
-  // Alle kontaktierten Leads laden
+  // Alle Leads laden (ohne Airtable-Filter - wir filtern in JS)
   let allRecords = []
   let offset = null
 
   do {
     const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
-    url.searchParams.append('filterByFormula', filterFormula)
     if (offset) {
       url.searchParams.append('offset', offset)
     }
@@ -255,9 +231,27 @@ async function getSettingStats({ isAdmin, userEmail, startDate, endDate }) {
 
   for (const record of allRecords) {
     const fields = record.fields
+    
+    // Verschiedene mögliche Feldnamen für "kontaktiert" prüfen
+    const kontaktiert = fields['Bereits kontaktiert'] || 
+                        fields['Bereits_kontaktiert'] || 
+                        fields.Bereits_kontaktiert ||
+                        fields.kontaktiert ||
+                        false
+
+    // Nur kontaktierte Leads zählen
+    if (!kontaktiert) continue
+
     const ergebnis = (fields.Ergebnis || '').toLowerCase()
     const datum = fields.Datum
-    const zugewiesenAn = fields.Zugewiesen_an || fields['Zugewiesen an'] || []
+    const zugewiesenAn = fields['Zugewiesen an'] || fields.Zugewiesen_an || []
+
+    // Datum-Filter
+    if (datum) {
+      const recordDate = new Date(datum)
+      if (startDate && recordDate < startDate) continue
+      if (endDate && recordDate > endDate) continue
+    }
 
     einwahlen++
 
@@ -288,7 +282,7 @@ async function getSettingStats({ isAdmin, userEmail, startDate, endDate }) {
 
     // Per User Stats (für Admins)
     if (isAdmin && zugewiesenAn && zugewiesenAn.length > 0) {
-      const oderId = zugewiesenAn[0] // Erster zugewiesener User
+      const oderId = Array.isArray(zugewiesenAn) ? zugewiesenAn[0] : zugewiesenAn
       if (!perUserMap[oderId]) {
         perUserMap[oderId] = { 
           id: oderId,
@@ -318,7 +312,7 @@ async function getSettingStats({ isAdmin, userEmail, startDate, endDate }) {
   // Per User formatieren
   const perUser = Object.values(perUserMap).map(stats => ({
     ...stats,
-    name: `User ${stats.id.substring(0, 6)}`
+    name: `User ${String(stats.id).substring(0, 6)}`
   })).sort((a, b) => b.einwahlen - a.einwahlen)
 
   return {
