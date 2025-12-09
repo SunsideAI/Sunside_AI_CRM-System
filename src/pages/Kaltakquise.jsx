@@ -245,7 +245,7 @@ function Kaltakquise() {
         {isAdmin() && (
           <div className="flex items-center bg-gray-100 rounded-lg p-1">
             <button
-              onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setFilterVertriebler('all'); }}
+              onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setFilterVertriebler('all'); setLeads([]); }}
               className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'own' 
                   ? 'bg-white text-sunside-primary shadow-sm' 
@@ -256,7 +256,7 @@ function Kaltakquise() {
               Meine Leads
             </button>
             <button
-              onClick={() => { setViewMode('all'); setOffset(null); setPageHistory([]); }}
+              onClick={() => { setViewMode('all'); setOffset(null); setPageHistory([]); setLeads([]); }}
               className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'all' 
                   ? 'bg-white text-sunside-primary shadow-sm' 
@@ -288,7 +288,7 @@ function Kaltakquise() {
           {/* Filter: Kontaktiert */}
           <select
             value={filterContacted}
-            onChange={(e) => { setFilterContacted(e.target.value); setOffset(null); setPageHistory([]); }}
+            onChange={(e) => { setFilterContacted(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
             className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white"
           >
             <option value="all">Alle Status</option>
@@ -299,7 +299,7 @@ function Kaltakquise() {
           {/* Filter: Ergebnis */}
           <select
             value={filterResult}
-            onChange={(e) => { setFilterResult(e.target.value); setOffset(null); setPageHistory([]); }}
+            onChange={(e) => { setFilterResult(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
             className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white"
           >
             <option value="all">Alle Ergebnisse</option>
@@ -312,7 +312,7 @@ function Kaltakquise() {
           {isAdmin() && viewMode === 'all' && (
             <select
               value={filterVertriebler}
-              onChange={(e) => { setFilterVertriebler(e.target.value); setOffset(null); setPageHistory([]); }}
+              onChange={(e) => { setFilterVertriebler(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
               className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white"
             >
               <option value="all">Alle Vertriebler</option>
@@ -342,9 +342,10 @@ function Kaltakquise() {
 
       {/* Tabelle */}
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {loading && leads.length === 0 ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-sunside-primary" />
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="w-10 h-10 animate-spin text-sunside-primary mb-4" />
+            <p className="text-gray-500">Leads werden geladen...</p>
           </div>
         ) : leads.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
