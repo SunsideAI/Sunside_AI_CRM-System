@@ -14,7 +14,6 @@ export async function handler(event) {
   const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
   const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
   const LEADS_TABLE = 'Immobilienmakler_Leads'
-  const USERS_TABLE = 'User_Datenbank'
 
   if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
     return {
@@ -29,14 +28,13 @@ export async function handler(event) {
     try {
       const params = event.queryStringParameters || {}
       const {
-        userId,        // Für Filter nach zugewiesenem User
+        userName,      // Name des Users (Vor_Nachname) für Link-Feld Filter
         userRole,      // 'Admin', 'Setter', 'Closer'
         view,          // 'all' oder 'own' (für Admins)
         search,        // Suchbegriff
         contacted,     // 'true' oder 'false'
         result,        // Ergebnis-Filter
-        page = '1',
-        limit = '50'
+        offset         // Pagination offset
       } = params
 
       // Basis-URL
@@ -45,12 +43,13 @@ export async function handler(event) {
       // Filter bauen
       const filters = []
       
-      // Wenn kein Admin ODER Admin mit "own" view → nur eigene Leads
-      if (userRole !== 'Admin' || view === 'own') {
-        if (userId) {
-          // Filter nach zugewiesenem User (Link-Feld enthält Record ID)
-          filters.push(`FIND("${userId}", ARRAYJOIN({User_Datenbank}))`)
-        }
+      // User-Filter: Nur wenn NICHT Admin mit "all" view
+      const needsUserFilter = userRole !== 'Admin' || view === 'own'
+      
+      if (needsUserFilter && userName) {
+        // Filter über den angezeigten Namen im Link-Feld
+        // Das Link-Feld zeigt den Primary Field Wert (Vor_Nachname)
+        filters.push(`FIND("${userName}", ARRAYJOIN({User_Datenbank}, ","))`)
       }
 
       // Kontaktiert-Filter
@@ -67,7 +66,8 @@ export async function handler(event) {
 
       // Suchfilter (Unternehmensname oder Stadt)
       if (search) {
-        filters.push(`OR(FIND(LOWER("${search}"), LOWER({Unternehmensname})), FIND(LOWER("${search}"), LOWER({Stadt})))`)
+        const searchEscaped = search.replace(/"/g, '\\"')
+        filters.push(`OR(FIND(LOWER("${searchEscaped}"), LOWER({Unternehmensname})), FIND(LOWER("${searchEscaped}"), LOWER({Stadt})))`)
       }
 
       // Query-Parameter
@@ -80,11 +80,9 @@ export async function handler(event) {
       }
 
       // Pagination
-      const pageNum = parseInt(page)
-      const limitNum = Math.min(parseInt(limit), 100)
-      queryParams.append('pageSize', limitNum.toString())
+      queryParams.append('pageSize', '50')
 
-      // Sortierung - neueste zuerst, dann nach Name
+      // Sortierung
       queryParams.append('sort[0][field]', 'Unternehmensname')
       queryParams.append('sort[0][direction]', 'asc')
 
@@ -92,7 +90,6 @@ export async function handler(event) {
       const fields = [
         'Unternehmensname',
         'Stadt',
-        'Bundesland',
         'Kategorie',
         'Mail',
         'Website',
@@ -105,12 +102,13 @@ export async function handler(event) {
       ]
       fields.forEach(field => queryParams.append('fields[]', field))
 
-      // Offset für Pagination (wenn vorhanden)
-      if (params.offset) {
-        queryParams.append('offset', params.offset)
+      // Offset für Pagination
+      if (offset) {
+        queryParams.append('offset', offset)
       }
 
       const fullUrl = `${url}?${queryParams.toString()}`
+      console.log('Fetching leads with filters:', { userName, userRole, view, needsUserFilter })
       
       const response = await fetch(fullUrl, {
         headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
@@ -118,8 +116,8 @@ export async function handler(event) {
 
       if (!response.ok) {
         const error = await response.json()
-        console.error('Airtable Error:', error)
-        throw new Error('Fehler beim Laden der Leads')
+        console.error('Airtable Error:', JSON.stringify(error))
+        throw new Error(error.error?.message || 'Fehler beim Laden der Leads')
       }
 
       const data = await response.json()
@@ -129,7 +127,6 @@ export async function handler(event) {
         id: record.id,
         unternehmensname: record.fields.Unternehmensname || '',
         stadt: record.fields.Stadt || '',
-        bundesland: record.fields.Bundesland || '',
         kategorie: record.fields.Kategorie || '',
         email: record.fields.Mail || '',
         website: record.fields.Website || '',
@@ -152,7 +149,7 @@ export async function handler(event) {
       }
 
     } catch (error) {
-      console.error('GET Leads Error:', error)
+      console.error('GET Leads Error:', error.message)
       return {
         statusCode: 500,
         headers,
@@ -174,8 +171,6 @@ export async function handler(event) {
         }
       }
 
-      // Erlaubte Felder für Update
-      const allowedFields = ['Bereits kontaktiert', 'Ergebnis', 'Kommentar', 'Datum']
       const fieldsToUpdate = {}
 
       if (updates.kontaktiert !== undefined) {
@@ -209,8 +204,8 @@ export async function handler(event) {
 
       if (!response.ok) {
         const error = await response.json()
-        console.error('Airtable Update Error:', error)
-        throw new Error('Fehler beim Aktualisieren')
+        console.error('Airtable Update Error:', JSON.stringify(error))
+        throw new Error(error.error?.message || 'Fehler beim Aktualisieren')
       }
 
       const data = await response.json()
@@ -231,7 +226,7 @@ export async function handler(event) {
       }
 
     } catch (error) {
-      console.error('PATCH Lead Error:', error)
+      console.error('PATCH Lead Error:', error.message)
       return {
         statusCode: 500,
         headers,
