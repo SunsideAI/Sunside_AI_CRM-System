@@ -1,243 +1,325 @@
-// Analytics Function - Closing & Setting Statistics
-export async function handler(event) {
-  const headers = {
+// Analytics API für Setting und Closing Performance
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
+
+const headers = {
+  'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+  'Content-Type': 'application/json'
+}
+
+exports.handler = async (event) => {
+  const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Content-Type': 'application/json'
+    'Access-Control-Allow-Methods': 'GET, OPTIONS'
   }
 
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 200, headers, body: '' }
+    return { statusCode: 204, headers: corsHeaders }
   }
 
   if (event.httpMethod !== 'GET') {
     return {
       statusCode: 405,
-      headers,
+      headers: corsHeaders,
       body: JSON.stringify({ error: 'Method not allowed' })
     }
   }
 
   try {
-    const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-    const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
-
-    if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
-      return {
-        statusCode: 500,
-        headers,
-        body: JSON.stringify({ error: 'Server nicht konfiguriert' })
-      }
-    }
-
     const params = event.queryStringParameters || {}
-    const type = params.type || 'closing' // 'closing' oder 'setting'
-    const userEmail = params.email || null // Filter für spezifischen User
-    const isAdmin = params.admin === 'true' // Admin sieht alles
-    const startDate = params.startDate || null
-    const endDate = params.endDate || null
-
-    let stats = {}
+    const type = params.type || 'setting' // 'setting' oder 'closing'
+    const isAdmin = params.admin === 'true'
+    const userEmail = params.email
+    const startDate = params.startDate
+    const endDate = params.endDate
 
     if (type === 'closing') {
-      stats = await getClosingStats(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, userEmail, isAdmin, startDate, endDate)
-    } else if (type === 'setting') {
-      stats = await getSettingStats(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, userEmail, isAdmin, startDate, endDate)
-    } else if (type === 'combined') {
-      const closing = await getClosingStats(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, userEmail, isAdmin, startDate, endDate)
-      const setting = await getSettingStats(AIRTABLE_API_KEY, AIRTABLE_BASE_ID, userEmail, isAdmin, startDate, endDate)
-      stats = { closing, setting }
-    }
-
-    return {
-      statusCode: 200,
-      headers,
-      body: JSON.stringify(stats)
+      const result = await getClosingStats({ isAdmin, userEmail, startDate, endDate })
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(result)
+      }
+    } else {
+      const result = await getSettingStats({ isAdmin, userEmail, startDate, endDate })
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify(result)
+      }
     }
 
   } catch (error) {
     console.error('Analytics Error:', error)
     return {
       statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Fehler beim Laden der Analytics' })
+      headers: corsHeaders,
+      body: JSON.stringify({ error: error.message })
     }
   }
 }
 
-// Closing Statistics aus Hot_Leads
-async function getClosingStats(apiKey, baseId, userEmail, isAdmin, startDate, endDate) {
+// ==========================================
+// CLOSING STATS (Hot Leads)
+// ==========================================
+async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
   const tableName = 'Immobilienmakler_Hot_Leads'
   
+  // Filter bauen
+  let filterParts = []
+  
+  if (!isAdmin && userEmail) {
+    filterParts.push(`FIND("${userEmail}", {Weitere_Teilnehmer})`)
+  }
+  
+  if (startDate) {
+    filterParts.push(`IS_AFTER({Hinzugefügt}, "${startDate}")`)
+  }
+  
+  if (endDate) {
+    filterParts.push(`IS_BEFORE({Hinzugefügt}, "${endDate}")`)
+  }
+
+  const filterFormula = filterParts.length > 0 
+    ? `AND(${filterParts.join(', ')})` 
+    : ''
+
   // Alle Hot Leads laden
   let allRecords = []
   let offset = null
 
   do {
-    let url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}?pageSize=100`
-    if (offset) url += `&offset=${offset}`
-
-    const response = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${apiKey}` }
-    })
-
-    if (!response.ok) {
-      throw new Error(`Airtable API Error: ${response.status}`)
+    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
+    if (filterFormula) {
+      url.searchParams.append('filterByFormula', filterFormula)
+    }
+    if (offset) {
+      url.searchParams.append('offset', offset)
     }
 
+    const response = await fetch(url.toString(), { headers })
     const data = await response.json()
-    allRecords = allRecords.concat(data.records)
+
+    if (data.error) {
+      throw new Error(data.error.message)
+    }
+
+    allRecords = allRecords.concat(data.records || [])
     offset = data.offset
   } while (offset)
 
-  // Filter nach User (wenn nicht Admin)
-  let records = allRecords
-  if (!isAdmin && userEmail) {
-    records = allRecords.filter(r => {
-      const teilnehmer = r.fields.Weitere_Teilnehmer || ''
-      return teilnehmer.toLowerCase().includes(userEmail.toLowerCase())
-    })
-  }
-
-  // Filter nach Datum
-  if (startDate || endDate) {
-    records = records.filter(r => {
-      const recordDate = r.fields.Hinzugefügt || r.fields['Kunde seit']
-      if (!recordDate) return true
-      const date = new Date(recordDate)
-      if (startDate && date < new Date(startDate)) return false
-      if (endDate && date > new Date(endDate)) return false
-      return true
-    })
-  }
-
-  // Status-Kategorien
-  const gewonnen = records.filter(r => (r.fields.Status || '').includes('Abgeschlossen'))
-  const verloren = records.filter(r => r.fields.Status === 'Verloren')
-  const noShow = records.filter(r => r.fields.Status === 'No-Show')
-  const offen = records.filter(r => r.fields.Status === 'Lead' || r.fields.Status === 'Angebot versendet')
-
-  // Umsatz berechnen
+  // Stats berechnen
+  let gewonnen = 0
+  let verloren = 0
+  let noShow = 0
+  let offen = 0
   let umsatzGesamt = 0
-  gewonnen.forEach(r => {
-    const setup = parseFloat(r.fields.Setup) || 0
-    const retainer = parseFloat(r.fields.Retainer) || 0
-    const laufzeit = parseFloat(r.fields.Laufzeit) || 12 // Default 12 Monate
-    umsatzGesamt += setup + (retainer * laufzeit)
-  })
+  const zeitverlaufMap = {}
+  const perUserMap = {}
 
-  const umsatzDurchschnitt = gewonnen.length > 0 ? umsatzGesamt / gewonnen.length : 0
+  for (const record of allRecords) {
+    const fields = record.fields
+    const status = (fields.Status || '').toLowerCase()
+    const setup = parseFloat(fields.Setup) || 0
+    const retainer = parseFloat(fields.Retainer) || 0
+    const laufzeit = parseInt(fields.Laufzeit) || 1
+    const hinzugefuegt = fields.Hinzugefügt || fields.Hinzugefuegt
+    const closerEmail = fields.Weitere_Teilnehmer
 
-  // Closing Quote
-  const totalEntschieden = gewonnen.length + verloren.length
-  const closingQuote = totalEntschieden > 0 ? (gewonnen.length / totalEntschieden) * 100 : 0
+    // Status zählen
+    if (status.includes('abgeschlossen') || status.includes('gewonnen')) {
+      gewonnen++
+      const dealWert = setup + (retainer * laufzeit)
+      umsatzGesamt += dealWert
 
-  // Zeitverlauf (letzten 6 Monate)
-  const zeitverlauf = getZeitverlauf(gewonnen, 'Kunde seit')
+      // Zeitverlauf (nur für gewonnene)
+      if (hinzugefuegt) {
+        const date = new Date(hinzugefuegt)
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        if (!zeitverlaufMap[monthKey]) {
+          zeitverlaufMap[monthKey] = { count: 0, umsatz: 0 }
+        }
+        zeitverlaufMap[monthKey].count++
+        zeitverlaufMap[monthKey].umsatz += dealWert
+      }
 
-  // Pro Closer Statistik (für Admins)
-  const perCloser = isAdmin ? getPerUserStats(allRecords, 'Weitere_Teilnehmer') : null
+      // Per User Stats
+      if (closerEmail && isAdmin) {
+        if (!perUserMap[closerEmail]) {
+          perUserMap[closerEmail] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
+        }
+        perUserMap[closerEmail].gewonnen++
+        perUserMap[closerEmail].umsatz += dealWert
+      }
+    } else if (status.includes('verloren')) {
+      verloren++
+      if (closerEmail && isAdmin) {
+        if (!perUserMap[closerEmail]) {
+          perUserMap[closerEmail] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
+        }
+        perUserMap[closerEmail].verloren++
+      }
+    } else if (status.includes('no-show') || status.includes('no show')) {
+      noShow++
+    } else {
+      offen++
+      if (closerEmail && isAdmin) {
+        if (!perUserMap[closerEmail]) {
+          perUserMap[closerEmail] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
+        }
+        perUserMap[closerEmail].offen++
+      }
+    }
+  }
+
+  // Closing Quote berechnen
+  const totalEntschieden = gewonnen + verloren
+  const closingQuote = totalEntschieden > 0 ? (gewonnen / totalEntschieden) * 100 : 0
+
+  // Zeitverlauf formatieren (letzte 6 Monate)
+  const zeitverlauf = formatZeitverlauf(zeitverlaufMap)
+
+  // Per User formatieren
+  const perUser = Object.entries(perUserMap).map(([email, stats]) => ({
+    email,
+    name: extractNameFromEmail(email),
+    ...stats
+  })).sort((a, b) => b.umsatz - a.umsatz)
 
   return {
     summary: {
-      gewonnen: gewonnen.length,
-      verloren: verloren.length,
-      noShow: noShow.length,
-      offen: offen.length,
-      closingQuote: Math.round(closingQuote * 10) / 10,
-      umsatzGesamt: Math.round(umsatzGesamt * 100) / 100,
-      umsatzDurchschnitt: Math.round(umsatzDurchschnitt * 100) / 100
+      gewonnen,
+      verloren,
+      noShow,
+      offen,
+      closingQuote,
+      umsatzGesamt,
+      umsatzDurchschnitt: gewonnen > 0 ? umsatzGesamt / gewonnen : 0
     },
     zeitverlauf,
-    perUser: perCloser
+    perUser: isAdmin ? perUser : []
   }
 }
 
-// Setting Statistics aus Immobilienmakler_Leads
-async function getSettingStats(apiKey, baseId, userEmail, isAdmin, startDate, endDate) {
+// ==========================================
+// SETTING STATS (Kaltakquise Leads)
+// ==========================================
+async function getSettingStats({ isAdmin, userEmail, startDate, endDate }) {
   const tableName = 'Immobilienmakler_Leads'
   
-  // Gefilterte Leads laden (nur kontaktierte)
-  let formula = '{Bereits kontaktiert}=TRUE()'
+  // Filter: Nur kontaktierte Leads
+  let filterParts = ['{Bereits kontaktiert} = TRUE()']
   
-  // User-Filter
-  if (!isAdmin && userEmail) {
-    // Annahme: User_Datenbank ist verknüpft oder Vertriebler-Feld
-    formula = `AND({Bereits kontaktiert}=TRUE())`
+  if (startDate) {
+    filterParts.push(`IS_AFTER({Datum}, "${startDate}")`)
+  }
+  
+  if (endDate) {
+    filterParts.push(`IS_BEFORE({Datum}, "${endDate}")`)
   }
 
+  const filterFormula = `AND(${filterParts.join(', ')})`
+
+  // Alle kontaktierten Leads laden
   let allRecords = []
   let offset = null
 
   do {
-    let url = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(tableName)}?pageSize=100`
-    url += `&filterByFormula=${encodeURIComponent(formula)}`
-    if (offset) url += `&offset=${offset}`
-
-    const response = await fetch(url, {
-      headers: { 'Authorization': `Bearer ${apiKey}` }
-    })
-
-    if (!response.ok) {
-      throw new Error(`Airtable API Error: ${response.status}`)
+    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
+    url.searchParams.append('filterByFormula', filterFormula)
+    if (offset) {
+      url.searchParams.append('offset', offset)
     }
 
+    const response = await fetch(url.toString(), { headers })
     const data = await response.json()
-    allRecords = allRecords.concat(data.records)
+
+    if (data.error) {
+      throw new Error(data.error.message)
+    }
+
+    allRecords = allRecords.concat(data.records || [])
     offset = data.offset
   } while (offset)
 
-  // Filter nach Datum
-  let records = allRecords
-  if (startDate || endDate) {
-    records = records.filter(r => {
-      const recordDate = r.fields.Datum
-      if (!recordDate) return true
-      const date = new Date(recordDate)
-      if (startDate && date < new Date(startDate)) return false
-      if (endDate && date > new Date(endDate)) return false
-      return true
-    })
+  // Stats berechnen
+  let einwahlen = 0
+  let erreicht = 0
+  let erstgespraech = 0
+  let unterlagen = 0
+  let keinInteresse = 0
+  let nichtErreicht = 0
+  const zeitverlaufMap = {}
+  const perUserMap = {}
+
+  for (const record of allRecords) {
+    const fields = record.fields
+    const ergebnis = (fields.Ergebnis || '').toLowerCase()
+    const datum = fields.Datum
+    const zugewiesenAn = fields.Zugewiesen_an || fields['Zugewiesen an'] || []
+
+    einwahlen++
+
+    // Ergebnis kategorisieren
+    if (ergebnis.includes('nicht erreicht')) {
+      nichtErreicht++
+    } else {
+      erreicht++
+      
+      if (ergebnis.includes('erstgespräch') || ergebnis.includes('erstgespraech') || ergebnis.includes('termin')) {
+        erstgespraech++
+      } else if (ergebnis.includes('unterlage')) {
+        unterlagen++
+      } else if (ergebnis.includes('kein interesse') || ergebnis.includes('absage')) {
+        keinInteresse++
+      }
+    }
+
+    // Zeitverlauf
+    if (datum) {
+      const date = new Date(datum)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      if (!zeitverlaufMap[monthKey]) {
+        zeitverlaufMap[monthKey] = { count: 0 }
+      }
+      zeitverlaufMap[monthKey].count++
+    }
+
+    // Per User Stats (für Admins)
+    if (isAdmin && zugewiesenAn && zugewiesenAn.length > 0) {
+      const oderId = zugewiesenAn[0] // Erster zugewiesener User
+      if (!perUserMap[oderId]) {
+        perUserMap[oderId] = { 
+          id: oderId,
+          einwahlen: 0, 
+          erreicht: 0, 
+          erstgespraech: 0 
+        }
+      }
+      perUserMap[oderId].einwahlen++
+      if (!ergebnis.includes('nicht erreicht')) {
+        perUserMap[oderId].erreicht++
+        if (ergebnis.includes('erstgespräch') || ergebnis.includes('erstgespraech') || ergebnis.includes('termin')) {
+          perUserMap[oderId].erstgespraech++
+        }
+      }
+    }
   }
-
-  // Ergebnis-Kategorien basierend auf dem Ergebnis-Feld
-  const einwahlen = records.length
-  const erreicht = records.filter(r => {
-    const ergebnis = (r.fields.Ergebnis || '').toLowerCase()
-    return !ergebnis.includes('nicht erreicht') && ergebnis !== ''
-  }).length
-
-  const erstgespraech = records.filter(r => {
-    const ergebnis = (r.fields.Ergebnis || '').toLowerCase()
-    return ergebnis.includes('erstgespräch') || ergebnis.includes('termin')
-  }).length
-
-  const unterlagen = records.filter(r => {
-    const ergebnis = (r.fields.Ergebnis || '').toLowerCase()
-    return ergebnis.includes('unterlagen')
-  }).length
-
-  const keinInteresse = records.filter(r => {
-    const ergebnis = (r.fields.Ergebnis || '').toLowerCase()
-    return ergebnis.includes('kein interesse') || ergebnis.includes('absage')
-  }).length
-
-  const nichtErreicht = records.filter(r => {
-    const ergebnis = (r.fields.Ergebnis || '').toLowerCase()
-    return ergebnis.includes('nicht erreicht')
-  }).length
 
   // Quoten berechnen
   const erreichQuote = einwahlen > 0 ? (erreicht / einwahlen) * 100 : 0
   const erstgespraechQuote = erreicht > 0 ? (erstgespraech / erreicht) * 100 : 0
   const unterlagenQuote = erreicht > 0 ? (unterlagen / erreicht) * 100 : 0
 
-  // Zeitverlauf
-  const zeitverlauf = getZeitverlauf(records, 'Datum')
+  // Zeitverlauf formatieren
+  const zeitverlauf = formatZeitverlauf(zeitverlaufMap)
 
-  // Pro Setter Statistik (für Admins)
-  const perSetter = isAdmin ? getPerUserStatsFromLink(allRecords) : null
+  // Per User formatieren
+  const perUser = Object.values(perUserMap).map(stats => ({
+    ...stats,
+    name: `User ${stats.id.substring(0, 6)}`
+  })).sort((a, b) => b.einwahlen - a.einwahlen)
 
   return {
     summary: {
@@ -247,136 +329,46 @@ async function getSettingStats(apiKey, baseId, userEmail, isAdmin, startDate, en
       unterlagen,
       keinInteresse,
       nichtErreicht,
-      erreichQuote: Math.round(erreichQuote * 10) / 10,
-      erstgespraechQuote: Math.round(erstgespraechQuote * 10) / 10,
-      unterlagenQuote: Math.round(unterlagenQuote * 10) / 10
+      erreichQuote,
+      erstgespraechQuote,
+      unterlagenQuote
     },
     zeitverlauf,
-    perUser: perSetter
+    perUser: isAdmin ? perUser : []
   }
 }
 
-// Hilfsfunktion: Zeitverlauf berechnen (letzte 6 Monate)
-function getZeitverlauf(records, dateField) {
-  const months = {}
+// ==========================================
+// HELPER FUNCTIONS
+// ==========================================
+
+function formatZeitverlauf(map) {
+  const result = []
   const now = new Date()
-
-  // Letzte 6 Monate initialisieren
+  
   for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-    months[key] = { count: 0, umsatz: 0 }
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    const label = date.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' })
+    
+    result.push({
+      month: monthKey,
+      label,
+      count: map[monthKey]?.count || 0,
+      umsatz: map[monthKey]?.umsatz || 0
+    })
   }
-
-  records.forEach(r => {
-    const dateValue = r.fields[dateField]
-    if (!dateValue) return
-
-    const date = new Date(dateValue)
-    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-
-    if (months[key]) {
-      months[key].count++
-      const setup = parseFloat(r.fields.Setup) || 0
-      const retainer = parseFloat(r.fields.Retainer) || 0
-      const laufzeit = parseFloat(r.fields.Laufzeit) || 12
-      months[key].umsatz += setup + (retainer * laufzeit)
-    }
-  })
-
-  return Object.entries(months).map(([month, data]) => ({
-    month,
-    label: formatMonthLabel(month),
-    count: data.count,
-    umsatz: Math.round(data.umsatz * 100) / 100
-  }))
+  
+  return result
 }
 
-// Hilfsfunktion: Per User Stats (für Admins) - aus E-Mail Feld
-function getPerUserStats(records, emailField) {
-  const userStats = {}
-
-  records.forEach(r => {
-    const email = r.fields[emailField] || 'Nicht zugewiesen'
-    const userKey = email.toLowerCase().trim()
-    
-    if (!userStats[userKey]) {
-      userStats[userKey] = {
-        email: email,
-        name: extractNameFromEmail(email),
-        gewonnen: 0,
-        verloren: 0,
-        offen: 0,
-        umsatz: 0
-      }
-    }
-
-    const status = r.fields.Status || ''
-    if (status.includes('Abgeschlossen')) {
-      userStats[userKey].gewonnen++
-      const setup = parseFloat(r.fields.Setup) || 0
-      const retainer = parseFloat(r.fields.Retainer) || 0
-      const laufzeit = parseFloat(r.fields.Laufzeit) || 12
-      userStats[userKey].umsatz += setup + (retainer * laufzeit)
-    } else if (status === 'Verloren') {
-      userStats[userKey].verloren++
-    } else {
-      userStats[userKey].offen++
-    }
-  })
-
-  return Object.values(userStats)
-    .filter(u => u.email !== 'Nicht zugewiesen')
-    .sort((a, b) => b.umsatz - a.umsatz)
-}
-
-// Hilfsfunktion: Per User Stats aus Link-Feld
-function getPerUserStatsFromLink(records) {
-  const userStats = {}
-
-  records.forEach(r => {
-    // User_Datenbank ist ein Link-Feld, kommt als Array
-    const userLinks = r.fields.User_Datenbank || []
-    const userId = userLinks[0] || 'Nicht zugewiesen'
-    
-    if (!userStats[userId]) {
-      userStats[userId] = {
-        id: userId,
-        einwahlen: 0,
-        erreicht: 0,
-        erstgespraech: 0
-      }
-    }
-
-    userStats[userId].einwahlen++
-    
-    const ergebnis = (r.fields.Ergebnis || '').toLowerCase()
-    if (!ergebnis.includes('nicht erreicht')) {
-      userStats[userId].erreicht++
-    }
-    if (ergebnis.includes('erstgespräch') || ergebnis.includes('termin')) {
-      userStats[userId].erstgespraech++
-    }
-  })
-
-  return Object.values(userStats)
-    .filter(u => u.id !== 'Nicht zugewiesen')
-    .sort((a, b) => b.einwahlen - a.einwahlen)
-}
-
-// Hilfsfunktion: Name aus E-Mail extrahieren
 function extractNameFromEmail(email) {
-  if (!email || !email.includes('@')) return email
-  const localPart = email.split('@')[0]
-  return localPart
-    .split('.')
-    .map(part => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
-}
-
-// Hilfsfunktion: Monat formatieren
-function formatMonthLabel(monthKey) {
-  const [year, month] = monthKey.split('-')
-  const months = ['Jan', 'Feb', 'Mär', 'Apr', 'Mai', 'Jun', 'Jul', 'Aug', 'Sep', 'Okt', 'Nov', 'Dez']
-  return `${months[parseInt(month) - 1]} ${year.slice(2)}`
+  if (!email) return 'Unbekannt'
+  
+  const local = email.split('@')[0]
+  const parts = local.split(/[._-]/)
+  
+  return parts.map(part => 
+    part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+  ).join(' ')
 }
