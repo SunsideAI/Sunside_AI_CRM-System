@@ -354,10 +354,10 @@ exports.handler = async (event) => {
             
             if (questionName.includes('unternehmen') || questionName.includes('company')) {
               answer = leadInfo?.firma || inviteeName
-            } else if (questionName.includes('makler') || questionName.includes('sachverständiger')) {
-              answer = 'Makler' // Default
+            } else if (questionName.includes('makler') || questionName.includes('sachverständiger') || questionName.includes('tätig')) {
+              answer = leadInfo?.taetigkeit || 'Makler'
             } else if (questionName.includes('problem') || questionName.includes('ziel')) {
-              answer = 'Interesse an KI-gestützter Vertriebsassistenz - Termin über CRM gebucht'
+              answer = leadInfo?.problemstellung || 'Interesse an KI-gestützter Vertriebsassistenz'
             }
             
             if (answer) {
