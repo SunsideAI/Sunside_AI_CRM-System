@@ -317,6 +317,19 @@ exports.handler = async (event) => {
         const firstName = nameParts[0] || inviteeName
         const lastName = nameParts.slice(1).join(' ') || firstName
 
+        // Telefonnummer in E.164 Format konvertieren
+        let formattedPhone = inviteePhone || '+49'
+        if (formattedPhone && !formattedPhone.startsWith('+')) {
+          // Deutsche Nummer: 0 am Anfang durch +49 ersetzen
+          if (formattedPhone.startsWith('0')) {
+            formattedPhone = '+49' + formattedPhone.substring(1)
+          } else {
+            formattedPhone = '+49' + formattedPhone
+          }
+        }
+        // Leerzeichen und Bindestriche entfernen
+        formattedPhone = formattedPhone.replace(/[\s\-]/g, '')
+
         try {
           // Erst: Event Type Details abrufen um die Custom Questions zu bekommen
           const eventTypeResponse = await fetch(eventTypeUri, {
@@ -369,7 +382,7 @@ exports.handler = async (event) => {
             // Location für outbound_call - Telefonnummer des Leads
             location: {
               kind: 'outbound_call',
-              location: inviteePhone || '+49'
+              location: formattedPhone
             }
           }
 
