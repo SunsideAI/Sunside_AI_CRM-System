@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { LogIn, AlertCircle, Eye, EyeOff } from 'lucide-react'
 
@@ -82,9 +82,17 @@ function Login() {
 
             {/* Password Input */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                Passwort
-              </label>
+              <div className="flex items-center justify-between mb-2">
+                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                  Passwort
+                </label>
+                <Link 
+                  to="/passwort-vergessen" 
+                  className="text-sm text-sunside-primary hover:text-purple-700"
+                >
+                  Passwort vergessen?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   id="password"
@@ -121,13 +129,6 @@ function Login() {
               )}
             </button>
           </form>
-
-          {/* Help Text */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <p className="text-xs text-gray-500 text-center">
-              Probleme beim Login? Wende dich an deinen Admin.
-            </p>
-          </div>
         </div>
       </div>
     </div>
