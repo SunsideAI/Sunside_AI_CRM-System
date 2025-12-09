@@ -117,6 +117,77 @@ exports.handler = async (event) => {
         }
       }
 
+      // Calendly Test - Event Types abrufen
+      if (action === 'calendly-test') {
+        if (!process.env.CALENDLY_API_KEY) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'CALENDLY_API_KEY nicht konfiguriert' })
+          }
+        }
+
+        try {
+          // Erst User-Info abrufen
+          const userResponse = await fetch('https://api.calendly.com/users/me', {
+            headers: {
+              'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          const userData = await userResponse.json()
+          
+          if (!userResponse.ok) {
+            throw new Error(userData.message || 'Calendly User-Fehler')
+          }
+
+          const userUri = userData.resource.uri
+          const orgUri = userData.resource.current_organization
+
+          // Event Types abrufen
+          const eventTypesResponse = await fetch(
+            `https://api.calendly.com/event_types?organization=${encodeURIComponent(orgUri)}&active=true`,
+            {
+              headers: {
+                'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          )
+          const eventTypesData = await eventTypesResponse.json()
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              success: true,
+              user: {
+                name: userData.resource.name,
+                email: userData.resource.email,
+                uri: userUri
+              },
+              organization: orgUri,
+              eventTypes: eventTypesData.collection?.map(et => ({
+                uri: et.uri,
+                name: et.name,
+                duration: et.duration,
+                slug: et.slug,
+                scheduling_url: et.scheduling_url
+              })) || []
+            })
+          }
+        } catch (calendlyError) {
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: 'Calendly Fehler', 
+              details: calendlyError.message 
+            })
+          }
+        }
+      }
+
       if (action === 'slots') {
         // Freie Slots für ein Datum abrufen
         if (!calendarId || !date) {
@@ -219,6 +290,86 @@ exports.handler = async (event) => {
     // POST: Termin erstellen
     if (event.httpMethod === 'POST') {
       const body = JSON.parse(event.body)
+      const { action: postAction } = body
+
+      // Calendly Termin erstellen
+      if (postAction === 'calendly-book') {
+        if (!process.env.CALENDLY_API_KEY) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'CALENDLY_API_KEY nicht konfiguriert' })
+          }
+        }
+
+        const { eventTypeUri, startTime, inviteeName, inviteeEmail, leadInfo } = body
+
+        if (!eventTypeUri || !startTime || !inviteeName || !inviteeEmail) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'eventTypeUri, startTime, inviteeName, inviteeEmail erforderlich' })
+          }
+        }
+
+        try {
+          // Calendly Scheduling API - Invitee erstellen
+          const response = await fetch('https://api.calendly.com/scheduled_events', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              event_type: eventTypeUri,
+              start_time: startTime,
+              invitee: {
+                name: inviteeName,
+                email: inviteeEmail
+              },
+              // Zusätzliche Infos als Notiz
+              notes: leadInfo ? `Lead: ${leadInfo.firma || ''}\nStadt: ${leadInfo.stadt || ''}\nTelefon: ${leadInfo.telefon || ''}\n\nGebucht via Sunside CRM` : 'Gebucht via Sunside CRM'
+            })
+          })
+
+          const data = await response.json()
+
+          if (!response.ok) {
+            console.error('Calendly Error:', data)
+            return {
+              statusCode: response.status,
+              headers,
+              body: JSON.stringify({ 
+                error: 'Calendly Buchung fehlgeschlagen',
+                details: data.message || data
+              })
+            }
+          }
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              success: true,
+              message: 'Calendly Termin erstellt!',
+              event: data
+            })
+          }
+
+        } catch (calendlyError) {
+          console.error('Calendly Booking Error:', calendlyError)
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: 'Calendly Fehler',
+              details: calendlyError.message
+            })
+          }
+        }
+      }
+
+      // Google Calendar Termin erstellen (bestehender Code)
       const { calendarId, title, description, startTime, endTime, attendees, leadId } = body
 
       if (!calendarId || !title || !startTime || !endTime) {
