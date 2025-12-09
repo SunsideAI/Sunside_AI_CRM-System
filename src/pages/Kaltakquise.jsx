@@ -49,12 +49,14 @@ function Kaltakquise() {
   
   // State
   const [leads, setLeads] = useState([])
+  const [users, setUsers] = useState([]) // Liste aller Vertriebler für Filter
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [searchInput, setSearchInput] = useState('')
   const [filterContacted, setFilterContacted] = useState('all') // 'all', 'true', 'false'
   const [filterResult, setFilterResult] = useState('all')
+  const [filterVertriebler, setFilterVertriebler] = useState('all') // NEU: Vertriebler-Filter
   const [viewMode, setViewMode] = useState('own') // 'all' oder 'own' (für Admins)
   const [offset, setOffset] = useState(null)
   const [hasMore, setHasMore] = useState(false)
@@ -85,6 +87,7 @@ function Kaltakquise() {
       if (search) params.append('search', search)
       if (filterContacted !== 'all') params.append('contacted', filterContacted)
       if (filterResult !== 'all') params.append('result', filterResult)
+      if (filterVertriebler !== 'all') params.append('vertriebler', filterVertriebler)
       if (newOffset) params.append('offset', newOffset)
 
       const response = await fetch(`/.netlify/functions/leads?${params.toString()}`)
@@ -97,6 +100,11 @@ function Kaltakquise() {
       setLeads(data.leads)
       setHasMore(data.hasMore)
       
+      // User-Liste für Filter speichern (nur beim ersten Laden)
+      if (data.users && data.users.length > 0) {
+        setUsers(data.users)
+      }
+      
       if (addToHistory && offset) {
         setPageHistory(prev => [...prev, offset])
       }
@@ -107,12 +115,12 @@ function Kaltakquise() {
     } finally {
       setLoading(false)
     }
-  }, [user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, offset])
+  }, [user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, filterVertriebler, offset])
 
   // Initial laden
   useEffect(() => {
     loadLeads()
-  }, [viewMode, search, filterContacted, filterResult])
+  }, [viewMode, search, filterContacted, filterResult, filterVertriebler])
 
   // Suche mit Debounce
   useEffect(() => {
@@ -237,7 +245,7 @@ function Kaltakquise() {
         {isAdmin() && (
           <div className="flex items-center bg-gray-100 rounded-lg p-1">
             <button
-              onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); }}
+              onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setFilterVertriebler('all'); }}
               className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                 viewMode === 'own' 
                   ? 'bg-white text-sunside-primary shadow-sm' 
@@ -299,6 +307,20 @@ function Kaltakquise() {
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
+
+          {/* Filter: Vertriebler (nur für Admins bei "Alle Leads") */}
+          {isAdmin() && viewMode === 'all' && (
+            <select
+              value={filterVertriebler}
+              onChange={(e) => { setFilterVertriebler(e.target.value); setOffset(null); setPageHistory([]); }}
+              className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white"
+            >
+              <option value="all">Alle Vertriebler</option>
+              {users.map(u => (
+                <option key={u.id} value={u.name}>{u.name}</option>
+              ))}
+            </select>
+          )}
 
           {/* Refresh */}
           <button
