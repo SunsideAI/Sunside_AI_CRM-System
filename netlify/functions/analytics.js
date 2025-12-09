@@ -165,7 +165,18 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
       const timelineDateStr = kundeSeit || hinzugefuegt
       if (timelineDateStr) {
         const date = new Date(timelineDateStr)
+        // Tages-Key für kurze Zeiträume
+        const dayKey = date.toISOString().split('T')[0]
+        // Monats-Key für lange Zeiträume
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+        
+        // Beide Keys speichern
+        if (!zeitverlaufMap[dayKey]) {
+          zeitverlaufMap[dayKey] = { count: 0, umsatz: 0 }
+        }
+        zeitverlaufMap[dayKey].count++
+        zeitverlaufMap[dayKey].umsatz += dealWert
+        
         if (!zeitverlaufMap[monthKey]) {
           zeitverlaufMap[monthKey] = { count: 0, umsatz: 0 }
         }
@@ -208,8 +219,8 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
   const totalEntschieden = gewonnen + verloren
   const closingQuote = totalEntschieden > 0 ? (gewonnen / totalEntschieden) * 100 : 0
 
-  // Zeitverlauf formatieren
-  const zeitverlauf = formatZeitverlauf(zeitverlaufMap)
+  // Zeitverlauf formatieren - mit Zeitraum-Parametern
+  const zeitverlauf = formatZeitverlauf(zeitverlaufMap, startDate, endDate)
 
   // Per User formatieren und sortieren
   const perUser = Object.entries(perUserMap).map(([email, stats]) => ({
@@ -342,7 +353,17 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     // Zeitverlauf
     if (datum) {
       const date = new Date(datum)
+      // Tages-Key für kurze Zeiträume
+      const dayKey = date.toISOString().split('T')[0]
+      // Monats-Key für lange Zeiträume
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      
+      // Beide Keys speichern
+      if (!zeitverlaufMap[dayKey]) {
+        zeitverlaufMap[dayKey] = { count: 0 }
+      }
+      zeitverlaufMap[dayKey].count++
+      
       if (!zeitverlaufMap[monthKey]) {
         zeitverlaufMap[monthKey] = { count: 0 }
       }
@@ -385,7 +406,8 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   const erstgespraechQuote = erreicht > 0 ? (erstgespraech / erreicht) * 100 : 0
   const unterlagenQuote = erreicht > 0 ? (unterlagen / erreicht) * 100 : 0
 
-  const zeitverlauf = formatZeitverlauf(zeitverlaufMap)
+  // Zeitverlauf formatieren - mit Zeitraum-Parametern
+  const zeitverlauf = formatZeitverlauf(zeitverlaufMap, startDate, endDate)
 
   // Per User: Namen aus User-Tabelle holen (für Admin)
   let perUser = []
@@ -454,24 +476,108 @@ async function getUserNames(recordIds) {
 // HELPER FUNCTIONS
 // ==========================================
 
-function formatZeitverlauf(map) {
+function formatZeitverlauf(map, startDate, endDate) {
   const result = []
   const now = new Date()
   
-  for (let i = 5; i >= 0; i--) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-    const label = date.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' })
-    
+  // Standard: Letzte 6 Monate wenn kein Zeitraum angegeben
+  const start = startDate || new Date(now.getFullYear(), now.getMonth() - 5, 1)
+  const end = endDate || now
+  
+  // Zeitraum in Tagen berechnen
+  const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24))
+  
+  // Granularität basierend auf Zeitraum wählen
+  if (diffDays <= 1) {
+    // Einzelner Tag: Keine Timeline nötig, aber für Konsistenz einen Eintrag
+    const dayKey = start.toISOString().split('T')[0]
+    const label = start.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' })
     result.push({
-      month: monthKey,
+      period: dayKey,
       label,
-      count: map[monthKey]?.count || 0,
-      umsatz: map[monthKey]?.umsatz || 0
+      count: map[dayKey]?.count || 0,
+      umsatz: map[dayKey]?.umsatz || 0
     })
+  } else if (diffDays <= 14) {
+    // Bis 14 Tage: Tages-Ansicht
+    const currentDate = new Date(start)
+    while (currentDate <= end) {
+      const dayKey = currentDate.toISOString().split('T')[0]
+      const label = currentDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric' })
+      
+      result.push({
+        period: dayKey,
+        label,
+        count: map[dayKey]?.count || 0,
+        umsatz: map[dayKey]?.umsatz || 0
+      })
+      
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+  } else if (diffDays <= 60) {
+    // Bis 60 Tage: Wochen-Ansicht
+    const currentDate = new Date(start)
+    // Auf Montag der Woche setzen
+    const dayOfWeek = currentDate.getDay()
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+    currentDate.setDate(currentDate.getDate() + diff)
+    
+    while (currentDate <= end) {
+      const weekEnd = new Date(currentDate)
+      weekEnd.setDate(weekEnd.getDate() + 6)
+      
+      const weekKey = `${currentDate.getFullYear()}-W${getWeekNumber(currentDate)}`
+      const label = `KW ${getWeekNumber(currentDate)}`
+      
+      // Alle Tage dieser Woche summieren
+      let weekCount = 0
+      let weekUmsatz = 0
+      const tempDate = new Date(currentDate)
+      for (let i = 0; i < 7; i++) {
+        const dayKey = tempDate.toISOString().split('T')[0]
+        weekCount += map[dayKey]?.count || 0
+        weekUmsatz += map[dayKey]?.umsatz || 0
+        tempDate.setDate(tempDate.getDate() + 1)
+      }
+      
+      result.push({
+        period: weekKey,
+        label,
+        count: weekCount,
+        umsatz: weekUmsatz
+      })
+      
+      currentDate.setDate(currentDate.getDate() + 7)
+    }
+  } else {
+    // Über 60 Tage: Monats-Ansicht
+    const currentDate = new Date(start.getFullYear(), start.getMonth(), 1)
+    
+    while (currentDate <= end) {
+      const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
+      const label = currentDate.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' })
+      
+      result.push({
+        period: monthKey,
+        label,
+        count: map[monthKey]?.count || 0,
+        umsatz: map[monthKey]?.umsatz || 0
+      })
+      
+      currentDate.setMonth(currentDate.getMonth() + 1)
+    }
   }
   
   return result
+}
+
+// Kalenderwoche berechnen (ISO 8601)
+function getWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
+  const dayNum = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7)
 }
 
 function extractNameFromEmail(email) {
