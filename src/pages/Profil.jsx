@@ -14,6 +14,17 @@ import {
   Loader2
 } from 'lucide-react'
 
+// Markdown-Links aus E-Mail entfernen: [email](mailto:email) → email
+function cleanEmail(email) {
+  if (!email) return ''
+  // Match: [text](mailto:email) oder [text](url)
+  const markdownMatch = email.match(/\[([^\]]+)\]\([^)]+\)/)
+  if (markdownMatch) {
+    return markdownMatch[1] // Nur den Text zwischen [] zurückgeben
+  }
+  return email
+}
+
 function Profil() {
   const { user } = useAuth()
   const [showPasswordForm, setShowPasswordForm] = useState(false)
@@ -127,16 +138,16 @@ function Profil() {
             <Mail className="w-5 h-5 mr-3 text-gray-400" />
             <div>
               <p className="text-xs text-gray-400">E-Mail</p>
-              <p className="text-gray-900">{user?.email || user?.email_geschaeftlich}</p>
+              <p className="text-gray-900">{cleanEmail(user?.email) || cleanEmail(user?.email_geschaeftlich)}</p>
             </div>
           </div>
 
-          {user?.email_geschaeftlich && user?.email !== user?.email_geschaeftlich && (
+          {user?.email_geschaeftlich && cleanEmail(user?.email) !== cleanEmail(user?.email_geschaeftlich) && (
             <div className="flex items-center text-gray-600">
               <Mail className="w-5 h-5 mr-3 text-gray-400" />
               <div>
                 <p className="text-xs text-gray-400">Geschäftliche E-Mail</p>
-                <p className="text-gray-900">{user?.email_geschaeftlich}</p>
+                <p className="text-gray-900">{cleanEmail(user?.email_geschaeftlich)}</p>
               </div>
             </div>
           )}
