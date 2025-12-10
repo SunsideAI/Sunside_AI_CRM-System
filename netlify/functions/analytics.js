@@ -405,6 +405,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   const erreichQuote = einwahlen > 0 ? (erreicht / einwahlen) * 100 : 0
   const erstgespraechQuote = erreicht > 0 ? (erstgespraech / erreicht) * 100 : 0
   const unterlagenQuote = erreicht > 0 ? (unterlagen / erreicht) * 100 : 0
+  const keinInteresseQuote = erreicht > 0 ? (keinInteresse / erreicht) * 100 : 0
 
   // Zeitverlauf formatieren - mit Zeitraum-Parametern
   const zeitverlauf = formatZeitverlauf(zeitverlaufMap, startDate, endDate)
@@ -429,7 +430,8 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       nichtErreicht,
       erreichQuote,
       erstgespraechQuote,
-      unterlagenQuote
+      unterlagenQuote,
+      keinInteresseQuote
     },
     zeitverlauf,
     perUser
