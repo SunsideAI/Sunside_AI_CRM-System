@@ -15,7 +15,7 @@ import {
   FileSpreadsheet
 } from 'lucide-react'
 
-function EmailComposer({ lead, user, onClose, onSent }) {
+function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
   const [templates, setTemplates] = useState([])
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [loading, setLoading] = useState(true)
@@ -223,8 +223,8 @@ function EmailComposer({ lead, user, onClose, onSent }) {
   // Erfolgs-Ansicht
   if (success) {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
-        <div className="bg-white rounded-2xl p-8 max-w-md w-full text-center">
+      <div className={inline ? "text-center py-8" : "fixed inset-0 flex items-center justify-center z-[10000] p-4"}>
+        <div className={inline ? "" : "bg-white rounded-2xl p-8 max-w-md w-full text-center shadow-2xl"}>
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <Check className="w-8 h-8 text-green-600" />
           </div>
@@ -239,9 +239,138 @@ function EmailComposer({ lead, user, onClose, onSent }) {
     )
   }
 
+  // Inline Modus - nur Content ohne Modal-Wrapper
+  if (inline) {
+    return (
+      <div className="space-y-4">
+        {/* Zurück Button */}
+        <button
+          onClick={onClose}
+          className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+        >
+          <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Zurück
+        </button>
+
+        {/* Error */}
+        {error && (
+          <div className="flex items-center p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+            {error}
+          </div>
+        )}
+
+        {/* Template Auswahl */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Vorlage auswählen
+          </label>
+          <select
+            value={selectedTemplate}
+            onChange={(e) => handleTemplateSelect(e.target.value)}
+            disabled={loading}
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white"
+          >
+            <option value="">-- Keine Vorlage (Freitext) --</option>
+            {templates.map(template => (
+              <option key={template.id} value={template.id}>
+                {template.name}
+                {template.attachments?.length > 0 && ` (${template.attachments.length} Anhänge)`}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Empfänger */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">An</label>
+          <input
+            type="email"
+            value={empfaenger}
+            onChange={(e) => setEmpfaenger(e.target.value)}
+            placeholder="empfaenger@email.de"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+          />
+        </div>
+
+        {/* Betreff */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Betreff</label>
+          <input
+            type="text"
+            value={betreff}
+            onChange={(e) => setBetreff(e.target.value)}
+            placeholder="Betreff der E-Mail"
+            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+          />
+        </div>
+
+        {/* Inhalt */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Nachricht</label>
+          <textarea
+            value={inhalt}
+            onChange={(e) => setInhalt(e.target.value)}
+            placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
+            rows={8}
+            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none"
+          />
+        </div>
+
+        {/* Attachments */}
+        {attachments.length > 0 && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Anhänge ({selectedAttachments.length} ausgewählt)
+            </label>
+            <div className="space-y-2">
+              {attachments.map(att => {
+                const FileIcon = getFileIcon(att.type)
+                const isSelected = selectedAttachments.includes(att.id)
+                return (
+                  <label key={att.id} className={`flex items-center p-3 border rounded-lg cursor-pointer ${isSelected ? 'border-sunside-primary bg-purple-50' : 'border-gray-200'}`}>
+                    <input type="checkbox" checked={isSelected} onChange={() => toggleAttachment(att.id)} className="w-4 h-4 text-sunside-primary" />
+                    <FileIcon className={`w-5 h-5 ml-3 ${isSelected ? 'text-sunside-primary' : 'text-gray-400'}`} />
+                    <span className="ml-3 text-sm truncate">{att.filename}</span>
+                  </label>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Absender Info */}
+        <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
+          <span className="font-medium">Absender:</span> {user?.vor_nachname} &lt;{user?.email_geschaeftlich || user?.email}&gt;
+        </div>
+
+        {/* Senden Button */}
+        <button
+          onClick={handleSend}
+          disabled={sending || !empfaenger || !betreff || !inhalt}
+          className="w-full flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+        >
+          {sending ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              Wird gesendet...
+            </>
+          ) : (
+            <>
+              <Send className="w-4 h-4 mr-2" />
+              {selectedAttachments.length > 0 ? `Senden (${selectedAttachments.length} Anhänge)` : 'E-Mail senden'}
+            </>
+          )}
+        </button>
+      </div>
+    )
+  }
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10000] p-4">
-      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 flex items-center justify-center z-[10000] p-4">
+      <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div className="flex items-center">
