@@ -1,0 +1,215 @@
+// Email Templates CRUD API
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
+const TABLE_NAME = 'E-Mail_Templates'
+
+const headers = {
+  'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+  'Content-Type': 'application/json'
+}
+
+exports.handler = async (event) => {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS'
+  }
+
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers: corsHeaders }
+  }
+
+  try {
+    // GET: Alle aktiven Templates laden
+    if (event.httpMethod === 'GET') {
+      const params = event.queryStringParameters || {}
+      const includeInactive = params.all === 'true'
+      
+      let url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}`
+      
+      // Nur aktive Templates laden (außer Admin will alle sehen)
+      if (!includeInactive) {
+        url += `?filterByFormula={Aktiv}=TRUE()`
+      }
+      
+      const response = await fetch(url, { headers })
+      const data = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error.message)
+      }
+
+      const templates = (data.records || []).map(record => ({
+        id: record.id,
+        name: record.fields.Name || '',
+        betreff: record.fields.Betreff || '',
+        inhalt: record.fields.Inhalt || '',
+        aktiv: record.fields.Aktiv !== false, // Default true wenn Feld nicht existiert
+        attachments: (record.fields.Attachments || []).map(att => ({
+          id: att.id,
+          filename: att.filename,
+          url: att.url,
+          type: att.type,
+          size: att.size
+        }))
+      }))
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ templates })
+      }
+    }
+
+    // POST: Neues Template erstellen (Admin only)
+    if (event.httpMethod === 'POST') {
+      const body = JSON.parse(event.body)
+      const { name, betreff, inhalt, aktiv = true } = body
+
+      if (!name || !betreff || !inhalt) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Name, Betreff und Inhalt sind erforderlich' })
+        }
+      }
+
+      const response = await fetch(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            records: [{
+              fields: {
+                Name: name,
+                Betreff: betreff,
+                Inhalt: inhalt,
+                Aktiv: aktiv
+              }
+            }]
+          })
+        }
+      )
+
+      const data = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error.message)
+      }
+
+      const created = data.records[0]
+      return {
+        statusCode: 201,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          success: true,
+          template: {
+            id: created.id,
+            name: created.fields.Name,
+            betreff: created.fields.Betreff,
+            inhalt: created.fields.Inhalt,
+            aktiv: created.fields.Aktiv
+          }
+        })
+      }
+    }
+
+    // PATCH: Template aktualisieren (Admin only)
+    if (event.httpMethod === 'PATCH') {
+      const body = JSON.parse(event.body)
+      const { id, name, betreff, inhalt, aktiv } = body
+
+      if (!id) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Template ID erforderlich' })
+        }
+      }
+
+      const fields = {}
+      if (name !== undefined) fields.Name = name
+      if (betreff !== undefined) fields.Betreff = betreff
+      if (inhalt !== undefined) fields.Inhalt = inhalt
+      if (aktiv !== undefined) fields.Aktiv = aktiv
+
+      const response = await fetch(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}/${id}`,
+        {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({ fields })
+        }
+      )
+
+      const data = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error.message)
+      }
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          success: true,
+          template: {
+            id: data.id,
+            name: data.fields.Name,
+            betreff: data.fields.Betreff,
+            inhalt: data.fields.Inhalt,
+            aktiv: data.fields.Aktiv
+          }
+        })
+      }
+    }
+
+    // DELETE: Template löschen (Admin only)
+    if (event.httpMethod === 'DELETE') {
+      const params = event.queryStringParameters || {}
+      const { id } = params
+
+      if (!id) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Template ID erforderlich' })
+        }
+      }
+
+      const response = await fetch(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}/${id}`,
+        {
+          method: 'DELETE',
+          headers
+        }
+      )
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error?.message || 'Löschen fehlgeschlagen')
+      }
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ success: true, deleted: id })
+      }
+    }
+
+    return {
+      statusCode: 405,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    }
+
+  } catch (error) {
+    console.error('Email Templates Error:', error)
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: error.message })
+    }
+  }
+}
