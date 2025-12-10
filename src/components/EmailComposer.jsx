@@ -257,21 +257,10 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
     )
   }
 
-  // Inline Modus - nur Content ohne Modal-Wrapper
+  // Inline Modus - Layout wie TerminPicker
   if (inline) {
     return (
       <div className="space-y-4">
-        {/* Zurück Button */}
-        <button
-          onClick={onClose}
-          className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
-        >
-          <svg className="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Zurück
-        </button>
-
         {/* Error */}
         {error && (
           <div className="flex items-center p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
@@ -332,9 +321,43 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
             value={inhalt}
             onChange={(e) => setInhalt(e.target.value)}
             placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
-            rows={8}
+            rows={6}
             className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none"
           />
+        </div>
+
+        {/* Signatur Vorschau */}
+        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <p className="text-xs text-gray-400 mb-2">Signatur (wird automatisch angehängt)</p>
+          <div className="text-sm text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
+            <p className="mb-1">Mit freundlichen Grüßen</p>
+            <p className="font-semibold">{user?.vor_nachname || 'Sunside AI Team'}</p>
+            <p className="text-gray-600 mb-3">KI-Entwicklung für Immobilienmakler</p>
+            
+            <img 
+              src="https://static.wixstatic.com/media/cbbe7a_e61e0a9ed096461585df80d5a3d0ed9a~mv2.png" 
+              alt="Sunside AI" 
+              className="h-8 mb-2"
+            />
+            
+            <div className="flex gap-2 mb-3">
+              <a href="https://www.instagram.com/sunside.ai/" target="_blank" rel="noopener noreferrer">
+                <img src="https://cdn-icons-png.flaticon.com/24/174/174855.png" alt="Instagram" className="w-6 h-6" />
+              </a>
+              <a href="https://www.sunsideai.de/" target="_blank" rel="noopener noreferrer">
+                <img src="https://cdn-icons-png.flaticon.com/24/1006/1006771.png" alt="Website" className="w-6 h-6" />
+              </a>
+            </div>
+            
+            <p className="font-semibold text-xs">Sunside AI GbR</p>
+            <p className="text-xs text-gray-600">
+              Schiefer Berg 3 | 38124 Braunschweig | Deutschland<br />
+              E-Mail: contact@sunsideai.de | Tel: +49 176 56039050<br />
+              <a href="https://www.sunsideai.de" className="text-purple-600">www.sunsideai.de</a> | 
+              <a href="https://sunsideai.de/jetzt-termin-buchen" className="text-purple-600 ml-1">Jetzt Termin buchen</a>
+            </p>
+            <p className="text-xs text-gray-500 mt-1">Geschäftsführung: Paul Probodziak und Niklas Schwerin</p>
+          </div>
         </div>
 
         {/* Attachments */}
@@ -359,29 +382,32 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
           </div>
         )}
 
-        {/* Absender Info */}
-        <div className="bg-gray-50 rounded-lg p-3 text-sm text-gray-600">
-          <span className="font-medium">Absender:</span> {user?.vor_nachname} &lt;{user?.email_geschaeftlich || user?.email}&gt;
+        {/* Actions - wie TerminPicker */}
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            Abbrechen
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={sending || !empfaenger || !betreff || !inhalt}
+            className="px-6 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+          >
+            {sending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Wird gesendet...
+              </>
+            ) : (
+              <>
+                <Send className="w-4 h-4 mr-2" />
+                {selectedAttachments.length > 0 ? `E-Mail senden (${selectedAttachments.length})` : 'E-Mail senden'}
+              </>
+            )}
+          </button>
         </div>
-
-        {/* Senden Button */}
-        <button
-          onClick={handleSend}
-          disabled={sending || !empfaenger || !betreff || !inhalt}
-          className="w-full flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-        >
-          {sending ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              Wird gesendet...
-            </>
-          ) : (
-            <>
-              <Send className="w-4 h-4 mr-2" />
-              {selectedAttachments.length > 0 ? `Senden (${selectedAttachments.length} Anhänge)` : 'E-Mail senden'}
-            </>
-          )}
-        </button>
       </div>
     )
   }
