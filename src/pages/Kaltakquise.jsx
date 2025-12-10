@@ -558,6 +558,20 @@ function Kaltakquise() {
                   }}
                   onCancel={() => setShowTerminPicker(false)}
                 />
+              ) : showEmailComposer ? (
+                // Email Composer anzeigen
+                <EmailComposer
+                  lead={selectedLead}
+                  user={user}
+                  inline={true}
+                  onClose={() => setShowEmailComposer(false)}
+                  onSent={(info) => {
+                    console.log('E-Mail gesendet:', info)
+                    setShowEmailComposer(false)
+                    setSelectedLead(null)
+                    loadLeads()
+                  }}
+                />
               ) : (
                 <>
               {/* Kontaktdaten */}
@@ -718,8 +732,8 @@ function Kaltakquise() {
               )}
             </div>
 
-            {/* Modal Footer - nur zeigen wenn kein TerminPicker */}
-            {!showTerminPicker && (
+            {/* Modal Footer - nur zeigen wenn weder TerminPicker noch EmailComposer */}
+            {!showTerminPicker && !showEmailComposer && (
             <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
                 {editMode ? (
                   <>
@@ -763,20 +777,6 @@ function Kaltakquise() {
         document.body
       )}
 
-      {/* Email Composer Modal */}
-      {showEmailComposer && selectedLead && (
-        <EmailComposer
-          lead={selectedLead}
-          user={user}
-          onClose={() => setShowEmailComposer(false)}
-          onSent={(info) => {
-            console.log('E-Mail gesendet:', info)
-            setShowEmailComposer(false)
-            // Optional: Lead neu laden um Kommentar-Historie zu aktualisieren
-            loadLeads()
-          }}
-        />
-      )}
     </div>
   )
 }
