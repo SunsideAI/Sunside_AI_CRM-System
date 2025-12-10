@@ -138,16 +138,16 @@ function Profil() {
             <Mail className="w-5 h-5 mr-3 text-gray-400" />
             <div>
               <p className="text-xs text-gray-400">E-Mail</p>
-              <p className="text-gray-900">{cleanEmail(user?.email) || cleanEmail(user?.email_geschaeftlich)}</p>
+              <p className="text-gray-900">{cleanEmail(user?.email_geschaeftlich) || cleanEmail(user?.email)}</p>
             </div>
           </div>
 
-          {user?.email_geschaeftlich && cleanEmail(user?.email) !== cleanEmail(user?.email_geschaeftlich) && (
+          {user?.email && cleanEmail(user?.email) !== cleanEmail(user?.email_geschaeftlich) && (
             <div className="flex items-center text-gray-600">
               <Mail className="w-5 h-5 mr-3 text-gray-400" />
               <div>
-                <p className="text-xs text-gray-400">Geschäftliche E-Mail</p>
-                <p className="text-gray-900">{cleanEmail(user?.email_geschaeftlich)}</p>
+                <p className="text-xs text-gray-400">Private E-Mail</p>
+                <p className="text-gray-900">{cleanEmail(user?.email)}</p>
               </div>
             </div>
           )}
