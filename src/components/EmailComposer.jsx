@@ -98,35 +98,34 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
   const replacePlaceholders = (text) => {
     if (!text) return ''
     
-    // Debug: Lead-Daten ausgeben
+    // Debug: Lead- und User-Daten ausgeben
     console.log('Lead-Daten für Platzhalter:', lead)
     console.log('User-Daten für Platzhalter:', user)
     
     const replacements = {
-      // Firma/Unternehmen
-      '{{firma}}': lead?.unternehmensname || lead?.firma || lead?.Unternehmensname || lead?.Firma || '',
-      '{{unternehmen}}': lead?.unternehmensname || lead?.firma || lead?.Unternehmensname || lead?.Firma || '',
+      // Firma/Unternehmen (Lead)
+      '{{firma}}': lead?.unternehmensname || '',
+      '{{unternehmen}}': lead?.unternehmensname || '',
       
-      // Ansprechpartner
-      '{{ansprechpartner}}': getAnsprechpartner(),
-      '{{name}}': getAnsprechpartner(),
+      // Ort (Lead)
+      '{{stadt}}': lead?.stadt || '',
+      '{{ort}}': lead?.stadt || '',
       
-      // Einzelne Namen
-      '{{vorname}}': lead?.vorname || lead?.Vorname || '',
-      '{{nachname}}': lead?.nachname || lead?.Nachname || '',
+      // Lead Kontakt
+      '{{lead_email}}': cleanEmail(lead?.email) || '',
+      '{{lead_telefon}}': lead?.telefon || '',
       
-      // Ort
-      '{{stadt}}': lead?.stadt || lead?.Stadt || lead?.ort || lead?.Ort || '',
-      '{{ort}}': lead?.stadt || lead?.Stadt || lead?.ort || lead?.Ort || '',
-      '{{bundesland}}': lead?.bundesland || lead?.Bundesland || '',
+      // Setter/Absender (User)
+      '{{setter_name}}': user?.vor_nachname || '',
+      '{{setter_vorname}}': (user?.vor_nachname || '').split(' ')[0] || '',
+      '{{setter_nachname}}': (user?.vor_nachname || '').split(' ').slice(1).join(' ') || '',
+      '{{setter_email}}': user?.email_geschaeftlich || user?.email || '',
+      '{{setter_telefon}}': user?.telefon || '',
       
-      // Setter/Absender
-      '{{setter_name}}': user?.vor_nachname || user?.Vor_Nachname || user?.name || '',
-      '{{setter_vorname}}': (user?.vor_nachname || user?.Vor_Nachname || '').split(' ')[0] || '',
-      '{{setter_email}}': user?.email_geschaeftlich || user?.E_Mail_Geschäftlich || user?.email || '',
-      '{{setter_telefon}}': user?.telefon || user?.Telefon || '',
-      '{{mein_name}}': user?.vor_nachname || user?.Vor_Nachname || user?.name || '',
-      '{{meine_email}}': user?.email_geschaeftlich || user?.E_Mail_Geschäftlich || user?.email || ''
+      // Aliase für einfachere Nutzung
+      '{{mein_name}}': user?.vor_nachname || '',
+      '{{meine_email}}': user?.email_geschaeftlich || user?.email || '',
+      '{{mein_telefon}}': user?.telefon || ''
     }
 
     let result = text
@@ -135,16 +134,6 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
     }
     
     return result
-  }
-
-  // Ansprechpartner aus Lead extrahieren
-  const getAnsprechpartner = () => {
-    if (lead?.vorname && lead?.nachname) {
-      return `${lead.vorname} ${lead.nachname}`
-    }
-    if (lead?.ansprechpartner) return lead.ansprechpartner
-    if (lead?.nachname) return lead.nachname
-    return ''
   }
 
   // Markdown-Link aus E-Mail entfernen
@@ -534,7 +523,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none font-mono text-sm"
             />
             <p className="text-xs text-gray-400 mt-1">
-              Platzhalter: {'{{firma}}'}, {'{{ansprechpartner}}'}, {'{{stadt}}'}, {'{{setter_name}}'}, {'{{setter_email}}'}
+              Platzhalter: {'{{firma}}'}, {'{{stadt}}'}, {'{{setter_name}}'}, {'{{setter_vorname}}'}, {'{{setter_email}}'}, {'{{setter_telefon}}'}
             </p>
           </div>
 
