@@ -598,7 +598,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} />
+                  <YAxis dataKey="name" type="category" width={140} />
                   <Tooltip />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                     <Cell fill="#7C3AED" />
