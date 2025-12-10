@@ -128,7 +128,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           calendarId: calendarId,
-          title: `Erstgespräch: ${unternehmensname}`,
+          title: `Beratungsgespräch: ${unternehmensname}`,
           description: `Unternehmen: ${unternehmensname}\nTätigkeit: ${taetigkeit}\nStadt: ${lead.stadt || '-'}\nTelefon: ${contactPhone}\nE-Mail: ${contactEmail}\n\nProblemstellung & Ziele:\n${problemstellung}\n\nGebucht über Sunside CRM`,
           startTime: selectedSlot.start,
           endTime: selectedSlot.end,
@@ -183,7 +183,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
         body: JSON.stringify({
           leadId: lead.id,
           updates: {
-            ergebnis: 'Erstgespräch',
+            ergebnis: 'Beratungsgespräch',
             kontaktiert: true,
             kommentar: `Termin gebucht: ${formatDate(selectedDate)} um ${selectedSlot.startTime} Uhr mit ${selectedCloser.vor_nachname}`
           }
@@ -270,7 +270,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900">Erstgespräch buchen</h3>
+        <h3 className="text-lg font-semibold text-gray-900">Beratungsgespräch buchen</h3>
         <p className="text-sm text-gray-500">Für: {lead?.unternehmensname}</p>
       </div>
 
