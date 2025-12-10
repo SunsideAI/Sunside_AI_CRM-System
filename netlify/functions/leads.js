@@ -241,8 +241,9 @@ export async function handler(event) {
       const fieldsToUpdate = {}
 
       if (updates.kontaktiert !== undefined) {
-        // Feld ist Text: "X" für kontaktiert, leer für nicht kontaktiert
-        fieldsToUpdate['Bereits_kontaktiert'] = updates.kontaktiert ? 'X' : ''
+        // Für "kontaktiert": 'X' setzen
+        // Für "nicht kontaktiert": null (löscht das Feld in Airtable)
+        fieldsToUpdate['Bereits_kontaktiert'] = updates.kontaktiert ? 'X' : null
       }
       if (updates.ergebnis !== undefined) {
         fieldsToUpdate['Ergebnis'] = updates.ergebnis
