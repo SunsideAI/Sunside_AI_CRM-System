@@ -123,10 +123,10 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
     const statusRaw = fields.Status || ''
     const status = statusRaw.toLowerCase().trim()
     
-    // Umsatz-Felder
-    const setup = parseFloat(fields.Setup) || 0
-    const retainer = parseFloat(fields.Retainer) || 0
-    const laufzeit = parseInt(fields.Laufzeit) || 1
+    // Umsatz-Felder - mit korrektem Währungs-Parsing
+    const setup = parseCurrency(fields.Setup)
+    const retainer = parseCurrency(fields.Retainer)
+    const laufzeit = parseInt(fields.Laufzeit) || 6  // Standard: 6 Monate
     
     // Datum-Felder
     // Hinzugefügt = Erstellungsdatum (für Filter und nicht-gewonnene)
@@ -578,6 +578,44 @@ function getWeekNumber(date) {
   d.setUTCDate(d.getUTCDate() + 4 - dayNum)
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7)
+}
+
+// Währungswerte parsen (€1,000.00 → 1000)
+function parseCurrency(value) {
+  if (!value) return 0
+  if (typeof value === 'number') return value
+  
+  // String: Währungszeichen und Whitespace entfernen
+  let cleaned = String(value)
+    .replace(/[€$£¥]/g, '')  // Währungszeichen
+    .replace(/\s/g, '')       // Whitespace
+    .trim()
+  
+  // Tausender-Kommas entfernen (1,000.00 → 1000.00)
+  // Aber: Deutsches Format berücksichtigen (1.000,00 → 1000.00)
+  if (cleaned.includes(',') && cleaned.includes('.')) {
+    // Internationales Format: 1,000.00
+    if (cleaned.lastIndexOf(',') < cleaned.lastIndexOf('.')) {
+      cleaned = cleaned.replace(/,/g, '')
+    } 
+    // Deutsches Format: 1.000,00
+    else {
+      cleaned = cleaned.replace(/\./g, '').replace(',', '.')
+    }
+  } else if (cleaned.includes(',') && !cleaned.includes('.')) {
+    // Nur Komma: könnte Dezimal sein (1000,50) oder Tausender (1,000)
+    const parts = cleaned.split(',')
+    if (parts[parts.length - 1].length === 2) {
+      // Wahrscheinlich Dezimal: 1000,50
+      cleaned = cleaned.replace(',', '.')
+    } else {
+      // Wahrscheinlich Tausender: 1,000
+      cleaned = cleaned.replace(/,/g, '')
+    }
+  }
+  
+  const result = parseFloat(cleaned)
+  return isNaN(result) ? 0 : result
 }
 
 function extractNameFromEmail(email) {
