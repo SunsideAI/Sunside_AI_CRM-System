@@ -7,6 +7,7 @@ import {
   Shield
 } from 'lucide-react'
 import PasswordManager from '../components/PasswordManager'
+import EmailTemplateManager from '../components/EmailTemplateManager'
 
 function Einstellungen() {
   const { user } = useAuth()
@@ -36,6 +37,11 @@ function Einstellungen() {
 
       {/* Password Manager */}
       <PasswordManager />
+
+      {/* E-Mail Templates */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <EmailTemplateManager />
+      </div>
 
       {/* Weitere Settings (Coming Soon) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
