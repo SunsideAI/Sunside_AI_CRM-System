@@ -335,28 +335,46 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
             <p className="text-gray-600 mb-3">KI-Entwicklung für Immobilienmakler</p>
             
             <img 
-              src="https://static.wixstatic.com/media/cbbe7a_e61e0a9ed096461585df80d5a3d0ed9a~mv2.png" 
+              src="https://onecdn.io/media/8c3e476c-82b3-4db6-8cbe-85b46cd452d0/full" 
               alt="Sunside AI" 
               className="h-8 mb-2"
             />
             
             <div className="flex gap-2 mb-3">
-              <a href="https://www.instagram.com/sunside.ai/" target="_blank" rel="noopener noreferrer">
-                <img src="https://cdn-icons-png.flaticon.com/24/174/174855.png" alt="Instagram" className="w-6 h-6" />
-              </a>
-              <a href="https://www.sunsideai.de/" target="_blank" rel="noopener noreferrer">
-                <img src="https://cdn-icons-png.flaticon.com/24/1006/1006771.png" alt="Website" className="w-6 h-6" />
-              </a>
+              <img 
+                src="https://onecdn.io/media/a8cea175-8fcb-4f91-9d6f-f53479a9a7fe/full" 
+                alt="Instagram" 
+                className="w-6 h-6"
+              />
+              <img 
+                src="https://onecdn.io/media/10252e19-d770-418d-8867-2ec8236c8d86/full" 
+                alt="Website" 
+                className="w-6 h-6"
+              />
             </div>
             
             <p className="font-semibold text-xs">Sunside AI GbR</p>
             <p className="text-xs text-gray-600">
               Schiefer Berg 3 | 38124 Braunschweig | Deutschland<br />
               E-Mail: contact@sunsideai.de | Tel: +49 176 56039050<br />
-              <a href="https://www.sunsideai.de" className="text-purple-600">www.sunsideai.de</a> | 
-              <a href="https://sunsideai.de/jetzt-termin-buchen" className="text-purple-600 ml-1">Jetzt Termin buchen</a>
+              <span className="text-purple-600">www.sunsideai.de</span> | 
+              <span className="text-purple-600 ml-1">Jetzt Termin buchen</span>
             </p>
             <p className="text-xs text-gray-500 mt-1">Geschäftsführung: Paul Probodziak und Niklas Schwerin</p>
+            
+            <div className="flex gap-2 mt-2">
+              <img 
+                src="https://onecdn.io/media/9de8d686-0a97-42a7-b7a6-8cf0fa4c6e95/full" 
+                alt="Coursera Badge" 
+                className="h-12"
+              />
+              <img 
+                src="https://onecdn.io/media/2c4b8d13-4b19-4898-bd71-9b52f053ee57/full" 
+                alt="Make Badge" 
+                className="h-12"
+              />
+            </div>
+            <p className="text-xs text-gray-600 mt-1 italic"><strong>Wir sind zertifizierte IBM KI-Entwickler und Make Automatisierungsexperten.</strong></p>
           </div>
         </div>
 
