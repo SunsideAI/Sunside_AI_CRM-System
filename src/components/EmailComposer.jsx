@@ -98,22 +98,40 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
   const replacePlaceholders = (text) => {
     if (!text) return ''
     
+    // Debug: Lead-Daten ausgeben
+    console.log('Lead-Daten für Platzhalter:', lead)
+    console.log('User-Daten für Platzhalter:', user)
+    
     const replacements = {
-      '{{firma}}': lead?.unternehmensname || lead?.firma || '',
+      // Firma/Unternehmen
+      '{{firma}}': lead?.unternehmensname || lead?.firma || lead?.Unternehmensname || lead?.Firma || '',
+      '{{unternehmen}}': lead?.unternehmensname || lead?.firma || lead?.Unternehmensname || lead?.Firma || '',
+      
+      // Ansprechpartner
       '{{ansprechpartner}}': getAnsprechpartner(),
-      '{{vorname}}': lead?.vorname || '',
-      '{{nachname}}': lead?.nachname || '',
-      '{{stadt}}': lead?.stadt || '',
-      '{{bundesland}}': lead?.bundesland || '',
-      '{{setter_name}}': user?.vor_nachname || '',
-      '{{setter_vorname}}': user?.vor_nachname?.split(' ')[0] || '',
-      '{{setter_email}}': user?.email_geschaeftlich || user?.email || '',
-      '{{setter_telefon}}': user?.telefon || ''
+      '{{name}}': getAnsprechpartner(),
+      
+      // Einzelne Namen
+      '{{vorname}}': lead?.vorname || lead?.Vorname || '',
+      '{{nachname}}': lead?.nachname || lead?.Nachname || '',
+      
+      // Ort
+      '{{stadt}}': lead?.stadt || lead?.Stadt || lead?.ort || lead?.Ort || '',
+      '{{ort}}': lead?.stadt || lead?.Stadt || lead?.ort || lead?.Ort || '',
+      '{{bundesland}}': lead?.bundesland || lead?.Bundesland || '',
+      
+      // Setter/Absender
+      '{{setter_name}}': user?.vor_nachname || user?.Vor_Nachname || user?.name || '',
+      '{{setter_vorname}}': (user?.vor_nachname || user?.Vor_Nachname || '').split(' ')[0] || '',
+      '{{setter_email}}': user?.email_geschaeftlich || user?.E_Mail_Geschäftlich || user?.email || '',
+      '{{setter_telefon}}': user?.telefon || user?.Telefon || '',
+      '{{mein_name}}': user?.vor_nachname || user?.Vor_Nachname || user?.name || '',
+      '{{meine_email}}': user?.email_geschaeftlich || user?.E_Mail_Geschäftlich || user?.email || ''
     }
 
     let result = text
     for (const [placeholder, value] of Object.entries(replacements)) {
-      result = result.replace(new RegExp(placeholder, 'g'), value)
+      result = result.replace(new RegExp(placeholder, 'gi'), value)
     }
     
     return result
