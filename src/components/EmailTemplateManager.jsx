@@ -423,8 +423,8 @@ function EmailTemplateManager() {
 
       {/* Editor Modal */}
       {editMode && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+          <div className="bg-white w-full h-full md:m-4 md:rounded-2xl md:max-w-4xl md:max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b">
               <h3 className="text-lg font-semibold">
                 {editMode === 'create' ? 'Neues Template erstellen' : 'Template bearbeiten'}
