@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { 
   FileText, 
   Plus, 
@@ -421,8 +422,8 @@ function EmailTemplateManager() {
         </div>
       )}
 
-      {/* Editor Modal */}
-      {editMode && (
+      {/* Editor Modal - Portal für Fullscreen */}
+      {editMode && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
           <div className="bg-white w-full h-full md:m-4 md:rounded-2xl md:max-w-4xl md:max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b">
@@ -682,12 +683,13 @@ function EmailTemplateManager() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Delete Confirmation */}
-      {deleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      {deleteConfirm && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
           <div className="bg-white rounded-xl p-6 max-w-md w-full">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
               Template löschen?
@@ -711,7 +713,8 @@ function EmailTemplateManager() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
