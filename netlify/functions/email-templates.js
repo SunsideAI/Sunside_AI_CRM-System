@@ -64,7 +64,7 @@ exports.handler = async (event) => {
     // POST: Neues Template erstellen (Admin only)
     if (event.httpMethod === 'POST') {
       const body = JSON.parse(event.body)
-      const { name, betreff, inhalt, aktiv = true } = body
+      const { name, betreff, inhalt, aktiv = true, attachments = [] } = body
 
       if (!name || !betreff || !inhalt) {
         return {
@@ -74,20 +74,26 @@ exports.handler = async (event) => {
         }
       }
 
+      // Felder für Airtable vorbereiten
+      const fields = {
+        Name: name,
+        Betreff: betreff,
+        Inhalt: inhalt,
+        Aktiv: aktiv
+      }
+
+      // Attachments hinzufügen wenn vorhanden
+      if (attachments.length > 0) {
+        fields.Attachments = attachments.map(att => ({ url: att.url }))
+      }
+
       const response = await fetch(
         `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}`,
         {
           method: 'POST',
           headers,
           body: JSON.stringify({
-            records: [{
-              fields: {
-                Name: name,
-                Betreff: betreff,
-                Inhalt: inhalt,
-                Aktiv: aktiv
-              }
-            }]
+            records: [{ fields }]
           })
         }
       )
@@ -109,7 +115,8 @@ exports.handler = async (event) => {
             name: created.fields.Name,
             betreff: created.fields.Betreff,
             inhalt: created.fields.Inhalt,
-            aktiv: created.fields.Aktiv
+            aktiv: created.fields.Aktiv,
+            attachments: created.fields.Attachments || []
           }
         })
       }
@@ -118,7 +125,7 @@ exports.handler = async (event) => {
     // PATCH: Template aktualisieren (Admin only)
     if (event.httpMethod === 'PATCH') {
       const body = JSON.parse(event.body)
-      const { id, name, betreff, inhalt, aktiv } = body
+      const { id, name, betreff, inhalt, aktiv, attachments } = body
 
       if (!id) {
         return {
@@ -133,6 +140,11 @@ exports.handler = async (event) => {
       if (betreff !== undefined) fields.Betreff = betreff
       if (inhalt !== undefined) fields.Inhalt = inhalt
       if (aktiv !== undefined) fields.Aktiv = aktiv
+      
+      // Attachments aktualisieren (auch leeres Array um alle zu entfernen)
+      if (attachments !== undefined) {
+        fields.Attachments = attachments.map(att => ({ url: att.url }))
+      }
 
       const response = await fetch(
         `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}/${id}`,
@@ -159,7 +171,8 @@ exports.handler = async (event) => {
             name: data.fields.Name,
             betreff: data.fields.Betreff,
             inhalt: data.fields.Inhalt,
-            aktiv: data.fields.Aktiv
+            aktiv: data.fields.Aktiv,
+            attachments: data.fields.Attachments || []
           }
         })
       }
