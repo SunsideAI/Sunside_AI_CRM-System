@@ -30,13 +30,36 @@ function EmailTemplateManager() {
   const [formBetreff, setFormBetreff] = useState('')
   const [formInhalt, setFormInhalt] = useState('')
   const [formAktiv, setFormAktiv] = useState(true)
+  
+  // Attachments State
+  const [availableFiles, setAvailableFiles] = useState([])
+  const [selectedFiles, setSelectedFiles] = useState([])
+  const [loadingFiles, setLoadingFiles] = useState(false)
 
   // Delete Confirmation
   const [deleteConfirm, setDeleteConfirm] = useState(null)
 
   useEffect(() => {
     loadTemplates()
+    loadAvailableFiles()
   }, [])
+
+  // Verfügbare Dateien aus Dateien-Tabelle laden
+  const loadAvailableFiles = async () => {
+    setLoadingFiles(true)
+    try {
+      const response = await fetch('/.netlify/functions/files')
+      const data = await response.json()
+      
+      if (response.ok) {
+        setAvailableFiles(data.files || [])
+      }
+    } catch (err) {
+      console.error('Dateien konnten nicht geladen werden:', err)
+    } finally {
+      setLoadingFiles(false)
+    }
+  }
 
   const loadTemplates = async () => {
     try {
@@ -60,6 +83,7 @@ function EmailTemplateManager() {
     setFormBetreff('')
     setFormInhalt('')
     setFormAktiv(true)
+    setSelectedFiles([])
     setEditingTemplate(null)
     setEditMode('create')
     setError('')
@@ -70,6 +94,8 @@ function EmailTemplateManager() {
     setFormBetreff(template.betreff)
     setFormInhalt(template.inhalt)
     setFormAktiv(template.aktiv)
+    // Bestehende Attachments als ausgewählt markieren
+    setSelectedFiles(template.attachments?.map(att => att.url) || [])
     setEditingTemplate(template)
     setEditMode('edit')
     setError('')
@@ -78,7 +104,25 @@ function EmailTemplateManager() {
   const closeEditor = () => {
     setEditMode(false)
     setEditingTemplate(null)
+    setSelectedFiles([])
     setError('')
+  }
+
+  // Datei an-/abwählen
+  const toggleFile = (fileUrl) => {
+    setSelectedFiles(prev => 
+      prev.includes(fileUrl)
+        ? prev.filter(url => url !== fileUrl)
+        : [...prev, fileUrl]
+    )
+  }
+
+  // Dateigröße formatieren
+  const formatFileSize = (bytes) => {
+    if (!bytes) return ''
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
   const handleSave = async () => {
@@ -100,11 +144,18 @@ function EmailTemplateManager() {
     setError('')
 
     try {
+      // Ausgewählte Dateien mit vollständigen Infos
+      const attachments = selectedFiles.map(url => {
+        const file = availableFiles.find(f => f.url === url)
+        return file ? { url: file.url, filename: file.filename } : { url }
+      })
+
       const payload = {
         name: formName,
         betreff: formBetreff,
         inhalt: formInhalt,
-        aktiv: formAktiv
+        aktiv: formAktiv,
+        attachments: attachments
       }
 
       let response
@@ -469,6 +520,63 @@ function EmailTemplateManager() {
                   Template aktiv (in Dropdown sichtbar)
                 </span>
               </label>
+
+              {/* Datei-Auswahl */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  📎 Anhänge auswählen
+                </label>
+                
+                {loadingFiles ? (
+                  <div className="flex items-center text-gray-500 text-sm py-4">
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Dateien werden geladen...
+                  </div>
+                ) : availableFiles.length === 0 ? (
+                  <div className="text-sm text-gray-500 py-4 px-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                    <p>Keine Dateien verfügbar.</p>
+                    <p className="text-xs mt-1">Lade Dateien in die "Dateien"-Tabelle in Airtable hoch.</p>
+                  </div>
+                ) : (
+                  <div className="border border-gray-200 rounded-lg divide-y max-h-48 overflow-y-auto">
+                    {availableFiles.map(file => (
+                      <label
+                        key={file.id}
+                        className={`flex items-center p-3 cursor-pointer hover:bg-gray-50 transition-colors ${
+                          selectedFiles.includes(file.url) ? 'bg-purple-50' : ''
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selectedFiles.includes(file.url)}
+                          onChange={() => toggleFile(file.url)}
+                          className="w-4 h-4 text-sunside-primary border-gray-300 rounded focus:ring-sunside-primary"
+                        />
+                        <div className="ml-3 flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {file.name || file.filename}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {file.filename} {file.size && `• ${formatFileSize(file.size)}`}
+                          </p>
+                        </div>
+                        {file.type?.includes('pdf') && (
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">PDF</span>
+                        )}
+                        {file.type?.includes('image') && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Bild</span>
+                        )}
+                      </label>
+                    ))}
+                  </div>
+                )}
+                
+                {selectedFiles.length > 0 && (
+                  <p className="text-xs text-green-600 mt-2">
+                    ✓ {selectedFiles.length} Datei{selectedFiles.length > 1 ? 'en' : ''} ausgewählt
+                  </p>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
