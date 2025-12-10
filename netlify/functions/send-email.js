@@ -221,12 +221,22 @@ async function processAttachments(attachments) {
 
 // E-Mail Inhalt als HTML formatieren mit Signatur
 function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
-  // Text zu HTML konvertieren (Zeilenumbrüche zu <br>)
-  const htmlContent = text
+  // Text zu HTML konvertieren
+  let htmlContent = text
+    // HTML-Sonderzeichen escapen
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/\n/g, '<br>')
+    
+    // **Fettgedruckt** zu <strong>
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    
+    // Bullet Points: Zeilen die mit • beginnen
+    .replace(/^• (.+)$/gm, '<li style="margin-left: 20px; list-style-type: disc;">$1</li>')
+    
+    // Zeilenumbrüche zu <br> (aber nicht bei <li> Tags)
+    .replace(/\n(?!<li)/g, '<br>')
+    
     // URLs klickbar machen
     .replace(
       /(https?:\/\/[^\s<]+)/g, 
