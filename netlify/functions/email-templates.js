@@ -39,20 +39,45 @@ exports.handler = async (event) => {
         throw new Error(data.error.message)
       }
 
-      const templates = (data.records || []).map(record => ({
-        id: record.id,
-        name: record.fields.Name || '',
-        betreff: record.fields.Betreff || '',
-        inhalt: record.fields.Inhalt || '',
-        aktiv: record.fields.Aktiv !== false, // Default true wenn Feld nicht existiert
-        attachments: (record.fields.Attachments || []).map(att => ({
-          id: att.id,
-          filename: att.filename,
-          url: att.url,
-          type: att.type,
-          size: att.size
-        }))
-      }))
+      // Hilfsfunktion für Dateiendung
+      const getExtension = (filename) => {
+        if (!filename) return ''
+        const lastDot = filename.lastIndexOf('.')
+        return lastDot > 0 ? filename.substring(lastDot) : ''
+      }
+
+      const templates = (data.records || []).map(record => {
+        // Attachments_Name kann ein einzelner Name oder kommasepariert sein
+        const attachmentNames = (record.fields.Attachments_Name || '')
+          .split(',')
+          .map(n => n.trim())
+          .filter(n => n)
+
+        const attachments = (record.fields.Attachments || []).map((att, index) => {
+          // Nutze Attachments_Name wenn vorhanden, sonst original filename
+          const customName = attachmentNames[index] || attachmentNames[0] || null
+          
+          return {
+            id: att.id,
+            // Wenn customName vorhanden, nutze ihn (mit korrekter Extension)
+            filename: customName 
+              ? (customName.includes('.') ? customName : `${customName}${getExtension(att.filename)}`)
+              : att.filename,
+            url: att.url,
+            type: att.type,
+            size: att.size
+          }
+        })
+
+        return {
+          id: record.id,
+          name: record.fields.Name || '',
+          betreff: record.fields.Betreff || '',
+          inhalt: record.fields.Inhalt || '',
+          aktiv: record.fields.Aktiv !== false,
+          attachments
+        }
+      })
 
       return {
         statusCode: 200,
