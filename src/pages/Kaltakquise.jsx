@@ -31,7 +31,7 @@ const ERGEBNIS_OPTIONEN = [
   { value: '', label: 'Kein Ergebnis', color: 'gray' },
   { value: 'Nicht erreicht', label: 'Nicht erreicht', color: 'yellow' },
   { value: 'Kein Interesse', label: 'Kein Interesse', color: 'red' },
-  { value: 'Erstgespräch', label: 'Erstgespräch', color: 'green' },
+  { value: 'Beratungsgespräch', label: 'Beratungsgespräch', color: 'green' },
   { value: 'Unterlage bereitstellen', label: 'Unterlage bereitstellen', color: 'blue' }
 ]
 
@@ -652,8 +652,8 @@ function Kaltakquise() {
                         ))}
                       </select>
                       
-                      {/* Termin buchen Button bei Erstgespräch */}
-                      {editForm.ergebnis === 'Erstgespräch' && (
+                      {/* Termin buchen Button bei Beratungsgespräch */}
+                      {editForm.ergebnis === 'Beratungsgespräch' && (
                         <button
                           onClick={() => setShowTerminPicker(true)}
                           className="mt-3 w-full flex items-center justify-center px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
