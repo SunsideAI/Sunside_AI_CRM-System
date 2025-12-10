@@ -245,7 +245,7 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
       <!-- Logo -->
       <div>
         <a href="https://www.sunsideai.de/">
-          <img src="https://static.wixstatic.com/media/cbbe7a_e61e0a9ed096461585df80d5a3d0ed9a~mv2.png/v1/fill/w_189,h_41,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Sunside%20AI%20(5).png" 
+          <img src="https://onecdn.io/media/8c3e476c-82b3-4db6-8cbe-85b46cd452d0/full" 
                alt="Sunside AI" width="189" height="41" style="border: 0;">
         </a>
       </div>
@@ -254,10 +254,12 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
       <!-- Social Icons -->
       <div>
         <a href="https://www.instagram.com/sunside.ai/" style="text-decoration: none; margin-right: 8px;">
-          <img src="https://cdn-icons-png.flaticon.com/32/174/174855.png" alt="Instagram" width="28" height="28" style="border: 0; vertical-align: middle;">
+          <img src="https://onecdn.io/media/a8cea175-8fcb-4f91-9d6f-f53479a9a7fe/full" 
+               alt="Instagram" width="28" height="28" style="border: 0; vertical-align: middle;">
         </a>
         <a href="https://www.sunsideai.de/" style="text-decoration: none;">
-          <img src="https://cdn-icons-png.flaticon.com/32/1006/1006771.png" alt="Website" width="28" height="28" style="border: 0; vertical-align: middle;">
+          <img src="https://onecdn.io/media/10252e19-d770-418d-8867-2ec8236c8d86/full" 
+               alt="Website" width="28" height="28" style="border: 0; vertical-align: middle;">
         </a>
       </div>
       <div><br></div>
@@ -280,11 +282,11 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
       <!-- Zertifikate -->
       <div>
         <a href="https://coursera.org/share/022de5be2d06363370a26f58d0993aa9" style="text-decoration: none; margin-right: 5px;">
-          <img src="https://s3.amazonaws.com/coursera_assets/meta_images/generated/CERTIFICATE_LANDING_PAGE/CERTIFICATE_LANDING_PAGE~SSRX3CEYQP8V/CERTIFICATE_LANDING_PAGE~SSRX3CEYQP8V.jpeg" 
-               alt="IBM AI Developer Certificate" width="63" height="63" style="border: 0; vertical-align: middle;">
+          <img src="https://onecdn.io/media/9de8d686-0a97-42a7-b7a6-8cf0fa4c6e95/full" 
+               alt="Coursera Badge" width="125" height="63" style="border: 0; vertical-align: middle;">
         </a>
         <a href="https://www.credly.com/badges/a3fac4e4-90bd-4b9a-b318-dd70bc3aa95c/public_url" style="text-decoration: none;">
-          <img src="https://images.credly.com/size/340x340/images/d4b883ce-e51f-4ce7-9a14-e9e962ca0e87/image.png" 
+          <img src="https://onecdn.io/media/2c4b8d13-4b19-4898-bd71-9b52f053ee57/full" 
                alt="Make Badge" width="63" height="63" style="border: 0; vertical-align: middle;">
         </a>
       </div>
