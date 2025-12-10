@@ -306,12 +306,68 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
         {/* Inhalt */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Nachricht</label>
+          
+          {/* Formatierungs-Toolbar */}
+          <div className="flex items-center gap-1 mb-1 p-1.5 bg-gray-50 rounded-t-lg border border-b-0 border-gray-300">
+            <button
+              type="button"
+              onClick={() => {
+                const textarea = document.getElementById('email-inhalt-inline')
+                const start = textarea.selectionStart
+                const end = textarea.selectionEnd
+                const text = inhalt
+                
+                if (start !== end) {
+                  const selectedText = text.substring(start, end)
+                  const newText = text.substring(0, start) + '**' + selectedText + '**' + text.substring(end)
+                  setInhalt(newText)
+                } else {
+                  const newText = text.substring(0, start) + '**Text**' + text.substring(end)
+                  setInhalt(newText)
+                }
+                textarea.focus()
+              }}
+              className="px-2 py-1 text-xs font-bold bg-white border border-gray-300 rounded hover:bg-gray-100"
+              title="Fettgedruckt"
+            >
+              B
+            </button>
+            
+            <button
+              type="button"
+              onClick={() => {
+                const textarea = document.getElementById('email-inhalt-inline')
+                const start = textarea.selectionStart
+                const text = inhalt
+                
+                let lineStart = start
+                while (lineStart > 0 && text[lineStart - 1] !== '\n') {
+                  lineStart--
+                }
+                
+                if (text.substring(lineStart, lineStart + 2) === '• ') {
+                  const newText = text.substring(0, lineStart) + text.substring(lineStart + 2)
+                  setInhalt(newText)
+                } else {
+                  const newText = text.substring(0, lineStart) + '• ' + text.substring(lineStart)
+                  setInhalt(newText)
+                }
+                textarea.focus()
+              }}
+              className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+              title="Aufzählung"
+            >
+              • Liste
+            </button>
+          </div>
+          
           <textarea
+            id="email-inhalt-inline"
             value={inhalt}
             onChange={(e) => setInhalt(e.target.value)}
             placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
             rows={6}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none"
+            className="w-full px-4 py-3 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none"
           />
         </div>
 
@@ -515,12 +571,72 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nachricht
             </label>
+            
+            {/* Formatierungs-Toolbar */}
+            <div className="flex items-center gap-1 mb-1 p-1.5 bg-gray-50 rounded-t-lg border border-b-0 border-gray-300">
+              <button
+                type="button"
+                onClick={() => {
+                  const textarea = document.getElementById('email-inhalt-modal')
+                  const start = textarea.selectionStart
+                  const end = textarea.selectionEnd
+                  const text = inhalt
+                  
+                  if (start !== end) {
+                    const selectedText = text.substring(start, end)
+                    const newText = text.substring(0, start) + '**' + selectedText + '**' + text.substring(end)
+                    setInhalt(newText)
+                  } else {
+                    const newText = text.substring(0, start) + '**Text**' + text.substring(end)
+                    setInhalt(newText)
+                  }
+                  textarea.focus()
+                }}
+                className="px-2 py-1 text-xs font-bold bg-white border border-gray-300 rounded hover:bg-gray-100"
+                title="Fettgedruckt"
+              >
+                B
+              </button>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  const textarea = document.getElementById('email-inhalt-modal')
+                  const start = textarea.selectionStart
+                  const text = inhalt
+                  
+                  let lineStart = start
+                  while (lineStart > 0 && text[lineStart - 1] !== '\n') {
+                    lineStart--
+                  }
+                  
+                  if (text.substring(lineStart, lineStart + 2) === '• ') {
+                    const newText = text.substring(0, lineStart) + text.substring(lineStart + 2)
+                    setInhalt(newText)
+                  } else {
+                    const newText = text.substring(0, lineStart) + '• ' + text.substring(lineStart)
+                    setInhalt(newText)
+                  }
+                  textarea.focus()
+                }}
+                className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+                title="Aufzählung"
+              >
+                • Liste
+              </button>
+              
+              <span className="text-xs text-gray-400 ml-2">
+                **text** = fett
+              </span>
+            </div>
+            
             <textarea
+              id="email-inhalt-modal"
               value={inhalt}
               onChange={(e) => setInhalt(e.target.value)}
               placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
               rows={10}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none font-mono text-sm"
+              className="w-full px-4 py-3 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none font-mono text-sm"
             />
             <p className="text-xs text-gray-400 mt-1">
               Platzhalter: {'{{firma}}'}, {'{{stadt}}'}, {'{{setter_name}}'}, {'{{setter_vorname}}'}, {'{{setter_email}}'}, {'{{setter_telefon}}'}
