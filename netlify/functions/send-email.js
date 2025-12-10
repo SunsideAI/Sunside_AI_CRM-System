@@ -228,11 +228,11 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     
-    // **Fettgedruckt** zu <strong>
-    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    // **Fettgedruckt** zu <strong> (funktioniert auch über mehrere Wörter)
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     
     // Bullet Points: Zeilen die mit • beginnen
-    .replace(/^• (.+)$/gm, '<li style="margin-left: 20px; list-style-type: disc;">$1</li>')
+    .replace(/^• (.+)$/gm, '<li style="margin-left: 20px; list-style-type: disc; color: #000000;">$1</li>')
     
     // Zeilenumbrüche zu <br> (aber nicht bei <li> Tags)
     .replace(/\n(?!<li)/g, '<br>')
@@ -245,7 +245,7 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
 
   // Signatur HTML - basierend auf IONOS Vorlage
   const signatur = `
-    <div style="font-size: 10pt; font-family: arial, helvetica, sans-serif; margin-top: 30px;">
+    <div style="font-size: 10pt; font-family: Arial, Helvetica, sans-serif; margin-top: 30px; color: #000000;">
       <div>Mit freundlichen Grüßen</div>
       <div><br></div>
       <div><strong>${senderName || 'Sunside AI Team'}</strong></div>
@@ -277,11 +277,11 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
       <!-- Kontaktdaten -->
       <div><strong>Sunside AI GbR</strong></div>
       <div>Schiefer Berg 3 I 38124 Braunschweig I Deutschland<br>
-      E-Mail: <a href="mailto:contact@sunsideai.de" style="color: #000;">contact@sunsideai.de</a> I Tel: +49 176 56039050</div>
+      E-Mail: <a href="mailto:contact@sunsideai.de" style="color: #000000;">contact@sunsideai.de</a> I Tel: +49 176 56039050</div>
       <div>
-        <a href="https://www.sunsideai.de/" style="color: #000;">www.sunsideai.de</a> | 
-        <a href="https://sunsideai.de/jetzt-termin-buchen" style="color: #000;">Jetzt Termin buchen</a> | 
-        <a href="https://sachverstand-mit-herz.podigee.io/12-new-episode" style="color: #000;">Zur Podcast-Folge</a>
+        <a href="https://www.sunsideai.de/" style="color: #000000;">www.sunsideai.de</a> | 
+        <a href="https://sunsideai.de/jetzt-termin-buchen" style="color: #000000;">Jetzt Termin buchen</a> | 
+        <a href="https://sachverstand-mit-herz.podigee.io/12-new-episode" style="color: #000000;">Zur Podcast-Folge</a>
       </div>
       <div><br></div>
       
@@ -311,8 +311,8 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.6; color: #333333; margin: 0; padding: 20px;">
-  <div style="max-width: 600px; margin: 0 auto;">
+<body style="font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.6; color: #000000; margin: 0; padding: 20px;">
+  <div style="max-width: 600px; margin: 0 auto; color: #000000;">
     ${htmlContent}
     ${signatur}
   </div>
