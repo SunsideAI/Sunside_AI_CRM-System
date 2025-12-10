@@ -240,12 +240,14 @@ function EmailTemplateManager() {
           <div>
             <p className="font-medium text-blue-900">Verfügbare Platzhalter</p>
             <p className="text-sm text-blue-700 mt-1">
+              <strong>Lead:</strong>{' '}
               <code className="bg-blue-100 px-1 rounded">{'{{firma}}'}</code>,{' '}
-              <code className="bg-blue-100 px-1 rounded">{'{{ansprechpartner}}'}</code>,{' '}
-              <code className="bg-blue-100 px-1 rounded">{'{{vorname}}'}</code>,{' '}
-              <code className="bg-blue-100 px-1 rounded">{'{{nachname}}'}</code>,{' '}
-              <code className="bg-blue-100 px-1 rounded">{'{{stadt}}'}</code>,{' '}
+              <code className="bg-blue-100 px-1 rounded">{'{{stadt}}'}</code>
+            </p>
+            <p className="text-sm text-blue-700 mt-1">
+              <strong>Absender:</strong>{' '}
               <code className="bg-blue-100 px-1 rounded">{'{{setter_name}}'}</code>,{' '}
+              <code className="bg-blue-100 px-1 rounded">{'{{setter_vorname}}'}</code>,{' '}
               <code className="bg-blue-100 px-1 rounded">{'{{setter_email}}'}</code>,{' '}
               <code className="bg-blue-100 px-1 rounded">{'{{setter_telefon}}'}</code>
             </p>
@@ -378,7 +380,7 @@ function EmailTemplateManager() {
                 <textarea
                   value={formInhalt}
                   onChange={(e) => setFormInhalt(e.target.value)}
-                  placeholder={`Hallo {{ansprechpartner}},\n\nvielen Dank für unser Gespräch...\n\nMit freundlichen Grüßen\n{{setter_name}}`}
+                  placeholder={`Guten Tag,\n\nvielen Dank für unser Gespräch.\n\nIm Anhang finden Sie wie besprochen unsere Unterlagen für {{firma}}.\n\nBei Fragen stehe ich Ihnen gerne zur Verfügung unter {{setter_telefon}} oder {{setter_email}}.\n\nIch freue mich auf Ihre Rückmeldung!`}
                   rows={14}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none font-mono text-sm"
                 />
