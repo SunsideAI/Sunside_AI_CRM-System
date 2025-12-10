@@ -648,6 +648,17 @@ function Kaltakquise() {
                           Termin mit Closer buchen
                         </button>
                       )}
+                      
+                      {/* Unterlagen senden Button */}
+                      {showUnterlagenButton({ ergebnis: editForm.ergebnis }) && (
+                        <button
+                          onClick={() => setShowEmailComposer(true)}
+                          className="mt-3 w-full flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          Unterlagen senden
+                        </button>
+                      )}
                     </div>
 
                     {/* Kommentar */}
@@ -709,22 +720,7 @@ function Kaltakquise() {
 
             {/* Modal Footer - nur zeigen wenn kein TerminPicker */}
             {!showTerminPicker && (
-            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
-              {/* Linke Seite: Unterlagen senden Button */}
-              <div>
-                {!editMode && showUnterlagenButton(selectedLead) && (
-                  <button
-                    onClick={() => setShowEmailComposer(true)}
-                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    Unterlagen senden
-                  </button>
-                )}
-              </div>
-
-              {/* Rechte Seite: Standard-Buttons */}
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
                 {editMode ? (
                   <>
                     <button
@@ -761,7 +757,6 @@ function Kaltakquise() {
                   </>
                 )}
               </div>
-            </div>
             )}
           </div>
         </div>,
