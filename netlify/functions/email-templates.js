@@ -110,6 +110,8 @@ exports.handler = async (event) => {
       // Attachments hinzufügen wenn vorhanden
       if (attachments.length > 0) {
         fields.Attachments = attachments.map(att => ({ url: att.url }))
+        // Dateinamen kommasepariert speichern
+        fields.Attachments_Name = attachments.map(att => att.filename).join(', ')
       }
 
       const response = await fetch(
@@ -169,6 +171,10 @@ exports.handler = async (event) => {
       // Attachments aktualisieren (auch leeres Array um alle zu entfernen)
       if (attachments !== undefined) {
         fields.Attachments = attachments.map(att => ({ url: att.url }))
+        // Dateinamen kommasepariert speichern (oder leeren wenn keine Attachments)
+        fields.Attachments_Name = attachments.length > 0 
+          ? attachments.map(att => att.filename).join(', ')
+          : ''
       }
 
       const response = await fetch(
