@@ -286,7 +286,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   // Stats berechnen
   let einwahlen = 0
   let erreicht = 0
-  let erstgespraech = 0
+  let beratungsgespraech = 0
   let unterlagen = 0
   let keinInteresse = 0
   let nichtErreicht = 0
@@ -332,7 +332,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
 
     // Ergebnis kategorisieren
     const istNichtErreicht = ergebnis.includes('nicht erreicht')
-    const istErstgespraech = ergebnis.includes('erstgespräch') || ergebnis.includes('erstgespraech') || ergebnis.includes('termin')
+    const istBeratungsgespraech = ergebnis.includes('beratungsgespräch') || ergebnis.includes('beratungsgespraech') || ergebnis.includes('termin')
     const istUnterlagen = ergebnis.includes('unterlage')
     const istKeinInteresse = ergebnis.includes('kein interesse') || ergebnis.includes('absage')
 
@@ -341,8 +341,8 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     } else {
       erreicht++
       
-      if (istErstgespraech) {
-        erstgespraech++
+      if (istBeratungsgespraech) {
+        beratungsgespraech++
       } else if (istUnterlagen) {
         unterlagen++
       } else if (istKeinInteresse) {
@@ -378,7 +378,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
           id: oderId,
           einwahlen: 0, 
           erreicht: 0, 
-          erstgespraech: 0,
+          beratungsgespraech: 0,
           unterlagen: 0,
           keinInteresse: 0,
           nichtErreicht: 0
@@ -390,8 +390,8 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
         perUserMap[oderId].nichtErreicht++
       } else {
         perUserMap[oderId].erreicht++
-        if (istErstgespraech) {
-          perUserMap[oderId].erstgespraech++
+        if (istBeratungsgespraech) {
+          perUserMap[oderId].beratungsgespraech++
         } else if (istUnterlagen) {
           perUserMap[oderId].unterlagen++
         } else if (istKeinInteresse) {
@@ -403,7 +403,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
 
   // Quoten berechnen
   const erreichQuote = einwahlen > 0 ? (erreicht / einwahlen) * 100 : 0
-  const erstgespraechQuote = erreicht > 0 ? (erstgespraech / erreicht) * 100 : 0
+  const beratungsgespraechQuote = erreicht > 0 ? (beratungsgespraech / erreicht) * 100 : 0
   const unterlagenQuote = erreicht > 0 ? (unterlagen / erreicht) * 100 : 0
   const keinInteresseQuote = erreicht > 0 ? (keinInteresse / erreicht) * 100 : 0
 
@@ -424,12 +424,12 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     summary: {
       einwahlen,
       erreicht,
-      erstgespraech,
+      beratungsgespraech,
       unterlagen,
       keinInteresse,
       nichtErreicht,
       erreichQuote,
-      erstgespraechQuote,
+      beratungsgespraechQuote,
       unterlagenQuote,
       keinInteresseQuote
     },
