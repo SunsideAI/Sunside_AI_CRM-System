@@ -377,13 +377,85 @@ function EmailTemplateManager() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   E-Mail Inhalt *
                 </label>
+                
+                {/* Formatierungs-Toolbar */}
+                <div className="flex items-center gap-1 mb-2 p-2 bg-gray-50 rounded-t-lg border border-b-0 border-gray-300">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const textarea = document.getElementById('template-inhalt')
+                      const start = textarea.selectionStart
+                      const end = textarea.selectionEnd
+                      const text = formInhalt
+                      
+                      if (start !== end) {
+                        // Text markiert - umschließen mit **
+                        const selectedText = text.substring(start, end)
+                        const newText = text.substring(0, start) + '**' + selectedText + '**' + text.substring(end)
+                        setFormInhalt(newText)
+                      } else {
+                        // Nichts markiert - Platzhalter einfügen
+                        const newText = text.substring(0, start) + '**Fettgedruckt**' + text.substring(end)
+                        setFormInhalt(newText)
+                      }
+                      textarea.focus()
+                    }}
+                    className="px-3 py-1.5 text-sm font-bold bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                    title="Fettgedruckt"
+                  >
+                    B
+                  </button>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const textarea = document.getElementById('template-inhalt')
+                      const start = textarea.selectionStart
+                      const text = formInhalt
+                      
+                      // Finde Zeilenanfang
+                      let lineStart = start
+                      while (lineStart > 0 && text[lineStart - 1] !== '\n') {
+                        lineStart--
+                      }
+                      
+                      // Prüfe ob Zeile schon mit • beginnt
+                      if (text.substring(lineStart, lineStart + 2) === '• ') {
+                        // Bullet entfernen
+                        const newText = text.substring(0, lineStart) + text.substring(lineStart + 2)
+                        setFormInhalt(newText)
+                      } else {
+                        // Bullet hinzufügen
+                        const newText = text.substring(0, lineStart) + '• ' + text.substring(lineStart)
+                        setFormInhalt(newText)
+                      }
+                      textarea.focus()
+                    }}
+                    className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                    title="Aufzählung"
+                  >
+                    • Liste
+                  </button>
+                  
+                  <div className="h-6 w-px bg-gray-300 mx-1" />
+                  
+                  <span className="text-xs text-gray-400 ml-2">
+                    Tipp: Text markieren, dann auf B klicken
+                  </span>
+                </div>
+                
                 <textarea
+                  id="template-inhalt"
                   value={formInhalt}
                   onChange={(e) => setFormInhalt(e.target.value)}
                   placeholder={`Guten Tag,\n\nvielen Dank für unser Gespräch.\n\nIm Anhang finden Sie wie besprochen unsere Unterlagen für {{firma}}.\n\nBei Fragen stehe ich Ihnen gerne zur Verfügung unter {{setter_telefon}} oder {{setter_email}}.\n\nIch freue mich auf Ihre Rückmeldung!`}
                   rows={14}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none font-mono text-sm"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none font-mono text-sm"
                 />
+                
+                <p className="text-xs text-gray-400 mt-1">
+                  **text** = fettgedruckt, • am Zeilenanfang = Aufzählung
+                </p>
               </div>
 
               <label className="flex items-center cursor-pointer">
