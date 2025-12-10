@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import TerminPicker from '../components/TerminPicker'
+import EmailComposer from '../components/EmailComposer'
 import {
   Search,
   Filter,
@@ -21,7 +22,8 @@ import {
   Loader2,
   RefreshCw,
   Users,
-  User as UserIcon
+  User as UserIcon,
+  Send
 } from 'lucide-react'
 
 // Ergebnis-Optionen (aus Airtable)
@@ -69,6 +71,7 @@ function Kaltakquise() {
   const [editMode, setEditMode] = useState(false)
   const [saving, setSaving] = useState(false)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
+  const [showEmailComposer, setShowEmailComposer] = useState(false)
   const [editForm, setEditForm] = useState({
     kontaktiert: false,
     ergebnis: '',
@@ -162,6 +165,7 @@ function Kaltakquise() {
     })
     setEditMode(false)
     setShowTerminPicker(false)
+    setShowEmailComposer(false)
   }
 
   // Lead speichern
@@ -231,6 +235,13 @@ function Kaltakquise() {
     } catch (err) {
       alert(err.message)
     }
+  }
+
+  // Prüfen ob "Unterlagen senden" Button angezeigt werden soll
+  const showUnterlagenButton = (lead) => {
+    if (!lead?.ergebnis) return false
+    const ergebnis = lead.ergebnis.toLowerCase()
+    return ergebnis.includes('unterlage') || ergebnis.includes('unterlagen')
   }
 
   return (
@@ -526,7 +537,7 @@ function Kaltakquise() {
                 <p className="text-sm text-gray-500">{selectedLead.kategorie}</p>
               </div>
               <button
-                onClick={() => { setSelectedLead(null); setShowTerminPicker(false); }}
+                onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); }}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5 text-gray-500" />
@@ -682,7 +693,7 @@ function Kaltakquise() {
                     {selectedLead.kommentar && (
                       <div className="flex items-start">
                         <MessageSquare className="w-5 h-5 text-gray-400 mr-2 mt-0.5" />
-                        <p className="text-gray-700">{selectedLead.kommentar}</p>
+                        <p className="text-gray-700 whitespace-pre-line">{selectedLead.kommentar}</p>
                       </div>
                     )}
 
@@ -698,47 +709,78 @@ function Kaltakquise() {
 
             {/* Modal Footer - nur zeigen wenn kein TerminPicker */}
             {!showTerminPicker && (
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
-              {editMode ? (
-                <>
+            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50">
+              {/* Linke Seite: Unterlagen senden Button */}
+              <div>
+                {!editMode && showUnterlagenButton(selectedLead) && (
                   <button
-                    onClick={() => setEditMode(false)}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                    onClick={() => setShowEmailComposer(true)}
+                    className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
-                    Abbrechen
+                    <Send className="w-4 h-4 mr-2" />
+                    Unterlagen senden
                   </button>
-                  <button
-                    onClick={saveLead}
-                    disabled={saving}
-                    className="flex items-center px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-                  >
-                    {saving ? (
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    ) : null}
-                    Speichern
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => { setSelectedLead(null); setShowTerminPicker(false); }}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-                  >
-                    Schließen
-                  </button>
-                  <button
-                    onClick={() => setEditMode(true)}
-                    className="px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    Bearbeiten
-                  </button>
-                </>
-              )}
+                )}
+              </div>
+
+              {/* Rechte Seite: Standard-Buttons */}
+              <div className="flex items-center gap-3">
+                {editMode ? (
+                  <>
+                    <button
+                      onClick={() => setEditMode(false)}
+                      className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      onClick={saveLead}
+                      disabled={saving}
+                      className="flex items-center px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                    >
+                      {saving ? (
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      ) : null}
+                      Speichern
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); }}
+                      className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      Schließen
+                    </button>
+                    <button
+                      onClick={() => setEditMode(true)}
+                      className="px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    >
+                      Bearbeiten
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
             )}
           </div>
         </div>,
         document.body
+      )}
+
+      {/* Email Composer Modal */}
+      {showEmailComposer && selectedLead && (
+        <EmailComposer
+          lead={selectedLead}
+          user={user}
+          onClose={() => setShowEmailComposer(false)}
+          onSent={(info) => {
+            console.log('E-Mail gesendet:', info)
+            setShowEmailComposer(false)
+            // Optional: Lead neu laden um Kommentar-Historie zu aktualisieren
+            loadLeads()
+          }}
+        />
       )}
     </div>
   )
