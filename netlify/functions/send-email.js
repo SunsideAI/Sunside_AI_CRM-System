@@ -219,8 +219,8 @@ async function processAttachments(attachments) {
   return processed
 }
 
-// E-Mail Inhalt als einfaches HTML formatieren (sieht aus wie normale Mail)
-function formatEmailHtml(text, senderName, senderEmail) {
+// E-Mail Inhalt als HTML formatieren mit Signatur
+function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
   // Text zu HTML konvertieren (Zeilenumbrüche zu <br>)
   const htmlContent = text
     .replace(/&/g, '&amp;')
@@ -233,6 +233,65 @@ function formatEmailHtml(text, senderName, senderEmail) {
       '<a href="$1" style="color: #6B46C1;">$1</a>'
     )
 
+  // Signatur HTML - basierend auf IONOS Vorlage
+  const signatur = `
+    <div style="font-size: 10pt; font-family: arial, helvetica, sans-serif; margin-top: 30px;">
+      <div>Mit freundlichen Grüßen</div>
+      <div><br></div>
+      <div><strong>${senderName || 'Sunside AI Team'}</strong></div>
+      <div>KI-Entwicklung für Immobilienmakler</div>
+      <div><br></div>
+      
+      <!-- Logo -->
+      <div>
+        <a href="https://www.sunsideai.de/">
+          <img src="https://static.wixstatic.com/media/cbbe7a_e61e0a9ed096461585df80d5a3d0ed9a~mv2.png/v1/fill/w_189,h_41,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/Sunside%20AI%20(5).png" 
+               alt="Sunside AI" width="189" height="41" style="border: 0;">
+        </a>
+      </div>
+      <div><br></div>
+      
+      <!-- Social Icons -->
+      <div>
+        <a href="https://www.instagram.com/sunside.ai/" style="text-decoration: none; margin-right: 8px;">
+          <img src="https://cdn-icons-png.flaticon.com/32/174/174855.png" alt="Instagram" width="28" height="28" style="border: 0; vertical-align: middle;">
+        </a>
+        <a href="https://www.sunsideai.de/" style="text-decoration: none;">
+          <img src="https://cdn-icons-png.flaticon.com/32/1006/1006771.png" alt="Website" width="28" height="28" style="border: 0; vertical-align: middle;">
+        </a>
+      </div>
+      <div><br></div>
+      
+      <!-- Kontaktdaten -->
+      <div><strong>Sunside AI GbR</strong></div>
+      <div>Schiefer Berg 3 I 38124 Braunschweig I Deutschland<br>
+      E-Mail: <a href="mailto:contact@sunsideai.de" style="color: #000;">contact@sunsideai.de</a> I Tel: +49 176 56039050</div>
+      <div>
+        <a href="https://www.sunsideai.de/" style="color: #000;">www.sunsideai.de</a> | 
+        <a href="https://sunsideai.de/jetzt-termin-buchen" style="color: #000;">Jetzt Termin buchen</a> | 
+        <a href="https://sachverstand-mit-herz.podigee.io/12-new-episode" style="color: #000;">Zur Podcast-Folge</a>
+      </div>
+      <div><br></div>
+      
+      <!-- Geschäftsführung -->
+      <div>Geschäftsführung: Paul Probodziak und Niklas Schwerin</div>
+      <div><br></div>
+      
+      <!-- Zertifikate -->
+      <div>
+        <a href="https://coursera.org/share/022de5be2d06363370a26f58d0993aa9" style="text-decoration: none; margin-right: 5px;">
+          <img src="https://s3.amazonaws.com/coursera_assets/meta_images/generated/CERTIFICATE_LANDING_PAGE/CERTIFICATE_LANDING_PAGE~SSRX3CEYQP8V/CERTIFICATE_LANDING_PAGE~SSRX3CEYQP8V.jpeg" 
+               alt="IBM AI Developer Certificate" width="63" height="63" style="border: 0; vertical-align: middle;">
+        </a>
+        <a href="https://www.credly.com/badges/a3fac4e4-90bd-4b9a-b318-dd70bc3aa95c/public_url" style="text-decoration: none;">
+          <img src="https://images.credly.com/size/340x340/images/d4b883ce-e51f-4ce7-9a14-e9e962ca0e87/image.png" 
+               alt="Make Badge" width="63" height="63" style="border: 0; vertical-align: middle;">
+        </a>
+      </div>
+      <div><em><strong>Wir sind zertifizierte IBM KI-Entwickler und Make Automatisierungsexperten.</strong></em></div>
+    </div>
+  `
+
   return `
 <!DOCTYPE html>
 <html>
@@ -240,9 +299,10 @@ function formatEmailHtml(text, senderName, senderEmail) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 1.6; color: #333333; margin: 0; padding: 20px;">
+<body style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.6; color: #333333; margin: 0; padding: 20px;">
   <div style="max-width: 600px; margin: 0 auto;">
     ${htmlContent}
+    ${signatur}
   </div>
 </body>
 </html>
