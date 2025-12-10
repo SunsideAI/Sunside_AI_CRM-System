@@ -219,9 +219,9 @@ async function processAttachments(attachments) {
   return processed
 }
 
-// E-Mail Inhalt als HTML formatieren mit Signatur
+// E-Mail Inhalt als HTML formatieren mit Signatur - IONOS-Style
 function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
-  // Text zu HTML konvertieren
+  // Text zu HTML konvertieren - IONOS-Style mit engen Zeilenabständen
   let htmlContent = text
     // HTML-Sonderzeichen escapen
     .replace(/&/g, '&amp;')
@@ -231,11 +231,11 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
     // **Fettgedruckt** zu <strong> (funktioniert auch über mehrere Wörter)
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     
-    // Bullet Points: Zeilen die mit • beginnen
-    .replace(/^• (.+)$/gm, '<li style="margin-left: 20px; list-style-type: disc; color: #000000;">$1</li>')
+    // Bullet Points: Zeilen die mit • beginnen - inline statt list-item für IONOS-Look
+    .replace(/^• (.+)$/gm, '<div style="padding-left: 15px;">• $1</div>')
     
-    // Zeilenumbrüche zu <br> (aber nicht bei <li> Tags)
-    .replace(/\n(?!<li)/g, '<br>')
+    // Zeilenumbrüche zu <br>
+    .replace(/\n/g, '<br>\n')
     
     // URLs klickbar machen
     .replace(
@@ -245,12 +245,13 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
 
   // Signatur HTML - basierend auf IONOS Vorlage
   const signatur = `
-    <div style="font-size: 10pt; font-family: Arial, Helvetica, sans-serif; margin-top: 30px; color: #000000;">
+    <div style="font-size: 10pt; font-family: Arial, Helvetica, sans-serif; margin-top: 20px; color: #000000;">
+      <br>
       <div>Mit freundlichen Grüßen</div>
-      <div><br></div>
+      <br>
       <div><strong>${senderName || 'Sunside AI Team'}</strong></div>
       <div>KI-Entwicklung für Immobilienmakler</div>
-      <div><br></div>
+      <br>
       
       <!-- Logo -->
       <div>
@@ -259,7 +260,7 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
                alt="Sunside AI" width="189" height="41" style="border: 0;">
         </a>
       </div>
-      <div><br></div>
+      <br>
       
       <!-- Social Icons -->
       <div>
@@ -272,7 +273,7 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
                alt="Website" width="28" height="28" style="border: 0; vertical-align: middle;">
         </a>
       </div>
-      <div><br></div>
+      <br>
       
       <!-- Kontaktdaten -->
       <div><strong>Sunside AI GbR</strong></div>
@@ -283,11 +284,11 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
         <a href="https://sunsideai.de/jetzt-termin-buchen" style="color: #000000;">Jetzt Termin buchen</a> | 
         <a href="https://sachverstand-mit-herz.podigee.io/12-new-episode" style="color: #000000;">Zur Podcast-Folge</a>
       </div>
-      <div><br></div>
+      <br>
       
       <!-- Geschäftsführung -->
       <div>Geschäftsführung: Paul Probodziak und Niklas Schwerin</div>
-      <div><br></div>
+      <br>
       
       <!-- Zertifikate -->
       <div>
@@ -304,19 +305,18 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
     </div>
   `
 
-  return `
-<!DOCTYPE html>
+  // IONOS-Style: line-height 1.4 statt 1.6, normale Schriftgröße 10pt
+  return `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.6; color: #000000; margin: 0; padding: 20px;">
-  <div style="max-width: 600px; margin: 0 auto; color: #000000;">
+<body style="font-family: Arial, Helvetica, sans-serif; font-size: 10pt; line-height: 1.4; color: #000000; margin: 0; padding: 20px;">
+  <div style="color: #000000;">
     ${htmlContent}
     ${signatur}
   </div>
 </body>
-</html>
-  `.trim()
+</html>`.trim()
 }
