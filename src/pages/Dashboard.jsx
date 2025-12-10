@@ -578,15 +578,14 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
             <KPICard title="Erreicht" value={stats.summary.erreicht} icon={Users} color="blue" subtitle={formatPercent(stats.summary.erreichQuote)} />
             <KPICard title="Erstgespräche" value={stats.summary.erstgespraech} icon={Calendar} color="green" subtitle={formatPercent(stats.summary.erstgespraechQuote)} />
             <KPICard title="Unterlagen" value={stats.summary.unterlagen} icon={Target} color="yellow" subtitle={formatPercent(stats.summary.unterlagenQuote)} />
-            <KPICard title="Kein Interesse" value={stats.summary.keinInteresse} icon={XCircle} color="red" />
-            <KPICard title="Nicht erreicht" value={stats.summary.nichtErreicht} icon={TrendingDown} color="gray" />
+            <KPICard title="Kein Interesse" value={stats.summary.keinInteresse} icon={XCircle} color="red" subtitle={formatPercent(stats.summary.keinInteresseQuote || 0)} />
           </div>
 
           {/* Charts Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Conversion Funnel */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Conversion Funnel</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Ergebnisse in Zahlen</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <BarChart 
                   data={[
@@ -613,15 +612,14 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
             {/* Ergebnis Verteilung Pie */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Ergebnis Verteilung</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Prozentuale Ergebnisse</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <PieChart>
                   <Pie
                     data={[
                       { name: 'Erstgespräch', value: stats.summary.erstgespraech },
                       { name: 'Unterlagen', value: stats.summary.unterlagen },
-                      { name: 'Kein Interesse', value: stats.summary.keinInteresse },
-                      { name: 'Nicht erreicht', value: stats.summary.nichtErreicht }
+                      { name: 'Kein Interesse', value: stats.summary.keinInteresse }
                     ].filter(d => d.value > 0)}
                     cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
                     label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
@@ -629,7 +627,6 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                     <Cell fill={RESULT_COLORS.erstgespraech} />
                     <Cell fill={RESULT_COLORS.unterlagen} />
                     <Cell fill={RESULT_COLORS.keinInteresse} />
-                    <Cell fill={RESULT_COLORS.nichtErreicht} />
                   </Pie>
                   <Tooltip />
                 </PieChart>
@@ -639,7 +636,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
           {/* Aktivität Zeitverlauf */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-4">Aktivität im Zeitverlauf</h3>
+            <h3 className="text-sm font-medium text-gray-700 mb-4">Einwahlen im Zeitverlauf</h3>
             <ResponsiveContainer width="100%" height={250}>
               <LineChart data={stats.zeitverlauf}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -647,7 +644,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="count" name="Kontakte" stroke="#7C3AED" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                <Line type="monotone" dataKey="count" name="Einwahlen" stroke="#7C3AED" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -675,8 +672,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                       const labels = {
                         erstgespraech: 'Erstgespräch',
                         unterlagen: 'Unterlagen',
-                        keinInteresse: 'Kein Interesse',
-                        nichtErreicht: 'Nicht erreicht'
+                        keinInteresse: 'Kein Interesse'
                       }
                       return [value, labels[name] || name]
                     }}
@@ -686,8 +682,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                       const labels = {
                         erstgespraech: 'Erstgespräch',
                         unterlagen: 'Unterlagen',
-                        keinInteresse: 'Kein Interesse',
-                        nichtErreicht: 'Nicht erreicht'
+                        keinInteresse: 'Kein Interesse'
                       }
                       return labels[value] || value
                     }}
@@ -695,7 +690,6 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                   <Bar dataKey="erstgespraech" stackId="a" fill={RESULT_COLORS.erstgespraech} name="erstgespraech" />
                   <Bar dataKey="unterlagen" stackId="a" fill={RESULT_COLORS.unterlagen} name="unterlagen" />
                   <Bar dataKey="keinInteresse" stackId="a" fill={RESULT_COLORS.keinInteresse} name="keinInteresse" />
-                  <Bar dataKey="nichtErreicht" stackId="a" fill={RESULT_COLORS.nichtErreicht} name="nichtErreicht" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
