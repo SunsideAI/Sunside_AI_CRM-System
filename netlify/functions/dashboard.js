@@ -80,7 +80,7 @@ export async function handler(event) {
       ergebnisse: {
         'Nicht erreicht': 0,
         'Kein Interesse': 0,
-        'Erstgespräch': 0,
+        'Beratungsgespräch': 0,
         'Unterlage bereitstellen': 0,
         'Kein Ergebnis': 0
       },
@@ -126,7 +126,7 @@ export async function handler(event) {
           // User-spezifisch
           if (isUserLead) {
             if (datum >= startOfToday) userHeute++
-            if (datum >= startOfWeek && ergebnis === 'Erstgespräch') userWoche++
+            if (datum >= startOfWeek && ergebnis === 'Beratungsgespräch') userWoche++
           }
         }
       } else {
@@ -144,11 +144,11 @@ export async function handler(event) {
       userIds.forEach(userId => {
         const userName = userMap[userId]?.name || userId
         if (!stats.proVertriebler[userName]) {
-          stats.proVertriebler[userName] = { gesamt: 0, kontaktiert: 0, erstgespraech: 0 }
+          stats.proVertriebler[userName] = { gesamt: 0, kontaktiert: 0, beratungsgespraech: 0 }
         }
         stats.proVertriebler[userName].gesamt++
         if (kontaktiert) stats.proVertriebler[userName].kontaktiert++
-        if (ergebnis === 'Erstgespräch') stats.proVertriebler[userName].erstgespraech++
+        if (ergebnis === 'Beratungsgespräch') stats.proVertriebler[userName].beratungsgespraech++
       })
     })
 
@@ -159,7 +159,7 @@ export async function handler(event) {
 
     // Conversion Rate berechnen
     const conversionRate = stats.kontaktiert > 0 
-      ? ((stats.ergebnisse['Erstgespräch'] / stats.kontaktiert) * 100).toFixed(1)
+      ? ((stats.ergebnisse['Beratungsgespräch'] / stats.kontaktiert) * 100).toFixed(1)
       : 0
 
     return {
