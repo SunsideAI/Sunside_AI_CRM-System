@@ -32,34 +32,16 @@ function EmailTemplateManager() {
   const [formAktiv, setFormAktiv] = useState(true)
   
   // Attachments State
-  const [availableFiles, setAvailableFiles] = useState([])
-  const [selectedFiles, setSelectedFiles] = useState([])
-  const [loadingFiles, setLoadingFiles] = useState(false)
+  const [formAttachments, setFormAttachments] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
 
   // Delete Confirmation
   const [deleteConfirm, setDeleteConfirm] = useState(null)
 
   useEffect(() => {
     loadTemplates()
-    loadAvailableFiles()
   }, [])
-
-  // Verfügbare Dateien aus Dateien-Tabelle laden
-  const loadAvailableFiles = async () => {
-    setLoadingFiles(true)
-    try {
-      const response = await fetch('/.netlify/functions/files')
-      const data = await response.json()
-      
-      if (response.ok) {
-        setAvailableFiles(data.files || [])
-      }
-    } catch (err) {
-      console.error('Dateien konnten nicht geladen werden:', err)
-    } finally {
-      setLoadingFiles(false)
-    }
-  }
 
   const loadTemplates = async () => {
     try {
@@ -83,10 +65,11 @@ function EmailTemplateManager() {
     setFormBetreff('')
     setFormInhalt('')
     setFormAktiv(true)
-    setSelectedFiles([])
+    setFormAttachments([])
     setEditingTemplate(null)
     setEditMode('create')
     setError('')
+    setUploadError('')
   }
 
   const openEditMode = (template) => {
@@ -94,27 +77,91 @@ function EmailTemplateManager() {
     setFormBetreff(template.betreff)
     setFormInhalt(template.inhalt)
     setFormAktiv(template.aktiv)
-    // Bestehende Attachments als ausgewählt markieren
-    setSelectedFiles(template.attachments?.map(att => att.url) || [])
+    // Bestehende Attachments laden
+    setFormAttachments(template.attachments || [])
     setEditingTemplate(template)
     setEditMode('edit')
     setError('')
+    setUploadError('')
   }
 
   const closeEditor = () => {
     setEditMode(false)
     setEditingTemplate(null)
-    setSelectedFiles([])
+    setFormAttachments([])
     setError('')
+    setUploadError('')
   }
 
-  // Datei an-/abwählen
-  const toggleFile = (fileUrl) => {
-    setSelectedFiles(prev => 
-      prev.includes(fileUrl)
-        ? prev.filter(url => url !== fileUrl)
-        : [...prev, fileUrl]
-    )
+  // Datei hochladen
+  const handleFileUpload = async (e) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setUploading(true)
+    setUploadError('')
+
+    for (const file of files) {
+      try {
+        // File zu Base64 konvertieren
+        const base64 = await new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = reject
+          reader.readAsDataURL(file)
+        })
+
+        // Upload zu Cloudinary
+        const response = await fetch('/.netlify/functions/upload-file', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            file: base64,
+            filename: file.name
+          })
+        })
+
+        const result = await response.json()
+
+        if (!response.ok) {
+          throw new Error(result.error || 'Upload fehlgeschlagen')
+        }
+
+        // Zur Attachment-Liste hinzufügen
+        setFormAttachments(prev => [...prev, {
+          id: result.file.id,
+          url: result.file.url,
+          filename: result.file.filename,
+          type: result.file.type,
+          size: result.file.size
+        }])
+
+      } catch (err) {
+        console.error('Upload Error:', err)
+        setUploadError(`Fehler beim Upload von ${file.name}: ${err.message}`)
+      }
+    }
+
+    setUploading(false)
+    // Input zurücksetzen
+    e.target.value = ''
+  }
+
+  // Datei löschen
+  const handleDeleteAttachment = async (attachment) => {
+    // Aus der Liste entfernen
+    setFormAttachments(prev => prev.filter(a => a.url !== attachment.url))
+    
+    // Optional: Auch von Cloudinary löschen (nur wenn es eine Cloudinary-URL ist)
+    if (attachment.id && attachment.url?.includes('cloudinary')) {
+      try {
+        await fetch(`/.netlify/functions/upload-file?public_id=${encodeURIComponent(attachment.id)}`, {
+          method: 'DELETE'
+        })
+      } catch (err) {
+        console.error('Delete Error:', err)
+      }
+    }
   }
 
   // Dateigröße formatieren
@@ -144,18 +191,15 @@ function EmailTemplateManager() {
     setError('')
 
     try {
-      // Ausgewählte Dateien mit vollständigen Infos
-      const attachments = selectedFiles.map(url => {
-        const file = availableFiles.find(f => f.url === url)
-        return file ? { url: file.url, filename: file.filename } : { url }
-      })
-
       const payload = {
         name: formName,
         betreff: formBetreff,
         inhalt: formInhalt,
         aktiv: formAktiv,
-        attachments: attachments
+        attachments: formAttachments.map(att => ({
+          url: att.url,
+          filename: att.filename
+        }))
       }
 
       let response
@@ -521,59 +565,97 @@ function EmailTemplateManager() {
                 </span>
               </label>
 
-              {/* Datei-Auswahl */}
+              {/* Datei-Upload */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  📎 Anhänge auswählen
+                  📎 Anhänge
                 </label>
                 
-                {loadingFiles ? (
-                  <div className="flex items-center text-gray-500 text-sm py-4">
-                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                    Dateien werden geladen...
+                {/* Upload-Error */}
+                {uploadError && (
+                  <div className="flex items-center p-3 mb-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                    <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                    {uploadError}
                   </div>
-                ) : availableFiles.length === 0 ? (
-                  <div className="text-sm text-gray-500 py-4 px-4 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                    <p>Keine Dateien verfügbar.</p>
-                    <p className="text-xs mt-1">Lade Dateien in die "Dateien"-Tabelle in Airtable hoch.</p>
-                  </div>
-                ) : (
-                  <div className="border border-gray-200 rounded-lg divide-y max-h-48 overflow-y-auto">
-                    {availableFiles.map(file => (
-                      <label
-                        key={file.id}
-                        className={`flex items-center p-3 cursor-pointer hover:bg-gray-50 transition-colors ${
-                          selectedFiles.includes(file.url) ? 'bg-purple-50' : ''
-                        }`}
+                )}
+                
+                {/* Hochgeladene Dateien */}
+                {formAttachments.length > 0 && (
+                  <div className="border border-gray-200 rounded-lg divide-y mb-3">
+                    {formAttachments.map((att, index) => (
+                      <div
+                        key={att.url || index}
+                        className="flex items-center p-3 hover:bg-gray-50"
                       >
-                        <input
-                          type="checkbox"
-                          checked={selectedFiles.includes(file.url)}
-                          onChange={() => toggleFile(file.url)}
-                          className="w-4 h-4 text-sunside-primary border-gray-300 rounded focus:ring-sunside-primary"
-                        />
-                        <div className="ml-3 flex-1 min-w-0">
+                        <div className="flex-1 min-w-0">
                           <p className="text-sm font-medium text-gray-900 truncate">
-                            {file.name || file.filename}
+                            {att.filename || 'Datei'}
                           </p>
-                          <p className="text-xs text-gray-500">
-                            {file.filename} {file.size && `• ${formatFileSize(file.size)}`}
-                          </p>
+                          {att.size && (
+                            <p className="text-xs text-gray-500">
+                              {formatFileSize(att.size)}
+                            </p>
+                          )}
                         </div>
-                        {file.type?.includes('pdf') && (
-                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded">PDF</span>
-                        )}
-                        {file.type?.includes('image') && (
-                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded">Bild</span>
-                        )}
-                      </label>
+                        
+                        {/* Typ-Badge */}
+                        {att.type?.includes('pdf') || att.filename?.toLowerCase().endsWith('.pdf') ? (
+                          <span className="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded mr-3">PDF</span>
+                        ) : att.type?.includes('image') ? (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded mr-3">Bild</span>
+                        ) : null}
+                        
+                        {/* Löschen-Button */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteAttachment(att)}
+                          className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Entfernen"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
                 
-                {selectedFiles.length > 0 && (
+                {/* Upload-Bereich */}
+                <label className={`
+                  flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer
+                  transition-colors
+                  ${uploading 
+                    ? 'border-purple-300 bg-purple-50' 
+                    : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                  }
+                `}>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleFileUpload}
+                    disabled={uploading}
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.gif"
+                  />
+                  
+                  {uploading ? (
+                    <>
+                      <Loader2 className="w-8 h-8 text-purple-500 animate-spin mb-2" />
+                      <span className="text-sm text-purple-600">Wird hochgeladen...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-8 h-8 text-gray-400 mb-2" />
+                      <span className="text-sm text-gray-600">Dateien hochladen</span>
+                      <span className="text-xs text-gray-400 mt-1">
+                        PDF, Word, Excel, Bilder • Klicken oder Drag & Drop
+                      </span>
+                    </>
+                  )}
+                </label>
+                
+                {formAttachments.length > 0 && (
                   <p className="text-xs text-green-600 mt-2">
-                    ✓ {selectedFiles.length} Datei{selectedFiles.length > 1 ? 'en' : ''} ausgewählt
+                    ✓ {formAttachments.length} Datei{formAttachments.length > 1 ? 'en' : ''} angehängt
                   </p>
                 )}
               </div>
