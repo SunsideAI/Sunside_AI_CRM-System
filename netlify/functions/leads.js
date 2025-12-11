@@ -232,7 +232,7 @@ export async function handler(event) {
   // PATCH - Lead aktualisieren
   if (event.httpMethod === 'PATCH') {
     try {
-      const { leadId, updates } = JSON.parse(event.body)
+      const { leadId, updates, historyEntry } = JSON.parse(event.body)
 
       if (!leadId) {
         return {
@@ -240,6 +240,17 @@ export async function handler(event) {
           headers,
           body: JSON.stringify({ error: 'Lead ID fehlt' })
         }
+      }
+
+      // Erst aktuellen Lead laden (für History)
+      let currentKommentar = ''
+      if (historyEntry) {
+        const getResponse = await fetch(
+          `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}/${leadId}`,
+          { headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` } }
+        )
+        const leadData = await getResponse.json()
+        currentKommentar = leadData.fields?.Kommentar || ''
       }
 
       const fieldsToUpdate = {}
@@ -251,9 +262,6 @@ export async function handler(event) {
       }
       if (updates.ergebnis !== undefined) {
         fieldsToUpdate['Ergebnis'] = updates.ergebnis
-      }
-      if (updates.kommentar !== undefined) {
-        fieldsToUpdate['Kommentar'] = updates.kommentar
       }
       if (updates.datum !== undefined) {
         fieldsToUpdate['Datum'] = updates.datum
@@ -268,6 +276,41 @@ export async function handler(event) {
       // Automatisch Datum setzen wenn kontaktiert
       if (updates.kontaktiert === true && !updates.datum) {
         fieldsToUpdate['Datum'] = new Date().toISOString().split('T')[0]
+      }
+
+      // History-Eintrag erstellen wenn vorhanden
+      if (historyEntry) {
+        const now = new Date()
+        const timestamp = now.toLocaleDateString('de-DE', {
+          day: '2-digit',
+          month: '2-digit', 
+          year: 'numeric'
+        }) + ', ' + now.toLocaleTimeString('de-DE', {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+
+        // Icon basierend auf Aktion
+        const icons = {
+          'email': '📧',
+          'termin': '📅',
+          'kontaktiert': '✅',
+          'nicht_kontaktiert': '↩️',
+          'ergebnis': '📋',
+          'ansprechpartner': '👤',
+          'kommentar': '💬'
+        }
+        const icon = icons[historyEntry.action] || '📋'
+        
+        const newEntry = `[${timestamp}] ${icon} ${historyEntry.details} (${historyEntry.userName})`
+        
+        // Neuen Eintrag oben anhängen
+        fieldsToUpdate['Kommentar'] = currentKommentar 
+          ? `${newEntry}\n${currentKommentar}`
+          : newEntry
+      } else if (updates.kommentar !== undefined) {
+        // Direkte Kommentar-Änderung (ohne History-Format)
+        fieldsToUpdate['Kommentar'] = updates.kommentar
       }
 
       const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}/${leadId}`
