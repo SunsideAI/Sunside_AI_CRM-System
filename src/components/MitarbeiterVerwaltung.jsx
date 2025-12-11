@@ -81,7 +81,8 @@ function MitarbeiterVerwaltung() {
 
   // Form States
   const [formData, setFormData] = useState({
-    vor_nachname: '',
+    vorname: '',
+    nachname: '',
     email: '',
     email_geschaeftlich: '',
     telefon: '',
@@ -117,8 +118,8 @@ function MitarbeiterVerwaltung() {
 
   // Mitarbeiter hinzufügen
   const handleAdd = async () => {
-    if (!formData.vor_nachname || !formData.email) {
-      setError('Name und E-Mail sind erforderlich')
+    if (!formData.vorname || !formData.nachname || !formData.email) {
+      setError('Vorname, Nachname und E-Mail sind erforderlich')
       return
     }
 
@@ -131,11 +132,22 @@ function MitarbeiterVerwaltung() {
         ? 'Akquise-Pfad bereitstellen'
         : ''
 
+      // Vorname + Nachname kombinieren für Airtable
+      const vor_nachname = `${formData.vorname} ${formData.nachname}`.trim()
+
       const response = await fetch('/.netlify/functions/users', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
+          vor_nachname,
+          email: formData.email,
+          email_geschaeftlich: formData.email_geschaeftlich,
+          telefon: formData.telefon,
+          strasse: formData.strasse,
+          plz: formData.plz,
+          ort: formData.ort,
+          bundesland: formData.bundesland,
+          rolle: formData.rolle,
           onboarding: initialOnboarding
         })
       })
@@ -163,8 +175,8 @@ function MitarbeiterVerwaltung() {
 
   // Mitarbeiter bearbeiten
   const handleEdit = async () => {
-    if (!formData.vor_nachname || !formData.email) {
-      setError('Name und E-Mail sind erforderlich')
+    if (!formData.vorname || !formData.nachname || !formData.email) {
+      setError('Vorname, Nachname und E-Mail sind erforderlich')
       return
     }
 
@@ -172,12 +184,24 @@ function MitarbeiterVerwaltung() {
     setError('')
 
     try {
+      // Vorname + Nachname kombinieren für Airtable
+      const vor_nachname = `${formData.vorname} ${formData.nachname}`.trim()
+
       const response = await fetch('/.netlify/functions/users', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id: selectedUser.id,
-          ...formData
+          vor_nachname,
+          email: formData.email,
+          email_geschaeftlich: formData.email_geschaeftlich,
+          telefon: formData.telefon,
+          strasse: formData.strasse,
+          plz: formData.plz,
+          ort: formData.ort,
+          bundesland: formData.bundesland,
+          rolle: formData.rolle,
+          onboarding: formData.onboarding
         })
       })
 
@@ -260,7 +284,8 @@ function MitarbeiterVerwaltung() {
 
   const resetForm = () => {
     setFormData({
-      vor_nachname: '',
+      vorname: '',
+      nachname: '',
       email: '',
       email_geschaeftlich: '',
       telefon: '',
@@ -276,8 +301,14 @@ function MitarbeiterVerwaltung() {
 
   const openEditModal = (user) => {
     setSelectedUser(user)
+    // Vor_Nachname in Vorname und Nachname splitten
+    const nameParts = (user.vor_nachname || '').split(' ')
+    const vorname = nameParts[0] || ''
+    const nachname = nameParts.slice(1).join(' ') || ''
+    
     setFormData({
-      vor_nachname: user.vor_nachname || '',
+      vorname,
+      nachname,
       email: user.email || '',
       email_geschaeftlich: user.email_geschaeftlich || '',
       telefon: user.telefon || '',
@@ -552,7 +583,7 @@ function MitarbeiterVerwaltung() {
 
       {/* Add Modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)}>
-        <div className="bg-white rounded-xl w-[600px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
+        <div className="bg-white rounded-xl w-[750px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Neuer Mitarbeiter</h3>
@@ -562,16 +593,26 @@ function MitarbeiterVerwaltung() {
             </div>
           </div>
 
-          <div className="p-6 space-y-4">
-            {/* Zeile 1: Name + Telefon */}
-            <div className="grid grid-cols-2 gap-4">
+          <div className="p-6 space-y-5">
+            {/* Zeile 1: Vorname + Nachname + Telefon */}
+            <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Vorname *</label>
                 <input
                   type="text"
-                  value={formData.vor_nachname}
-                  onChange={(e) => setFormData({ ...formData, vor_nachname: e.target.value })}
-                  placeholder="Max Mustermann"
+                  value={formData.vorname}
+                  onChange={(e) => setFormData({ ...formData, vorname: e.target.value })}
+                  placeholder="Max"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nachname *</label>
+                <input
+                  type="text"
+                  value={formData.nachname}
+                  onChange={(e) => setFormData({ ...formData, nachname: e.target.value })}
+                  placeholder="Mustermann"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
@@ -587,7 +628,7 @@ function MitarbeiterVerwaltung() {
               </div>
             </div>
 
-            {/* Zeile 2: Private E-Mail + Geschäftliche E-Mail */}
+            {/* Zeile 2: E-Mails */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Private E-Mail *</label>
@@ -611,9 +652,9 @@ function MitarbeiterVerwaltung() {
               </div>
             </div>
 
-            {/* Zeile 3: Adresse */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            {/* Zeile 3: Adresse komplett */}
+            <div className="grid grid-cols-6 gap-4">
+              <div className="col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Straße + Hausnr.</label>
                 <input
                   type="text"
@@ -623,27 +664,25 @@ function MitarbeiterVerwaltung() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">PLZ</label>
-                  <input
-                    type="text"
-                    value={formData.plz}
-                    onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
-                    placeholder="12345"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ort</label>
-                  <input
-                    type="text"
-                    value={formData.ort}
-                    onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
-                    placeholder="Berlin"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">PLZ</label>
+                <input
+                  type="text"
+                  value={formData.plz}
+                  onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
+                  placeholder="12345"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ort</label>
+                <input
+                  type="text"
+                  value={formData.ort}
+                  onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
+                  placeholder="Berlin"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
               </div>
             </div>
 
@@ -664,7 +703,7 @@ function MitarbeiterVerwaltung() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Rollen</label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mt-1">
                   {ROLLEN.map(rolle => (
                     <button
                       key={rolle}
@@ -715,7 +754,7 @@ function MitarbeiterVerwaltung() {
 
       {/* Edit Modal */}
       <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
-        <div className="bg-white rounded-xl w-[600px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
+        <div className="bg-white rounded-xl w-[750px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Mitarbeiter bearbeiten</h3>
@@ -725,15 +764,24 @@ function MitarbeiterVerwaltung() {
             </div>
           </div>
 
-          <div className="p-6 space-y-4">
-            {/* Zeile 1: Name + Telefon */}
-            <div className="grid grid-cols-2 gap-4">
+          <div className="p-6 space-y-5">
+            {/* Zeile 1: Vorname + Nachname + Telefon */}
+            <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Vorname *</label>
                 <input
                   type="text"
-                  value={formData.vor_nachname}
-                  onChange={(e) => setFormData({ ...formData, vor_nachname: e.target.value })}
+                  value={formData.vorname}
+                  onChange={(e) => setFormData({ ...formData, vorname: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nachname *</label>
+                <input
+                  type="text"
+                  value={formData.nachname}
+                  onChange={(e) => setFormData({ ...formData, nachname: e.target.value })}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
@@ -748,7 +796,7 @@ function MitarbeiterVerwaltung() {
               </div>
             </div>
 
-            {/* Zeile 2: Private E-Mail + Geschäftliche E-Mail */}
+            {/* Zeile 2: E-Mails */}
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Private E-Mail *</label>
@@ -770,9 +818,9 @@ function MitarbeiterVerwaltung() {
               </div>
             </div>
 
-            {/* Zeile 3: Adresse */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
+            {/* Zeile 3: Adresse komplett */}
+            <div className="grid grid-cols-6 gap-4">
+              <div className="col-span-3">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Straße + Hausnr.</label>
                 <input
                   type="text"
@@ -782,27 +830,25 @@ function MitarbeiterVerwaltung() {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">PLZ</label>
-                  <input
-                    type="text"
-                    value={formData.plz}
-                    onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
-                    placeholder="12345"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ort</label>
-                  <input
-                    type="text"
-                    value={formData.ort}
-                    onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
-                    placeholder="Berlin"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">PLZ</label>
+                <input
+                  type="text"
+                  value={formData.plz}
+                  onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
+                  placeholder="12345"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ort</label>
+                <input
+                  type="text"
+                  value={formData.ort}
+                  onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
+                  placeholder="Berlin"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
               </div>
             </div>
 
@@ -823,7 +869,7 @@ function MitarbeiterVerwaltung() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Rollen</label>
-                <div className="flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2 mt-1">
                   {ROLLEN.map(rolle => (
                     <button
                       key={rolle}
