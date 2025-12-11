@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import TerminPicker from '../components/TerminPicker'
@@ -75,8 +75,14 @@ function Kaltakquise() {
   const [editForm, setEditForm] = useState({
     kontaktiert: false,
     ergebnis: '',
-    kommentar: ''
+    kommentar: '',
+    ansprechpartnerVorname: '',
+    ansprechpartnerNachname: ''
   })
+  
+  // Auto-Save State
+  const [autoSaving, setAutoSaving] = useState(false)
+  const autoSaveTimeoutRef = useRef(null)
 
   // Leads laden
   const loadLeads = useCallback(async (newOffset = null, addToHistory = false) => {
@@ -161,11 +167,69 @@ function Kaltakquise() {
     setEditForm({
       kontaktiert: lead.kontaktiert,
       ergebnis: lead.ergebnis,
-      kommentar: lead.kommentar
+      kommentar: lead.kommentar,
+      ansprechpartnerVorname: lead.ansprechpartnerVorname || '',
+      ansprechpartnerNachname: lead.ansprechpartnerNachname || ''
     })
     setEditMode(false)
     setShowTerminPicker(false)
     setShowEmailComposer(false)
+  }
+
+  // Auto-Save für Ansprechpartner-Felder (mit Debounce)
+  const autoSaveAnsprechpartner = useCallback(async (leadId, vorname, nachname) => {
+    setAutoSaving(true)
+    try {
+      await fetch('/.netlify/functions/leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId,
+          updates: {
+            ansprechpartnerVorname: vorname,
+            ansprechpartnerNachname: nachname
+          }
+        })
+      })
+      
+      // Lead in Liste aktualisieren
+      setLeads(prev => prev.map(lead => 
+        lead.id === leadId 
+          ? { ...lead, ansprechpartnerVorname: vorname, ansprechpartnerNachname: nachname }
+          : lead
+      ))
+      
+      // Auch selectedLead aktualisieren
+      if (selectedLead?.id === leadId) {
+        setSelectedLead(prev => ({ 
+          ...prev, 
+          ansprechpartnerVorname: vorname, 
+          ansprechpartnerNachname: nachname 
+        }))
+      }
+    } catch (err) {
+      console.error('Auto-Save Fehler:', err)
+    } finally {
+      setAutoSaving(false)
+    }
+  }, [selectedLead])
+
+  // Handler für Ansprechpartner-Änderungen mit Debounce
+  const handleAnsprechpartnerChange = (field, value) => {
+    setEditForm(prev => ({ ...prev, [field]: value }))
+    
+    // Debounced Auto-Save
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current)
+    }
+    
+    autoSaveTimeoutRef.current = setTimeout(() => {
+      if (selectedLead) {
+        const vorname = field === 'ansprechpartnerVorname' ? value : editForm.ansprechpartnerVorname
+        const nachname = field === 'ansprechpartnerNachname' ? value : editForm.ansprechpartnerNachname
+        autoSaveAnsprechpartner(selectedLead.id, vorname, nachname)
+      }
+    }, 800) // 800ms Verzögerung
   }
 
   // Lead speichern
@@ -675,6 +739,35 @@ function Kaltakquise() {
                       )}
                     </div>
 
+                    {/* Ansprechpartner */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Ansprechpartner
+                        {autoSaving && (
+                          <span className="ml-2 text-xs text-gray-400 font-normal">
+                            <Loader2 className="w-3 h-3 inline animate-spin mr-1" />
+                            Speichert...
+                          </span>
+                        )}
+                      </label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={editForm.ansprechpartnerVorname}
+                          onChange={(e) => handleAnsprechpartnerChange('ansprechpartnerVorname', e.target.value)}
+                          placeholder="Vorname"
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                        />
+                        <input
+                          type="text"
+                          value={editForm.ansprechpartnerNachname}
+                          onChange={(e) => handleAnsprechpartnerChange('ansprechpartnerNachname', e.target.value)}
+                          placeholder="Nachname"
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                        />
+                      </div>
+                    </div>
+
                     {/* Kommentar */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Kommentar</label>
@@ -711,6 +804,15 @@ function Kaltakquise() {
                         <Clock className="w-5 h-5 text-gray-400 mr-2" />
                         <span className={`px-2.5 py-1 rounded-full text-sm font-medium ${getErgebnisColor(selectedLead.ergebnis)}`}>
                           {selectedLead.ergebnis}
+                        </span>
+                      </div>
+                    )}
+
+                    {(selectedLead.ansprechpartnerVorname || selectedLead.ansprechpartnerNachname) && (
+                      <div className="flex items-center">
+                        <UserIcon className="w-5 h-5 text-gray-400 mr-2" />
+                        <span className="text-gray-700">
+                          {[selectedLead.ansprechpartnerVorname, selectedLead.ansprechpartnerNachname].filter(Boolean).join(' ')}
                         </span>
                       </div>
                     )}
