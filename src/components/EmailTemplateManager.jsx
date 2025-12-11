@@ -13,7 +13,7 @@ import {
   EyeOff,
   Save,
   Info,
-  Link,
+  Link as LinkIcon,
   Edit3,
   Bold,
   List
@@ -106,6 +106,7 @@ function EmailTemplateManager() {
   const [showLinkPopup, setShowLinkPopup] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const [linkText, setLinkText] = useState('')
+  const [savedSelection, setSavedSelection] = useState(null)
 
   useEffect(() => {
     loadTemplates()
@@ -198,27 +199,55 @@ function EmailTemplateManager() {
     editorRef.current?.focus()
   }
 
+  // Link-Popup öffnen und Selection speichern
+  const openLinkPopup = () => {
+    const selection = window.getSelection()
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      setSavedSelection(range.cloneRange())
+      setLinkText(selection.toString() || '')
+    }
+    setLinkUrl('')
+    setShowLinkPopup(true)
+  }
+
   const insertLinkInEditor = () => {
     if (linkUrl && linkText) {
-      const selection = window.getSelection()
-      if (selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0)
-        const link = document.createElement('a')
-        link.href = linkUrl
-        link.style.color = '#7c3aed'
-        link.style.textDecoration = 'underline'
-        link.textContent = linkText
-        range.deleteContents()
-        range.insertNode(link)
-        
-        range.setStartAfter(link)
-        range.collapse(true)
+      const link = document.createElement('a')
+      link.href = linkUrl
+      link.style.color = '#7c3aed'
+      link.style.textDecoration = 'underline'
+      link.textContent = linkText
+      
+      if (savedSelection) {
+        // Gespeicherte Selection verwenden
+        const selection = window.getSelection()
         selection.removeAllRanges()
-        selection.addRange(range)
+        selection.addRange(savedSelection)
+        
+        savedSelection.deleteContents()
+        savedSelection.insertNode(link)
+        
+        // Cursor nach dem Link
+        savedSelection.setStartAfter(link)
+        savedSelection.collapse(true)
+        selection.removeAllRanges()
+        selection.addRange(savedSelection)
+      } else if (editorRef.current) {
+        // Fallback: Am Ende einfügen
+        editorRef.current.appendChild(link)
+        editorRef.current.appendChild(document.createTextNode(' '))
       }
+      
+      // State aktualisieren
+      if (editorRef.current) {
+        setFormInhalt(editorRef.current.innerHTML)
+      }
+      
       setShowLinkPopup(false)
       setLinkUrl('')
       setLinkText('')
+      setSavedSelection(null)
       editorRef.current?.focus()
     }
   }
@@ -630,14 +659,11 @@ function EmailTemplateManager() {
                   <div className="relative">
                     <button
                       type="button"
-                      onClick={() => {
-                        setLinkText(window.getSelection()?.toString() || '')
-                        setShowLinkPopup(!showLinkPopup)
-                      }}
+                      onClick={openLinkPopup}
                       className="p-2 bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
                       title="Link einfügen"
                     >
-                      <Link className="w-4 h-4" />
+                      <LinkIcon className="w-4 h-4" />
                     </button>
                     
                     {/* Link-Popup */}
@@ -662,7 +688,10 @@ function EmailTemplateManager() {
                           <div className="flex justify-end gap-2">
                             <button
                               type="button"
-                              onClick={() => setShowLinkPopup(false)}
+                              onClick={() => {
+                                setShowLinkPopup(false)
+                                setSavedSelection(null)
+                              }}
                               className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
                             >
                               Abbrechen
