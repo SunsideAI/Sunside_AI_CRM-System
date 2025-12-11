@@ -534,7 +534,7 @@ function Kaltakquise() {
                     Ergebnis
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden xl:table-cell">
-                    Kommentar
+                    Letzte Aktivität
                   </th>
                 </tr>
               </thead>
@@ -622,13 +622,44 @@ function Kaltakquise() {
                       )}
                     </td>
 
-                    {/* Kommentar */}
+                    {/* Kommentar / Letzter Eintrag */}
                     <td className="px-4 py-3 hidden xl:table-cell">
                       {lead.kommentar ? (
-                        <div className="flex items-center text-sm text-gray-600">
-                          <MessageSquare className="w-4 h-4 mr-1.5 text-gray-400 flex-shrink-0" />
-                          <span className="truncate max-w-[200px]">{lead.kommentar}</span>
-                        </div>
+                        (() => {
+                          // Nur den ersten (neuesten) Eintrag anzeigen
+                          const firstLine = lead.kommentar.split('\n')[0]
+                          const historyMatch = firstLine.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
+                          
+                          if (historyMatch) {
+                            const [, datum, zeit, rest] = historyMatch
+                            // Icon und Text extrahieren
+                            const iconMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬)\s*(.+)$/)
+                            const icon = iconMatch ? iconMatch[1] : '📋'
+                            let text = iconMatch ? iconMatch[2] : rest
+                            // Username am Ende entfernen für kürzere Anzeige
+                            text = text.replace(/\s*\([^)]+\)$/, '')
+                            // Text kürzen
+                            if (text.length > 30) text = text.substring(0, 30) + '...'
+                            
+                            return (
+                              <div className="flex items-center gap-2 text-sm">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 text-xs font-mono">
+                                  {datum.substring(0, 6)}
+                                </span>
+                                <span>{icon}</span>
+                                <span className="text-gray-600 truncate max-w-[120px]">{text}</span>
+                              </div>
+                            )
+                          } else {
+                            // Alter Kommentar ohne History-Format
+                            return (
+                              <div className="flex items-center text-sm text-gray-600">
+                                <MessageSquare className="w-4 h-4 mr-1.5 text-gray-400 flex-shrink-0" />
+                                <span className="truncate max-w-[150px]">{firstLine}</span>
+                              </div>
+                            )
+                          }
+                        })()
                       ) : (
                         <span className="text-gray-400 text-sm">—</span>
                       )}
