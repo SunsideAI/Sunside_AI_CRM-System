@@ -78,7 +78,8 @@ function Kaltakquise() {
     kommentar: '',
     ansprechpartnerVorname: '',
     ansprechpartnerNachname: '',
-    neuerKommentar: '' // Für neuen manuellen Kommentar
+    neuerKommentar: '', // Für neuen manuellen Kommentar
+    ansprechpartnerValidation: false // Für Validierung beim Button-Klick
   })
   
   // Auto-Save State
@@ -171,7 +172,8 @@ function Kaltakquise() {
       kommentar: lead.kommentar,
       ansprechpartnerVorname: lead.ansprechpartnerVorname || '',
       ansprechpartnerNachname: lead.ansprechpartnerNachname || '',
-      neuerKommentar: ''
+      neuerKommentar: '',
+      ansprechpartnerValidation: false
     })
     setEditMode(false)
     setShowTerminPicker(false)
@@ -822,34 +824,12 @@ function Kaltakquise() {
                           <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                       </select>
-                      
-                      {/* Termin buchen Button bei Beratungsgespräch */}
-                      {editForm.ergebnis === 'Beratungsgespräch' && (
-                        <button
-                          onClick={() => setShowTerminPicker(true)}
-                          className="mt-3 w-full flex items-center justify-center px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-                        >
-                          <Calendar className="w-4 h-4 mr-2" />
-                          Termin mit Closer buchen
-                        </button>
-                      )}
-                      
-                      {/* Unterlagen senden Button */}
-                      {showUnterlagenButton({ ergebnis: editForm.ergebnis }) && (
-                        <button
-                          onClick={() => setShowEmailComposer(true)}
-                          className="mt-3 w-full flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          <Send className="w-4 h-4 mr-2" />
-                          Unterlagen senden
-                        </button>
-                      )}
                     </div>
 
-                    {/* Ansprechpartner */}
+                    {/* Ansprechpartner - PFLICHTFELD (vor den Buttons!) */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Ansprechpartner
+                        Ansprechpartner <span className="text-red-500">*</span>
                         {autoSaving && (
                           <span className="ml-2 text-xs text-gray-400 font-normal">
                             <Loader2 className="w-3 h-3 inline animate-spin mr-1" />
@@ -861,19 +841,69 @@ function Kaltakquise() {
                         <input
                           type="text"
                           value={editForm.ansprechpartnerVorname}
-                          onChange={(e) => handleAnsprechpartnerChange('ansprechpartnerVorname', e.target.value)}
-                          placeholder="Vorname"
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                          onChange={(e) => {
+                            handleAnsprechpartnerChange('ansprechpartnerVorname', e.target.value)
+                            setEditForm(prev => ({ ...prev, ansprechpartnerValidation: false }))
+                          }}
+                          placeholder="Vorname *"
+                          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
+                            editForm.ansprechpartnerValidation && !editForm.ansprechpartnerVorname 
+                              ? 'border-red-500 bg-red-50' 
+                              : 'border-gray-300'
+                          }`}
                         />
                         <input
                           type="text"
                           value={editForm.ansprechpartnerNachname}
-                          onChange={(e) => handleAnsprechpartnerChange('ansprechpartnerNachname', e.target.value)}
-                          placeholder="Nachname"
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                          onChange={(e) => {
+                            handleAnsprechpartnerChange('ansprechpartnerNachname', e.target.value)
+                            setEditForm(prev => ({ ...prev, ansprechpartnerValidation: false }))
+                          }}
+                          placeholder="Nachname *"
+                          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
+                            editForm.ansprechpartnerValidation && !editForm.ansprechpartnerNachname 
+                              ? 'border-red-500 bg-red-50' 
+                              : 'border-gray-300'
+                          }`}
                         />
                       </div>
                     </div>
+                      
+                    {/* Termin buchen Button bei Beratungsgespräch */}
+                    {editForm.ergebnis === 'Beratungsgespräch' && (
+                      <button
+                        onClick={() => {
+                          if (!editForm.ansprechpartnerVorname || !editForm.ansprechpartnerNachname) {
+                            // Felder rot markieren durch State-Update
+                            setEditForm(prev => ({ ...prev, ansprechpartnerValidation: true }))
+                            return
+                          }
+                          setShowTerminPicker(true)
+                        }}
+                        className="w-full flex items-center justify-center px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                      >
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Termin mit Closer buchen
+                      </button>
+                    )}
+                    
+                    {/* Unterlagen senden Button */}
+                    {showUnterlagenButton({ ergebnis: editForm.ergebnis }) && (
+                      <button
+                        onClick={() => {
+                          if (!editForm.ansprechpartnerVorname || !editForm.ansprechpartnerNachname) {
+                            // Felder rot markieren durch State-Update
+                            setEditForm(prev => ({ ...prev, ansprechpartnerValidation: true }))
+                            return
+                          }
+                          setShowEmailComposer(true)
+                        }}
+                        className="w-full flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        Unterlagen senden
+                      </button>
+                    )}
 
                     {/* Neuer Kommentar */}
                     <div>
