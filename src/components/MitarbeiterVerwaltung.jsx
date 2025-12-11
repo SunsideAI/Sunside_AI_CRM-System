@@ -3,30 +3,39 @@ import {
   Users, 
   Plus, 
   Pencil, 
-  Trash2, 
   X, 
   Check,
   Loader2,
   AlertCircle,
   Mail,
   Phone,
-  Shield,
   GraduationCap,
   UserX,
   UserCheck,
-  ChevronDown,
   Search,
   RefreshCw,
-  Target
+  Target,
+  MapPin
 } from 'lucide-react'
 
-// Onboarding Status Optionen (entsprechend Airtable)
-const ONBOARDING_STATUS = [
-  { value: '', label: 'Kein Status', color: 'gray' },
-  { value: 'Akquise-Pfad bereitstellen', label: 'Akquise-Pfad bereitstellen', color: 'yellow' },
-  { value: 'Coldcaller', label: 'Coldcaller', color: 'blue' },
-  { value: 'Closer-Pfad bereitstellen', label: 'Closer-Pfad bereitstellen', color: 'yellow' },
-  { value: 'Closer', label: 'Closer', color: 'green' }
+// Bundesländer
+const BUNDESLAENDER = [
+  'Baden-Württemberg',
+  'Bayern',
+  'Berlin',
+  'Brandenburg',
+  'Bremen',
+  'Hamburg',
+  'Hessen',
+  'Mecklenburg-Vorpommern',
+  'Niedersachsen',
+  'Nordrhein-Westfalen',
+  'Rheinland-Pfalz',
+  'Saarland',
+  'Sachsen',
+  'Sachsen-Anhalt',
+  'Schleswig-Holstein',
+  'Thüringen'
 ]
 
 // Rollen Optionen
@@ -52,6 +61,7 @@ function MitarbeiterVerwaltung() {
     email: '',
     email_geschaeftlich: '',
     telefon: '',
+    bundesland: '',
     rolle: [],
     onboarding: ''
   })
@@ -182,6 +192,7 @@ function MitarbeiterVerwaltung() {
 
       setSuccess('Mitarbeiter wurde deaktiviert')
       setShowDeleteModal(false)
+      setShowEditModal(false)
       setSelectedUser(null)
       loadUsers()
       setTimeout(() => setSuccess(''), 3000)
@@ -192,14 +203,15 @@ function MitarbeiterVerwaltung() {
     }
   }
 
-  // Closer-Pfad bereitstellen (ändert nur den Airtable Status, Zap reagiert darauf)
-  const setCloserPfad = async (userId, userName) => {
+  // Closer-Pfad bereitstellen
+  const setCloserPfad = async () => {
+    setSaving(true)
     try {
       const response = await fetch('/.netlify/functions/users', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: userId,
+          id: selectedUser.id,
           onboarding: 'Closer-Pfad bereitstellen'
         })
       })
@@ -208,12 +220,14 @@ function MitarbeiterVerwaltung() {
         throw new Error('Status konnte nicht geändert werden')
       }
       
+      setSuccess(`Closer-Pfad für ${selectedUser.vor_nachname} wird bereitgestellt!`)
+      setShowEditModal(false)
       loadUsers()
-      setSuccess(`Closer-Pfad für ${userName} wird bereitgestellt!`)
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
-      console.error('Closer-Pfad Error:', err)
       setError('Closer-Pfad konnte nicht bereitgestellt werden')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -223,6 +237,7 @@ function MitarbeiterVerwaltung() {
       email: '',
       email_geschaeftlich: '',
       telefon: '',
+      bundesland: '',
       rolle: [],
       onboarding: ''
     })
@@ -236,15 +251,11 @@ function MitarbeiterVerwaltung() {
       email: user.email || '',
       email_geschaeftlich: user.email_geschaeftlich || '',
       telefon: user.telefon || '',
+      bundesland: user.bundesland || '',
       rolle: user.rolle || [],
       onboarding: user.onboarding || ''
     })
     setShowEditModal(true)
-  }
-
-  const openDeleteModal = (user) => {
-    setSelectedUser(user)
-    setShowDeleteModal(true)
   }
 
   const toggleRolle = (rolle) => {
@@ -265,24 +276,6 @@ function MitarbeiterVerwaltung() {
   // Aktive und inaktive User trennen
   const activeUsers = filteredUsers.filter(u => u.status !== false)
   const inactiveUsers = filteredUsers.filter(u => u.status === false)
-
-  const getOnboardingColor = (status) => {
-    const option = ONBOARDING_STATUS.find(o => o.value === status)
-    if (!option) return 'gray'
-    return option.color
-  }
-
-  const getOnboardingBadgeClass = (status) => {
-    const color = getOnboardingColor(status)
-    const classes = {
-      gray: 'bg-gray-100 text-gray-700',
-      yellow: 'bg-yellow-100 text-yellow-700',
-      blue: 'bg-blue-100 text-blue-700',
-      green: 'bg-green-100 text-green-700',
-      purple: 'bg-purple-100 text-purple-700'
-    }
-    return classes[color] || classes.gray
-  }
 
   if (loading) {
     return (
@@ -371,8 +364,8 @@ function MitarbeiterVerwaltung() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kontakt</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bundesland</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rolle</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Onboarding</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aktionen</th>
               </tr>
@@ -410,6 +403,16 @@ function MitarbeiterVerwaltung() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
+                    {user.bundesland ? (
+                      <span className="flex items-center text-sm text-gray-600">
+                        <MapPin className="w-3 h-3 mr-1" />
+                        {user.bundesland}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 text-sm">-</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
                       {user.rolle?.map(rolle => (
                         <span 
@@ -426,52 +429,18 @@ function MitarbeiterVerwaltung() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    {user.onboarding ? (
-                      <span className={`px-2 py-1 text-xs rounded-full ${getOnboardingBadgeClass(user.onboarding)}`}>
-                        {user.onboarding}
-                      </span>
-                    ) : (
-                      <span className="text-gray-400 text-sm">-</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className={`flex items-center text-sm ${user.status !== false ? 'text-green-600' : 'text-gray-400'}`}>
-                      {user.status !== false ? (
-                        <><UserCheck className="w-4 h-4 mr-1" /> Aktiv</>
-                      ) : (
-                        <><UserX className="w-4 h-4 mr-1" /> Inaktiv</>
-                      )}
+                    <span className="flex items-center text-sm text-green-600">
+                      <UserCheck className="w-4 h-4 mr-1" /> Aktiv
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center justify-end gap-1">
-                      {/* Closer-Pfad bereitstellen - nur wenn noch nicht Closer */}
-                      {user.onboarding !== 'Closer' && user.onboarding !== 'Closer-Pfad bereitstellen' && (
-                        <button
-                          onClick={() => setCloserPfad(user.id, user.vor_nachname)}
-                          className="p-1.5 text-green-600 hover:bg-green-50 rounded"
-                          title="Closer-Pfad bereitstellen"
-                        >
-                          <Target className="w-4 h-4" />
-                        </button>
-                      )}
-                      
-                      {/* Bearbeiten */}
+                    <div className="flex items-center justify-end">
                       <button
                         onClick={() => openEditModal(user)}
-                        className="p-1.5 text-gray-600 hover:bg-gray-100 rounded"
+                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
                         title="Bearbeiten"
                       >
                         <Pencil className="w-4 h-4" />
-                      </button>
-                      
-                      {/* Deaktivieren */}
-                      <button
-                        onClick={() => openDeleteModal(user)}
-                        className="p-1.5 text-red-600 hover:bg-red-50 rounded"
-                        title="Deaktivieren"
-                      >
-                        <UserX className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
@@ -515,7 +484,6 @@ function MitarbeiterVerwaltung() {
                     <td className="px-6 py-3 text-right">
                       <button
                         onClick={() => {
-                          // Reaktivieren
                           fetch('/.netlify/functions/users', {
                             method: 'PATCH',
                             headers: { 'Content-Type': 'application/json' },
@@ -541,7 +509,7 @@ function MitarbeiterVerwaltung() {
 
       {/* Add Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[99999] p-4">
           <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
@@ -598,6 +566,20 @@ function MitarbeiterVerwaltung() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland</label>
+                <select
+                  value={formData.bundesland}
+                  onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Bitte auswählen...</option>
+                  {BUNDESLAENDER.map(bl => (
+                    <option key={bl} value={bl}>{bl}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Rollen</label>
                 <div className="flex flex-wrap gap-2">
                   {ROLLEN.map(rolle => (
@@ -650,7 +632,7 @@ function MitarbeiterVerwaltung() {
 
       {/* Edit Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[99999] p-4">
           <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between">
@@ -703,6 +685,20 @@ function MitarbeiterVerwaltung() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland</label>
+                <select
+                  value={formData.bundesland}
+                  onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Bitte auswählen...</option>
+                  {BUNDESLAENDER.map(bl => (
+                    <option key={bl} value={bl}>{bl}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Rollen</label>
                 <div className="flex flex-wrap gap-2">
                   {ROLLEN.map(rolle => (
@@ -722,37 +718,69 @@ function MitarbeiterVerwaltung() {
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Onboarding-Status</label>
-                <select
-                  value={formData.onboarding}
-                  onChange={(e) => setFormData({ ...formData, onboarding: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                >
-                  {ONBOARDING_STATUS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Closer-Pfad bereitstellen */}
+              {selectedUser?.onboarding !== 'Closer' && selectedUser?.onboarding !== 'Closer-Pfad bereitstellen' && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-start">
+                      <Target className="w-5 h-5 text-green-600 mr-3 mt-0.5" />
+                      <div className="text-sm text-green-700">
+                        <p className="font-medium">Closer-Pfad bereitstellen</p>
+                        <p className="mt-1">Startet das Closer-Onboarding für diesen Mitarbeiter.</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={setCloserPfad}
+                      disabled={saving}
+                      className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
+                    >
+                      Starten
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Onboarding Status anzeigen */}
+              {selectedUser?.onboarding && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm text-gray-600">
+                    <span className="font-medium">Aktueller Onboarding-Status:</span>{' '}
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${
+                      selectedUser.onboarding.includes('Closer') ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {selectedUser.onboarding}
+                    </span>
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <div className="p-6 border-t border-gray-200 flex justify-between">
+              {/* Deaktivieren Button links */}
               <button
-                onClick={() => setShowEditModal(false)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                onClick={() => setShowDeleteModal(true)}
+                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg"
               >
-                Abbrechen
+                <UserX className="w-4 h-4" />
+                Deaktivieren
               </button>
-              <button
-                onClick={handleEdit}
-                disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                Speichern
-              </button>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={handleEdit}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                  Speichern
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -760,7 +788,7 @@ function MitarbeiterVerwaltung() {
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[999999] p-4">
           <div className="bg-white rounded-xl max-w-md w-full">
             <div className="p-6">
               <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-4">
