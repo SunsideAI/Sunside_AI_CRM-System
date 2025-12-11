@@ -271,16 +271,17 @@ export async function handler(event) {
         fieldsToUpdate['Bereits_kontaktiert'] = updates.kontaktiert ? 'X' : null
       }
       if (updates.ergebnis !== undefined) {
-        fieldsToUpdate['Ergebnis'] = updates.ergebnis
+        // Leerer String → null (löscht das Feld in Airtable)
+        fieldsToUpdate['Ergebnis'] = updates.ergebnis || null
       }
       if (updates.datum !== undefined) {
-        fieldsToUpdate['Datum'] = updates.datum
+        fieldsToUpdate['Datum'] = updates.datum || null
       }
       if (updates.ansprechpartnerVorname !== undefined) {
-        fieldsToUpdate['Ansprechpartner_Vorname'] = updates.ansprechpartnerVorname
+        fieldsToUpdate['Ansprechpartner_Vorname'] = updates.ansprechpartnerVorname || null
       }
       if (updates.ansprechpartnerNachname !== undefined) {
-        fieldsToUpdate['Ansprechpartner_Nachname'] = updates.ansprechpartnerNachname
+        fieldsToUpdate['Ansprechpartner_Nachname'] = updates.ansprechpartnerNachname || null
       }
 
       // Automatisch Datum setzen wenn kontaktiert
