@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Calendar, Clock, User, Loader2, Check, ChevronLeft, ChevronRight, Mail, Phone } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
 
 function TerminPicker({ lead, onTerminBooked, onCancel }) {
+  const { user } = useAuth()
   const [closers, setClosers] = useState([])
   const [selectedCloser, setSelectedCloser] = useState(null)
   const [selectedDate, setSelectedDate] = useState(null)
@@ -176,7 +178,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
       
       setSuccess(true)
       
-      // Lead in Airtable aktualisieren
+      // Lead in Airtable aktualisieren mit History-Eintrag
       await fetch('/.netlify/functions/leads', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -184,8 +186,12 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
           leadId: lead.id,
           updates: {
             ergebnis: 'Beratungsgespräch',
-            kontaktiert: true,
-            kommentar: `Termin gebucht: ${formatDate(selectedDate)} um ${selectedSlot.startTime} Uhr mit ${selectedCloser.vor_nachname}`
+            kontaktiert: true
+          },
+          historyEntry: {
+            action: 'termin',
+            details: `Termin gebucht: ${formatDate(selectedDate)} um ${selectedSlot.startTime} Uhr mit ${selectedCloser.vor_nachname}`,
+            userName: user?.name || 'Unbekannt'
           }
         })
       })
