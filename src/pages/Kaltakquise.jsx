@@ -794,6 +794,53 @@ function Kaltakquise() {
                 )}
               </div>
 
+              {/* Website-Statistiken */}
+              {(selectedLead.monatlicheBesuche || selectedLead.mehrwert || selectedLead.absprungrate || selectedLead.anzahlLeads) && (
+                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                    <Building2 className="w-4 h-4 mr-2 text-purple-600" />
+                    Website-Statistiken
+                  </h4>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {selectedLead.monatlicheBesuche !== null && (
+                      <div className="bg-white p-3 rounded-lg shadow-sm">
+                        <p className="text-xs text-gray-500">Besucher/Monat</p>
+                        <p className="text-lg font-semibold text-gray-900">
+                          {selectedLead.monatlicheBesuche?.toLocaleString('de-DE') || '0'}
+                        </p>
+                      </div>
+                    )}
+                    {selectedLead.mehrwert !== null && (
+                      <div className="bg-white p-3 rounded-lg shadow-sm">
+                        <p className="text-xs text-gray-500">Mehrwert</p>
+                        <p className="text-lg font-semibold text-green-600">
+                          {selectedLead.mehrwert?.toLocaleString('de-DE', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }) || '0 €'}
+                        </p>
+                      </div>
+                    )}
+                    {selectedLead.absprungrate !== null && (
+                      <div className="bg-white p-3 rounded-lg shadow-sm">
+                        <p className="text-xs text-gray-500">Absprungrate</p>
+                        <p className={`text-lg font-semibold ${
+                          parseFloat(selectedLead.absprungrate) > 60 ? 'text-red-600' : 
+                          parseFloat(selectedLead.absprungrate) > 40 ? 'text-amber-600' : 'text-green-600'
+                        }`}>
+                          {selectedLead.absprungrate}
+                        </p>
+                      </div>
+                    )}
+                    {selectedLead.anzahlLeads !== null && (
+                      <div className="bg-white p-3 rounded-lg shadow-sm">
+                        <p className="text-xs text-gray-500">Leads/Monat</p>
+                        <p className="text-lg font-semibold text-blue-600">
+                          {selectedLead.anzahlLeads || '0'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Status & Bearbeitung */}
               <div className="space-y-4">
                 <h3 className="font-medium text-gray-900">Status & Notizen</h3>
