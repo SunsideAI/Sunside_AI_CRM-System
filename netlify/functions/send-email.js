@@ -106,8 +106,21 @@ exports.handler = async (event) => {
           userName: senderName,
           attachmentCount: processedAttachments.length
         })
+        console.log('Lead history updated successfully')
       } catch (updateError) {
-        console.warn('Lead-Update Fehler:', updateError)
+        console.error('Lead-Update Fehler:', updateError.message || updateError)
+        // Fehler nicht verschlucken - in Response anzeigen
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            success: true,
+            message: 'E-Mail gesendet, aber Lead-Historie konnte nicht aktualisiert werden',
+            emailId: resendData.id,
+            attachmentCount: processedAttachments.length,
+            historyError: updateError.message
+          })
+        }
       }
     }
 
@@ -134,10 +147,18 @@ exports.handler = async (event) => {
 
 // Lead-Kommentarfeld mit Historie aktualisieren + Status-Update bei E-Mail
 async function updateLeadHistory({ leadId, action, details, userName, attachmentCount }) {
+  // Check Environment Variables
+  if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+    console.error('Missing env vars - API_KEY:', !!AIRTABLE_API_KEY, 'BASE_ID:', !!AIRTABLE_BASE_ID)
+    throw new Error('Airtable Konfiguration fehlt')
+  }
+
   const headers = {
     'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
     'Content-Type': 'application/json'
   }
+
+  console.log('updateLeadHistory called with:', { leadId, action, details, userName, attachmentCount })
 
   // Erst aktuellen Lead laden (Kommentar + Status)
   const getResponse = await fetch(
@@ -145,7 +166,14 @@ async function updateLeadHistory({ leadId, action, details, userName, attachment
     { headers }
   )
   
+  if (!getResponse.ok) {
+    console.error('Failed to fetch lead:', getResponse.status)
+    throw new Error('Lead konnte nicht geladen werden')
+  }
+  
   const leadData = await getResponse.json()
+  console.log('Current lead data:', leadData.fields?.Kommentar?.substring(0, 100), '...', 'Status:', leadData.fields?.Ergebnis)
+  
   const currentKommentar = leadData.fields?.Kommentar || ''
   const currentStatus = leadData.fields?.Ergebnis || ''
 
@@ -163,8 +191,10 @@ async function updateLeadHistory({ leadId, action, details, userName, attachment
   const attachmentInfo = attachmentCount > 0 ? ` (${attachmentCount} Anhänge)` : ''
   const newEntry = `[${timestamp}] ${icon} ${details}${attachmentInfo} (${userName})`
 
+  console.log('New entry:', newEntry)
+
   // Neuen Eintrag oben anhängen
-  const updatedKommentar = currentKommentar 
+  let updatedKommentar = currentKommentar 
     ? `${newEntry}\n${currentKommentar}`
     : newEntry
 
@@ -189,8 +219,10 @@ async function updateLeadHistory({ leadId, action, details, userName, attachment
     console.log(`Status automatisch geändert: ${currentStatus} → Unterlagen versendet`)
   }
 
+  console.log('Updating lead with fields:', Object.keys(updateFields))
+
   // Lead aktualisieren
-  await fetch(
+  const updateResponse = await fetch(
     `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Leads')}/${leadId}`,
     {
       method: 'PATCH',
@@ -200,6 +232,15 @@ async function updateLeadHistory({ leadId, action, details, userName, attachment
       })
     }
   )
+
+  if (!updateResponse.ok) {
+    const errorData = await updateResponse.json()
+    console.error('Failed to update lead:', errorData)
+    throw new Error('Lead konnte nicht aktualisiert werden: ' + JSON.stringify(errorData))
+  }
+
+  const updateResult = await updateResponse.json()
+  console.log('Lead updated successfully, new Kommentar length:', updateResult.fields?.Kommentar?.length)
 }
 
 // Attachments von Airtable URLs laden und für Resend vorbereiten
@@ -271,7 +312,7 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
   const signatur = `
     <div style="font-size: 10pt; font-family: Arial, Helvetica, sans-serif; margin-top: 20px; color: #000000;">
       <div>Mit freundlichen Grüßen</div>
-            <br>
+      <br>
       <div><strong>${senderName || 'Sunside AI Team'}</strong></div>
       <div>KI-Entwicklung für Immobilienmakler</div>
       <br>
