@@ -265,6 +265,11 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
       '{{lead_email}}': cleanEmail(lead?.email) || '',
       '{{lead_telefon}}': lead?.telefon || '',
       
+      // Ansprechpartner (Lead)
+      '{{ansprechpartner}}': `${lead?.ansprechpartnerVorname || ''} ${lead?.ansprechpartnerNachname || ''}`.trim() || '',
+      '{{ansprechpartner_vorname}}': lead?.ansprechpartnerVorname || '',
+      '{{ansprechpartner_nachname}}': lead?.ansprechpartnerNachname || '',
+      
       // Setter/Absender (User)
       '{{setter_name}}': user?.vor_nachname || '',
       '{{setter_vorname}}': (user?.vor_nachname || '').split(' ')[0] || '',
@@ -839,7 +844,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
               data-placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
             />
             <p className="text-xs text-gray-400 mt-1">
-              Platzhalter: {'{{firma}}'}, {'{{stadt}}'}, {'{{setter_name}}'}, {'{{setter_vorname}}'}, {'{{setter_email}}'}, {'{{setter_telefon}}'}
+              Platzhalter: {'{{ansprechpartner}}'}, {'{{ansprechpartner_vorname}}'}, {'{{firma}}'}, {'{{stadt}}'}, {'{{setter_name}}'}, {'{{setter_vorname}}'}, {'{{setter_email}}'}, {'{{setter_telefon}}'}
             </p>
           </div>
 
