@@ -1,27 +1,77 @@
+import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { 
   Users, 
   Database, 
-  Key,
   Bell,
-  Shield
+  Shield,
+  Settings,
+  UserCog
 } from 'lucide-react'
 import PasswordManager from '../components/PasswordManager'
 import EmailTemplateManager from '../components/EmailTemplateManager'
+import MitarbeiterVerwaltung from '../components/MitarbeiterVerwaltung'
 
 function Einstellungen() {
   const { user } = useAuth()
+  const [activeTab, setActiveTab] = useState('mitarbeiter')
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Einstellungen</h1>
-        <p className="mt-1 text-gray-500">
-          Systemkonfiguration und Verwaltung
-        </p>
+      {/* Header mit Tabs */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Einstellungen</h1>
+          <p className="mt-1 text-gray-500">
+            {activeTab === 'mitarbeiter' && 'Mitarbeiter verwalten und Onboarding'}
+            {activeTab === 'system' && 'Systemkonfiguration und Verwaltung'}
+          </p>
+        </div>
+
+        {/* Tab Buttons */}
+        <div className="flex items-center bg-gray-100 rounded-lg p-1">
+          <button
+            onClick={() => setActiveTab('mitarbeiter')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'mitarbeiter'
+                ? 'bg-white text-purple-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <UserCog className="h-4 w-4" />
+            Mitarbeiter
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('system')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'system'
+                ? 'bg-white text-purple-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Settings className="h-4 w-4" />
+            System
+          </button>
+        </div>
       </div>
 
+      {/* Tab Content */}
+      {activeTab === 'mitarbeiter' && (
+        <MitarbeiterVerwaltung />
+      )}
+
+      {activeTab === 'system' && (
+        <SystemeinstellungenContent user={user} />
+      )}
+    </div>
+  )
+}
+
+// Systemeinstellungen (bisheriger Inhalt)
+function SystemeinstellungenContent({ user }) {
+  return (
+    <div className="space-y-6">
       {/* Admin Info */}
       <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
         <div className="flex items-center">
@@ -46,12 +96,6 @@ function Einstellungen() {
       {/* Weitere Settings (Coming Soon) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {[
-          {
-            title: 'Benutzerverwaltung',
-            icon: Users,
-            description: 'User hinzufügen, Rollen verwalten',
-            status: 'coming-soon'
-          },
           {
             title: 'Datenbank',
             icon: Database,
