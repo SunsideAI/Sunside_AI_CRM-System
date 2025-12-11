@@ -228,6 +228,10 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     
+    // Markdown-Links: [Anzeigename](URL) zu klickbarem Link
+    // MUSS vor der nackten URL-Konvertierung passieren!
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color: #6B46C1;">$1</a>')
+    
     // **Fettgedruckt** zu <strong> (funktioniert auch über mehrere Wörter)
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     
@@ -236,12 +240,12 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
     
     // Zeilenumbrüche zu <br>
     .replace(/\n/g, '<br>\n')
-    
-    // URLs klickbar machen
-    .replace(
-      /(https?:\/\/[^\s<]+)/g, 
-      '<a href="$1" style="color: #6B46C1;">$1</a>'
-    )
+  
+  // Nackte URLs klickbar machen (nur wenn nicht bereits in einem href)
+  htmlContent = htmlContent.replace(
+    /(^|[^"'>])(https?:\/\/[^\s<]+)/g, 
+    '$1<a href="$2" style="color: #6B46C1;">$2</a>'
+  )
 
   // Signatur HTML - basierend auf IONOS Vorlage
   const signatur = `
