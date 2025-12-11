@@ -199,48 +199,79 @@ async function updateLeadHistory({ leadId, action, details, userName, attachment
     : newEntry
 
   // Status-Update Logik bei E-Mail-Versand
-  // Nur wenn aktueller Status "niedriger" ist als "Unterlagen versendet"
-  const lowerStatuses = ['Nicht erreicht', 'Kein Interesse', 'Interesse']
+  // Nur wenn aktueller Status "niedriger" ist als "Unterlage bereitstellen"
+  const lowerStatuses = ['Nicht erreicht', 'Kein Interesse']
   const shouldUpdateStatus = action === 'email' && lowerStatuses.includes(currentStatus)
 
-  // Update-Payload vorbereiten
-  const updateFields = {
-    Kommentar: updatedKommentar
-  }
+  // SCHRITT 1: Kommentar IMMER aktualisieren
+  let finalKommentar = updatedKommentar
 
-  // Status auf "Unterlagen versendet" setzen wenn nötig
-  if (shouldUpdateStatus) {
-    updateFields.Ergebnis = 'Unterlagen versendet'
-    
-    // Zusätzlichen History-Eintrag für Status-Änderung
-    const statusEntry = `[${timestamp}] 📋 Ergebnis: Unterlagen versendet (automatisch nach E-Mail-Versand)`
-    updateFields.Kommentar = `${newEntry}\n${statusEntry}${currentKommentar ? '\n' + currentKommentar : ''}`
-    
-    console.log(`Status automatisch geändert: ${currentStatus} → Unterlagen versendet`)
-  }
+  console.log('Updating lead Kommentar...')
 
-  console.log('Updating lead with fields:', Object.keys(updateFields))
-
-  // Lead aktualisieren
-  const updateResponse = await fetch(
+  const kommentarResponse = await fetch(
     `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Leads')}/${leadId}`,
     {
       method: 'PATCH',
       headers,
       body: JSON.stringify({
-        fields: updateFields
+        fields: { Kommentar: finalKommentar }
       })
     }
   )
 
-  if (!updateResponse.ok) {
-    const errorData = await updateResponse.json()
-    console.error('Failed to update lead:', errorData)
-    throw new Error('Lead konnte nicht aktualisiert werden: ' + JSON.stringify(errorData))
+  if (!kommentarResponse.ok) {
+    const errorData = await kommentarResponse.json()
+    console.error('Failed to update Kommentar:', errorData)
+    throw new Error('Kommentar konnte nicht aktualisiert werden: ' + JSON.stringify(errorData))
   }
 
-  const updateResult = await updateResponse.json()
-  console.log('Lead updated successfully, new Kommentar length:', updateResult.fields?.Kommentar?.length)
+  console.log('Kommentar updated successfully')
+
+  // SCHRITT 2: Status separat aktualisieren (falls nötig)
+  if (shouldUpdateStatus) {
+    console.log(`Versuche Status zu ändern: ${currentStatus} → Unterlage bereitstellen`)
+    
+    try {
+      const statusResponse = await fetch(
+        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Leads')}/${leadId}`,
+        {
+          method: 'PATCH',
+          headers,
+          body: JSON.stringify({
+            fields: { Ergebnis: 'Unterlage bereitstellen' }
+          })
+        }
+      )
+
+      if (statusResponse.ok) {
+        console.log('Status updated successfully')
+        
+        // History-Eintrag für Status-Änderung hinzufügen
+        const statusEntry = `[${timestamp}] 📋 Ergebnis: Unterlage bereitstellen (automatisch nach E-Mail-Versand)`
+        const kommentarMitStatus = `${statusEntry}\n${finalKommentar}`
+        
+        await fetch(
+          `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Leads')}/${leadId}`,
+          {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify({
+              fields: { Kommentar: kommentarMitStatus }
+            })
+          }
+        )
+      } else {
+        const errorData = await statusResponse.json()
+        console.warn('Status-Update fehlgeschlagen (Option existiert nicht in Airtable?):', errorData.error?.message)
+        // Kein throw - Kommentar wurde ja gespeichert
+      }
+    } catch (statusError) {
+      console.warn('Status-Update Fehler:', statusError.message)
+      // Kein throw - Kommentar wurde ja gespeichert
+    }
+  }
+
+  console.log('Lead history update completed')
 }
 
 // Attachments von Airtable URLs laden und für Resend vorbereiten
@@ -311,8 +342,8 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
   // Signatur HTML - basierend auf IONOS Vorlage
   const signatur = `
     <div style="font-size: 10pt; font-family: Arial, Helvetica, sans-serif; margin-top: 20px; color: #000000;">
-      <div>Mit freundlichen Grüßen</div>
       <br>
+      <div>Mit freundlichen Grüßen</div>
       <div><strong>${senderName || 'Sunside AI Team'}</strong></div>
       <div>KI-Entwicklung für Immobilienmakler</div>
       <br>
