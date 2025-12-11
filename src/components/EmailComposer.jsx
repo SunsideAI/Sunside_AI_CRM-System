@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { 
   Mail, 
   Send, 
@@ -12,8 +12,54 @@ import {
   Paperclip,
   File,
   Image,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Bold,
+  List,
+  Link as LinkIcon
 } from 'lucide-react'
+
+// Markdown zu HTML konvertieren (für Template-Laden)
+const markdownToHtml = (text) => {
+  if (!text) return ''
+  
+  return text
+    // Markdown-Links: [Text](URL) zu klickbarem Link
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color: #7c3aed; text-decoration: underline;">$1</a>')
+    // Fettdruck: **text** zu <strong>
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    // Bullet Points am Zeilenanfang
+    .replace(/^• (.+)$/gm, '• $1')
+    // Zeilenumbrüche zu <br> (aber nicht doppelte)
+    .replace(/\n/g, '<br>')
+}
+
+// HTML zu Markdown konvertieren (für Speichern)
+const htmlToMarkdown = (html) => {
+  if (!html) return ''
+  
+  return html
+    // Links zu Markdown
+    .replace(/<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/gi, '[$2]($1)')
+    // Strong/Bold zu **
+    .replace(/<strong>([^<]+)<\/strong>/gi, '**$1**')
+    .replace(/<b>([^<]+)<\/b>/gi, '**$1**')
+    // <br> zu Zeilenumbruch
+    .replace(/<br\s*\/?>/gi, '\n')
+    // <div> zu Zeilenumbruch (contenteditable fügt divs ein)
+    .replace(/<\/div><div>/gi, '\n')
+    .replace(/<div>/gi, '\n')
+    .replace(/<\/div>/gi, '')
+    // Restliche HTML-Tags entfernen
+    .replace(/<[^>]+>/g, '')
+    // &nbsp; zu Leerzeichen
+    .replace(/&nbsp;/g, ' ')
+    // HTML Entities decodieren
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    // Führende Zeilenumbrüche entfernen
+    .replace(/^\n+/, '')
+}
 
 function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
   const [templates, setTemplates] = useState([])
@@ -22,6 +68,13 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
   const [sending, setSending] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  
+  // Link-Popup State
+  const [showLinkPopup, setShowLinkPopup] = useState(false)
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkText, setLinkText] = useState('')
+  const editorRef = useRef(null)
+  const modalEditorRef = useRef(null)
 
   // E-Mail Felder (alle editierbar)
   const [empfaenger, setEmpfaenger] = useState(lead?.email || '')
@@ -66,6 +119,9 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
     if (!templateId) {
       setBetreff('')
       setInhalt('')
+      // Editor leeren
+      if (editorRef.current) editorRef.current.innerHTML = ''
+      if (modalEditorRef.current) modalEditorRef.current.innerHTML = ''
       setAttachments([])
       setSelectedAttachments([])
       return
@@ -74,13 +130,76 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
     const template = templates.find(t => t.id === templateId)
     if (template) {
       setBetreff(replacePlaceholders(template.betreff))
-      setInhalt(replacePlaceholders(template.inhalt))
+      const htmlContent = markdownToHtml(replacePlaceholders(template.inhalt))
+      setInhalt(htmlContent)
+      // Editor-Inhalt setzen
+      if (editorRef.current) editorRef.current.innerHTML = htmlContent
+      if (modalEditorRef.current) modalEditorRef.current.innerHTML = htmlContent
       
       // Attachments setzen und alle standardmäßig auswählen
       const templateAttachments = template.attachments || []
       setAttachments(templateAttachments)
       setSelectedAttachments(templateAttachments.map(a => a.id))
     }
+  }
+
+  // Editor-Inhalt aktualisieren
+  const handleEditorInput = (e) => {
+    setInhalt(e.target.innerHTML)
+  }
+
+  // Fett formatieren
+  const formatBold = () => {
+    document.execCommand('bold', false, null)
+  }
+
+  // Liste einfügen
+  const formatList = () => {
+    const selection = window.getSelection()
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      const bullet = document.createTextNode('• ')
+      range.insertNode(bullet)
+      range.setStartAfter(bullet)
+      range.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+  }
+
+  // Link einfügen
+  const insertLink = () => {
+    if (linkUrl && linkText) {
+      const selection = window.getSelection()
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        const link = document.createElement('a')
+        link.href = linkUrl
+        link.style.color = '#7c3aed'
+        link.style.textDecoration = 'underline'
+        link.textContent = linkText
+        range.deleteContents()
+        range.insertNode(link)
+        
+        // Cursor nach dem Link positionieren
+        range.setStartAfter(link)
+        range.collapse(true)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
+      setShowLinkPopup(false)
+      setLinkUrl('')
+      setLinkText('')
+    }
+  }
+
+  // Inhalt für Senden vorbereiten (HTML zu Markdown für Backend)
+  const getContentForSend = () => {
+    const editor = inline ? editorRef.current : modalEditorRef.current
+    if (editor) {
+      return htmlToMarkdown(editor.innerHTML)
+    }
+    return htmlToMarkdown(inhalt)
   }
 
   // Attachment auswählen/abwählen
@@ -173,7 +292,10 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
       setError('Bitte Betreff eingeben')
       return
     }
-    if (!inhalt.trim()) {
+    
+    // Inhalt aus Editor holen
+    const contentToSend = getContentForSend()
+    if (!contentToSend.trim()) {
       setError('Bitte E-Mail-Text eingeben')
       return
     }
@@ -190,7 +312,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
         body: JSON.stringify({
           to: empfaenger,
           subject: betreff,
-          content: inhalt,
+          content: contentToSend,
           senderName: user?.vor_nachname,
           senderEmail: user?.email_geschaeftlich || user?.email,
           replyTo: user?.email_geschaeftlich || user?.email,
@@ -303,72 +425,101 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
           />
         </div>
 
-        {/* Inhalt */}
+        {/* Inhalt - WYSIWYG Editor */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Nachricht</label>
           
           {/* Formatierungs-Toolbar */}
-          <div className="flex items-center gap-1 mb-1 p-1.5 bg-gray-50 rounded-t-lg border border-b-0 border-gray-300">
+          <div className="flex items-center gap-1 p-1.5 bg-gray-50 rounded-t-lg border border-b-0 border-gray-300">
             <button
               type="button"
-              onClick={() => {
-                const textarea = document.getElementById('email-inhalt-inline')
-                const start = textarea.selectionStart
-                const end = textarea.selectionEnd
-                const text = inhalt
-                
-                if (start !== end) {
-                  const selectedText = text.substring(start, end)
-                  const newText = text.substring(0, start) + '**' + selectedText + '**' + text.substring(end)
-                  setInhalt(newText)
-                } else {
-                  const newText = text.substring(0, start) + '**Text**' + text.substring(end)
-                  setInhalt(newText)
-                }
-                textarea.focus()
-              }}
-              className="px-2 py-1 text-xs font-bold bg-white border border-gray-300 rounded hover:bg-gray-100"
-              title="Fettgedruckt"
+              onClick={formatBold}
+              className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
+              title="Fettgedruckt (Strg+B)"
             >
-              B
+              <Bold className="w-4 h-4" />
             </button>
             
             <button
               type="button"
-              onClick={() => {
-                const textarea = document.getElementById('email-inhalt-inline')
-                const start = textarea.selectionStart
-                const text = inhalt
-                
-                let lineStart = start
-                while (lineStart > 0 && text[lineStart - 1] !== '\n') {
-                  lineStart--
-                }
-                
-                if (text.substring(lineStart, lineStart + 2) === '• ') {
-                  const newText = text.substring(0, lineStart) + text.substring(lineStart + 2)
-                  setInhalt(newText)
-                } else {
-                  const newText = text.substring(0, lineStart) + '• ' + text.substring(lineStart)
-                  setInhalt(newText)
-                }
-                textarea.focus()
-              }}
-              className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+              onClick={formatList}
+              className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
               title="Aufzählung"
             >
-              • Liste
+              <List className="w-4 h-4" />
             </button>
+            
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  setLinkText(window.getSelection()?.toString() || '')
+                  setShowLinkPopup(!showLinkPopup)
+                }}
+                className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
+                title="Link einfügen"
+              >
+                <LinkIcon className="w-4 h-4" />
+              </button>
+              
+              {/* Link-Popup */}
+              {showLinkPopup && (
+                <div className="absolute top-full left-0 mt-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-64">
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={linkText}
+                      onChange={(e) => setLinkText(e.target.value)}
+                      placeholder="Anzeigename"
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-sunside-primary outline-none"
+                      autoFocus
+                    />
+                    <input
+                      type="url"
+                      value={linkUrl}
+                      onChange={(e) => setLinkUrl(e.target.value)}
+                      placeholder="https://..."
+                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-sunside-primary outline-none"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowLinkPopup(false)}
+                        className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800"
+                      >
+                        Abbrechen
+                      </button>
+                      <button
+                        type="button"
+                        onClick={insertLink}
+                        disabled={!linkUrl || !linkText}
+                        className="px-2 py-1 text-xs bg-sunside-primary text-white rounded hover:bg-purple-700 disabled:opacity-50"
+                      >
+                        Einfügen
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           
-          <textarea
-            id="email-inhalt-inline"
-            value={inhalt}
-            onChange={(e) => setInhalt(e.target.value)}
-            placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
-            rows={6}
-            className="w-full px-4 py-3 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none"
+          {/* WYSIWYG Editor */}
+          <div
+            ref={editorRef}
+            contentEditable
+            onInput={handleEditorInput}
+            className="w-full px-4 py-3 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none min-h-[144px] max-h-[200px] overflow-y-auto"
+            style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', lineHeight: '1.4' }}
+            data-placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
           />
+          <style>{`
+            [contenteditable]:empty:before {
+              content: attr(data-placeholder);
+              color: #9ca3af;
+              pointer-events: none;
+            }
+          `}</style>
         </div>
 
         {/* Signatur Vorschau */}
@@ -566,77 +717,95 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
             />
           </div>
 
-          {/* Inhalt */}
+          {/* Inhalt - WYSIWYG Editor */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Nachricht
             </label>
             
             {/* Formatierungs-Toolbar */}
-            <div className="flex items-center gap-1 mb-1 p-1.5 bg-gray-50 rounded-t-lg border border-b-0 border-gray-300">
+            <div className="flex items-center gap-1 p-1.5 bg-gray-50 rounded-t-lg border border-b-0 border-gray-300">
               <button
                 type="button"
-                onClick={() => {
-                  const textarea = document.getElementById('email-inhalt-modal')
-                  const start = textarea.selectionStart
-                  const end = textarea.selectionEnd
-                  const text = inhalt
-                  
-                  if (start !== end) {
-                    const selectedText = text.substring(start, end)
-                    const newText = text.substring(0, start) + '**' + selectedText + '**' + text.substring(end)
-                    setInhalt(newText)
-                  } else {
-                    const newText = text.substring(0, start) + '**Text**' + text.substring(end)
-                    setInhalt(newText)
-                  }
-                  textarea.focus()
-                }}
-                className="px-2 py-1 text-xs font-bold bg-white border border-gray-300 rounded hover:bg-gray-100"
-                title="Fettgedruckt"
+                onClick={formatBold}
+                className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
+                title="Fettgedruckt (Strg+B)"
               >
-                B
+                <Bold className="w-4 h-4" />
               </button>
               
               <button
                 type="button"
-                onClick={() => {
-                  const textarea = document.getElementById('email-inhalt-modal')
-                  const start = textarea.selectionStart
-                  const text = inhalt
-                  
-                  let lineStart = start
-                  while (lineStart > 0 && text[lineStart - 1] !== '\n') {
-                    lineStart--
-                  }
-                  
-                  if (text.substring(lineStart, lineStart + 2) === '• ') {
-                    const newText = text.substring(0, lineStart) + text.substring(lineStart + 2)
-                    setInhalt(newText)
-                  } else {
-                    const newText = text.substring(0, lineStart) + '• ' + text.substring(lineStart)
-                    setInhalt(newText)
-                  }
-                  textarea.focus()
-                }}
-                className="px-2 py-1 text-xs bg-white border border-gray-300 rounded hover:bg-gray-100"
+                onClick={formatList}
+                className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
                 title="Aufzählung"
               >
-                • Liste
+                <List className="w-4 h-4" />
               </button>
               
-              <span className="text-xs text-gray-400 ml-2">
-                **text** = fett
-              </span>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLinkText(window.getSelection()?.toString() || '')
+                    setShowLinkPopup(!showLinkPopup)
+                  }}
+                  className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
+                  title="Link einfügen"
+                >
+                  <LinkIcon className="w-4 h-4" />
+                </button>
+                
+                {/* Link-Popup */}
+                {showLinkPopup && (
+                  <div className="absolute top-full left-0 mt-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-64">
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={linkText}
+                        onChange={(e) => setLinkText(e.target.value)}
+                        placeholder="Anzeigename"
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-sunside-primary outline-none"
+                        autoFocus
+                      />
+                      <input
+                        type="url"
+                        value={linkUrl}
+                        onChange={(e) => setLinkUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-sunside-primary outline-none"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowLinkPopup(false)}
+                          className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800"
+                        >
+                          Abbrechen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={insertLink}
+                          disabled={!linkUrl || !linkText}
+                          className="px-2 py-1 text-xs bg-sunside-primary text-white rounded hover:bg-purple-700 disabled:opacity-50"
+                        >
+                          Einfügen
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
             
-            <textarea
-              id="email-inhalt-modal"
-              value={inhalt}
-              onChange={(e) => setInhalt(e.target.value)}
-              placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
-              rows={10}
-              className="w-full px-4 py-3 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none font-mono text-sm"
+            {/* WYSIWYG Editor */}
+            <div
+              ref={modalEditorRef}
+              contentEditable
+              onInput={handleEditorInput}
+              className="w-full px-4 py-3 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none min-h-[240px] max-h-[300px] overflow-y-auto"
+              style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', lineHeight: '1.4' }}
+              data-placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
             />
             <p className="text-xs text-gray-400 mt-1">
               Platzhalter: {'{{firma}}'}, {'{{stadt}}'}, {'{{setter_name}}'}, {'{{setter_vorname}}'}, {'{{setter_email}}'}, {'{{setter_telefon}}'}
