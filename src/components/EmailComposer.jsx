@@ -73,6 +73,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
   const [showLinkPopup, setShowLinkPopup] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const [linkText, setLinkText] = useState('')
+  const [savedSelection, setSavedSelection] = useState(null) // Selection speichern
   const editorRef = useRef(null)
   const modalEditorRef = useRef(null)
 
@@ -167,29 +168,59 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
     }
   }
 
-  // Link einfügen
+  // Link-Popup öffnen und Selection speichern
+  const openLinkPopup = () => {
+    const selection = window.getSelection()
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      setSavedSelection(range.cloneRange())
+      setLinkText(selection.toString() || '')
+    }
+    setLinkUrl('')
+    setShowLinkPopup(true)
+  }
+
+  // Link einfügen mit gespeicherter Selection
   const insertLink = () => {
     if (linkUrl && linkText) {
-      const selection = window.getSelection()
-      if (selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0)
-        const link = document.createElement('a')
-        link.href = linkUrl
-        link.style.color = '#7c3aed'
-        link.style.textDecoration = 'underline'
-        link.textContent = linkText
-        range.deleteContents()
-        range.insertNode(link)
-        
-        // Cursor nach dem Link positionieren
-        range.setStartAfter(link)
-        range.collapse(true)
+      const editor = inline ? editorRef.current : modalEditorRef.current
+      
+      // Link-Element erstellen
+      const link = document.createElement('a')
+      link.href = linkUrl
+      link.style.color = '#7c3aed'
+      link.style.textDecoration = 'underline'
+      link.textContent = linkText
+      
+      if (savedSelection) {
+        // Gespeicherte Selection verwenden
+        const selection = window.getSelection()
         selection.removeAllRanges()
-        selection.addRange(range)
+        selection.addRange(savedSelection)
+        
+        savedSelection.deleteContents()
+        savedSelection.insertNode(link)
+        
+        // Cursor nach dem Link
+        savedSelection.setStartAfter(link)
+        savedSelection.collapse(true)
+        selection.removeAllRanges()
+        selection.addRange(savedSelection)
+      } else if (editor) {
+        // Fallback: Am Ende einfügen
+        editor.appendChild(link)
+        editor.appendChild(document.createTextNode(' '))
       }
+      
+      // State aktualisieren
+      if (editor) {
+        setInhalt(editor.innerHTML)
+      }
+      
       setShowLinkPopup(false)
       setLinkUrl('')
       setLinkText('')
+      setSavedSelection(null)
     }
   }
 
@@ -452,10 +483,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => {
-                  setLinkText(window.getSelection()?.toString() || '')
-                  setShowLinkPopup(!showLinkPopup)
-                }}
+                onClick={openLinkPopup}
                 className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
                 title="Link einfügen"
               >
@@ -484,7 +512,10 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
                     <div className="flex justify-end gap-2">
                       <button
                         type="button"
-                        onClick={() => setShowLinkPopup(false)}
+                        onClick={() => {
+                          setShowLinkPopup(false)
+                          setSavedSelection(null)
+                        }}
                         className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800"
                       >
                         Abbrechen
@@ -746,10 +777,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
               <div className="relative">
                 <button
                   type="button"
-                  onClick={() => {
-                    setLinkText(window.getSelection()?.toString() || '')
-                    setShowLinkPopup(!showLinkPopup)
-                  }}
+                  onClick={openLinkPopup}
                   className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
                   title="Link einfügen"
                 >
@@ -778,7 +806,10 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
                       <div className="flex justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() => setShowLinkPopup(false)}
+                          onClick={() => {
+                            setShowLinkPopup(false)
+                            setSavedSelection(null)
+                          }}
                           className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800"
                         >
                           Abbrechen
