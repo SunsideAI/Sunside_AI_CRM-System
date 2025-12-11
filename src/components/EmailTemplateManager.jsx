@@ -12,7 +12,8 @@ import {
   Eye,
   EyeOff,
   Save,
-  Info
+  Info,
+  Link
 } from 'lucide-react'
 
 function EmailTemplateManager() {
@@ -39,6 +40,11 @@ function EmailTemplateManager() {
 
   // Delete Confirmation
   const [deleteConfirm, setDeleteConfirm] = useState(null)
+  
+  // Link-Popup State
+  const [showLinkPopup, setShowLinkPopup] = useState(false)
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkText, setLinkText] = useState('')
 
   useEffect(() => {
     loadTemplates()
@@ -533,6 +539,88 @@ function EmailTemplateManager() {
                     • Liste
                   </button>
                   
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setLinkUrl('')
+                        setLinkText('')
+                        setShowLinkPopup(!showLinkPopup)
+                      }}
+                      className="flex items-center px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                      title="Link einfügen"
+                    >
+                      <Link className="w-4 h-4 mr-1" />
+                      Link
+                    </button>
+                    
+                    {/* Link-Popup */}
+                    {showLinkPopup && (
+                      <div className="absolute top-full left-0 mt-2 p-4 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-80">
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              Anzeigename
+                            </label>
+                            <input
+                              type="text"
+                              value={linkText}
+                              onChange={(e) => setLinkText(e.target.value)}
+                              placeholder="z.B. Hier klicken"
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                              autoFocus
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 mb-1">
+                              URL
+                            </label>
+                            <input
+                              type="text"
+                              value={linkUrl}
+                              onChange={(e) => setLinkUrl(e.target.value)}
+                              placeholder="https://..."
+                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2 pt-2">
+                            <button
+                              type="button"
+                              onClick={() => setShowLinkPopup(false)}
+                              className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                            >
+                              Abbrechen
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (linkUrl && linkText) {
+                                  const textarea = document.getElementById('template-inhalt')
+                                  const start = textarea.selectionStart
+                                  const text = formInhalt
+                                  
+                                  // Link im Markdown-Format einfügen
+                                  const linkMarkdown = `[${linkText}](${linkUrl})`
+                                  const newText = text.substring(0, start) + linkMarkdown + text.substring(start)
+                                  setFormInhalt(newText)
+                                  
+                                  setShowLinkPopup(false)
+                                  setLinkUrl('')
+                                  setLinkText('')
+                                  textarea.focus()
+                                }
+                              }}
+                              disabled={!linkUrl || !linkText}
+                              className="px-3 py-1.5 text-sm bg-sunside-primary text-white rounded hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              Einfügen
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
                   <div className="h-6 w-px bg-gray-300 mx-1" />
                   
                   <span className="text-xs text-gray-400 ml-2">
@@ -550,7 +638,7 @@ function EmailTemplateManager() {
                 />
                 
                 <p className="text-xs text-gray-400 mt-1">
-                  **text** = fettgedruckt, • am Zeilenanfang = Aufzählung
+                  **text** = fettgedruckt, • am Zeilenanfang = Aufzählung, [Text](URL) = klickbarer Link
                 </p>
               </div>
 
