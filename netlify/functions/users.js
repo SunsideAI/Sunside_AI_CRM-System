@@ -130,15 +130,15 @@ async function createUser(data, TABLE_URL, airtableHeaders) {
       fields: {
         'Vor_Nachname': vor_nachname,
         'E-Mail': email,
-        'E-Mail_Geschäftlich': email_geschaeftlich || '',
-        'Telefon': telefon || '',
-        'Straße': strasse || '',
-        'PLZ': plz || '',
-        'Ort': ort || '',
-        'Bundesland': bundesland || '',
+        'E-Mail_Geschäftlich': email_geschaeftlich || null,
+        'Telefon': telefon || null,
+        'Straße': strasse || null,
+        'PLZ': plz ? parseInt(plz, 10) : null,
+        'Ort': ort || null,
+        'Bundesland': bundesland || null,
         'Rolle': rolle || [],
         'Status': true,
-        'Onboarding': onboarding || ''
+        'Onboarding': onboarding || null
       }
     })
   })
@@ -179,18 +179,18 @@ async function updateUser(data, TABLE_URL, airtableHeaders) {
   // Felder für Airtable mappen
   const fields = {}
   
-  if (updateData.vor_nachname !== undefined) fields['Vor_Nachname'] = updateData.vor_nachname
+  if (updateData.vor_nachname !== undefined) fields['Vor_Nachname'] = updateData.vor_nachname || null
   if (updateData.email !== undefined) fields['E-Mail'] = updateData.email
-  if (updateData.email_geschaeftlich !== undefined) fields['E-Mail_Geschäftlich'] = updateData.email_geschaeftlich
-  if (updateData.telefon !== undefined) fields['Telefon'] = updateData.telefon
-  if (updateData.strasse !== undefined) fields['Straße'] = updateData.strasse
-  if (updateData.plz !== undefined) fields['PLZ'] = updateData.plz
-  if (updateData.ort !== undefined) fields['Ort'] = updateData.ort
-  if (updateData.bundesland !== undefined) fields['Bundesland'] = updateData.bundesland
+  if (updateData.email_geschaeftlich !== undefined) fields['E-Mail_Geschäftlich'] = updateData.email_geschaeftlich || null
+  if (updateData.telefon !== undefined) fields['Telefon'] = updateData.telefon || null
+  if (updateData.strasse !== undefined) fields['Straße'] = updateData.strasse || null
+  if (updateData.plz !== undefined) fields['PLZ'] = updateData.plz ? parseInt(updateData.plz, 10) : null
+  if (updateData.ort !== undefined) fields['Ort'] = updateData.ort || null
+  if (updateData.bundesland !== undefined) fields['Bundesland'] = updateData.bundesland || null
   if (updateData.rolle !== undefined) fields['Rolle'] = updateData.rolle
   if (updateData.status !== undefined) fields['Status'] = updateData.status
-  if (updateData.onboarding !== undefined) fields['Onboarding'] = updateData.onboarding
-  if (updateData.google_calendar_id !== undefined) fields['Google_Calendar_ID'] = updateData.google_calendar_id
+  if (updateData.onboarding !== undefined) fields['Onboarding'] = updateData.onboarding || null
+  if (updateData.google_calendar_id !== undefined) fields['Google_Calendar_ID'] = updateData.google_calendar_id || null
 
   const response = await fetch(`${TABLE_URL}/${id}`, {
     method: 'PATCH',
