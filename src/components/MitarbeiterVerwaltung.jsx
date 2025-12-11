@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { 
   Users, 
   Plus, 
@@ -41,6 +42,29 @@ const BUNDESLAENDER = [
 // Rollen Optionen
 const ROLLEN = ['Admin', 'Setter', 'Closer', 'Coldcaller']
 
+// Modal Component mit Portal
+function Modal({ isOpen, onClose, children, zIndex = 99999 }) {
+  if (!isOpen) return null
+  
+  return createPortal(
+    <div 
+      className="fixed inset-0 flex items-center justify-center p-4"
+      style={{ zIndex }}
+    >
+      {/* Backdrop */}
+      <div 
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+      />
+      {/* Content */}
+      <div className="relative">
+        {children}
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 function MitarbeiterVerwaltung() {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
@@ -61,6 +85,9 @@ function MitarbeiterVerwaltung() {
     email: '',
     email_geschaeftlich: '',
     telefon: '',
+    strasse: '',
+    plz: '',
+    ort: '',
     bundesland: '',
     rolle: [],
     onboarding: ''
@@ -237,6 +264,9 @@ function MitarbeiterVerwaltung() {
       email: '',
       email_geschaeftlich: '',
       telefon: '',
+      strasse: '',
+      plz: '',
+      ort: '',
       bundesland: '',
       rolle: [],
       onboarding: ''
@@ -251,6 +281,9 @@ function MitarbeiterVerwaltung() {
       email: user.email || '',
       email_geschaeftlich: user.email_geschaeftlich || '',
       telefon: user.telefon || '',
+      strasse: user.strasse || '',
+      plz: user.plz || '',
+      ort: user.ort || '',
       bundesland: user.bundesland || '',
       rolle: user.rolle || [],
       onboarding: user.onboarding || ''
@@ -265,6 +298,16 @@ function MitarbeiterVerwaltung() {
         ? prev.rolle.filter(r => r !== rolle)
         : [...prev.rolle, rolle]
     }))
+  }
+
+  // Adresse formatieren für Anzeige
+  const formatAdresse = (user) => {
+    const parts = []
+    if (user.strasse) parts.push(user.strasse)
+    if (user.plz || user.ort) {
+      parts.push([user.plz, user.ort].filter(Boolean).join(' '))
+    }
+    return parts.join(', ')
   }
 
   // Gefilterte User
@@ -364,7 +407,7 @@ function MitarbeiterVerwaltung() {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kontakt</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bundesland</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Adresse</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rolle</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aktionen</th>
@@ -403,10 +446,10 @@ function MitarbeiterVerwaltung() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    {user.bundesland ? (
-                      <span className="flex items-center text-sm text-gray-600">
-                        <MapPin className="w-3 h-3 mr-1" />
-                        {user.bundesland}
+                    {formatAdresse(user) ? (
+                      <span className="flex items-start text-sm text-gray-600">
+                        <MapPin className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
+                        <span>{formatAdresse(user)}</span>
                       </span>
                     ) : (
                       <span className="text-gray-400 text-sm">-</span>
@@ -508,318 +551,376 @@ function MitarbeiterVerwaltung() {
       )}
 
       {/* Add Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[99999] p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Neuer Mitarbeiter</h3>
-                <button onClick={() => setShowAddModal(false)}>
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
+      <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)}>
+        <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Neuer Mitarbeiter</h3>
+              <button onClick={() => setShowAddModal(false)}>
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+              <input
+                type="text"
+                value={formData.vor_nachname}
+                onChange={(e) => setFormData({ ...formData, vor_nachname: e.target.value })}
+                placeholder="Max Mustermann"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              />
             </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Private E-Mail *</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="max@beispiel.de"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail</label>
+              <input
+                type="email"
+                value={formData.email_geschaeftlich}
+                onChange={(e) => setFormData({ ...formData, email_geschaeftlich: e.target.value })}
+                placeholder="max@sunsideai.de"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
+              <input
+                type="tel"
+                value={formData.telefon}
+                onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
+                placeholder="+49 176 12345678"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            {/* Adresse */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Adresse</label>
+              
+              <div className="space-y-3">
                 <input
                   type="text"
-                  value={formData.vor_nachname}
-                  onChange={(e) => setFormData({ ...formData, vor_nachname: e.target.value })}
-                  placeholder="Max Mustermann"
+                  value={formData.strasse}
+                  onChange={(e) => setFormData({ ...formData, strasse: e.target.value })}
+                  placeholder="Straße und Hausnummer"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Private E-Mail *</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  placeholder="max@beispiel.de"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail</label>
-                <input
-                  type="email"
-                  value={formData.email_geschaeftlich}
-                  onChange={(e) => setFormData({ ...formData, email_geschaeftlich: e.target.value })}
-                  placeholder="max@sunsideai.de"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
-                <input
-                  type="tel"
-                  value={formData.telefon}
-                  onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
-                  placeholder="+49 176 12345678"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland</label>
-                <select
-                  value={formData.bundesland}
-                  onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Bitte auswählen...</option>
-                  {BUNDESLAENDER.map(bl => (
-                    <option key={bl} value={bl}>{bl}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Rollen</label>
-                <div className="flex flex-wrap gap-2">
-                  {ROLLEN.map(rolle => (
-                    <button
-                      key={rolle}
-                      type="button"
-                      onClick={() => toggleRolle(rolle)}
-                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                        formData.rolle.includes(rolle)
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {rolle}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <div className="flex items-start">
-                  <GraduationCap className="w-5 h-5 text-blue-600 mr-3 mt-0.5" />
-                  <div className="text-sm text-blue-700">
-                    <p className="font-medium">Automatisches Onboarding</p>
-                    <p className="mt-1">Bei Setter/Coldcaller wird der Status auf "Akquise-Pfad bereitstellen" gesetzt. Ein Zapier-Automation stellt dann automatisch den Lernpfad + Vertrag bereit.</p>
-                  </div>
+                
+                <div className="grid grid-cols-3 gap-3">
+                  <input
+                    type="text"
+                    value={formData.plz}
+                    onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
+                    placeholder="PLZ"
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                  <input
+                    type="text"
+                    value={formData.ort}
+                    onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
+                    placeholder="Ort"
+                    className="col-span-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland</label>
+              <select
+                value={formData.bundesland}
+                onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Bitte auswählen...</option>
+                {BUNDESLAENDER.map(bl => (
+                  <option key={bl} value={bl}>{bl}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Rollen</label>
+              <div className="flex flex-wrap gap-2">
+                {ROLLEN.map(rolle => (
+                  <button
+                    key={rolle}
+                    type="button"
+                    onClick={() => toggleRolle(rolle)}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                      formData.rolle.includes(rolle)
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {rolle}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-start">
+                <GraduationCap className="w-5 h-5 text-blue-600 mr-3 mt-0.5" />
+                <div className="text-sm text-blue-700">
+                  <p className="font-medium">Automatisches Onboarding</p>
+                  <p className="mt-1">Bei Setter/Coldcaller wird der Status auf "Akquise-Pfad bereitstellen" gesetzt. Ein Zapier-Automation stellt dann automatisch den Lernpfad + Vertrag bereit.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <button
+              onClick={() => setShowAddModal(false)}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={handleAdd}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              Hinzufügen
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
+        <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Mitarbeiter bearbeiten</h3>
+              <button onClick={() => setShowEditModal(false)}>
+                <X className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+              <input
+                type="text"
+                value={formData.vor_nachname}
+                onChange={(e) => setFormData({ ...formData, vor_nachname: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Private E-Mail *</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail</label>
+              <input
+                type="email"
+                value={formData.email_geschaeftlich}
+                onChange={(e) => setFormData({ ...formData, email_geschaeftlich: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
+              <input
+                type="tel"
+                value={formData.telefon}
+                onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+
+            {/* Adresse */}
+            <div className="border-t border-gray-200 pt-4 mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-3">Adresse</label>
+              
+              <div className="space-y-3">
+                <input
+                  type="text"
+                  value={formData.strasse}
+                  onChange={(e) => setFormData({ ...formData, strasse: e.target.value })}
+                  placeholder="Straße und Hausnummer"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+                
+                <div className="grid grid-cols-3 gap-3">
+                  <input
+                    type="text"
+                    value={formData.plz}
+                    onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
+                    placeholder="PLZ"
+                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                  <input
+                    type="text"
+                    value={formData.ort}
+                    onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
+                    placeholder="Ort"
+                    className="col-span-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland</label>
+              <select
+                value={formData.bundesland}
+                onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+              >
+                <option value="">Bitte auswählen...</option>
+                {BUNDESLAENDER.map(bl => (
+                  <option key={bl} value={bl}>{bl}</option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Rollen</label>
+              <div className="flex flex-wrap gap-2">
+                {ROLLEN.map(rolle => (
+                  <button
+                    key={rolle}
+                    type="button"
+                    onClick={() => toggleRolle(rolle)}
+                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                      formData.rolle.includes(rolle)
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
+                    {rolle}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Closer-Pfad bereitstellen */}
+            {selectedUser?.onboarding !== 'Closer' && selectedUser?.onboarding !== 'Closer-Pfad bereitstellen' && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-start">
+                    <Target className="w-5 h-5 text-green-600 mr-3 mt-0.5" />
+                    <div className="text-sm text-green-700">
+                      <p className="font-medium">Closer-Pfad bereitstellen</p>
+                      <p className="mt-1">Startet das Closer-Onboarding für diesen Mitarbeiter.</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={setCloserPfad}
+                    disabled={saving}
+                    className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
+                  >
+                    Starten
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Onboarding Status anzeigen */}
+            {selectedUser?.onboarding && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Aktueller Onboarding-Status:</span>{' '}
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${
+                    selectedUser.onboarding.includes('Closer') ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {selectedUser.onboarding}
+                  </span>
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="p-6 border-t border-gray-200 flex justify-between">
+            {/* Deaktivieren Button links */}
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+            >
+              <UserX className="w-4 h-4" />
+              Deaktivieren
+            </button>
+
+            <div className="flex gap-3">
               <button
-                onClick={() => setShowAddModal(false)}
+                onClick={() => setShowEditModal(false)}
                 className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
               >
                 Abbrechen
               </button>
               <button
-                onClick={handleAdd}
+                onClick={handleEdit}
                 disabled={saving}
                 className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
               >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                Hinzufügen
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                Speichern
               </button>
             </div>
           </div>
         </div>
-      )}
-
-      {/* Edit Modal */}
-      {showEditModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[99999] p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Mitarbeiter bearbeiten</h3>
-                <button onClick={() => setShowEditModal(false)}>
-                  <X className="w-5 h-5 text-gray-400" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                <input
-                  type="text"
-                  value={formData.vor_nachname}
-                  onChange={(e) => setFormData({ ...formData, vor_nachname: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Private E-Mail *</label>
-                <input
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail</label>
-                <input
-                  type="email"
-                  value={formData.email_geschaeftlich}
-                  onChange={(e) => setFormData({ ...formData, email_geschaeftlich: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
-                <input
-                  type="tel"
-                  value={formData.telefon}
-                  onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland</label>
-                <select
-                  value={formData.bundesland}
-                  onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                >
-                  <option value="">Bitte auswählen...</option>
-                  {BUNDESLAENDER.map(bl => (
-                    <option key={bl} value={bl}>{bl}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Rollen</label>
-                <div className="flex flex-wrap gap-2">
-                  {ROLLEN.map(rolle => (
-                    <button
-                      key={rolle}
-                      type="button"
-                      onClick={() => toggleRolle(rolle)}
-                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                        formData.rolle.includes(rolle)
-                          ? 'bg-purple-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
-                    >
-                      {rolle}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Closer-Pfad bereitstellen */}
-              {selectedUser?.onboarding !== 'Closer' && selectedUser?.onboarding !== 'Closer-Pfad bereitstellen' && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-start">
-                      <Target className="w-5 h-5 text-green-600 mr-3 mt-0.5" />
-                      <div className="text-sm text-green-700">
-                        <p className="font-medium">Closer-Pfad bereitstellen</p>
-                        <p className="mt-1">Startet das Closer-Onboarding für diesen Mitarbeiter.</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={setCloserPfad}
-                      disabled={saving}
-                      className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
-                    >
-                      Starten
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Onboarding Status anzeigen */}
-              {selectedUser?.onboarding && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <p className="text-sm text-gray-600">
-                    <span className="font-medium">Aktueller Onboarding-Status:</span>{' '}
-                    <span className={`px-2 py-0.5 rounded-full text-xs ${
-                      selectedUser.onboarding.includes('Closer') ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
-                    }`}>
-                      {selectedUser.onboarding}
-                    </span>
-                  </p>
-                </div>
-              )}
-            </div>
-
-            <div className="p-6 border-t border-gray-200 flex justify-between">
-              {/* Deaktivieren Button links */}
-              <button
-                onClick={() => setShowDeleteModal(true)}
-                className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg"
-              >
-                <UserX className="w-4 h-4" />
-                Deaktivieren
-              </button>
-
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowEditModal(false)}
-                  className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-                >
-                  Abbrechen
-                </button>
-                <button
-                  onClick={handleEdit}
-                  disabled={saving}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                  Speichern
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      </Modal>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[999999] p-4">
-          <div className="bg-white rounded-xl max-w-md w-full">
-            <div className="p-6">
-              <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-4">
-                <UserX className="w-6 h-6 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-center mb-2">Mitarbeiter deaktivieren?</h3>
-              <p className="text-gray-600 text-center">
-                <strong>{selectedUser?.vor_nachname}</strong> wird deaktiviert und kann sich nicht mehr einloggen. 
-                Die Daten bleiben erhalten und können später reaktiviert werden.
-              </p>
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} zIndex={999999}>
+        <div className="bg-white rounded-xl max-w-md w-full">
+          <div className="p-6">
+            <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-4">
+              <UserX className="w-6 h-6 text-red-600" />
             </div>
+            <h3 className="text-lg font-semibold text-center mb-2">Mitarbeiter deaktivieren?</h3>
+            <p className="text-gray-600 text-center">
+              <strong>{selectedUser?.vor_nachname}</strong> wird deaktiviert und kann sich nicht mehr einloggen. 
+              Die Daten bleiben erhalten und können später reaktiviert werden.
+            </p>
+          </div>
 
-            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-              >
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
-                Deaktivieren
-              </button>
-            </div>
+          <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+            <button
+              onClick={() => setShowDeleteModal(false)}
+              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={saving}
+              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+            >
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
+              Deaktivieren
+            </button>
           </div>
         </div>
-      )}
+      </Modal>
     </div>
   )
 }
