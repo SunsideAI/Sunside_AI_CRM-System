@@ -132,14 +132,14 @@ exports.handler = async (event) => {
   }
 }
 
-// Lead-Kommentarfeld mit Historie aktualisieren
+// Lead-Kommentarfeld mit Historie aktualisieren + Status-Update bei E-Mail
 async function updateLeadHistory({ leadId, action, details, userName, attachmentCount }) {
   const headers = {
     'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
     'Content-Type': 'application/json'
   }
 
-  // Erst aktuellen Kommentar laden
+  // Erst aktuellen Lead laden (Kommentar + Status)
   const getResponse = await fetch(
     `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Leads')}/${leadId}`,
     { headers }
@@ -147,6 +147,7 @@ async function updateLeadHistory({ leadId, action, details, userName, attachment
   
   const leadData = await getResponse.json()
   const currentKommentar = leadData.fields?.Kommentar || ''
+  const currentStatus = leadData.fields?.Ergebnis || ''
 
   // Neuen Eintrag formatieren
   const now = new Date()
@@ -167,6 +168,27 @@ async function updateLeadHistory({ leadId, action, details, userName, attachment
     ? `${newEntry}\n${currentKommentar}`
     : newEntry
 
+  // Status-Update Logik bei E-Mail-Versand
+  // Nur wenn aktueller Status "niedriger" ist als "Unterlagen versendet"
+  const lowerStatuses = ['Nicht erreicht', 'Kein Interesse', 'Interesse']
+  const shouldUpdateStatus = action === 'email' && lowerStatuses.includes(currentStatus)
+
+  // Update-Payload vorbereiten
+  const updateFields = {
+    Kommentar: updatedKommentar
+  }
+
+  // Status auf "Unterlagen versendet" setzen wenn nötig
+  if (shouldUpdateStatus) {
+    updateFields.Ergebnis = 'Unterlagen versendet'
+    
+    // Zusätzlichen History-Eintrag für Status-Änderung
+    const statusEntry = `[${timestamp}] 📋 Ergebnis: Unterlagen versendet (automatisch nach E-Mail-Versand)`
+    updateFields.Kommentar = `${newEntry}\n${statusEntry}${currentKommentar ? '\n' + currentKommentar : ''}`
+    
+    console.log(`Status automatisch geändert: ${currentStatus} → Unterlagen versendet`)
+  }
+
   // Lead aktualisieren
   await fetch(
     `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Leads')}/${leadId}`,
@@ -174,9 +196,7 @@ async function updateLeadHistory({ leadId, action, details, userName, attachment
       method: 'PATCH',
       headers,
       body: JSON.stringify({
-        fields: {
-          Kommentar: updatedKommentar
-        }
+        fields: updateFields
       })
     }
   )
@@ -250,8 +270,8 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
   // Signatur HTML - basierend auf IONOS Vorlage
   const signatur = `
     <div style="font-size: 10pt; font-family: Arial, Helvetica, sans-serif; margin-top: 20px; color: #000000;">
-      <div>Mit freundlichen Grüßen</div>
       <br>
+      <div>Mit freundlichen Grüßen</div>
       <div><strong>${senderName || 'Sunside AI Team'}</strong></div>
       <div>KI-Entwicklung für Immobilienmakler</div>
       <br>
