@@ -847,23 +847,20 @@ function Kaltakquise() {
                 {editMode ? (
                   // Bearbeitungsmodus
                   <div className="space-y-4">
-                    {/* Kontaktiert */}
-                    <label className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={editForm.kontaktiert}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, kontaktiert: e.target.checked }))}
-                        className="w-5 h-5 text-sunside-primary rounded border-gray-300 focus:ring-sunside-primary"
-                      />
-                      <span className="ml-3 text-gray-700">Bereits kontaktiert</span>
-                    </label>
-
-                    {/* Ergebnis */}
+                    {/* Ergebnis - setzt automatisch kontaktiert: true */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Ergebnis</label>
                       <select
                         value={editForm.ergebnis}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, ergebnis: e.target.value }))}
+                        onChange={(e) => {
+                          const neuesErgebnis = e.target.value
+                          setEditForm(prev => ({ 
+                            ...prev, 
+                            ergebnis: neuesErgebnis,
+                            // Automatisch als kontaktiert markieren wenn Ergebnis gesetzt
+                            kontaktiert: neuesErgebnis ? true : prev.kontaktiert
+                          }))
+                        }}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
                       >
                         {ERGEBNIS_OPTIONEN.map(option => (
