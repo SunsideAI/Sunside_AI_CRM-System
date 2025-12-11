@@ -552,7 +552,7 @@ function MitarbeiterVerwaltung() {
 
       {/* Add Modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)}>
-        <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-xl w-[600px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Neuer Mitarbeiter</h3>
@@ -563,113 +563,123 @@ function MitarbeiterVerwaltung() {
           </div>
 
           <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-              <input
-                type="text"
-                value={formData.vor_nachname}
-                onChange={(e) => setFormData({ ...formData, vor_nachname: e.target.value })}
-                placeholder="Max Mustermann"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
+            {/* Zeile 1: Name + Telefon */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <input
+                  type="text"
+                  value={formData.vor_nachname}
+                  onChange={(e) => setFormData({ ...formData, vor_nachname: e.target.value })}
+                  placeholder="Max Mustermann"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
+                <input
+                  type="tel"
+                  value={formData.telefon}
+                  onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
+                  placeholder="+49 176 12345678"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Private E-Mail *</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="max@beispiel.de"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
+            {/* Zeile 2: Private E-Mail + Geschäftliche E-Mail */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Private E-Mail *</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="max@beispiel.de"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail</label>
+                <input
+                  type="email"
+                  value={formData.email_geschaeftlich}
+                  onChange={(e) => setFormData({ ...formData, email_geschaeftlich: e.target.value })}
+                  placeholder="max@sunsideai.de"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail</label>
-              <input
-                type="email"
-                value={formData.email_geschaeftlich}
-                onChange={(e) => setFormData({ ...formData, email_geschaeftlich: e.target.value })}
-                placeholder="max@sunsideai.de"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
-              <input
-                type="tel"
-                value={formData.telefon}
-                onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
-                placeholder="+49 176 12345678"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-
-            {/* Adresse */}
-            <div className="border-t border-gray-200 pt-4 mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Adresse</label>
-              
-              <div className="space-y-3">
+            {/* Zeile 3: Adresse */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Straße + Hausnr.</label>
                 <input
                   type="text"
                   value={formData.strasse}
                   onChange={(e) => setFormData({ ...formData, strasse: e.target.value })}
-                  placeholder="Straße und Hausnummer"
+                  placeholder="Musterstraße 1"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
-                
-                <div className="grid grid-cols-3 gap-3">
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">PLZ</label>
                   <input
                     type="text"
                     value={formData.plz}
                     onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
-                    placeholder="PLZ"
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    placeholder="12345"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                   />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ort</label>
                   <input
                     type="text"
                     value={formData.ort}
                     onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
-                    placeholder="Ort"
-                    className="col-span-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    placeholder="Berlin"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland</label>
-              <select
-                value={formData.bundesland}
-                onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">Bitte auswählen...</option>
-                {BUNDESLAENDER.map(bl => (
-                  <option key={bl} value={bl}>{bl}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Rollen</label>
-              <div className="flex flex-wrap gap-2">
-                {ROLLEN.map(rolle => (
-                  <button
-                    key={rolle}
-                    type="button"
-                    onClick={() => toggleRolle(rolle)}
-                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                      formData.rolle.includes(rolle)
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {rolle}
-                  </button>
-                ))}
+            {/* Zeile 4: Bundesland + Rollen */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland</label>
+                <select
+                  value={formData.bundesland}
+                  onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Bitte auswählen...</option>
+                  {BUNDESLAENDER.map(bl => (
+                    <option key={bl} value={bl}>{bl}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rollen</label>
+                <div className="flex flex-wrap gap-2">
+                  {ROLLEN.map(rolle => (
+                    <button
+                      key={rolle}
+                      type="button"
+                      onClick={() => toggleRolle(rolle)}
+                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                        formData.rolle.includes(rolle)
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {rolle}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -678,7 +688,7 @@ function MitarbeiterVerwaltung() {
                 <GraduationCap className="w-5 h-5 text-blue-600 mr-3 mt-0.5" />
                 <div className="text-sm text-blue-700">
                   <p className="font-medium">Automatisches Onboarding</p>
-                  <p className="mt-1">Bei Setter/Coldcaller wird der Status auf "Akquise-Pfad bereitstellen" gesetzt. Ein Zapier-Automation stellt dann automatisch den Lernpfad + Vertrag bereit.</p>
+                  <p className="mt-1">Bei Setter/Coldcaller wird automatisch der Akquise-Pfad bereitgestellt.</p>
                 </div>
               </div>
             </div>
@@ -705,7 +715,7 @@ function MitarbeiterVerwaltung() {
 
       {/* Edit Modal */}
       <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
-        <div className="bg-white rounded-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="bg-white rounded-xl w-[600px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold">Mitarbeiter bearbeiten</h3>
@@ -716,109 +726,119 @@ function MitarbeiterVerwaltung() {
           </div>
 
           <div className="p-6 space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-              <input
-                type="text"
-                value={formData.vor_nachname}
-                onChange={(e) => setFormData({ ...formData, vor_nachname: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
+            {/* Zeile 1: Name + Telefon */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <input
+                  type="text"
+                  value={formData.vor_nachname}
+                  onChange={(e) => setFormData({ ...formData, vor_nachname: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
+                <input
+                  type="tel"
+                  value={formData.telefon}
+                  onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Private E-Mail *</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
+            {/* Zeile 2: Private E-Mail + Geschäftliche E-Mail */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Private E-Mail *</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail</label>
+                <input
+                  type="email"
+                  value={formData.email_geschaeftlich}
+                  onChange={(e) => setFormData({ ...formData, email_geschaeftlich: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail</label>
-              <input
-                type="email"
-                value={formData.email_geschaeftlich}
-                onChange={(e) => setFormData({ ...formData, email_geschaeftlich: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
-              <input
-                type="tel"
-                value={formData.telefon}
-                onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-
-            {/* Adresse */}
-            <div className="border-t border-gray-200 pt-4 mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-3">Adresse</label>
-              
-              <div className="space-y-3">
+            {/* Zeile 3: Adresse */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Straße + Hausnr.</label>
                 <input
                   type="text"
                   value={formData.strasse}
                   onChange={(e) => setFormData({ ...formData, strasse: e.target.value })}
-                  placeholder="Straße und Hausnummer"
+                  placeholder="Musterstraße 1"
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
-                
-                <div className="grid grid-cols-3 gap-3">
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">PLZ</label>
                   <input
                     type="text"
                     value={formData.plz}
                     onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
-                    placeholder="PLZ"
-                    className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    placeholder="12345"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                   />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ort</label>
                   <input
                     type="text"
                     value={formData.ort}
                     onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
-                    placeholder="Ort"
-                    className="col-span-2 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                    placeholder="Berlin"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                   />
                 </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland</label>
-              <select
-                value={formData.bundesland}
-                onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-              >
-                <option value="">Bitte auswählen...</option>
-                {BUNDESLAENDER.map(bl => (
-                  <option key={bl} value={bl}>{bl}</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Rollen</label>
-              <div className="flex flex-wrap gap-2">
-                {ROLLEN.map(rolle => (
-                  <button
-                    key={rolle}
-                    type="button"
-                    onClick={() => toggleRolle(rolle)}
-                    className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                      formData.rolle.includes(rolle)
-                        ? 'bg-purple-600 text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                  >
-                    {rolle}
-                  </button>
-                ))}
+            {/* Zeile 4: Bundesland + Rollen */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland</label>
+                <select
+                  value={formData.bundesland}
+                  onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Bitte auswählen...</option>
+                  {BUNDESLAENDER.map(bl => (
+                    <option key={bl} value={bl}>{bl}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rollen</label>
+                <div className="flex flex-wrap gap-2">
+                  {ROLLEN.map(rolle => (
+                    <button
+                      key={rolle}
+                      type="button"
+                      onClick={() => toggleRolle(rolle)}
+                      className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                        formData.rolle.includes(rolle)
+                          ? 'bg-purple-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {rolle}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
