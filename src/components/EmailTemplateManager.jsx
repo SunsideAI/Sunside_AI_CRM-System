@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { 
   FileText, 
@@ -13,19 +13,80 @@ import {
   EyeOff,
   Save,
   Info,
-  Link
+  Link,
+  Edit3,
+  Bold,
+  List
 } from 'lucide-react'
+
+// Markdown zu HTML konvertieren (für Editor)
+const markdownToHtml = (text) => {
+  if (!text) return ''
+  
+  return text
+    // Markdown-Links: [Text](URL) zu klickbarem Link
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color: #7c3aed; text-decoration: underline;">$1</a>')
+    // Fettdruck: **text** zu <strong>
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    // Bullet Points am Zeilenanfang
+    .replace(/^• (.+)$/gm, '• $1')
+    // Zeilenumbrüche zu <br>
+    .replace(/\n/g, '<br>')
+}
+
+// HTML zu Markdown konvertieren (für Speichern)
+const htmlToMarkdown = (html) => {
+  if (!html) return ''
+  
+  return html
+    // Links zu Markdown
+    .replace(/<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/gi, '[$2]($1)')
+    // Strong/Bold zu **
+    .replace(/<strong>([^<]+)<\/strong>/gi, '**$1**')
+    .replace(/<b>([^<]+)<\/b>/gi, '**$1**')
+    // <br> zu Zeilenumbruch
+    .replace(/<br\s*\/?>/gi, '\n')
+    // <div> zu Zeilenumbruch
+    .replace(/<\/div><div>/gi, '\n')
+    .replace(/<div>/gi, '\n')
+    .replace(/<\/div>/gi, '')
+    // Restliche HTML-Tags entfernen
+    .replace(/<[^>]+>/g, '')
+    // &nbsp; zu Leerzeichen
+    .replace(/&nbsp;/g, ' ')
+    // HTML Entities decodieren
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    // Führende Zeilenumbrüche entfernen
+    .replace(/^\n+/, '')
+}
+
+// Markdown-ähnlichen Text zu formatiertem HTML rendern (für Vorschau in Liste)
+const renderFormattedPreview = (text) => {
+  if (!text) return ''
+  
+  return text
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" class="text-purple-600 underline">$1</a>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/^• (.+)$/gm, '<span class="flex items-start"><span class="mr-2">•</span><span>$1</span></span>')
+    .replace(/\n/g, '<br>')
+}
 
 function EmailTemplateManager() {
   const [templates, setTemplates] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  
+  // Editor Ref
+  const editorRef = useRef(null)
 
   // Editor State
   const [editMode, setEditMode] = useState(false) // 'create' | 'edit' | false
   const [editingTemplate, setEditingTemplate] = useState(null)
   const [saving, setSaving] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
 
   // Form State
   const [formName, setFormName] = useState('')
@@ -75,29 +136,91 @@ function EmailTemplateManager() {
     setFormAttachments([])
     setEditingTemplate(null)
     setEditMode('create')
+    setShowPreview(false)
     setError('')
     setUploadError('')
+    // Editor leeren (nach nächstem Render)
+    setTimeout(() => {
+      if (editorRef.current) editorRef.current.innerHTML = ''
+    }, 0)
   }
 
   const openEditMode = (template) => {
     setFormName(template.name)
     setFormBetreff(template.betreff)
-    setFormInhalt(template.inhalt)
+    // Markdown zu HTML konvertieren für Editor
+    const htmlContent = markdownToHtml(template.inhalt)
+    setFormInhalt(htmlContent)
     setFormAktiv(template.aktiv)
     // Bestehende Attachments laden
     setFormAttachments(template.attachments || [])
     setEditingTemplate(template)
     setEditMode('edit')
+    setShowPreview(false)
     setError('')
     setUploadError('')
+    // Editor-Inhalt setzen (nach nächstem Render)
+    setTimeout(() => {
+      if (editorRef.current) editorRef.current.innerHTML = htmlContent
+    }, 0)
   }
 
   const closeEditor = () => {
     setEditMode(false)
     setEditingTemplate(null)
     setFormAttachments([])
+    setShowPreview(false)
     setError('')
     setUploadError('')
+  }
+
+  // WYSIWYG Editor Funktionen
+  const handleEditorInput = (e) => {
+    setFormInhalt(e.target.innerHTML)
+  }
+
+  const formatBold = () => {
+    document.execCommand('bold', false, null)
+    editorRef.current?.focus()
+  }
+
+  const formatList = () => {
+    const selection = window.getSelection()
+    if (selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0)
+      const bullet = document.createTextNode('• ')
+      range.insertNode(bullet)
+      range.setStartAfter(bullet)
+      range.collapse(true)
+      selection.removeAllRanges()
+      selection.addRange(range)
+    }
+    editorRef.current?.focus()
+  }
+
+  const insertLinkInEditor = () => {
+    if (linkUrl && linkText) {
+      const selection = window.getSelection()
+      if (selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0)
+        const link = document.createElement('a')
+        link.href = linkUrl
+        link.style.color = '#7c3aed'
+        link.style.textDecoration = 'underline'
+        link.textContent = linkText
+        range.deleteContents()
+        range.insertNode(link)
+        
+        range.setStartAfter(link)
+        range.collapse(true)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
+      setShowLinkPopup(false)
+      setLinkUrl('')
+      setLinkText('')
+      editorRef.current?.focus()
+    }
   }
 
   // Datei hochladen
@@ -180,6 +303,10 @@ function EmailTemplateManager() {
   }
 
   const handleSave = async () => {
+    // Inhalt aus Editor holen und zu Markdown konvertieren
+    const editorContent = editorRef.current ? editorRef.current.innerHTML : formInhalt
+    const markdownContent = htmlToMarkdown(editorContent)
+    
     // Validierung
     if (!formName.trim()) {
       setError('Bitte Namen eingeben')
@@ -189,7 +316,7 @@ function EmailTemplateManager() {
       setError('Bitte Betreff eingeben')
       return
     }
-    if (!formInhalt.trim()) {
+    if (!markdownContent.trim()) {
       setError('Bitte Inhalt eingeben')
       return
     }
@@ -201,7 +328,7 @@ function EmailTemplateManager() {
       const payload = {
         name: formName,
         betreff: formBetreff,
-        inhalt: formInhalt,
+        inhalt: markdownContent, // Markdown für Backend
         aktiv: formAktiv,
         attachments: formAttachments.map(att => ({
           url: att.url,
@@ -481,109 +608,58 @@ function EmailTemplateManager() {
                 </label>
                 
                 {/* Formatierungs-Toolbar */}
-                <div className="flex items-center gap-1 mb-2 p-2 bg-gray-50 rounded-t-lg border border-b-0 border-gray-300">
+                <div className="flex items-center gap-2 p-2 bg-gray-50 rounded-t-lg border border-b-0 border-gray-300">
                   <button
                     type="button"
-                    onClick={() => {
-                      const textarea = document.getElementById('template-inhalt')
-                      const start = textarea.selectionStart
-                      const end = textarea.selectionEnd
-                      const text = formInhalt
-                      
-                      if (start !== end) {
-                        // Text markiert - umschließen mit **
-                        const selectedText = text.substring(start, end)
-                        const newText = text.substring(0, start) + '**' + selectedText + '**' + text.substring(end)
-                        setFormInhalt(newText)
-                      } else {
-                        // Nichts markiert - Platzhalter einfügen
-                        const newText = text.substring(0, start) + '**Fettgedruckt**' + text.substring(end)
-                        setFormInhalt(newText)
-                      }
-                      textarea.focus()
-                    }}
-                    className="px-3 py-1.5 text-sm font-bold bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
-                    title="Fettgedruckt"
+                    onClick={formatBold}
+                    className="p-2 bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                    title="Fettgedruckt (Strg+B)"
                   >
-                    B
+                    <Bold className="w-4 h-4" />
                   </button>
                   
                   <button
                     type="button"
-                    onClick={() => {
-                      const textarea = document.getElementById('template-inhalt')
-                      const start = textarea.selectionStart
-                      const text = formInhalt
-                      
-                      // Finde Zeilenanfang
-                      let lineStart = start
-                      while (lineStart > 0 && text[lineStart - 1] !== '\n') {
-                        lineStart--
-                      }
-                      
-                      // Prüfe ob Zeile schon mit • beginnt
-                      if (text.substring(lineStart, lineStart + 2) === '• ') {
-                        // Bullet entfernen
-                        const newText = text.substring(0, lineStart) + text.substring(lineStart + 2)
-                        setFormInhalt(newText)
-                      } else {
-                        // Bullet hinzufügen
-                        const newText = text.substring(0, lineStart) + '• ' + text.substring(lineStart)
-                        setFormInhalt(newText)
-                      }
-                      textarea.focus()
-                    }}
-                    className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                    onClick={formatList}
+                    className="p-2 bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
                     title="Aufzählung"
                   >
-                    • Liste
+                    <List className="w-4 h-4" />
                   </button>
                   
                   <div className="relative">
                     <button
                       type="button"
                       onClick={() => {
-                        setLinkUrl('')
-                        setLinkText('')
+                        setLinkText(window.getSelection()?.toString() || '')
                         setShowLinkPopup(!showLinkPopup)
                       }}
-                      className="flex items-center px-3 py-1.5 text-sm bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+                      className="p-2 bg-white border border-gray-300 rounded hover:bg-gray-100 transition-colors"
                       title="Link einfügen"
                     >
-                      <Link className="w-4 h-4 mr-1" />
-                      Link
+                      <Link className="w-4 h-4" />
                     </button>
                     
                     {/* Link-Popup */}
                     {showLinkPopup && (
-                      <div className="absolute top-full left-0 mt-2 p-4 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-80">
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Anzeigename
-                            </label>
-                            <input
-                              type="text"
-                              value={linkText}
-                              onChange={(e) => setLinkText(e.target.value)}
-                              placeholder="z.B. Hier klicken"
-                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
-                              autoFocus
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              URL
-                            </label>
-                            <input
-                              type="text"
-                              value={linkUrl}
-                              onChange={(e) => setLinkUrl(e.target.value)}
-                              placeholder="https://..."
-                              className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
-                            />
-                          </div>
-                          <div className="flex justify-end gap-2 pt-2">
+                      <div className="absolute top-full left-0 mt-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-72">
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={linkText}
+                            onChange={(e) => setLinkText(e.target.value)}
+                            placeholder="Anzeigename"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-sunside-primary outline-none"
+                            autoFocus
+                          />
+                          <input
+                            type="url"
+                            value={linkUrl}
+                            onChange={(e) => setLinkUrl(e.target.value)}
+                            placeholder="https://..."
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-sunside-primary outline-none"
+                          />
+                          <div className="flex justify-end gap-2">
                             <button
                               type="button"
                               onClick={() => setShowLinkPopup(false)}
@@ -593,25 +669,9 @@ function EmailTemplateManager() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => {
-                                if (linkUrl && linkText) {
-                                  const textarea = document.getElementById('template-inhalt')
-                                  const start = textarea.selectionStart
-                                  const text = formInhalt
-                                  
-                                  // Link im Markdown-Format einfügen
-                                  const linkMarkdown = `[${linkText}](${linkUrl})`
-                                  const newText = text.substring(0, start) + linkMarkdown + text.substring(start)
-                                  setFormInhalt(newText)
-                                  
-                                  setShowLinkPopup(false)
-                                  setLinkUrl('')
-                                  setLinkText('')
-                                  textarea.focus()
-                                }
-                              }}
+                              onClick={insertLinkInEditor}
                               disabled={!linkUrl || !linkText}
-                              className="px-3 py-1.5 text-sm bg-sunside-primary text-white rounded hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="px-3 py-1.5 text-sm bg-sunside-primary text-white rounded hover:bg-purple-700 disabled:opacity-50"
                             >
                               Einfügen
                             </button>
@@ -620,25 +680,27 @@ function EmailTemplateManager() {
                       </div>
                     )}
                   </div>
-                  
-                  <div className="h-6 w-px bg-gray-300 mx-1" />
-                  
-                  <span className="text-xs text-gray-400 ml-2">
-                    Tipp: Text markieren, dann auf B klicken
-                  </span>
                 </div>
                 
-                <textarea
-                  id="template-inhalt"
-                  value={formInhalt}
-                  onChange={(e) => setFormInhalt(e.target.value)}
-                  placeholder={`Guten Tag,\n\nvielen Dank für unser Gespräch.\n\nIm Anhang finden Sie wie besprochen unsere Unterlagen für {{firma}}.\n\nBei Fragen stehe ich Ihnen gerne zur Verfügung unter {{setter_telefon}} oder {{setter_email}}.\n\nIch freue mich auf Ihre Rückmeldung!`}
-                  rows={14}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none font-mono text-sm"
+                {/* WYSIWYG Editor */}
+                <div
+                  ref={editorRef}
+                  contentEditable
+                  onInput={handleEditorInput}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none min-h-[336px] max-h-[400px] overflow-y-auto"
+                  style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', lineHeight: '1.4' }}
+                  data-placeholder="E-Mail-Text eingeben..."
                 />
+                <style>{`
+                  [contenteditable]:empty:before {
+                    content: attr(data-placeholder);
+                    color: #9ca3af;
+                    pointer-events: none;
+                  }
+                `}</style>
                 
                 <p className="text-xs text-gray-400 mt-1">
-                  **text** = fettgedruckt, • am Zeilenanfang = Aufzählung, [Text](URL) = klickbarer Link
+                  Platzhalter: {'{{firma}}'}, {'{{stadt}}'}, {'{{setter_name}}'}, {'{{setter_vorname}}'}, {'{{setter_email}}'}, {'{{setter_telefon}}'}
                 </p>
               </div>
 
