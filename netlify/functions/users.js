@@ -56,7 +56,7 @@ export async function handler(event) {
 
 // GET - Alle User laden
 async function getUsers(TABLE_URL, airtableHeaders) {
-  const url = `${TABLE_URL}?fields[]=Vor_Nachname&fields[]=E-Mail&fields[]=E-Mail_Geschäftlich&fields[]=Rolle&fields[]=Status&fields[]=Telefon&fields[]=Google_Calendar_ID&fields[]=Passwort&fields[]=Onboarding`
+  const url = `${TABLE_URL}?fields[]=Vor_Nachname&fields[]=E-Mail&fields[]=E-Mail_Geschäftlich&fields[]=Rolle&fields[]=Status&fields[]=Telefon&fields[]=Google_Calendar_ID&fields[]=Passwort&fields[]=Onboarding&fields[]=Bundesland`
   
   const response = await fetch(url, { headers: airtableHeaders })
 
@@ -74,6 +74,7 @@ async function getUsers(TABLE_URL, airtableHeaders) {
     rolle: record.fields.Rolle || [],
     status: record.fields.Status !== false,
     telefon: record.fields.Telefon || '',
+    bundesland: record.fields.Bundesland || '',
     google_calendar_id: record.fields.Google_Calendar_ID || '',
     onboarding: record.fields.Onboarding || '',
     hasPassword: !!(record.fields.Passwort && record.fields.Passwort.length > 0)
@@ -90,7 +91,7 @@ async function getUsers(TABLE_URL, airtableHeaders) {
 
 // POST - Neuen User erstellen
 async function createUser(data, TABLE_URL, airtableHeaders) {
-  const { vor_nachname, email, email_geschaeftlich, telefon, rolle, onboarding } = data
+  const { vor_nachname, email, email_geschaeftlich, telefon, bundesland, rolle, onboarding } = data
 
   if (!vor_nachname || !email) {
     return {
@@ -123,6 +124,7 @@ async function createUser(data, TABLE_URL, airtableHeaders) {
         'E-Mail': email,
         'E-Mail_Geschäftlich': email_geschaeftlich || '',
         'Telefon': telefon || '',
+        'Bundesland': bundesland || '',
         'Rolle': rolle || [],
         'Status': true,
         'Onboarding': onboarding || ''
@@ -170,6 +172,7 @@ async function updateUser(data, TABLE_URL, airtableHeaders) {
   if (updateData.email !== undefined) fields['E-Mail'] = updateData.email
   if (updateData.email_geschaeftlich !== undefined) fields['E-Mail_Geschäftlich'] = updateData.email_geschaeftlich
   if (updateData.telefon !== undefined) fields['Telefon'] = updateData.telefon
+  if (updateData.bundesland !== undefined) fields['Bundesland'] = updateData.bundesland
   if (updateData.rolle !== undefined) fields['Rolle'] = updateData.rolle
   if (updateData.status !== undefined) fields['Status'] = updateData.status
   if (updateData.onboarding !== undefined) fields['Onboarding'] = updateData.onboarding
