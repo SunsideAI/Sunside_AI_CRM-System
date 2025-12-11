@@ -342,43 +342,6 @@ function Kaltakquise() {
     }
   }
 
-  // Quick-Action: Als kontaktiert markieren
-  const markAsContacted = async (lead, e) => {
-    e.stopPropagation()
-    
-    const newStatus = !lead.kontaktiert
-    
-    try {
-      const response = await fetch('/.netlify/functions/leads', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          leadId: lead.id,
-          updates: { kontaktiert: newStatus },
-          historyEntry: {
-            action: newStatus ? 'kontaktiert' : 'nicht_kontaktiert',
-            details: newStatus ? 'Als kontaktiert markiert' : 'Als nicht kontaktiert zurückgesetzt',
-            userName: user?.name || 'Unbekannt'
-          }
-        })
-      })
-
-      if (!response.ok) {
-        throw new Error('Fehler beim Aktualisieren')
-      }
-
-      // Lead in Liste aktualisieren
-      setLeads(prev => prev.map(l => 
-        l.id === lead.id 
-          ? { ...l, kontaktiert: newStatus }
-          : l
-      ))
-
-    } catch (err) {
-      alert(err.message)
-    }
-  }
-
   // Prüfen ob "Unterlagen senden" Button angezeigt werden soll
   const showUnterlagenButton = (lead) => {
     if (!lead?.ergebnis) return false
@@ -547,14 +510,13 @@ function Kaltakquise() {
                     onClick={() => openLead(lead)}
                     className="hover:bg-gray-50 cursor-pointer transition-colors"
                   >
-                    {/* Status */}
+                    {/* Status-Indikator (nur Anzeige, kein Klick) */}
                     <td className="px-4 py-3">
-                      <button
-                        onClick={(e) => markAsContacted(lead, e)}
-                        className={`p-1.5 rounded-full transition-colors ${
+                      <div
+                        className={`p-1.5 rounded-full inline-flex ${
                           lead.kontaktiert 
-                            ? 'bg-green-100 text-green-600 hover:bg-green-200' 
-                            : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                            ? 'bg-green-100 text-green-600' 
+                            : 'bg-gray-100 text-gray-400'
                         }`}
                       >
                         {lead.kontaktiert ? (
@@ -562,7 +524,7 @@ function Kaltakquise() {
                         ) : (
                           <Phone className="w-5 h-5" />
                         )}
-                      </button>
+                      </div>
                     </td>
 
                     {/* Unternehmen */}
