@@ -271,6 +271,7 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
   const signatur = `
     <div style="font-size: 10pt; font-family: Arial, Helvetica, sans-serif; margin-top: 20px; color: #000000;">
       <div>Mit freundlichen Grüßen</div>
+            <br>
       <div><strong>${senderName || 'Sunside AI Team'}</strong></div>
       <div>KI-Entwicklung für Immobilienmakler</div>
       <br>
