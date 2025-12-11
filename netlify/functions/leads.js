@@ -134,7 +134,12 @@ export async function handler(event) {
         'Ergebnis',
         'Kommentar',
         'Ansprechpartner_Vorname',
-        'Ansprechpartner_Nachname'
+        'Ansprechpartner_Nachname',
+        // Website-Statistiken
+        'Absprungrate',
+        'Monatliche_Besuche',
+        'Anzahl_Leads',
+        'Mehrwert'
       ]
       fields.forEach(field => queryParams.append('fields[]', field))
 
@@ -199,7 +204,12 @@ export async function handler(event) {
           ergebnis: record.fields.Ergebnis || '',
           kommentar: record.fields.Kommentar || '',
           ansprechpartnerVorname: record.fields.Ansprechpartner_Vorname || '',
-          ansprechpartnerNachname: record.fields.Ansprechpartner_Nachname || ''
+          ansprechpartnerNachname: record.fields.Ansprechpartner_Nachname || '',
+          // Website-Statistiken
+          absprungrate: record.fields.Absprungrate || null,
+          monatlicheBesuche: record.fields.Monatliche_Besuche || null,
+          anzahlLeads: record.fields.Anzahl_Leads || null,
+          mehrwert: record.fields.Mehrwert || null
         }
       })
 
