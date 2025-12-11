@@ -132,7 +132,9 @@ export async function handler(event) {
         'Bereits_kontaktiert',
         'Datum',
         'Ergebnis',
-        'Kommentar'
+        'Kommentar',
+        'Ansprechpartner_Vorname',
+        'Ansprechpartner_Nachname'
       ]
       fields.forEach(field => queryParams.append('fields[]', field))
 
@@ -195,7 +197,9 @@ export async function handler(event) {
           kontaktiert: record.fields['Bereits_kontaktiert'] === 'X' || record.fields['Bereits_kontaktiert'] === true,
           datum: record.fields.Datum || null,
           ergebnis: record.fields.Ergebnis || '',
-          kommentar: record.fields.Kommentar || ''
+          kommentar: record.fields.Kommentar || '',
+          ansprechpartnerVorname: record.fields.Ansprechpartner_Vorname || '',
+          ansprechpartnerNachname: record.fields.Ansprechpartner_Nachname || ''
         }
       })
 
@@ -254,6 +258,12 @@ export async function handler(event) {
       if (updates.datum !== undefined) {
         fieldsToUpdate['Datum'] = updates.datum
       }
+      if (updates.ansprechpartnerVorname !== undefined) {
+        fieldsToUpdate['Ansprechpartner_Vorname'] = updates.ansprechpartnerVorname
+      }
+      if (updates.ansprechpartnerNachname !== undefined) {
+        fieldsToUpdate['Ansprechpartner_Nachname'] = updates.ansprechpartnerNachname
+      }
 
       // Automatisch Datum setzen wenn kontaktiert
       if (updates.kontaktiert === true && !updates.datum) {
@@ -289,7 +299,9 @@ export async function handler(event) {
             kontaktiert: data.fields['Bereits_kontaktiert'] === 'X' || data.fields['Bereits_kontaktiert'] === true,
             ergebnis: data.fields.Ergebnis || '',
             kommentar: data.fields.Kommentar || '',
-            datum: data.fields.Datum || null
+            datum: data.fields.Datum || null,
+            ansprechpartnerVorname: data.fields.Ansprechpartner_Vorname || '',
+            ansprechpartnerNachname: data.fields.Ansprechpartner_Nachname || ''
           }
         })
       }
