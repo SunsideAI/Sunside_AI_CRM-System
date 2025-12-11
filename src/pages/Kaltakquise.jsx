@@ -77,7 +77,8 @@ function Kaltakquise() {
     ergebnis: '',
     kommentar: '',
     ansprechpartnerVorname: '',
-    ansprechpartnerNachname: ''
+    ansprechpartnerNachname: '',
+    neuerKommentar: '' // Für neuen manuellen Kommentar
   })
   
   // Auto-Save State
@@ -169,7 +170,8 @@ function Kaltakquise() {
       ergebnis: lead.ergebnis,
       kommentar: lead.kommentar,
       ansprechpartnerVorname: lead.ansprechpartnerVorname || '',
-      ansprechpartnerNachname: lead.ansprechpartnerNachname || ''
+      ansprechpartnerNachname: lead.ansprechpartnerNachname || '',
+      neuerKommentar: ''
     })
     setEditMode(false)
     setShowTerminPicker(false)
@@ -238,30 +240,97 @@ function Kaltakquise() {
     setSaving(true)
 
     try {
-      const response = await fetch('/.netlify/functions/leads', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          leadId: selectedLead.id,
-          updates: editForm
+      // History-Einträge sammeln
+      const historyEntries = []
+      
+      // Ergebnis geändert?
+      if (editForm.ergebnis !== selectedLead.ergebnis) {
+        const ergebnisText = editForm.ergebnis || 'Kein Ergebnis'
+        historyEntries.push({
+          action: 'ergebnis',
+          details: `Ergebnis: ${ergebnisText}`,
+          userName: user?.name || 'Unbekannt'
         })
-      })
+      }
+      
+      // Kontaktiert geändert?
+      if (editForm.kontaktiert !== selectedLead.kontaktiert) {
+        historyEntries.push({
+          action: editForm.kontaktiert ? 'kontaktiert' : 'nicht_kontaktiert',
+          details: editForm.kontaktiert ? 'Als kontaktiert markiert' : 'Als nicht kontaktiert zurückgesetzt',
+          userName: user?.name || 'Unbekannt'
+        })
+      }
+      
+      // Neuer Kommentar hinzugefügt?
+      if (editForm.neuerKommentar && editForm.neuerKommentar.trim()) {
+        historyEntries.push({
+          action: 'kommentar',
+          details: editForm.neuerKommentar.trim(),
+          userName: user?.name || 'Unbekannt'
+        })
+      }
 
-      const data = await response.json()
+      // Updates vorbereiten (ohne kommentar - wird über historyEntry gehandhabt)
+      const updates = {
+        kontaktiert: editForm.kontaktiert,
+        ergebnis: editForm.ergebnis,
+        ansprechpartnerVorname: editForm.ansprechpartnerVorname,
+        ansprechpartnerNachname: editForm.ansprechpartnerNachname
+      }
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Fehler beim Speichern')
+      // Wenn keine History-Einträge, normale Speicherung
+      if (historyEntries.length === 0) {
+        const response = await fetch('/.netlify/functions/leads', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            leadId: selectedLead.id,
+            updates
+          })
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          throw new Error(data.error || 'Fehler beim Speichern')
+        }
+      } else {
+        // Jeden History-Eintrag nacheinander speichern
+        let updatedKommentar = editForm.kommentar
+        
+        for (const entry of historyEntries) {
+          const response = await fetch('/.netlify/functions/leads', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              leadId: selectedLead.id,
+              updates: historyEntries.indexOf(entry) === historyEntries.length - 1 ? updates : {},
+              historyEntry: entry
+            })
+          })
+
+          if (!response.ok) {
+            const data = await response.json()
+            throw new Error(data.error || 'Fehler beim Speichern')
+          }
+          
+          const data = await response.json()
+          updatedKommentar = data.lead?.kommentar || updatedKommentar
+        }
+        
+        editForm.kommentar = updatedKommentar
       }
 
       // Lead in Liste aktualisieren
       setLeads(prev => prev.map(lead => 
         lead.id === selectedLead.id 
-          ? { ...lead, ...editForm }
+          ? { ...lead, ...updates, kommentar: editForm.kommentar }
           : lead
       ))
 
-      // Modal aktualisieren
-      setSelectedLead(prev => ({ ...prev, ...editForm }))
+      // Modal aktualisieren und neuerKommentar leeren
+      setSelectedLead(prev => ({ ...prev, ...updates, kommentar: editForm.kommentar }))
+      setEditForm(prev => ({ ...prev, neuerKommentar: '', kommentar: editForm.kommentar }))
       setEditMode(false)
 
     } catch (err) {
@@ -275,13 +344,20 @@ function Kaltakquise() {
   const markAsContacted = async (lead, e) => {
     e.stopPropagation()
     
+    const newStatus = !lead.kontaktiert
+    
     try {
       const response = await fetch('/.netlify/functions/leads', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           leadId: lead.id,
-          updates: { kontaktiert: !lead.kontaktiert }
+          updates: { kontaktiert: newStatus },
+          historyEntry: {
+            action: newStatus ? 'kontaktiert' : 'nicht_kontaktiert',
+            details: newStatus ? 'Als kontaktiert markiert' : 'Als nicht kontaktiert zurückgesetzt',
+            userName: user?.name || 'Unbekannt'
+          }
         })
       })
 
@@ -292,7 +368,7 @@ function Kaltakquise() {
       // Lead in Liste aktualisieren
       setLeads(prev => prev.map(l => 
         l.id === lead.id 
-          ? { ...l, kontaktiert: !l.kontaktiert }
+          ? { ...l, kontaktiert: newStatus }
           : l
       ))
 
@@ -768,14 +844,14 @@ function Kaltakquise() {
                       </div>
                     </div>
 
-                    {/* Kommentar */}
+                    {/* Neuer Kommentar */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Kommentar</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Neuer Kommentar hinzufügen</label>
                       <textarea
-                        value={editForm.kommentar}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, kommentar: e.target.value }))}
-                        rows={3}
-                        placeholder="Notizen zum Gespräch..."
+                        value={editForm.neuerKommentar}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, neuerKommentar: e.target.value }))}
+                        rows={2}
+                        placeholder="Notiz hinzufügen..."
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none"
                       />
                     </div>
@@ -817,10 +893,44 @@ function Kaltakquise() {
                       </div>
                     )}
 
+                    {/* History / Kommentar Anzeige */}
                     {selectedLead.kommentar && (
-                      <div className="flex items-start">
-                        <MessageSquare className="w-5 h-5 text-gray-400 mr-2 mt-0.5" />
-                        <p className="text-gray-700 whitespace-pre-line">{selectedLead.kommentar}</p>
+                      <div className="mt-4 pt-4 border-t border-gray-100">
+                        <h4 className="text-sm font-medium text-gray-500 mb-3 flex items-center">
+                          <MessageSquare className="w-4 h-4 mr-1" />
+                          Verlauf
+                        </h4>
+                        <div className="space-y-2 max-h-64 overflow-y-auto">
+                          {selectedLead.kommentar.split('\n').filter(line => line.trim()).map((line, index) => {
+                            // Parse History-Eintrag: [DD.MM.YYYY, HH:MM] ICON Text (Username)
+                            const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
+                            
+                            if (historyMatch) {
+                              const [, datum, zeit, rest] = historyMatch
+                              // Icon und Text extrahieren
+                              const iconMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬)\s*(.+)$/)
+                              const icon = iconMatch ? iconMatch[1] : '📋'
+                              const text = iconMatch ? iconMatch[2] : rest
+                              
+                              return (
+                                <div key={index} className="flex items-start gap-2 text-sm">
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-500 text-xs font-mono whitespace-nowrap">
+                                    {datum}, {zeit}
+                                  </span>
+                                  <span className="text-base">{icon}</span>
+                                  <span className="text-gray-700 flex-1">{text}</span>
+                                </div>
+                              )
+                            } else {
+                              // Alter Kommentar ohne History-Format
+                              return (
+                                <div key={index} className="flex items-start gap-2 text-sm">
+                                  <span className="text-gray-600">{line}</span>
+                                </div>
+                              )
+                            }
+                          })}
+                        </div>
                       </div>
                     )}
 
