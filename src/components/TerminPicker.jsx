@@ -20,6 +20,10 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
   const [contactEmail, setContactEmail] = useState(lead?.email || '')
   const [contactPhone, setContactPhone] = useState(lead?.telefon || '')
   
+  // Ansprechpartner (Pflichtfeld!)
+  const [ansprechpartnerVorname, setAnsprechpartnerVorname] = useState(lead?.ansprechpartnerVorname || '')
+  const [ansprechpartnerNachname, setAnsprechpartnerNachname] = useState(lead?.ansprechpartnerNachname || '')
+  
   // Calendly Pflichtfelder
   const [unternehmensname, setUnternehmensname] = useState(lead?.unternehmensname || '')
   const [taetigkeit, setTaetigkeit] = useState('Makler') // Makler oder Sachverständiger
@@ -101,6 +105,10 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
     if (!selectedCloser || !selectedSlot || !lead) return
     
     // Validierung
+    if (!ansprechpartnerVorname || !ansprechpartnerNachname) {
+      setError('Bitte Ansprechpartner (Vor- und Nachname) eingeben')
+      return
+    }
     if (!contactEmail || !contactEmail.includes('@')) {
       setError('Bitte gültige E-Mail-Adresse eingeben')
       return
@@ -121,6 +129,9 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
     setBooking(true)
     setError('')
     
+    // Ansprechpartner Name für Calendly
+    const ansprechpartnerName = `${ansprechpartnerVorname} ${ansprechpartnerNachname}`.trim()
+    
     try {
       const calendarId = selectedCloser.google_calendar_id || selectedCloser.email
       
@@ -130,8 +141,8 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           calendarId: calendarId,
-          title: `Beratungsgespräch: ${unternehmensname}`,
-          description: `Unternehmen: ${unternehmensname}\nTätigkeit: ${taetigkeit}\nStadt: ${lead.stadt || '-'}\nTelefon: ${contactPhone}\nE-Mail: ${contactEmail}\n\nProblemstellung & Ziele:\n${problemstellung}\n\nGebucht über Sunside CRM`,
+          title: `Beratungsgespräch: ${unternehmensname} (${ansprechpartnerName})`,
+          description: `Ansprechpartner: ${ansprechpartnerName}\nUnternehmen: ${unternehmensname}\nTätigkeit: ${taetigkeit}\nStadt: ${lead.stadt || '-'}\nTelefon: ${contactPhone}\nE-Mail: ${contactEmail}\n\nProblemstellung & Ziele:\n${problemstellung}\n\nGebucht über Sunside CRM`,
           startTime: selectedSlot.start,
           endTime: selectedSlot.end,
           leadId: lead.id
@@ -153,10 +164,11 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
             action: 'calendly-book',
             eventTypeUri: 'https://api.calendly.com/event_types/b7fa6cb8-8dcf-42f9-a8cf-9e73a776c57c',
             startTime: selectedSlot.start,
-            inviteeName: unternehmensname,
+            inviteeName: ansprechpartnerName, // Ansprechpartner statt Unternehmensname!
             inviteeEmail: contactEmail,
             inviteePhone: contactPhone,
             leadInfo: {
+              ansprechpartner: ansprechpartnerName,
               firma: unternehmensname,
               stadt: lead.stadt,
               telefon: contactPhone,
@@ -186,7 +198,9 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
           leadId: lead.id,
           updates: {
             ergebnis: 'Beratungsgespräch',
-            kontaktiert: true
+            kontaktiert: true,
+            ansprechpartnerVorname: ansprechpartnerVorname,
+            ansprechpartnerNachname: ansprechpartnerNachname
           },
           historyEntry: {
             action: 'termin',
@@ -364,6 +378,39 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
             </div>
           </div>
 
+          {/* Ansprechpartner - PFLICHTFELD */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">
+                <User className="w-3 h-3 inline mr-1" />
+                Ansprechpartner Vorname <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={ansprechpartnerVorname}
+                onChange={(e) => setAnsprechpartnerVorname(e.target.value)}
+                placeholder="Vorname"
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
+                  !ansprechpartnerVorname ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">
+                Ansprechpartner Nachname <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={ansprechpartnerNachname}
+                onChange={(e) => setAnsprechpartnerNachname(e.target.value)}
+                placeholder="Nachname"
+                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
+                  !ansprechpartnerNachname ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
+              />
+            </div>
+          </div>
+
           {/* Unternehmensname */}
           <div>
             <label className="block text-xs text-gray-500 mb-1">
@@ -523,6 +570,8 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
             !selectedCloser || 
             !selectedSlot || 
             booking || 
+            !ansprechpartnerVorname ||
+            !ansprechpartnerNachname ||
             !contactEmail || 
             !contactEmail.includes('@') || 
             !contactPhone || 
