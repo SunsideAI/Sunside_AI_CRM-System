@@ -498,6 +498,12 @@ function EmailTemplateManager() {
           <div>
             <p className="font-medium text-blue-900">Verfügbare Platzhalter</p>
             <p className="text-sm text-blue-700 mt-1">
+              <strong>Ansprechpartner:</strong>{' '}
+              <code className="bg-blue-100 px-1 rounded">{'{{ansprechpartner}}'}</code>,{' '}
+              <code className="bg-blue-100 px-1 rounded">{'{{ansprechpartner_vorname}}'}</code>,{' '}
+              <code className="bg-blue-100 px-1 rounded">{'{{ansprechpartner_nachname}}'}</code>
+            </p>
+            <p className="text-sm text-blue-700 mt-1">
               <strong>Lead:</strong>{' '}
               <code className="bg-blue-100 px-1 rounded">{'{{firma}}'}</code>,{' '}
               <code className="bg-blue-100 px-1 rounded">{'{{stadt}}'}</code>
@@ -729,7 +735,7 @@ function EmailTemplateManager() {
                 `}</style>
                 
                 <p className="text-xs text-gray-400 mt-1">
-                  Platzhalter: {'{{firma}}'}, {'{{stadt}}'}, {'{{setter_name}}'}, {'{{setter_vorname}}'}, {'{{setter_email}}'}, {'{{setter_telefon}}'}
+                  Platzhalter: {'{{ansprechpartner}}'}, {'{{ansprechpartner_vorname}}'}, {'{{firma}}'}, {'{{stadt}}'}, {'{{setter_name}}'}, {'{{setter_vorname}}'}, {'{{setter_email}}'}, {'{{setter_telefon}}'}
                 </p>
               </div>
 
