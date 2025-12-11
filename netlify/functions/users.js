@@ -56,12 +56,17 @@ export async function handler(event) {
 
 // GET - Alle User laden
 async function getUsers(TABLE_URL, airtableHeaders) {
-  const url = `${TABLE_URL}?fields[]=Vor_Nachname&fields[]=E-Mail&fields[]=E-Mail_Geschäftlich&fields[]=Rolle&fields[]=Status&fields[]=Telefon&fields[]=Strasse&fields[]=PLZ&fields[]=Ort&fields[]=Bundesland&fields[]=Google_Calendar_ID&fields[]=Passwort&fields[]=Onboarding`
+  // Basis-Felder die sicher existieren
+  const url = `${TABLE_URL}?fields[]=Vor_Nachname&fields[]=E-Mail&fields[]=E-Mail_Geschäftlich&fields[]=Rolle&fields[]=Status&fields[]=Telefon&fields[]=Bundesland&fields[]=Google_Calendar_ID&fields[]=Passwort&fields[]=Onboarding&fields[]=Straße&fields[]=PLZ&fields[]=Ort`
+  
+  console.log('Fetching users from:', TABLE_URL)
   
   const response = await fetch(url, { headers: airtableHeaders })
 
   if (!response.ok) {
-    throw new Error('Airtable Fehler')
+    const errorText = await response.text()
+    console.error('Airtable Response Error:', response.status, errorText)
+    throw new Error('Airtable Fehler: ' + response.status)
   }
 
   const data = await response.json()
@@ -74,7 +79,7 @@ async function getUsers(TABLE_URL, airtableHeaders) {
     rolle: record.fields.Rolle || [],
     status: record.fields.Status !== false,
     telefon: record.fields.Telefon || '',
-    strasse: record.fields.Strasse || '',
+    strasse: record.fields['Straße'] || '',
     plz: record.fields.PLZ || '',
     ort: record.fields.Ort || '',
     bundesland: record.fields.Bundesland || '',
@@ -127,7 +132,7 @@ async function createUser(data, TABLE_URL, airtableHeaders) {
         'E-Mail': email,
         'E-Mail_Geschäftlich': email_geschaeftlich || '',
         'Telefon': telefon || '',
-        'Strasse': strasse || '',
+        'Straße': strasse || '',
         'PLZ': plz || '',
         'Ort': ort || '',
         'Bundesland': bundesland || '',
@@ -178,7 +183,7 @@ async function updateUser(data, TABLE_URL, airtableHeaders) {
   if (updateData.email !== undefined) fields['E-Mail'] = updateData.email
   if (updateData.email_geschaeftlich !== undefined) fields['E-Mail_Geschäftlich'] = updateData.email_geschaeftlich
   if (updateData.telefon !== undefined) fields['Telefon'] = updateData.telefon
-  if (updateData.strasse !== undefined) fields['Strasse'] = updateData.strasse
+  if (updateData.strasse !== undefined) fields['Straße'] = updateData.strasse
   if (updateData.plz !== undefined) fields['PLZ'] = updateData.plz
   if (updateData.ort !== undefined) fields['Ort'] = updateData.ort
   if (updateData.bundesland !== undefined) fields['Bundesland'] = updateData.bundesland
