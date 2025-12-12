@@ -49,26 +49,14 @@ exports.handler = async (event) => {
       const status = params.status // Optional: "Offen", "Genehmigt", etc.
       const isAdmin = params.isAdmin === 'true'
 
-      let filterFormula = ''
-      const filters = []
+      console.log('GET Anfragen - isAdmin:', isAdmin, 'userId:', userId, 'status:', status)
 
-      // Vertriebler sehen nur eigene Anfragen (Filter über Record ID)
-      if (!isAdmin && userId) {
-        filters.push(`FIND("${userId}", ARRAYJOIN({User}))`)
-      }
-
-      // Optional: Nach Status filtern
-      if (status && status !== 'all') {
-        filters.push(`{Status}="${status}"`)
-      }
-
-      if (filters.length > 0) {
-        filterFormula = `AND(${filters.join(',')})`
-      }
-
+      // Alle Anfragen laden, dann im Code filtern (robuster für Link-Felder)
       let url = `${TABLE_URL}?sort[0][field]=Erstellt_am&sort[0][direction]=desc`
-      if (filterFormula) {
-        url += `&filterByFormula=${encodeURIComponent(filterFormula)}`
+      
+      // Nur Status-Filter in Airtable (einfacher und zuverlässiger)
+      if (status && status !== 'all') {
+        url += `&filterByFormula=${encodeURIComponent(`{Status}="${status}"`)}`
       }
 
       const response = await fetch(url, { headers: airtableHeaders })
@@ -128,10 +116,17 @@ exports.handler = async (event) => {
         }
       }))
 
+      // Für Vertriebler: Nur eigene Anfragen filtern
+      let filteredAnfragen = anfragen
+      if (!isAdmin && userId) {
+        filteredAnfragen = anfragen.filter(a => a.userId === userId)
+        console.log(`Gefiltert: ${anfragen.length} → ${filteredAnfragen.length} Anfragen für User ${userId}`)
+      }
+
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ anfragen })
+        body: JSON.stringify({ anfragen: filteredAnfragen })
       }
     }
 
