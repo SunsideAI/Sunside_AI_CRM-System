@@ -92,14 +92,9 @@ exports.handler = async (event) => {
       const userIds = Array.isArray(zugewiesen) ? zugewiesen : [zugewiesen]
       if (!userIds.includes(vertriebId)) return false
       
-      // Bereits kontaktiert prüfen (verschiedene Feldnamen)
-      const kontaktiert = fields['Bereits kontaktiert'] || 
-                          fields['Bereits_kontaktiert'] || 
-                          fields.Bereits_kontaktiert ||
-                          false
-      
-      // Kann 'X', true, oder 1 sein
-      return kontaktiert === true || kontaktiert === 'X' || kontaktiert === 'x' || kontaktiert === 1
+      // Bereits_kontaktiert prüfen (Single Select mit 'X' oder leer)
+      const kontaktiert = fields['Bereits_kontaktiert'] || fields.Bereits_kontaktiert
+      return kontaktiert === 'X' || kontaktiert === 'x'
     })
 
     console.log(`${userLeads.length} bearbeitete Leads gefunden für ${vertrieblerName}`)
@@ -136,15 +131,11 @@ exports.handler = async (event) => {
       
       const archivRecords = batch.map(lead => {
         const fields = lead.fields
-        const kontaktiert = fields['Bereits kontaktiert'] || 
-                            fields['Bereits_kontaktiert'] || 
-                            fields.Bereits_kontaktiert
-        
         return {
           fields: {
             'Lead': [lead.id],
             'Vertriebler': [vertriebId],
-            'Bereits_kontaktiert': kontaktiert === true || kontaktiert === 'X' || kontaktiert === 'x',
+            'Bereits_kontaktiert': 'X',  // Single Select - immer 'X' weil nur kontaktierte archiviert werden
             'Ergebnis': mapErgebnis(fields.Ergebnis),
             'Datum': fields.Datum || null,
             'Archiviert_am': now
@@ -178,8 +169,7 @@ exports.handler = async (event) => {
         id: lead.id,
         fields: {
           'User_Datenbank': [],  // Verknüpfung lösen
-          'Bereits kontaktiert': null,  // Zurücksetzen (mit Leerzeichen)
-          'Bereits_kontaktiert': null,  // Zurücksetzen (mit Unterstrich)
+          'Bereits_kontaktiert': null,  // Zurücksetzen (Single Select → leer)
           'Ergebnis': null,  // Zurücksetzen
           'Datum': null  // Zurücksetzen
         }
