@@ -259,7 +259,8 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate, startDa
 // SETTING STATS (Kaltakquise Leads)
 // ==========================================
 async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate, startDateStr, endDateStr }) {
-  const tableName = 'Immobilienmakler_Leads'
+  const leadsTableName = 'Immobilienmakler_Leads'
+  const archivTableId = 'tbluaHfCySe8cSgSY' // Immobilienmakler_Leads_Archiv
   
   // User Record ID holen wenn nicht Admin
   let userRecordId = null
@@ -273,12 +274,12 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     filterUserRecordId = await getUserRecordId(filterUserName)
   }
 
-  // Alle Leads laden
-  let allRecords = []
+  // === 1. Aktive Leads laden ===
+  let activeRecords = []
   let offset = null
 
   do {
-    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
+    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(leadsTableName)}`)
     if (offset) {
       url.searchParams.append('offset', offset)
     }
@@ -290,9 +291,65 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       throw new Error(data.error.message)
     }
 
-    allRecords = allRecords.concat(data.records || [])
+    activeRecords = activeRecords.concat(data.records || [])
     offset = data.offset
   } while (offset)
+
+  // === 2. Archiv-Leads laden ===
+  let archivRecords = []
+  offset = null
+
+  do {
+    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${archivTableId}`)
+    if (offset) {
+      url.searchParams.append('offset', offset)
+    }
+
+    const response = await fetch(url.toString(), { headers })
+    const data = await response.json()
+
+    if (data.error) {
+      console.error('Archiv-Fehler:', data.error.message)
+      // Archiv-Fehler ignorieren, weiter mit aktiven Leads
+      break
+    }
+
+    archivRecords = archivRecords.concat(data.records || [])
+    offset = data.offset
+  } while (offset)
+
+  console.log(`Analytics: ${activeRecords.length} aktive Leads, ${archivRecords.length} Archiv-Einträge`)
+
+  // === 3. Daten normalisieren und kombinieren ===
+  // Helper: kontaktiert kann "X", true, oder checkbox sein
+  const isKontaktiert = (val) => val === true || val === 'X' || val === 'x' || val === 1
+
+  // Aktive Leads: Felder direkt
+  const normalizedActive = activeRecords.map(record => ({
+    source: 'active',
+    id: record.id,
+    kontaktiert: isKontaktiert(
+      record.fields['Bereits kontaktiert'] || 
+      record.fields['Bereits_kontaktiert'] || 
+      record.fields.Bereits_kontaktiert
+    ),
+    ergebnis: record.fields.Ergebnis || '',
+    datum: record.fields.Datum || null,
+    zugewiesenAn: record.fields['User_Datenbank'] || record.fields.User_Datenbank || []
+  }))
+
+  // Archiv-Leads: Checkbox für Bereits_kontaktiert
+  const normalizedArchiv = archivRecords.map(record => ({
+    source: 'archiv',
+    id: record.id,
+    kontaktiert: isKontaktiert(record.fields.Bereits_kontaktiert),
+    ergebnis: record.fields.Ergebnis || '',
+    datum: record.fields.Datum || null,
+    zugewiesenAn: record.fields.Vertriebler || [] // Im Archiv heißt es "Vertriebler"
+  }))
+
+  // === 4. Beide Datenquellen kombinieren ===
+  const allRecords = [...normalizedActive, ...normalizedArchiv]
 
   // Stats berechnen
   let einwahlen = 0
@@ -305,20 +362,12 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   const perUserMap = {}
 
   for (const record of allRecords) {
-    const fields = record.fields
-    
-    // Kontaktiert prüfen
-    const kontaktiert = fields['Bereits kontaktiert'] || 
-                        fields['Bereits_kontaktiert'] || 
-                        fields.Bereits_kontaktiert ||
-                        fields.kontaktiert ||
-                        false
+    // Kontaktiert prüfen (bereits normalisiert)
+    if (!record.kontaktiert) continue
 
-    if (!kontaktiert) continue
-
-    const ergebnis = (fields.Ergebnis || '').toLowerCase()
-    const datumRaw = fields.Datum
-    const zugewiesenAn = fields['User_Datenbank'] || fields.User_Datenbank || []
+    const ergebnis = (record.ergebnis || '').toLowerCase()
+    const datumRaw = record.datum
+    const zugewiesenAn = record.zugewiesenAn
 
     // Datum-Filter (String-Vergleich für YYYY-MM-DD Format)
     // Wenn ein Zeitfilter aktiv ist, müssen Records ein Datum haben
