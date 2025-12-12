@@ -277,8 +277,17 @@ function MitarbeiterVerwaltung() {
 
       // Erfolgs-Meldung mit Archivierungs-Info
       let successMsg = 'Mitarbeiter wurde deaktiviert'
-      if (archiveResult && archiveResult.archiviert > 0) {
-        successMsg = `Mitarbeiter deaktiviert. ${archiveResult.archiviert} Leads wurden archiviert und zurückgesetzt.`
+      if (archiveResult) {
+        const parts = []
+        if (archiveResult.archiviert > 0) {
+          parts.push(`${archiveResult.archiviert} archiviert`)
+        }
+        if (archiveResult.freigegeben > 0) {
+          parts.push(`${archiveResult.freigegeben} freigegeben`)
+        }
+        if (parts.length > 0) {
+          successMsg = `Mitarbeiter deaktiviert. ${archiveResult.gefunden} Leads verarbeitet (${parts.join(', ')}).`
+        }
       }
       
       setSuccess(successMsg)
