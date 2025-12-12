@@ -424,9 +424,12 @@ async function assignLeadsToUser(userId, anzahl, baseId, airtableHeaders) {
   const LEADS_TABLE = 'Leads_Datenbank'
   const LEADS_URL = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(LEADS_TABLE)}`
   
-  // Freie Leads finden (wo User_Datenbank leer ist und nicht kontaktiert)
-  // Airtable: OR({User_Datenbank}=BLANK(), {User_Datenbank}="")
-  const filterFormula = `AND(OR({User_Datenbank}=BLANK(), {User_Datenbank}=""), OR({Bereits_kontaktiert}=BLANK(), {Bereits_kontaktiert}=""))`
+  // Freie Leads finden: User_Datenbank ist leer UND nicht kontaktiert
+  // Für leeres Link-Feld: beide Möglichkeiten prüfen
+  // Für nicht kontaktiert: Feld ist leer oder BLANK (nicht 'X')
+  const filterFormula = `AND(OR(ARRAYJOIN({User_Datenbank})='', ARRAYJOIN({User_Datenbank})=BLANK()), OR({Bereits_kontaktiert}='', {Bereits_kontaktiert}=BLANK()))`
+  
+  console.log('Suche freie Leads...')
   
   let url = `${LEADS_URL}?filterByFormula=${encodeURIComponent(filterFormula)}&maxRecords=${anzahl}&fields[]=Unternehmensname`
   
@@ -434,11 +437,14 @@ async function assignLeadsToUser(userId, anzahl, baseId, airtableHeaders) {
   
   if (!response.ok) {
     const error = await response.json()
+    console.error('Airtable API Fehler:', JSON.stringify(error))
     throw new Error(error.error?.message || 'Fehler beim Laden der freien Leads')
   }
   
   const data = await response.json()
   const freieLeads = data.records || []
+  
+  console.log(`Gefunden: ${freieLeads.length} freie Leads`)
   
   if (freieLeads.length === 0) {
     console.log('Keine freien Leads verfügbar')
