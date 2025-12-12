@@ -23,6 +23,7 @@ function Layout({ children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [notificationOpen, setNotificationOpen] = useState(false)
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [notificationCount, setNotificationCount] = useState(0)
   
@@ -110,6 +111,12 @@ function Layout({ children }) {
   const handleLogout = () => {
     logout()
     navigate('/login')
+  }
+
+  const confirmLogout = () => {
+    setUserMenuOpen(false)
+    setMobileMenuOpen(false)
+    setShowLogoutConfirm(true)
   }
 
   // Navigation Items - Einstellungen NICHT mehr hier
@@ -324,10 +331,7 @@ function Layout({ children }) {
                     {/* Logout */}
                     <div className="border-t border-gray-100 py-2">
                       <button
-                        onClick={() => {
-                          setUserMenuOpen(false)
-                          handleLogout()
-                        }}
+                        onClick={confirmLogout}
                         className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                       >
                         <LogOut className="w-4 h-4 mr-3" />
@@ -417,7 +421,7 @@ function Layout({ children }) {
               )}
               
               <button
-                onClick={handleLogout}
+                onClick={confirmLogout}
                 className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-lg"
               >
                 <LogOut className="w-5 h-5 mr-3" />
@@ -434,6 +438,40 @@ function Layout({ children }) {
           {children || <Outlet />}
         </div>
       </main>
+
+      {/* Logout Bestätigung Modal */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowLogoutConfirm(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+            <div className="text-center">
+              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <LogOut className="w-6 h-6 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Abmelden?</h3>
+              <p className="text-gray-500 mb-6">Willst du dich wirklich abmelden?</p>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowLogoutConfirm(false)}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                >
+                  Abbrechen
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                >
+                  Abmelden
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
