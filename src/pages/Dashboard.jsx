@@ -454,7 +454,9 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         const data = await res.json()
         setCache(cacheKey, data)
         setStats(data)
-        if (data.perUser && isAdmin()) {
+        // Vertriebler-Liste NUR updaten wenn "Alle" ausgewählt ist
+        // Sonst verlieren wir die vollständige Liste beim Filtern
+        if (data.perUser && isAdmin() && selectedUser === 'all') {
           setVertriebler(data.perUser)
         }
       } else {
@@ -573,10 +575,10 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
       {stats && (
         <>
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <KPICard title="Einwahlen" value={stats.summary.einwahlen} icon={Phone} color="purple" />
             <KPICard title="Erreicht" value={stats.summary.erreicht} icon={Users} color="blue" subtitle={formatPercent(stats.summary.erreichQuote)} />
-            <KPICard title="Beratungsgespräche" value={stats.summary.beratungsgespraech} icon={Calendar} color="green" subtitle={formatPercent(stats.summary.beratungsgespraechQuote)} />
+            <KPICard title="Beratung" value={stats.summary.beratungsgespraech} icon={Calendar} color="green" subtitle={formatPercent(stats.summary.beratungsgespraechQuote)} />
             <KPICard title="Unterlagen" value={stats.summary.unterlagen} icon={Target} color="yellow" subtitle={formatPercent(stats.summary.unterlagenQuote)} />
             <KPICard title="Kein Interesse" value={stats.summary.keinInteresse} icon={XCircle} color="red" subtitle={formatPercent(stats.summary.keinInteresseQuote || 0)} />
           </div>
@@ -591,14 +593,14 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                   data={[
                     { name: 'Einwahlen', value: stats.summary.einwahlen },
                     { name: 'Erreicht', value: stats.summary.erreicht },
-                    { name: 'Beratungsgespräch', value: stats.summary.beratungsgespraech },
+                    { name: 'Beratung', value: stats.summary.beratungsgespraech },
                     { name: 'Unterlagen', value: stats.summary.unterlagen }
                   ]}
                   layout="vertical"
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={140} />
+                  <YAxis dataKey="name" type="category" width={100} />
                   <Tooltip />
                   <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                     <Cell fill="#7C3AED" />
@@ -617,7 +619,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                 <PieChart>
                   <Pie
                     data={[
-                      { name: 'Beratungsgespräch', value: stats.summary.beratungsgespraech },
+                      { name: 'Beratung', value: stats.summary.beratungsgespraech },
                       { name: 'Unterlagen', value: stats.summary.unterlagen },
                       { name: 'Kein Interesse', value: stats.summary.keinInteresse }
                     ].filter(d => d.value > 0)}
@@ -670,7 +672,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                   <Tooltip 
                     formatter={(value, name) => {
                       const labels = {
-                        beratungsgespraech: 'Beratungsgespräch',
+                        beratungsgespraech: 'Beratung',
                         unterlagen: 'Unterlagen',
                         keinInteresse: 'Kein Interesse'
                       }
@@ -680,7 +682,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                   <Legend 
                     formatter={(value) => {
                       const labels = {
-                        beratungsgespraech: 'Beratungsgespräch',
+                        beratungsgespraech: 'Beratung',
                         unterlagen: 'Unterlagen',
                         keinInteresse: 'Kein Interesse'
                       }
@@ -698,16 +700,16 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           {/* Einwahlen pro Vertriebler (Admin only, wenn "alle" ausgewählt) */}
           {isAdmin() && stats.perUser && stats.perUser.length > 0 && selectedUser === 'all' && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Einwahlen & Beratungsgespräche pro Vertriebler</h3>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">Einwahlen & Beratungen pro Vertriebler</h3>
               <ResponsiveContainer width="100%" height={Math.max(300, stats.perUser.length * 40)}>
                 <BarChart data={stats.perUser.slice(0, 15)} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 12 }} />
+                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
                   <Tooltip />
                   <Legend />
                   <Bar dataKey="einwahlen" name="Einwahlen" fill="#7C3AED" />
-                  <Bar dataKey="beratungsgespraech" name="Beratungsgespräche" fill="#10B981" />
+                  <Bar dataKey="beratungsgespraech" name="Beratung" fill="#10B981" />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -994,11 +996,11 @@ function KPICard({ title, value, icon: Icon, color, subtitle }) {
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
       <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-lg ${colorClasses[color]}`}>
+        <div className={`p-2 rounded-lg ${colorClasses[color]} flex-shrink-0`}>
           <Icon className="h-5 w-5" />
         </div>
         <div className="min-w-0">
-          <p className="text-xs text-gray-500 truncate">{title}</p>
+          <p className="text-xs text-gray-500 leading-tight">{title}</p>
           <p className="text-xl font-bold text-gray-900">{value}</p>
           {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
         </div>
