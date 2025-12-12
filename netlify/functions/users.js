@@ -130,7 +130,7 @@ async function createUser(data, TABLE_URL, airtableHeaders) {
       fields: {
         'Vor_Nachname': vor_nachname,
         'Vorname': vorname || null,
-        'Nachname': nachname || null,
+        'Name': nachname || null,
         'E-Mail': email,
         'E-Mail_Geschäftlich': email_geschaeftlich || null,
         'Telefon': telefon || null,
@@ -183,7 +183,7 @@ async function updateUser(data, TABLE_URL, airtableHeaders) {
   
   if (updateData.vor_nachname !== undefined) fields['Vor_Nachname'] = updateData.vor_nachname || null
   if (updateData.vorname !== undefined) fields['Vorname'] = updateData.vorname || null
-  if (updateData.nachname !== undefined) fields['Nachname'] = updateData.nachname || null
+  if (updateData.nachname !== undefined) fields['Name'] = updateData.nachname || null
   if (updateData.email !== undefined) fields['E-Mail'] = updateData.email
   if (updateData.email_geschaeftlich !== undefined) fields['E-Mail_Geschäftlich'] = updateData.email_geschaeftlich || null
   if (updateData.telefon !== undefined) fields['Telefon'] = updateData.telefon || null
