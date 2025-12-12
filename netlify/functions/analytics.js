@@ -34,29 +34,24 @@ exports.handler = async (event) => {
     const userName = params.userName
     const filterUserName = params.filterUserName
     
-    // Datum-Parsing: startDate = Anfang des Tages, endDate = Ende des Tages
-    let startDate = null
-    let endDate = null
+    // Datum-Filter als Strings behalten (YYYY-MM-DD Format)
+    // Das vermeidet Zeitzonen-Probleme komplett
+    const startDateStr = params.startDate || null // z.B. "2025-12-12"
+    const endDateStr = params.endDate || null     // z.B. "2025-12-12"
     
-    if (params.startDate) {
-      startDate = new Date(params.startDate)
-      startDate.setHours(0, 0, 0, 0) // Anfang des Tages
-    }
-    
-    if (params.endDate) {
-      endDate = new Date(params.endDate)
-      endDate.setHours(23, 59, 59, 999) // Ende des Tages
-    }
+    // Für Funktionen die Date-Objekte brauchen (Zeitverlauf-Formatierung)
+    const startDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : null
+    const endDate = endDateStr ? new Date(endDateStr + 'T23:59:59') : null
 
     if (type === 'closing') {
-      const result = await getClosingStats({ isAdmin, userEmail, startDate, endDate })
+      const result = await getClosingStats({ isAdmin, userEmail, startDate, endDate, startDateStr, endDateStr })
       return {
         statusCode: 200,
         headers: corsHeaders,
         body: JSON.stringify(result)
       }
     } else {
-      const result = await getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate })
+      const result = await getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate, startDateStr, endDateStr })
       return {
         statusCode: 200,
         headers: corsHeaders,
@@ -97,7 +92,7 @@ async function getUserRecordId(userName) {
 // ==========================================
 // CLOSING STATS (Hot Leads)
 // ==========================================
-async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
+async function getClosingStats({ isAdmin, userEmail, startDate, endDate, startDateStr, endDateStr }) {
   const tableName = 'Immobilienmakler_Hot_Leads'
   
   let allRecords = []
@@ -156,10 +151,14 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
     // Für gewonnene: Kunde_seit, sonst Hinzugefügt
     const relevantDateStr = istGewonnen ? (kundeSeit || hinzugefuegt) : hinzugefuegt
     
-    if (relevantDateStr) {
-      const recordDate = new Date(relevantDateStr)
-      if (startDate && recordDate < startDate) continue
-      if (endDate && recordDate > endDate) continue
+    // String-Vergleich für YYYY-MM-DD Format
+    if (startDateStr || endDateStr) {
+      if (!relevantDateStr) continue // Kein Datum = überspringen bei aktivem Zeitfilter
+      
+      // Datum auf YYYY-MM-DD normalisieren falls nötig
+      const dateOnly = relevantDateStr.split('T')[0]
+      if (startDateStr && dateOnly < startDateStr) continue
+      if (endDateStr && dateOnly > endDateStr) continue
     }
 
     // User-Filter (wenn nicht Admin)
@@ -259,7 +258,7 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate }) {
 // ==========================================
 // SETTING STATS (Kaltakquise Leads)
 // ==========================================
-async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate }) {
+async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate, startDateStr, endDateStr }) {
   const tableName = 'Immobilienmakler_Leads'
   
   // User Record ID holen wenn nicht Admin
@@ -318,15 +317,22 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     if (!kontaktiert) continue
 
     const ergebnis = (fields.Ergebnis || '').toLowerCase()
-    const datum = fields.Datum
+    const datumRaw = fields.Datum
     const zugewiesenAn = fields['User_Datenbank'] || fields.User_Datenbank || []
 
-    // Datum-Filter
-    if (datum) {
-      const recordDate = new Date(datum)
-      if (startDate && recordDate < startDate) continue
-      if (endDate && recordDate > endDate) continue
+    // Datum-Filter (String-Vergleich für YYYY-MM-DD Format)
+    // Wenn ein Zeitfilter aktiv ist, müssen Records ein Datum haben
+    if (startDateStr || endDateStr) {
+      if (!datumRaw) continue // Kein Datum = überspringen bei aktivem Zeitfilter
+      
+      // Datum auf YYYY-MM-DD normalisieren falls ISO-Format
+      const datum = datumRaw.split('T')[0]
+      if (startDateStr && datum < startDateStr) continue
+      if (endDateStr && datum > endDateStr) continue
     }
+    
+    // Datum für Zeitverlauf (nach dem Filter)
+    const datum = datumRaw
 
     // User-Filter: Nicht-Admin sieht nur eigene
     if (!isAdmin && userRecordId) {
