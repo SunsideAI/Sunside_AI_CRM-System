@@ -253,6 +253,30 @@ exports.handler = async (event) => {
 
       const result = await response.json()
 
+      // Nach Genehmigung: Leads automatisch zuweisen
+      let zugewieseneLeads = 0
+      if (status === 'Genehmigt' || status === 'Teilweise_Genehmigt') {
+        const anzahlZuweisen = genehmigteAnzahl || 0
+        
+        // User-ID aus der Anfrage holen
+        const userId = result.fields.User?.[0]
+        
+        if (userId && anzahlZuweisen > 0) {
+          try {
+            zugewieseneLeads = await assignLeadsToUser(
+              userId, 
+              anzahlZuweisen, 
+              AIRTABLE_BASE_ID, 
+              airtableHeaders
+            )
+            console.log(`${zugewieseneLeads} Leads an User ${userId} zugewiesen`)
+          } catch (assignError) {
+            console.error('Fehler bei Lead-Zuweisung:', assignError)
+            // Anfrage trotzdem als erfolgreich markieren
+          }
+        }
+      }
+
       return {
         statusCode: 200,
         headers: corsHeaders,
@@ -261,7 +285,8 @@ exports.handler = async (event) => {
           anfrage: {
             id: result.id,
             status: result.fields.Status
-          }
+          },
+          zugewieseneLeads
         })
       }
     }
@@ -349,4 +374,63 @@ async function sendAdminNotification(userId, anzahl, nachricht, anfrageId, userU
   }
 
   console.log('Admin-Benachrichtigung gesendet an:', adminEmails.join(', '))
+}
+
+// Leads einem User zuweisen
+async function assignLeadsToUser(userId, anzahl, baseId, airtableHeaders) {
+  const LEADS_TABLE = 'Leads_Datenbank'
+  const LEADS_URL = `https://api.airtable.com/v0/${baseId}/${encodeURIComponent(LEADS_TABLE)}`
+  
+  // Freie Leads finden (wo User_Datenbank leer ist und nicht kontaktiert)
+  // Airtable: OR({User_Datenbank}=BLANK(), {User_Datenbank}="")
+  const filterFormula = `AND(OR({User_Datenbank}=BLANK(), {User_Datenbank}=""), OR({Bereits_kontaktiert}=BLANK(), {Bereits_kontaktiert}=""))`
+  
+  let url = `${LEADS_URL}?filterByFormula=${encodeURIComponent(filterFormula)}&maxRecords=${anzahl}&fields[]=Unternehmensname`
+  
+  const response = await fetch(url, { headers: airtableHeaders })
+  
+  if (!response.ok) {
+    const error = await response.json()
+    throw new Error(error.error?.message || 'Fehler beim Laden der freien Leads')
+  }
+  
+  const data = await response.json()
+  const freieLeads = data.records || []
+  
+  if (freieLeads.length === 0) {
+    console.log('Keine freien Leads verfügbar')
+    return 0
+  }
+  
+  console.log(`${freieLeads.length} freie Leads gefunden, weise zu...`)
+  
+  // Leads in Batches von max 10 zuweisen (Airtable Limit)
+  const batchSize = 10
+  let zugewiesen = 0
+  
+  for (let i = 0; i < freieLeads.length; i += batchSize) {
+    const batch = freieLeads.slice(i, i + batchSize)
+    
+    const records = batch.map(lead => ({
+      id: lead.id,
+      fields: {
+        'User_Datenbank': [userId]
+      }
+    }))
+    
+    const updateResponse = await fetch(LEADS_URL, {
+      method: 'PATCH',
+      headers: airtableHeaders,
+      body: JSON.stringify({ records })
+    })
+    
+    if (updateResponse.ok) {
+      zugewiesen += batch.length
+    } else {
+      const error = await updateResponse.json()
+      console.error('Batch-Update Fehler:', error)
+    }
+  }
+  
+  return zugewiesen
 }
