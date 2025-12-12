@@ -10,51 +10,115 @@ import {
   User,
   Menu,
   X,
-  Bell
+  Bell,
+  ChevronDown,
+  Check,
+  Clock
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 
 function Layout({ children }) {
   const { user, logout, isSetter, isCloser, isAdmin } = useAuth()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [offeneAnfragen, setOffeneAnfragen] = useState(0)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [notificationOpen, setNotificationOpen] = useState(false)
+  const [notifications, setNotifications] = useState([])
+  const [notificationCount, setNotificationCount] = useState(0)
+  
+  const userMenuRef = useRef(null)
+  const notificationRef = useRef(null)
 
-  // Offene Lead-Anfragen laden (nur für Admins)
+  // Benachrichtigungen laden
   useEffect(() => {
-    const loadOffeneAnfragen = async () => {
-      if (!isAdmin()) return
+    const loadNotifications = async () => {
+      if (!user?.id) return
       
       try {
-        const response = await fetch('/.netlify/functions/lead-requests?isAdmin=true&status=Offen')
+        // Für Admins: Offene Anfragen von allen
+        // Für andere: Eigene Anfragen mit Status-Updates
+        const params = new URLSearchParams({
+          isAdmin: isAdmin() ? 'true' : 'false',
+          userId: user.id
+        })
+        
+        if (isAdmin()) {
+          params.set('status', 'Offen')
+        }
+        
+        const response = await fetch(`/.netlify/functions/lead-requests?${params}`)
         if (response.ok) {
           const data = await response.json()
-          setOffeneAnfragen(data.anfragen?.length || 0)
+          const anfragen = data.anfragen || []
+          
+          if (isAdmin()) {
+            // Admin sieht offene Anfragen
+            setNotifications(anfragen.map(a => ({
+              id: a.id,
+              type: 'anfrage',
+              title: `${a.userName} möchte ${a.anzahl} Leads`,
+              message: a.nachricht || 'Neue Lead-Anfrage',
+              time: a.erstelltAm,
+              unread: true
+            })))
+            setNotificationCount(anfragen.length)
+          } else {
+            // Vertriebler sehen ihre Anfragen-Status
+            const updates = anfragen.filter(a => a.status !== 'Offen')
+            setNotifications(anfragen.map(a => ({
+              id: a.id,
+              type: a.status === 'Offen' ? 'pending' : a.status === 'Genehmigt' ? 'success' : a.status === 'Abgelehnt' ? 'rejected' : 'partial',
+              title: a.status === 'Offen' 
+                ? `Anfrage über ${a.anzahl} Leads läuft` 
+                : a.status === 'Genehmigt' 
+                  ? `${a.genehmigteAnzahl || a.anzahl} Leads genehmigt!`
+                  : a.status === 'Teilweise_Genehmigt'
+                    ? `${a.genehmigteAnzahl} von ${a.anzahl} Leads genehmigt`
+                    : `Anfrage abgelehnt`,
+              message: a.adminKommentar || '',
+              time: a.bearbeitetAm || a.erstelltAm,
+              unread: a.status !== 'Offen'
+            })))
+            // Zeige Badge für bearbeitete Anfragen
+            setNotificationCount(updates.length)
+          }
         }
       } catch (err) {
-        console.error('Fehler beim Laden der Anfragen:', err)
+        console.error('Fehler beim Laden der Benachrichtigungen:', err)
       }
     }
     
-    loadOffeneAnfragen()
-    
-    // Alle 60 Sekunden aktualisieren
-    const interval = setInterval(loadOffeneAnfragen, 60000)
+    loadNotifications()
+    const interval = setInterval(loadNotifications, 60000)
     return () => clearInterval(interval)
-  }, [isAdmin])
+  }, [user?.id, isAdmin])
+
+  // Klick außerhalb schließt Dropdowns
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) {
+        setUserMenuOpen(false)
+      }
+      if (notificationRef.current && !notificationRef.current.contains(e.target)) {
+        setNotificationOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleLogout = () => {
     logout()
     navigate('/login')
   }
 
-  // Navigation Items basierend auf Rollen
+  // Navigation Items - Einstellungen NICHT mehr hier
   const navItems = [
     {
       name: 'Dashboard',
       path: '/dashboard',
       icon: LayoutDashboard,
-      show: true // Für alle
+      show: true
     },
     {
       name: 'Kaltakquise',
@@ -72,15 +136,24 @@ function Layout({ children }) {
       name: 'Termine',
       path: '/termine',
       icon: Calendar,
-      show: true // Für alle mit Kalender
-    },
-    {
-      name: 'Einstellungen',
-      path: '/einstellungen',
-      icon: Settings,
-      show: isAdmin()
+      show: true
     }
   ].filter(item => item.show)
+
+  const formatTime = (dateStr) => {
+    if (!dateStr) return ''
+    const date = new Date(dateStr)
+    const now = new Date()
+    const diffMs = now - date
+    const diffMins = Math.floor(diffMs / 60000)
+    const diffHours = Math.floor(diffMs / 3600000)
+    const diffDays = Math.floor(diffMs / 86400000)
+    
+    if (diffMins < 1) return 'Gerade eben'
+    if (diffMins < 60) return `vor ${diffMins} Min`
+    if (diffHours < 24) return `vor ${diffHours} Std`
+    return `vor ${diffDays} Tag${diffDays > 1 ? 'en' : ''}`
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -116,46 +189,154 @@ function Layout({ children }) {
               ))}
             </nav>
 
-            {/* User Menu */}
-            <div className="flex items-center space-x-4">
-              {/* Benachrichtigungen für Admins */}
-              {isAdmin() && (
-                <NavLink
-                  to="/einstellungen"
+            {/* Right Side: Bell + User Dropdown */}
+            <div className="flex items-center space-x-2">
+              
+              {/* Benachrichtigungen - für ALLE */}
+              <div className="relative" ref={notificationRef}>
+                <button
+                  onClick={() => setNotificationOpen(!notificationOpen)}
                   className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
-                  title="Lead-Anfragen"
                 >
                   <Bell className="w-5 h-5 text-gray-600" />
-                  {offeneAnfragen > 0 && (
+                  {notificationCount > 0 && (
                     <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
-                      {offeneAnfragen > 9 ? '9+' : offeneAnfragen}
+                      {notificationCount > 9 ? '9+' : notificationCount}
                     </span>
                   )}
-                </NavLink>
-              )}
+                </button>
 
-              <NavLink 
-                to="/profil"
-                className={({ isActive }) =>
-                  `hidden sm:flex items-center text-sm hover:text-sunside-primary transition-colors ${
-                    isActive ? 'text-sunside-primary' : ''
-                  }`
-                }
-              >
-                <User className="w-4 h-4 mr-2 text-gray-400" />
-                <span className="text-gray-700">{user?.vor_nachname || user?.vorname}</span>
-                <span className="ml-2 px-2 py-0.5 bg-gray-100 rounded text-xs text-gray-500">
-                  {user?.rolle?.join(', ')}
-                </span>
-              </NavLink>
-              
-              <button
-                onClick={handleLogout}
-                className="hidden sm:flex items-center px-3 py-2 text-sm text-gray-600 hover:text-red-600 transition-colors"
-              >
-                <LogOut className="w-4 h-4 mr-1" />
-                Logout
-              </button>
+                {/* Notification Dropdown */}
+                {notificationOpen && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
+                    <div className="p-3 border-b border-gray-100 bg-gray-50">
+                      <h3 className="font-semibold text-gray-900">Benachrichtigungen</h3>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-gray-500">
+                          <Bell className="w-8 h-8 mx-auto mb-2 text-gray-300" />
+                          <p>Keine Benachrichtigungen</p>
+                        </div>
+                      ) : (
+                        notifications.map(notif => (
+                          <div 
+                            key={notif.id}
+                            className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
+                              notif.unread ? 'bg-purple-50' : ''
+                            }`}
+                            onClick={() => {
+                              if (isAdmin()) {
+                                navigate('/einstellungen')
+                              }
+                              setNotificationOpen(false)
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`p-2 rounded-full ${
+                                notif.type === 'success' ? 'bg-green-100' :
+                                notif.type === 'rejected' ? 'bg-red-100' :
+                                notif.type === 'pending' ? 'bg-amber-100' :
+                                notif.type === 'partial' ? 'bg-orange-100' :
+                                'bg-purple-100'
+                              }`}>
+                                {notif.type === 'success' ? (
+                                  <Check className="w-4 h-4 text-green-600" />
+                                ) : notif.type === 'rejected' ? (
+                                  <X className="w-4 h-4 text-red-600" />
+                                ) : notif.type === 'pending' ? (
+                                  <Clock className="w-4 h-4 text-amber-600" />
+                                ) : notif.type === 'partial' ? (
+                                  <Check className="w-4 h-4 text-orange-600" />
+                                ) : (
+                                  <User className="w-4 h-4 text-purple-600" />
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 text-sm">{notif.title}</p>
+                                {notif.message && (
+                                  <p className="text-xs text-gray-500 truncate">{notif.message}</p>
+                                )}
+                                <p className="text-xs text-gray-400 mt-1">{formatTime(notif.time)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    {isAdmin() && notifications.length > 0 && (
+                      <NavLink
+                        to="/einstellungen"
+                        onClick={() => setNotificationOpen(false)}
+                        className="block p-3 text-center text-sm text-sunside-primary hover:bg-gray-50 border-t border-gray-100"
+                      >
+                        Alle Anfragen anzeigen →
+                      </NavLink>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* User Dropdown - Desktop */}
+              <div className="relative hidden sm:block" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                >
+                  <div className="w-8 h-8 bg-sunside-primary rounded-full flex items-center justify-center text-white font-medium">
+                    {user?.vor_nachname?.charAt(0) || 'U'}
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                </button>
+
+                {/* User Dropdown Menu */}
+                {userMenuOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
+                    {/* User Info */}
+                    <div className="p-4 border-b border-gray-100 bg-gray-50">
+                      <p className="font-semibold text-gray-900">{user?.vor_nachname || user?.vorname}</p>
+                      <p className="text-xs text-gray-500 mt-0.5">{user?.rolle?.join(', ')}</p>
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="py-2">
+                      <NavLink
+                        to="/profil"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        <User className="w-4 h-4 mr-3 text-gray-400" />
+                        Mein Profil
+                      </NavLink>
+
+                      {isAdmin() && (
+                        <NavLink
+                          to="/einstellungen"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        >
+                          <Settings className="w-4 h-4 mr-3 text-gray-400" />
+                          Einstellungen
+                        </NavLink>
+                      )}
+                    </div>
+
+                    {/* Logout */}
+                    <div className="border-t border-gray-100 py-2">
+                      <button
+                        onClick={() => {
+                          setUserMenuOpen(false)
+                          handleLogout()
+                        }}
+                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        <LogOut className="w-4 h-4 mr-3" />
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Mobile Menu Button */}
               <button
@@ -172,6 +353,17 @@ function Layout({ children }) {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 bg-white">
             <div className="px-4 py-3 space-y-1">
+              {/* User Info Mobile */}
+              <div className="flex items-center gap-3 px-4 py-3 mb-2 bg-gray-50 rounded-lg">
+                <div className="w-10 h-10 bg-sunside-primary rounded-full flex items-center justify-center text-white font-medium">
+                  {user?.vor_nachname?.charAt(0) || 'U'}
+                </div>
+                <div>
+                  <p className="font-medium text-gray-900">{user?.vor_nachname}</p>
+                  <p className="text-xs text-gray-500">{user?.rolle?.join(', ')}</p>
+                </div>
+              </div>
+
               {navItems.map((item) => (
                 <NavLink
                   key={item.path}
@@ -190,24 +382,8 @@ function Layout({ children }) {
                 </NavLink>
               ))}
               
-              {/* Lead-Anfragen für Admins im Mobile Menu */}
-              {isAdmin() && offeneAnfragen > 0 && (
-                <NavLink
-                  to="/einstellungen"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium bg-amber-50 text-amber-700"
-                >
-                  <div className="flex items-center">
-                    <Bell className="w-5 h-5 mr-3" />
-                    Lead-Anfragen
-                  </div>
-                  <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
-                    {offeneAnfragen}
-                  </span>
-                </NavLink>
-              )}
-              
               <hr className="my-2" />
+              
               <NavLink
                 to="/profil"
                 onClick={() => setMobileMenuOpen(false)}
@@ -222,6 +398,24 @@ function Layout({ children }) {
                 <User className="w-5 h-5 mr-3" />
                 Mein Profil
               </NavLink>
+
+              {isAdmin() && (
+                <NavLink
+                  to="/einstellungen"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={({ isActive }) =>
+                    `flex items-center px-4 py-3 rounded-lg text-sm font-medium ${
+                      isActive
+                        ? 'bg-sunside-primary text-white'
+                        : 'text-gray-600 hover:bg-gray-100'
+                    }`
+                  }
+                >
+                  <Settings className="w-5 h-5 mr-3" />
+                  Einstellungen
+                </NavLink>
+              )}
+              
               <button
                 onClick={handleLogout}
                 className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-lg"
