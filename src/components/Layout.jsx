@@ -13,9 +13,10 @@ import {
   Bell,
   ChevronDown,
   Check,
-  Clock
+  Clock,
+  CheckCheck
 } from 'lucide-react'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 
 function Layout({ children }) {
   const { user, logout, isSetter, isCloser, isAdmin } = useAuth()
@@ -30,6 +31,31 @@ function Layout({ children }) {
   const userMenuRef = useRef(null)
   const notificationRef = useRef(null)
 
+  // Benachrichtigung als gelesen markieren
+  const markAsRead = useCallback((notificationId) => {
+    const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]')
+    if (!readNotifications.includes(notificationId)) {
+      readNotifications.push(notificationId)
+      localStorage.setItem('readNotifications', JSON.stringify(readNotifications))
+      
+      // UI aktualisieren
+      setNotifications(prev => prev.map(n => 
+        n.id === notificationId ? { ...n, unread: false } : n
+      ))
+      setNotificationCount(prev => Math.max(0, prev - 1))
+    }
+  }, [])
+
+  // Alle als gelesen markieren
+  const markAllAsRead = useCallback(() => {
+    const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]')
+    const newRead = [...new Set([...readNotifications, ...notifications.map(n => n.id)])]
+    localStorage.setItem('readNotifications', JSON.stringify(newRead))
+    
+    setNotifications(prev => prev.map(n => ({ ...n, unread: false })))
+    setNotificationCount(0)
+  }, [notifications])
+
   // Benachrichtigungen laden
   useEffect(() => {
     const loadNotifications = async () => {
@@ -37,7 +63,7 @@ function Layout({ children }) {
       
       try {
         // Für Admins: Offene Anfragen von allen
-        // Für andere: Eigene Anfragen mit Status-Updates
+        // Für andere: Eigene Anfragen (alle Status)
         const params = new URLSearchParams({
           isAdmin: isAdmin() ? 'true' : 'false',
           userId: user.id
@@ -46,11 +72,15 @@ function Layout({ children }) {
         if (isAdmin()) {
           params.set('status', 'Offen')
         }
+        // Für Vertriebler: Kein Status-Filter → alle Anfragen laden
         
         const response = await fetch(`/.netlify/functions/lead-requests?${params}`)
         if (response.ok) {
           const data = await response.json()
           const anfragen = data.anfragen || []
+          
+          // Gelesene Benachrichtigungen aus localStorage laden
+          const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]')
           
           if (isAdmin()) {
             // Admin sieht offene Anfragen
@@ -60,28 +90,29 @@ function Layout({ children }) {
               title: `${a.userName} möchte ${a.anzahl} Leads`,
               message: a.nachricht || 'Neue Lead-Anfrage',
               time: a.erstelltAm,
-              unread: true
+              unread: !readNotifications.includes(a.id)
             })))
-            setNotificationCount(anfragen.length)
+            setNotificationCount(anfragen.filter(a => !readNotifications.includes(a.id)).length)
           } else {
             // Vertriebler sehen ihre Anfragen-Status
-            const updates = anfragen.filter(a => a.status !== 'Offen')
-            setNotifications(anfragen.map(a => ({
+            // Nur bearbeitete Anfragen (nicht "Offen") als Benachrichtigungen anzeigen
+            const bearbeiteteAnfragen = anfragen.filter(a => a.status !== 'Offen')
+            
+            setNotifications(bearbeiteteAnfragen.map(a => ({
               id: a.id,
-              type: a.status === 'Offen' ? 'pending' : a.status === 'Genehmigt' ? 'success' : a.status === 'Abgelehnt' ? 'rejected' : 'partial',
-              title: a.status === 'Offen' 
-                ? `Anfrage über ${a.anzahl} Leads läuft` 
-                : a.status === 'Genehmigt' 
-                  ? `${a.genehmigteAnzahl || a.anzahl} Leads genehmigt!`
-                  : a.status === 'Teilweise_Genehmigt'
-                    ? `${a.genehmigteAnzahl} von ${a.anzahl} Leads genehmigt`
-                    : `Anfrage abgelehnt`,
-              message: a.adminKommentar || '',
+              type: a.status === 'Genehmigt' ? 'success' : a.status === 'Abgelehnt' ? 'rejected' : 'partial',
+              title: a.status === 'Genehmigt' 
+                ? `✅ ${a.genehmigteAnzahl || a.anzahl} Leads genehmigt!`
+                : a.status === 'Teilweise_Genehmigt'
+                  ? `⚠️ ${a.genehmigteAnzahl} von ${a.anzahl} Leads genehmigt`
+                  : `❌ Anfrage über ${a.anzahl} Leads abgelehnt`,
+              message: a.adminKommentar || (a.status === 'Genehmigt' ? 'Deine Leads sind bereit!' : ''),
               time: a.bearbeitetAm || a.erstelltAm,
-              unread: a.status !== 'Offen'
+              unread: !readNotifications.includes(a.id)
             })))
-            // Zeige Badge für bearbeitete Anfragen
-            setNotificationCount(updates.length)
+            
+            // Badge zeigt ungelesene bearbeitete Anfragen
+            setNotificationCount(bearbeiteteAnfragen.filter(a => !readNotifications.includes(a.id)).length)
           }
         }
       } catch (err) {
@@ -90,7 +121,7 @@ function Layout({ children }) {
     }
     
     loadNotifications()
-    const interval = setInterval(loadNotifications, 60000)
+    const interval = setInterval(loadNotifications, 30000) // Alle 30 Sekunden prüfen
     return () => clearInterval(interval)
   }, [user?.id, isAdmin])
 
@@ -216,8 +247,20 @@ function Layout({ children }) {
                 {/* Notification Dropdown */}
                 {notificationOpen && (
                   <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
-                    <div className="p-3 border-b border-gray-100 bg-gray-50">
+                    <div className="p-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
                       <h3 className="font-semibold text-gray-900">Benachrichtigungen</h3>
+                      {notifications.some(n => n.unread) && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            markAllAsRead()
+                          }}
+                          className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1"
+                        >
+                          <CheckCheck className="w-3 h-3" />
+                          Alle gelesen
+                        </button>
+                      )}
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.length === 0 ? (
@@ -233,6 +276,7 @@ function Layout({ children }) {
                               notif.unread ? 'bg-purple-50' : ''
                             }`}
                             onClick={() => {
+                              markAsRead(notif.id)
                               if (isAdmin()) {
                                 navigate('/einstellungen?tab=anfragen')
                               } else {
