@@ -40,7 +40,7 @@ const BUNDESLAENDER = [
 ]
 
 // Rollen Optionen
-const ROLLEN = ['Admin', 'Setter', 'Closer', 'Coldcaller']
+const ROLLEN = ['Admin', 'Closer', 'Coldcaller']
 
 // Modal Component mit Portal
 function Modal({ isOpen, onClose, children, zIndex = 99999 }) {
@@ -118,8 +118,12 @@ function MitarbeiterVerwaltung() {
 
   // Mitarbeiter hinzufügen
   const handleAdd = async () => {
-    if (!formData.vorname || !formData.nachname || !formData.email) {
-      setError('Vorname, Nachname und E-Mail sind erforderlich')
+    // Alle Felder validieren
+    if (!formData.vorname || !formData.nachname || !formData.email || 
+        !formData.email_geschaeftlich || !formData.telefon || 
+        !formData.strasse || !formData.plz || !formData.ort || 
+        !formData.bundesland || formData.rolle.length === 0) {
+      setError('Bitte alle Felder ausfüllen und mindestens eine Rolle auswählen')
       return
     }
 
@@ -127,8 +131,8 @@ function MitarbeiterVerwaltung() {
     setError('')
 
     try {
-      // Bei Setter/Coldcaller automatisch Akquise-Pfad bereitstellen
-      const initialOnboarding = (formData.rolle.includes('Setter') || formData.rolle.includes('Coldcaller'))
+      // Bei Coldcaller automatisch Akquise-Pfad bereitstellen
+      const initialOnboarding = formData.rolle.includes('Coldcaller')
         ? 'Akquise-Pfad bereitstellen'
         : ''
 
@@ -140,6 +144,8 @@ function MitarbeiterVerwaltung() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           vor_nachname,
+          vorname: formData.vorname,
+          nachname: formData.nachname,
           email: formData.email,
           email_geschaeftlich: formData.email_geschaeftlich,
           telefon: formData.telefon,
@@ -193,6 +199,8 @@ function MitarbeiterVerwaltung() {
         body: JSON.stringify({
           id: selectedUser.id,
           vor_nachname,
+          vorname: formData.vorname,
+          nachname: formData.nachname,
           email: formData.email,
           email_geschaeftlich: formData.email_geschaeftlich,
           telefon: formData.telefon,
@@ -617,7 +625,7 @@ function MitarbeiterVerwaltung() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefon *</label>
                 <input
                   type="tel"
                   value={formData.telefon}
@@ -641,7 +649,7 @@ function MitarbeiterVerwaltung() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail *</label>
                 <input
                   type="email"
                   value={formData.email_geschaeftlich}
@@ -655,7 +663,7 @@ function MitarbeiterVerwaltung() {
             {/* Zeile 3: Adresse komplett */}
             <div className="grid grid-cols-6 gap-4">
               <div className="col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Straße + Hausnr.</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Straße + Hausnr. *</label>
                 <input
                   type="text"
                   value={formData.strasse}
@@ -665,7 +673,7 @@ function MitarbeiterVerwaltung() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">PLZ</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">PLZ *</label>
                 <input
                   type="text"
                   value={formData.plz}
@@ -675,7 +683,7 @@ function MitarbeiterVerwaltung() {
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ort</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ort *</label>
                 <input
                   type="text"
                   value={formData.ort}
@@ -689,7 +697,7 @@ function MitarbeiterVerwaltung() {
             {/* Zeile 4: Bundesland + Rollen */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland *</label>
                 <select
                   value={formData.bundesland}
                   onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
@@ -702,7 +710,7 @@ function MitarbeiterVerwaltung() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rollen</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rollen *</label>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {ROLLEN.map(rolle => (
                     <button
@@ -727,7 +735,7 @@ function MitarbeiterVerwaltung() {
                 <GraduationCap className="w-5 h-5 text-blue-600 mr-3 mt-0.5" />
                 <div className="text-sm text-blue-700">
                   <p className="font-medium">Automatisches Onboarding</p>
-                  <p className="mt-1">Bei Setter/Coldcaller wird automatisch der Akquise-Pfad bereitgestellt.</p>
+                  <p className="mt-1">Bei Coldcaller wird automatisch der Akquise-Pfad bereitgestellt.</p>
                 </div>
               </div>
             </div>
@@ -786,7 +794,7 @@ function MitarbeiterVerwaltung() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefon *</label>
                 <input
                   type="tel"
                   value={formData.telefon}
@@ -808,7 +816,7 @@ function MitarbeiterVerwaltung() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail *</label>
                 <input
                   type="email"
                   value={formData.email_geschaeftlich}
@@ -821,7 +829,7 @@ function MitarbeiterVerwaltung() {
             {/* Zeile 3: Adresse komplett */}
             <div className="grid grid-cols-6 gap-4">
               <div className="col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Straße + Hausnr.</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Straße + Hausnr. *</label>
                 <input
                   type="text"
                   value={formData.strasse}
@@ -831,7 +839,7 @@ function MitarbeiterVerwaltung() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">PLZ</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">PLZ *</label>
                 <input
                   type="text"
                   value={formData.plz}
@@ -841,7 +849,7 @@ function MitarbeiterVerwaltung() {
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ort</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Ort *</label>
                 <input
                   type="text"
                   value={formData.ort}
@@ -855,7 +863,7 @@ function MitarbeiterVerwaltung() {
             {/* Zeile 4: Bundesland + Rollen */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland *</label>
                 <select
                   value={formData.bundesland}
                   onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
@@ -868,7 +876,7 @@ function MitarbeiterVerwaltung() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rollen</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Rollen *</label>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {ROLLEN.map(rolle => (
                     <button
