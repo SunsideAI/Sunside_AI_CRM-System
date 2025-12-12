@@ -62,17 +62,12 @@ function Layout({ children }) {
       if (!user?.id) return
       
       try {
-        // Für Admins: Offene Anfragen von allen
-        // Für andere: Eigene Anfragen (alle Status)
+        // Alle Anfragen laden (kein Status-Filter)
         const params = new URLSearchParams({
           isAdmin: isAdmin() ? 'true' : 'false',
           userId: user.id
         })
-        
-        if (isAdmin()) {
-          params.set('status', 'Offen')
-        }
-        // Für Vertriebler: Kein Status-Filter → alle Anfragen laden
+        // Kein Status-Filter → alle Anfragen laden
         
         const response = await fetch(`/.netlify/functions/lead-requests?${params}`)
         if (response.ok) {
@@ -83,16 +78,39 @@ function Layout({ children }) {
           const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]')
           
           if (isAdmin()) {
-            // Admin sieht offene Anfragen
-            setNotifications(anfragen.map(a => ({
-              id: a.id,
-              type: 'anfrage',
-              title: `${a.userName} möchte ${a.anzahl} Leads`,
-              message: a.nachricht || 'Neue Lead-Anfrage',
-              time: a.erstelltAm,
-              unread: !readNotifications.includes(a.id)
-            })))
-            setNotificationCount(anfragen.filter(a => !readNotifications.includes(a.id)).length)
+            // Admin sieht:
+            // 1. Offene Anfragen (zu bearbeiten) - mit User-Icon
+            // 2. Bearbeitete Anfragen (erledigt) - mit Check/X Icon
+            const allNotifications = anfragen.map(a => {
+              if (a.status === 'Offen') {
+                return {
+                  id: a.id,
+                  type: 'anfrage',
+                  title: `🙋 ${a.userName} möchte ${a.anzahl} Leads`,
+                  message: a.nachricht || 'Neue Lead-Anfrage',
+                  time: a.erstelltAm,
+                  unread: !readNotifications.includes(a.id)
+                }
+              } else {
+                return {
+                  id: a.id,
+                  type: a.status === 'Genehmigt' ? 'success' : a.status === 'Abgelehnt' ? 'rejected' : 'partial',
+                  title: a.status === 'Genehmigt' 
+                    ? `✅ ${a.userName}: ${a.genehmigteAnzahl || a.anzahl} Leads genehmigt`
+                    : a.status === 'Teilweise_Genehmigt'
+                      ? `⚠️ ${a.userName}: ${a.genehmigteAnzahl}/${a.anzahl} Leads`
+                      : `❌ ${a.userName}: Abgelehnt`,
+                  message: a.adminKommentar || '',
+                  time: a.bearbeitetAm || a.erstelltAm,
+                  unread: !readNotifications.includes(a.id)
+                }
+              }
+            })
+            
+            setNotifications(allNotifications)
+            // Badge zeigt nur offene (unbearbeitete) Anfragen
+            const offeneAnfragen = anfragen.filter(a => a.status === 'Offen')
+            setNotificationCount(offeneAnfragen.filter(a => !readNotifications.includes(a.id)).length)
           } else {
             // Vertriebler sehen ihre Anfragen-Status
             // Nur bearbeitete Anfragen (nicht "Offen") als Benachrichtigungen anzeigen
