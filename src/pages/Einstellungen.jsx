@@ -6,11 +6,13 @@ import {
   Bell,
   Shield,
   Settings,
-  UserCog
+  UserCog,
+  Inbox
 } from 'lucide-react'
 import PasswordManager from '../components/PasswordManager'
 import EmailTemplateManager from '../components/EmailTemplateManager'
 import MitarbeiterVerwaltung from '../components/MitarbeiterVerwaltung'
+import LeadAnfragenVerwaltung from '../components/LeadAnfragenVerwaltung'
 
 function Einstellungen() {
   const { user } = useAuth()
@@ -24,6 +26,7 @@ function Einstellungen() {
           <h1 className="text-2xl font-bold text-gray-900">Einstellungen</h1>
           <p className="mt-1 text-gray-500">
             {activeTab === 'mitarbeiter' && 'Mitarbeiter verwalten und Onboarding'}
+            {activeTab === 'anfragen' && 'Lead-Anfragen der Vertriebler bearbeiten'}
             {activeTab === 'system' && 'Systemkonfiguration und Verwaltung'}
           </p>
         </div>
@@ -43,6 +46,18 @@ function Einstellungen() {
           </button>
           
           <button
+            onClick={() => setActiveTab('anfragen')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'anfragen'
+                ? 'bg-white text-purple-600 shadow-sm'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Inbox className="h-4 w-4" />
+            Lead-Anfragen
+          </button>
+          
+          <button
             onClick={() => setActiveTab('system')}
             className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
               activeTab === 'system'
@@ -59,6 +74,10 @@ function Einstellungen() {
       {/* Tab Content */}
       {activeTab === 'mitarbeiter' && (
         <MitarbeiterVerwaltung />
+      )}
+
+      {activeTab === 'anfragen' && (
+        <LeadAnfragenVerwaltung />
       )}
 
       {activeTab === 'system' && (
