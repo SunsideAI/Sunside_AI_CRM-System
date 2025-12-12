@@ -9,14 +9,39 @@ import {
   LogOut,
   User,
   Menu,
-  X
+  X,
+  Bell
 } from 'lucide-react'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 function Layout({ children }) {
   const { user, logout, isSetter, isCloser, isAdmin } = useAuth()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [offeneAnfragen, setOffeneAnfragen] = useState(0)
+
+  // Offene Lead-Anfragen laden (nur für Admins)
+  useEffect(() => {
+    const loadOffeneAnfragen = async () => {
+      if (!isAdmin()) return
+      
+      try {
+        const response = await fetch('/.netlify/functions/lead-requests?isAdmin=true&status=Offen')
+        if (response.ok) {
+          const data = await response.json()
+          setOffeneAnfragen(data.anfragen?.length || 0)
+        }
+      } catch (err) {
+        console.error('Fehler beim Laden der Anfragen:', err)
+      }
+    }
+    
+    loadOffeneAnfragen()
+    
+    // Alle 60 Sekunden aktualisieren
+    const interval = setInterval(loadOffeneAnfragen, 60000)
+    return () => clearInterval(interval)
+  }, [isAdmin])
 
   const handleLogout = () => {
     logout()
@@ -93,6 +118,22 @@ function Layout({ children }) {
 
             {/* User Menu */}
             <div className="flex items-center space-x-4">
+              {/* Benachrichtigungen für Admins */}
+              {isAdmin() && (
+                <NavLink
+                  to="/einstellungen"
+                  className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  title="Lead-Anfragen"
+                >
+                  <Bell className="w-5 h-5 text-gray-600" />
+                  {offeneAnfragen > 0 && (
+                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                      {offeneAnfragen > 9 ? '9+' : offeneAnfragen}
+                    </span>
+                  )}
+                </NavLink>
+              )}
+
               <NavLink 
                 to="/profil"
                 className={({ isActive }) =>
@@ -148,6 +189,24 @@ function Layout({ children }) {
                   {item.name}
                 </NavLink>
               ))}
+              
+              {/* Lead-Anfragen für Admins im Mobile Menu */}
+              {isAdmin() && offeneAnfragen > 0 && (
+                <NavLink
+                  to="/einstellungen"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium bg-amber-50 text-amber-700"
+                >
+                  <div className="flex items-center">
+                    <Bell className="w-5 h-5 mr-3" />
+                    Lead-Anfragen
+                  </div>
+                  <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+                    {offeneAnfragen}
+                  </span>
+                </NavLink>
+              )}
+              
               <hr className="my-2" />
               <NavLink
                 to="/profil"
