@@ -754,7 +754,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           {isAdmin() && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">
-                {selectedUser === 'all' ? 'Einwahlen & Beratungen pro Vertriebler' : `Einwahlen & Beratungen: ${selectedUser}`}
+                {selectedUser === 'all' ? 'Einwahlen & Beratungsgespräche pro Vertriebler' : `Einwahlen & Beratungen: ${selectedUser}`}
               </h3>
               {(() => {
                 const perUserData = stats.perUser || []
