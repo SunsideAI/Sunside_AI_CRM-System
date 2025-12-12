@@ -669,18 +669,19 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           </div>
 
           {/* Gestapeltes Balkendiagramm - Performance pro Vertriebler (Admin only) */}
-          {isAdmin() && stats.perUser && stats.perUser.length > 0 && (
+          {isAdmin() && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">
                 {selectedUser === 'all' ? 'Ergebnisse pro Vertriebler (gestapelt)' : `Ergebnisse: ${selectedUser}`}
               </h3>
               {(() => {
+                const perUserData = stats.perUser || []
                 const chartData = selectedUser === 'all' 
-                  ? stats.perUser.slice(0, 20)
-                  : stats.perUser.filter(u => u.name === selectedUser)
+                  ? perUserData.slice(0, 20)
+                  : perUserData.filter(u => u.name === selectedUser)
                 
                 return chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={selectedUser === 'all' ? Math.max(400, stats.perUser.length * 50) : 120}>
+                  <ResponsiveContainer width="100%" height={selectedUser === 'all' ? Math.max(400, perUserData.length * 50) : 120}>
                     <BarChart 
                       data={chartData} 
                       layout="vertical"
@@ -720,8 +721,11 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-[120px] text-gray-400">
-                    <p className="text-sm">Keine Daten für diesen Vertriebler</p>
+                  <div className="flex items-center justify-center h-[150px] text-gray-400">
+                    <div className="text-center">
+                      <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Keine Daten im ausgewählten Zeitraum</p>
+                    </div>
                   </div>
                 )
               })()}
@@ -729,18 +733,19 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           )}
 
           {/* Einwahlen pro Vertriebler (Admin only) */}
-          {isAdmin() && stats.perUser && stats.perUser.length > 0 && (
+          {isAdmin() && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">
                 {selectedUser === 'all' ? 'Einwahlen & Beratungen pro Vertriebler' : `Einwahlen & Beratungen: ${selectedUser}`}
               </h3>
               {(() => {
+                const perUserData = stats.perUser || []
                 const chartData = selectedUser === 'all' 
-                  ? stats.perUser.slice(0, 15)
-                  : stats.perUser.filter(u => u.name === selectedUser)
+                  ? perUserData.slice(0, 15)
+                  : perUserData.filter(u => u.name === selectedUser)
                 
                 return chartData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={selectedUser === 'all' ? Math.max(300, stats.perUser.length * 40) : 100}>
+                  <ResponsiveContainer width="100%" height={selectedUser === 'all' ? Math.max(300, perUserData.length * 40) : 100}>
                     <BarChart data={chartData} layout="vertical">
                       <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                       <XAxis type="number" />
@@ -752,8 +757,11 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-[100px] text-gray-400">
-                    <p className="text-sm">Keine Daten für diesen Vertriebler</p>
+                  <div className="flex items-center justify-center h-[150px] text-gray-400">
+                    <div className="text-center">
+                      <Phone className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                      <p className="text-sm">Keine Einwahlen im ausgewählten Zeitraum</p>
+                    </div>
                   </div>
                 )
               })()}
