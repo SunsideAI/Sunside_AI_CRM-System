@@ -354,6 +354,14 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
     let startDate = null
 
+    // Lokale Datum-Formatierung (keine Zeitzonen-Konvertierung!)
+    const formatDateLocal = (date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
     switch (dateRange) {
       case 'today':
         startDate = today
@@ -362,8 +370,8 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         startDate = new Date(today)
         startDate.setDate(startDate.getDate() - 1)
         return {
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: today.toISOString().split('T')[0]
+          startDate: formatDateLocal(startDate),
+          endDate: formatDateLocal(startDate) // Nur gestern
         }
       case 'thisWeek':
         startDate = new Date(today)
@@ -375,8 +383,8 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         const lastWeekStart = new Date(lastWeekEnd)
         lastWeekStart.setDate(lastWeekStart.getDate() - 6)
         return {
-          startDate: lastWeekStart.toISOString().split('T')[0],
-          endDate: lastWeekEnd.toISOString().split('T')[0]
+          startDate: formatDateLocal(lastWeekStart),
+          endDate: formatDateLocal(lastWeekEnd)
         }
       case '7days':
         startDate = new Date(today)
@@ -397,8 +405,8 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
         const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
         return {
-          startDate: lastMonthStart.toISOString().split('T')[0],
-          endDate: lastMonthEnd.toISOString().split('T')[0]
+          startDate: formatDateLocal(lastMonthStart),
+          endDate: formatDateLocal(lastMonthEnd)
         }
       case '3months':
         startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
@@ -412,8 +420,8 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     }
 
     return {
-      startDate: startDate ? startDate.toISOString().split('T')[0] : null,
-      endDate: now.toISOString().split('T')[0]
+      startDate: startDate ? formatDateLocal(startDate) : null,
+      endDate: formatDateLocal(today)
     }
   }
 
