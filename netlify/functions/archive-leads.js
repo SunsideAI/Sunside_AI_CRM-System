@@ -40,7 +40,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { vertriebId, adminId } = JSON.parse(event.body)
+    const { vertriebId } = JSON.parse(event.body)
 
     if (!vertriebId) {
       return {
@@ -60,15 +60,14 @@ exports.handler = async (event) => {
     const userData = await userResponse.json()
     const vertrieblerName = userData.fields?.Vor_Nachname || 'Unbekannt'
 
-    // 2. Alle Leads des Vertrieblers finden
-    // Filter: User_Datenbank enthält den Vertriebler UND bereits kontaktiert
+    // 2. Alle Leads laden (ohne Filter, dann im Code filtern - robuster bei Link-Feldern)
     let allLeads = []
     let offset = null
 
     do {
-      let url = `${LEADS_URL}?filterByFormula=${encodeURIComponent(`AND(FIND("${vertriebId}", ARRAYJOIN({User_Datenbank}, ",")), {Bereits_kontaktiert}='X')`)}`
+      let url = LEADS_URL
       if (offset) {
-        url += `&offset=${offset}`
+        url += `?offset=${offset}`
       }
 
       const response = await fetch(url, { headers: airtableHeaders })
@@ -82,47 +81,76 @@ exports.handler = async (event) => {
       offset = data.offset
     } while (offset)
 
-    console.log(`${allLeads.length} bearbeitete Leads gefunden für ${vertrieblerName}`)
+    console.log(`${allLeads.length} Leads total geladen`)
 
-    if (allLeads.length === 0) {
+    // 3. Im Code filtern: User zugewiesen UND bereits kontaktiert
+    const userLeads = allLeads.filter(lead => {
+      const fields = lead.fields
+      
+      // User-Zuordnung prüfen (Link-Feld)
+      const zugewiesen = fields['User_Datenbank'] || fields.User_Datenbank || []
+      const userIds = Array.isArray(zugewiesen) ? zugewiesen : [zugewiesen]
+      if (!userIds.includes(vertriebId)) return false
+      
+      // Bereits kontaktiert prüfen (verschiedene Feldnamen)
+      const kontaktiert = fields['Bereits kontaktiert'] || 
+                          fields['Bereits_kontaktiert'] || 
+                          fields.Bereits_kontaktiert ||
+                          false
+      
+      // Kann 'X', true, oder 1 sein
+      return kontaktiert === true || kontaktiert === 'X' || kontaktiert === 'x' || kontaktiert === 1
+    })
+
+    console.log(`${userLeads.length} bearbeitete Leads gefunden für ${vertrieblerName}`)
+
+    if (userLeads.length === 0) {
       return {
         statusCode: 200,
         headers: corsHeaders,
         body: JSON.stringify({
           success: true,
           message: 'Keine bearbeiteten Leads zum Archivieren gefunden',
+          vertrieblerName,
           archiviert: 0,
           zurueckgesetzt: 0
         })
       }
     }
 
-    // 3. Leads filtern: Nur die OHNE "Beratungsgespräch" archivieren
+    // 4. Leads filtern: Nur die OHNE "Beratungsgespräch" archivieren
     // Leads mit Beratungsgespräch sind bereits in Hot_Leads und bleiben unberührt
-    const leadsZuArchivieren = allLeads.filter(lead => {
+    const leadsZuArchivieren = userLeads.filter(lead => {
       const ergebnis = (lead.fields.Ergebnis || '').toLowerCase()
       return !ergebnis.includes('beratungsgespräch') && !ergebnis.includes('beratungsgespraech')
     })
 
-    console.log(`${leadsZuArchivieren.length} Leads werden archiviert (${allLeads.length - leadsZuArchivieren.length} Beratungsgespräche übersprungen)`)
+    console.log(`${leadsZuArchivieren.length} Leads werden archiviert (${userLeads.length - leadsZuArchivieren.length} Beratungsgespräche übersprungen)`)
 
-    // 4. Archiv-Einträge erstellen (Batches von 10)
+    // 5. Archiv-Einträge erstellen (Batches von 10)
     const now = new Date().toISOString()
     let archiviertCount = 0
 
     for (let i = 0; i < leadsZuArchivieren.length; i += 10) {
       const batch = leadsZuArchivieren.slice(i, i + 10)
       
-      const archivRecords = batch.map(lead => ({
-        fields: {
-          'Lead': [lead.id],
-          'Vertriebler': [vertriebId],
-          'Bereits_kontaktiert': lead.fields.Bereits_kontaktiert === 'X' || lead.fields.Bereits_kontaktiert === true,
-          'Ergebnis': mapErgebnis(lead.fields.Ergebnis),
-          'Datum': lead.fields.Datum || null,
-          'Archiviert_am': now
+      const archivRecords = batch.map(lead => {
+        const fields = lead.fields
+        const kontaktiert = fields['Bereits kontaktiert'] || 
+                            fields['Bereits_kontaktiert'] || 
+                            fields.Bereits_kontaktiert
+        
+        return {
+          fields: {
+            'Lead': [lead.id],
+            'Vertriebler': [vertriebId],
+            'Bereits_kontaktiert': kontaktiert === true || kontaktiert === 'X' || kontaktiert === 'x',
+            'Ergebnis': mapErgebnis(fields.Ergebnis),
+            'Datum': fields.Datum || null,
+            'Archiviert_am': now
+          }
         }
-      }))
+      })
 
       const archivResponse = await fetch(ARCHIV_URL, {
         method: 'POST',
@@ -140,7 +168,7 @@ exports.handler = async (event) => {
 
     console.log(`${archiviertCount} Leads ins Archiv kopiert`)
 
-    // 5. Original-Leads zurücksetzen (Arbeitsdaten löschen)
+    // 6. Original-Leads zurücksetzen (Arbeitsdaten löschen)
     let zurueckgesetztCount = 0
 
     for (let i = 0; i < leadsZuArchivieren.length; i += 10) {
@@ -150,7 +178,8 @@ exports.handler = async (event) => {
         id: lead.id,
         fields: {
           'User_Datenbank': [],  // Verknüpfung lösen
-          'Bereits_kontaktiert': null,  // Zurücksetzen
+          'Bereits kontaktiert': null,  // Zurücksetzen (mit Leerzeichen)
+          'Bereits_kontaktiert': null,  // Zurücksetzen (mit Unterstrich)
           'Ergebnis': null,  // Zurücksetzen
           'Datum': null  // Zurücksetzen
         }
@@ -179,8 +208,8 @@ exports.handler = async (event) => {
         success: true,
         message: `Archivierung für ${vertrieblerName} abgeschlossen`,
         vertrieblerName,
-        gefunden: allLeads.length,
-        beratungsgespraecheUebersprungen: allLeads.length - leadsZuArchivieren.length,
+        gefunden: userLeads.length,
+        beratungsgespraecheUebersprungen: userLeads.length - leadsZuArchivieren.length,
         archiviert: archiviertCount,
         zurueckgesetzt: zurueckgesetztCount
       })
