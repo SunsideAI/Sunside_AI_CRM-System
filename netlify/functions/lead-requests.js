@@ -228,6 +228,7 @@ exports.handler = async (event) => {
       }
 
       if (adminId) {
+        // Linked Record Feld - muss als Array gesendet werden
         fields['Bearbeitet_von'] = [adminId]
       }
 
