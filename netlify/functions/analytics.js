@@ -338,7 +338,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     zugewiesenAn: record.fields['User_Datenbank'] || record.fields.User_Datenbank || []
   }))
 
-  // Archiv-Leads: Checkbox für Bereits_kontaktiert
+  // Archiv-Leads: Gleiche Struktur wie aktive (Single Select für Bereits_kontaktiert)
   const normalizedArchiv = archivRecords.map(record => ({
     source: 'archiv',
     id: record.id,
