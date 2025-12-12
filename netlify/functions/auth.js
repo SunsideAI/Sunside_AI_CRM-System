@@ -95,6 +95,15 @@ export async function handler(event) {
     const record = data.records[0]
     const fields = record.fields
 
+    // Status prüfen - deaktivierte User dürfen sich nicht anmelden
+    if (fields.Status !== true) {
+      return {
+        statusCode: 401,
+        headers,
+        body: JSON.stringify({ error: 'Dein Account wurde deaktiviert. Bitte Admin kontaktieren.' })
+      }
+    }
+
     // Passwort prüfen
     const storedPassword = fields.Passwort || ''
     
