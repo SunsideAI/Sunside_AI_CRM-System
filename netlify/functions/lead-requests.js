@@ -258,14 +258,8 @@ exports.handler = async (event) => {
       if (status === 'Genehmigt' || status === 'Teilweise_Genehmigt') {
         const anzahlZuweisen = genehmigteAnzahl || 0
         
-        // Debug: Was kommt aus der Anfrage?
-        console.log('=== GENEHMIGUNG DEBUG ===')
-        console.log('Result fields:', JSON.stringify(result.fields))
-        console.log('Anzahl zu zuweisen:', anzahlZuweisen)
-        
         // User-ID aus der Anfrage holen
         const userId = result.fields.User?.[0]
-        console.log('User ID aus Anfrage:', userId)
         
         if (userId && anzahlZuweisen > 0) {
           try {
@@ -275,13 +269,10 @@ exports.handler = async (event) => {
               AIRTABLE_BASE_ID, 
               airtableHeaders
             )
-            console.log(`${zugewieseneLeads} Leads an User ${userId} zugewiesen`)
+            console.log(`${zugewieseneLeads} Leads zugewiesen`)
           } catch (assignError) {
-            console.error('Fehler bei Lead-Zuweisung:', assignError)
-            // Anfrage trotzdem als erfolgreich markieren
+            console.error('Fehler bei Lead-Zuweisung:', assignError.message)
           }
-        } else {
-          console.log('Keine Zuweisung - userId:', userId, 'anzahl:', anzahlZuweisen)
         }
       }
 
@@ -435,25 +426,16 @@ async function assignLeadsToUser(userId, anzahl, baseId, airtableHeaders) {
   const LEADS_TABLE_ID = 'tblFRrrCPoT3t8FpC'
   const LEADS_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE}/${LEADS_TABLE_ID}`
   
-  console.log('=== LEAD ZUWEISUNG START ===')
-  console.log('Base ID:', AIRTABLE_BASE)
-  console.log('Table ID:', LEADS_TABLE_ID)
-  console.log('User ID:', userId)
-  console.log('Anzahl:', anzahl)
+  console.log('Lead-Zuweisung: User', userId, '| Anzahl:', anzahl)
   
-  // Ganz einfache Formel: Nur Leads wo User_Datenbank leer ist
-  // Für Link-Felder: {Feld} = BLANK() oder LEN({Feld}) = 0
-  const filterFormula = `{User_Datenbank}=BLANK()`
-  
-  console.log('Filter:', filterFormula)
+  // Nur Leads wo:
+  // 1. User_Datenbank leer ist (nicht zugewiesen)
+  // 2. Bereits_kontaktiert NICHT 'X' ist (nicht kontaktiert)
+  const filterFormula = `AND({User_Datenbank}=BLANK(), OR({Bereits_kontaktiert}=BLANK(), {Bereits_kontaktiert}=''))`
   
   let url = `${LEADS_URL}?filterByFormula=${encodeURIComponent(filterFormula)}&maxRecords=${anzahl}`
   
-  console.log('URL:', url)
-  
   const response = await fetch(url, { headers: airtableHeaders })
-  
-  console.log('Response Status:', response.status)
   
   if (!response.ok) {
     const error = await response.json()
@@ -463,9 +445,6 @@ async function assignLeadsToUser(userId, anzahl, baseId, airtableHeaders) {
   
   const data = await response.json()
   const freieLeads = data.records || []
-  
-  console.log(`Airtable Response: ${data.records?.length || 0} Records`)
-  console.log(`Gefunden: ${freieLeads.length} freie Leads`)
   
   if (freieLeads.length === 0) {
     console.log('Keine freien Leads verfügbar')
