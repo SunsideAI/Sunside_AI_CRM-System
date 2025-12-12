@@ -77,7 +77,7 @@ async function getUsers(TABLE_URL, airtableHeaders) {
     email: record.fields['E-Mail'] || '',
     email_geschaeftlich: record.fields['E-Mail_Geschäftlich'] || '',
     rolle: record.fields.Rolle || [],
-    status: record.fields.Status !== false,
+    status: record.fields.Status === true,  // Nur true wenn explizit angehakt
     telefon: record.fields.Telefon || '',
     strasse: record.fields['Straße'] || '',
     plz: record.fields.PLZ || '',
