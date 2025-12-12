@@ -596,28 +596,37 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
             {/* Conversion Funnel */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Ergebnisse in Zahlen</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart 
-                  data={[
-                    { name: 'Einwahlen', value: stats.summary.einwahlen },
-                    { name: 'Erreicht', value: stats.summary.erreicht },
-                    { name: 'Beratung', value: stats.summary.beratungsgespraech },
-                    { name: 'Unterlagen', value: stats.summary.unterlagen }
-                  ]}
-                  layout="vertical"
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} />
-                  <Tooltip />
-                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                    <Cell fill="#7C3AED" />
-                    <Cell fill="#6366F1" />
-                    <Cell fill="#10B981" />
-                    <Cell fill="#F59E0B" />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              {stats.summary.einwahlen > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart 
+                    data={[
+                      { name: 'Einwahlen', value: stats.summary.einwahlen },
+                      { name: 'Erreicht', value: stats.summary.erreicht },
+                      { name: 'Beratung', value: stats.summary.beratungsgespraech },
+                      { name: 'Unterlagen', value: stats.summary.unterlagen }
+                    ]}
+                    layout="vertical"
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis type="number" />
+                    <YAxis dataKey="name" type="category" width={100} />
+                    <Tooltip />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                      <Cell fill="#7C3AED" />
+                      <Cell fill="#6366F1" />
+                      <Cell fill="#10B981" />
+                      <Cell fill="#F59E0B" />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[250px] text-gray-400">
+                  <div className="text-center">
+                    <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Keine Einwahlen im Zeitraum</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Ergebnis Verteilung Pie */}
@@ -656,16 +665,25 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           {/* Aktivität Zeitverlauf */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-sm font-medium text-gray-700 mb-4">Einwahlen im Zeitverlauf</h3>
-            <ResponsiveContainer width="100%" height={250}>
-              <LineChart data={stats.zeitverlauf}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 12 }} />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="count" name="Einwahlen" stroke="#7C3AED" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-              </LineChart>
-            </ResponsiveContainer>
+            {stats.zeitverlauf && stats.zeitverlauf.length > 0 && stats.zeitverlauf.some(z => z.count > 0) ? (
+              <ResponsiveContainer width="100%" height={250}>
+                <LineChart data={stats.zeitverlauf}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Legend />
+                  <Line type="monotone" dataKey="count" name="Einwahlen" stroke="#7C3AED" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-[250px] text-gray-400">
+                <div className="text-center">
+                  <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">Keine Aktivität im Zeitraum</p>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Gestapeltes Balkendiagramm - Performance pro Vertriebler (Admin only) */}
