@@ -586,7 +586,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <KPICard title="Einwahlen" value={stats.summary.einwahlen} icon={Phone} color="purple" />
             <KPICard title="Erreicht" value={stats.summary.erreicht} icon={Users} color="blue" subtitle={formatPercent(stats.summary.erreichQuote)} />
-            <KPICard title="Beratung" value={stats.summary.beratungsgespraech} icon={Calendar} color="green" subtitle={formatPercent(stats.summary.beratungsgespraechQuote)} />
+            <KPICard title="Beratungsgespräch" value={stats.summary.beratungsgespraech} icon={Calendar} color="green" subtitle={formatPercent(stats.summary.beratungsgespraechQuote)} />
             <KPICard title="Unterlagen" value={stats.summary.unterlagen} icon={Target} color="yellow" subtitle={formatPercent(stats.summary.unterlagenQuote)} />
             <KPICard title="Kein Interesse" value={stats.summary.keinInteresse} icon={XCircle} color="red" subtitle={formatPercent(stats.summary.keinInteresseQuote || 0)} />
           </div>
@@ -602,7 +602,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                     data={[
                       { name: 'Einwahlen', value: stats.summary.einwahlen },
                       { name: 'Erreicht', value: stats.summary.erreicht },
-                      { name: 'Beratung', value: stats.summary.beratungsgespraech },
+                      { name: 'Beratungsgespräch', value: stats.summary.beratungsgespraech },
                       { name: 'Unterlagen', value: stats.summary.unterlagen }
                     ]}
                     layout="vertical"
@@ -637,7 +637,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                   <PieChart>
                     <Pie
                       data={[
-                        { name: 'Beratung', value: stats.summary.beratungsgespraech },
+                        { name: 'Beratungsgespräch', value: stats.summary.beratungsgespraech },
                         { name: 'Unterlagen', value: stats.summary.unterlagen },
                         { name: 'Kein Interesse', value: stats.summary.keinInteresse }
                       ].filter(d => d.value > 0)}
@@ -716,7 +716,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                       <Tooltip 
                         formatter={(value, name) => {
                           const labels = {
-                            beratungsgespraech: 'Beratung',
+                            beratungsgespraech: 'Beratungsgespräch',
                             unterlagen: 'Unterlagen',
                             keinInteresse: 'Kein Interesse'
                           }
@@ -726,7 +726,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                       <Legend 
                         formatter={(value) => {
                           const labels = {
-                            beratungsgespraech: 'Beratung',
+                            beratungsgespraech: 'Beratungsgespräch',
                             unterlagen: 'Unterlagen',
                             keinInteresse: 'Kein Interesse'
                           }
@@ -754,7 +754,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           {isAdmin() && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">
-                {selectedUser === 'all' ? 'Einwahlen & Beratungsgespräche pro Vertriebler' : `Einwahlen & Beratungen: ${selectedUser}`}
+                {selectedUser === 'all' ? 'Einwahlen & Beratungsgespräche pro Vertriebler' : `Einwahlen & Beratungsgespräche: ${selectedUser}`}
               </h3>
               {(() => {
                 const perUserData = stats.perUser || []
@@ -771,7 +771,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                       <Tooltip />
                       <Legend />
                       <Bar dataKey="einwahlen" name="Einwahlen" fill="#7C3AED" />
-                      <Bar dataKey="beratungsgespraech" name="Beratung" fill="#10B981" />
+                      <Bar dataKey="beratungsgespraech" name="Beratungsgespräch" fill="#10B981" />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
