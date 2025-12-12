@@ -23,7 +23,9 @@ import {
   RefreshCw,
   Users,
   User as UserIcon,
-  Send
+  Send,
+  Plus,
+  AlertCircle
 } from 'lucide-react'
 
 // Ergebnis-Optionen (aus Airtable)
@@ -86,6 +88,14 @@ function Kaltakquise() {
   const [autoSaving, setAutoSaving] = useState(false)
   const autoSaveTimeoutRef = useRef(null)
 
+  // Lead-Anfragen State
+  const [showAnfrageModal, setShowAnfrageModal] = useState(false)
+  const [anfrageAnzahl, setAnfrageAnzahl] = useState(100)
+  const [anfrageNachricht, setAnfrageNachricht] = useState('')
+  const [anfrageSending, setAnfrageSending] = useState(false)
+  const [offeneAnfrage, setOffeneAnfrage] = useState(null)
+  const [anfrageError, setAnfrageError] = useState('')
+
   // Leads laden
   const loadLeads = useCallback(async (newOffset = null, addToHistory = false) => {
     setLoading(true)
@@ -135,6 +145,72 @@ function Kaltakquise() {
   useEffect(() => {
     loadLeads()
   }, [viewMode, search, filterContacted, filterResult, filterVertriebler])
+
+  // Offene Lead-Anfrage laden
+  useEffect(() => {
+    const loadOffeneAnfrage = async () => {
+      if (!user?.id) return
+      try {
+        const response = await fetch(`/.netlify/functions/lead-requests?userId=${user.id}&status=Offen&isAdmin=false`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.anfragen && data.anfragen.length > 0) {
+            setOffeneAnfrage(data.anfragen[0])
+          } else {
+            setOffeneAnfrage(null)
+          }
+        }
+      } catch (err) {
+        console.error('Fehler beim Laden der Anfrage:', err)
+      }
+    }
+    loadOffeneAnfrage()
+  }, [user?.id])
+
+  // Lead-Anfrage senden
+  const sendLeadAnfrage = async () => {
+    if (!anfrageAnzahl || anfrageAnzahl < 1) {
+      setAnfrageError('Bitte gib eine gültige Anzahl ein')
+      return
+    }
+
+    setAnfrageSending(true)
+    setAnfrageError('')
+
+    try {
+      const response = await fetch('/.netlify/functions/lead-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          anzahl: anfrageAnzahl,
+          nachricht: anfrageNachricht
+        })
+      })
+
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Anfrage konnte nicht gesendet werden')
+      }
+
+      // Erfolg - Modal schließen und Status aktualisieren
+      setShowAnfrageModal(false)
+      setOffeneAnfrage({
+        anfrageId: data.anfrage.anfrageId,
+        anzahl: anfrageAnzahl,
+        status: 'Offen',
+        erstelltAm: new Date().toISOString()
+      })
+      setAnfrageAnzahl(100)
+      setAnfrageNachricht('')
+
+    } catch (err) {
+      setAnfrageError(err.message)
+    } finally {
+      setAnfrageSending(false)
+    }
+  }
 
   // Suche mit Debounce
   useEffect(() => {
@@ -361,34 +437,69 @@ function Kaltakquise() {
           </p>
         </div>
 
-        {/* Admin: Toggle zwischen allen und eigenen Leads */}
-        {isAdmin() && (
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+        <div className="flex items-center gap-3">
+          {/* Leads anfordern Button (für alle außer Admins optional) */}
+          {!isAdmin() && (
             <button
-              onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setFilterVertriebler('all'); setLeads([]); }}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'own' 
-                  ? 'bg-white text-sunside-primary shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
+              onClick={() => setShowAnfrageModal(true)}
+              disabled={offeneAnfrage !== null}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                offeneAnfrage 
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-sunside-primary text-white hover:bg-purple-700'
               }`}
             >
-              <UserIcon className="w-4 h-4 mr-1.5" />
-              Meine Leads
+              <Plus className="w-4 h-4" />
+              Leads anfordern
             </button>
-            <button
-              onClick={() => { setViewMode('all'); setOffset(null); setPageHistory([]); setLeads([]); }}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'all' 
-                  ? 'bg-white text-sunside-primary shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Users className="w-4 h-4 mr-1.5" />
-              Alle Leads
-            </button>
-          </div>
-        )}
+          )}
+
+          {/* Admin: Toggle zwischen allen und eigenen Leads */}
+          {isAdmin() && (
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setFilterVertriebler('all'); setLeads([]); }}
+                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'own' 
+                    ? 'bg-white text-sunside-primary shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <UserIcon className="w-4 h-4 mr-1.5" />
+                Meine Leads
+              </button>
+              <button
+                onClick={() => { setViewMode('all'); setOffset(null); setPageHistory([]); setLeads([]); }}
+                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'all' 
+                    ? 'bg-white text-sunside-primary shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Users className="w-4 h-4 mr-1.5" />
+                Alle Leads
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Offene Anfrage Banner */}
+      {offeneAnfrage && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
+          <Clock className="w-5 h-5 text-amber-600 flex-shrink-0" />
+          <div className="flex-1">
+            <p className="font-medium text-amber-800">
+              Deine Anfrage über {offeneAnfrage.anzahl} Leads wird bearbeitet
+            </p>
+            <p className="text-sm text-amber-600">
+              Gesendet am {new Date(offeneAnfrage.erstelltAm).toLocaleDateString('de-DE', { 
+                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+              })}
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Filter Bar */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
@@ -1050,6 +1161,90 @@ function Kaltakquise() {
                 )}
               </div>
             )}
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Lead-Anfrage Modal */}
+      {showAnfrageModal && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowAnfrageModal(false)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-900">Neue Leads anfordern</h2>
+              <button
+                onClick={() => setShowAnfrageModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Error */}
+            {anfrageError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <span className="text-sm">{anfrageError}</span>
+              </div>
+            )}
+
+            {/* Form */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Anzahl Leads
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="500"
+                  value={anfrageAnzahl}
+                  onChange={(e) => setAnfrageAnzahl(parseInt(e.target.value) || 0)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                />
+                <p className="mt-1 text-sm text-gray-500">Empfohlen: 100-300 Leads</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nachricht (optional)
+                </label>
+                <textarea
+                  value={anfrageNachricht}
+                  onChange={(e) => setAnfrageNachricht(e.target.value)}
+                  placeholder="z.B. Meine Liste ist fast durch..."
+                  rows={3}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                onClick={() => setShowAnfrageModal(false)}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={sendLeadAnfrage}
+                disabled={anfrageSending || anfrageAnzahl < 1}
+                className="flex items-center gap-2 px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {anfrageSending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+                Anfrage senden
+              </button>
+            </div>
           </div>
         </div>,
         document.body
