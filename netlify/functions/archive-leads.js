@@ -123,8 +123,9 @@ exports.handler = async (event) => {
     console.log(`${leadsZuArchivieren.length} Leads werden archiviert (${userLeads.length - leadsZuArchivieren.length} Beratungsgespräche übersprungen)`)
 
     // 5. Archiv-Einträge erstellen (Batches von 10)
-    const now = new Date().toISOString()
+    const now = new Date().toISOString().split('T')[0]  // Nur Datum: "2025-12-12"
     let archiviertCount = 0
+    const erfolgreichArchiviertIds = []  // Track welche Leads erfolgreich archiviert wurden
 
     for (let i = 0; i < leadsZuArchivieren.length; i += 10) {
       const batch = leadsZuArchivieren.slice(i, i + 10)
@@ -151,19 +152,42 @@ exports.handler = async (event) => {
 
       if (archivResponse.ok) {
         archiviertCount += batch.length
+        // Diese Lead-IDs merken für Reset
+        batch.forEach(lead => erfolgreichArchiviertIds.push(lead.id))
       } else {
         const error = await archivResponse.json()
         console.error('Archiv-Fehler:', error)
+        // Bei Fehler: Diese Leads NICHT zurücksetzen!
       }
     }
 
     console.log(`${archiviertCount} Leads ins Archiv kopiert`)
 
-    // 6. Original-Leads zurücksetzen (Arbeitsdaten löschen)
+    // 6. NUR erfolgreich archivierte Leads zurücksetzen
     let zurueckgesetztCount = 0
+    
+    if (erfolgreichArchiviertIds.length === 0) {
+      console.log('Keine Leads archiviert - Reset übersprungen')
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          success: false,
+          message: `Archivierung fehlgeschlagen für ${vertrieblerName}`,
+          vertrieblerName,
+          gefunden: userLeads.length,
+          archiviert: 0,
+          zurueckgesetzt: 0,
+          fehler: 'Archiv-Einträge konnten nicht erstellt werden'
+        })
+      }
+    }
 
-    for (let i = 0; i < leadsZuArchivieren.length; i += 10) {
-      const batch = leadsZuArchivieren.slice(i, i + 10)
+    // Nur die erfolgreich archivierten Leads zurücksetzen
+    const leadsZumReset = leadsZuArchivieren.filter(lead => erfolgreichArchiviertIds.includes(lead.id))
+
+    for (let i = 0; i < leadsZumReset.length; i += 10) {
+      const batch = leadsZumReset.slice(i, i + 10)
       
       const resetRecords = batch.map(lead => ({
         id: lead.id,
