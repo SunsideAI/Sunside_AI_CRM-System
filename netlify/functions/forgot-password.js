@@ -82,9 +82,23 @@ export async function handler(event) {
     }
 
     const record = searchData.records[0]
-    // Geschäftliche E-Mail bevorzugen, dann private
-    const rawEmail = record.fields['E-Mail_Geschäftlich'] || record.fields['E-Mail']
-    const userEmail = rawEmail ? rawEmail.trim() : null
+    
+    // E-Mail an die Adresse senden, die der User eingegeben hat (nicht an eine andere!)
+    // Prüfen ob die eingegebene E-Mail in den Feldern existiert
+    const privateEmail = record.fields['E-Mail']?.trim()
+    const businessEmail = record.fields['E-Mail_Geschäftlich']?.trim()
+    const inputEmailLower = email.toLowerCase().trim()
+    
+    let userEmail = null
+    if (privateEmail && privateEmail.toLowerCase() === inputEmailLower) {
+      userEmail = privateEmail
+    } else if (businessEmail && businessEmail.toLowerCase() === inputEmailLower) {
+      userEmail = businessEmail
+    } else {
+      // Fallback: Eine der beiden E-Mails verwenden
+      userEmail = businessEmail || privateEmail
+    }
+    
     const userName = record.fields.Vorname || 'User'
 
     // E-Mail validieren
