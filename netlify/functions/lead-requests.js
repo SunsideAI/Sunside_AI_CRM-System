@@ -276,6 +276,25 @@ exports.handler = async (event) => {
         }
       }
 
+      // E-Mail an den Anfragenden senden
+      try {
+        const anfragenderId = result.fields.User?.[0]
+        if (anfragenderId) {
+          await sendUserNotification(
+            anfragenderId,
+            status,
+            genehmigteAnzahl || result.fields.Anzahl,
+            result.fields.Anzahl,
+            adminKommentar,
+            zugewieseneLeads,
+            USER_URL,
+            airtableHeaders
+          )
+        }
+      } catch (emailError) {
+        console.error('Fehler beim Senden der User-Benachrichtigung:', emailError.message)
+      }
+
       return {
         statusCode: 200,
         headers: corsHeaders,
@@ -482,4 +501,124 @@ async function assignLeadsToUser(userId, anzahl, baseId, airtableHeaders) {
   }
   
   return zugewiesen
+}
+
+// E-Mail an den Anfragenden senden
+async function sendUserNotification(userId, status, genehmigteAnzahl, angefragt, adminKommentar, zugewieseneLeads, userUrl, airtableHeaders) {
+  // User-Daten laden
+  const userResponse = await fetch(`${userUrl}/${userId}`, { headers: airtableHeaders })
+  
+  if (!userResponse.ok) {
+    throw new Error('Konnte User-Daten nicht laden')
+  }
+  
+  const userData = await userResponse.json()
+  const userName = userData.fields?.Vor_Nachname || userData.fields?.Vorname || 'Vertriebler'
+  const userEmail = userData.fields?.['E-Mail_Geschäftlich'] || userData.fields?.['E-Mail']
+  
+  if (!userEmail) {
+    console.log('Keine E-Mail-Adresse für User gefunden')
+    return
+  }
+  
+  const RESEND_API_KEY = process.env.RESEND_API_KEY
+  
+  if (!RESEND_API_KEY) {
+    console.log('RESEND_API_KEY nicht konfiguriert')
+    return
+  }
+  
+  // Status-spezifische Inhalte
+  let statusTitle, statusColor, statusIcon, mainMessage
+  
+  if (status === 'Genehmigt') {
+    statusTitle = 'Genehmigt ✓'
+    statusColor = '#10B981' // green
+    statusIcon = '✅'
+    mainMessage = `Deine Anfrage über ${angefragt} Leads wurde genehmigt. ${zugewieseneLeads > 0 ? `${zugewieseneLeads} Leads wurden dir zugewiesen.` : ''}`
+  } else if (status === 'Teilweise_Genehmigt') {
+    statusTitle = 'Teilweise Genehmigt'
+    statusColor = '#F59E0B' // amber
+    statusIcon = '⚠️'
+    mainMessage = `Deine Anfrage wurde teilweise genehmigt. ${genehmigteAnzahl} von ${angefragt} Leads wurden dir zugewiesen.`
+  } else if (status === 'Abgelehnt') {
+    statusTitle = 'Abgelehnt'
+    statusColor = '#EF4444' // red
+    statusIcon = '❌'
+    mainMessage = `Deine Anfrage über ${angefragt} Leads wurde leider abgelehnt.`
+  } else {
+    return // Unbekannter Status
+  }
+  
+  const emailBody = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #1a1a2e 0%, #7C3AED 100%); padding: 40px; text-align: center;">
+        <h1 style="color: white; margin: 0;">Sunside CRM</h1>
+      </div>
+      <div style="padding: 40px; background: #ffffff;">
+        <h2 style="color: #1a1a2e; margin-top: 0;">Hallo ${userName}!</h2>
+        <p style="color: #4a5568; line-height: 1.6;">
+          Deine Lead-Anfrage wurde bearbeitet.
+        </p>
+        
+        <div style="background: #f7f7f7; border-radius: 8px; padding: 20px; margin: 24px 0; border-left: 4px solid ${statusColor};">
+          <div style="display: flex; align-items: center; margin-bottom: 12px;">
+            <span style="font-size: 24px; margin-right: 12px;">${statusIcon}</span>
+            <span style="color: ${statusColor}; font-weight: bold; font-size: 18px;">${statusTitle}</span>
+          </div>
+          <p style="color: #4a5568; margin: 0;">${mainMessage}</p>
+        </div>
+        
+        ${adminKommentar ? `
+        <div style="background: #EEF2FF; border-radius: 8px; padding: 16px; margin: 24px 0;">
+          <p style="color: #6366F1; font-weight: bold; margin: 0 0 8px 0; font-size: 14px;">💬 Kommentar vom Admin:</p>
+          <p style="color: #4a5568; margin: 0;">${adminKommentar}</p>
+        </div>
+        ` : ''}
+        
+        <div style="text-align: center; margin-top: 32px;">
+          <a href="https://crmsunsideai.netlify.app/kaltakquise" 
+             style="display: inline-block; background: linear-gradient(135deg, #7C3AED 0%, #9333EA 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+            Zum CRM →
+          </a>
+        </div>
+        
+        <p style="color: #718096; font-size: 14px; margin-top: 32px; text-align: center;">
+          Bei Fragen wende dich an deinen Admin.
+        </p>
+      </div>
+      <div style="background: #f7f7f7; padding: 20px; text-align: center;">
+        <p style="color: #a0aec0; font-size: 12px; margin: 0;">
+          © ${new Date().getFullYear()} Sunside AI
+        </p>
+      </div>
+    </div>
+  `
+  
+  const subject = status === 'Genehmigt' 
+    ? `✅ Deine Lead-Anfrage wurde genehmigt (${zugewieseneLeads} Leads)`
+    : status === 'Teilweise_Genehmigt'
+      ? `⚠️ Deine Lead-Anfrage wurde teilweise genehmigt (${genehmigteAnzahl}/${angefragt})`
+      : `❌ Deine Lead-Anfrage wurde abgelehnt`
+  
+  const emailResponse = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: 'Sunside CRM <noreply@sunsideai.de>',
+      to: [userEmail],
+      subject: subject,
+      html: emailBody
+    })
+  })
+  
+  if (!emailResponse.ok) {
+    const error = await emailResponse.json()
+    throw new Error(error.message || 'E-Mail konnte nicht gesendet werden')
+  }
+  
+  console.log('User-Benachrichtigung gesendet an:', userEmail)
 }
