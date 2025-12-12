@@ -234,7 +234,7 @@ function Layout({ children }) {
                             }`}
                             onClick={() => {
                               if (isAdmin()) {
-                                navigate('/einstellungen')
+                                navigate('/einstellungen?tab=anfragen')
                               }
                               setNotificationOpen(false)
                             }}
@@ -273,7 +273,7 @@ function Layout({ children }) {
                     </div>
                     {isAdmin() && notifications.length > 0 && (
                       <NavLink
-                        to="/einstellungen"
+                        to="/einstellungen?tab=anfragen"
                         onClick={() => setNotificationOpen(false)}
                         className="block p-3 text-center text-sm text-sunside-primary hover:bg-gray-50 border-t border-gray-100"
                       >
