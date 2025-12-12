@@ -33,8 +33,20 @@ exports.handler = async (event) => {
     const userEmail = params.email
     const userName = params.userName
     const filterUserName = params.filterUserName
-    const startDate = params.startDate ? new Date(params.startDate) : null
-    const endDate = params.endDate ? new Date(params.endDate) : null
+    
+    // Datum-Parsing: startDate = Anfang des Tages, endDate = Ende des Tages
+    let startDate = null
+    let endDate = null
+    
+    if (params.startDate) {
+      startDate = new Date(params.startDate)
+      startDate.setHours(0, 0, 0, 0) // Anfang des Tages
+    }
+    
+    if (params.endDate) {
+      endDate = new Date(params.endDate)
+      endDate.setHours(23, 59, 59, 999) // Ende des Tages
+    }
 
     if (type === 'closing') {
       const result = await getClosingStats({ isAdmin, userEmail, startDate, endDate })
