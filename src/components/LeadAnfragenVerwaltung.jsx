@@ -91,8 +91,14 @@ function LeadAnfragenVerwaltung() {
         throw new Error(data.error || 'Fehler beim Bearbeiten')
       }
       
-      // TODO: Hier müssten die Leads tatsächlich zugewiesen werden
-      // Das machen wir in einem separaten Schritt
+      const data = await response.json()
+      
+      // Erfolgsmeldung mit Anzahl zugewiesener Leads
+      if (status !== 'Abgelehnt' && data.zugewieseneLeads > 0) {
+        alert(`✅ ${data.zugewieseneLeads} Leads wurden erfolgreich zugewiesen!`)
+      } else if (status !== 'Abgelehnt' && data.zugewieseneLeads === 0) {
+        alert('⚠️ Anfrage genehmigt, aber keine freien Leads verfügbar.')
+      }
       
       // Erfolgreich - Liste neu laden
       await loadAnfragen()
@@ -310,10 +316,10 @@ function LeadAnfragenVerwaltung() {
       )}
 
       {/* Info Box */}
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-700">
-          <strong>Hinweis:</strong> Nach dem Genehmigen müssen die Leads noch manuell zugewiesen werden. 
-          Die automatische Zuweisung wird in einer zukünftigen Version implementiert.
+      <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+        <p className="text-sm text-green-700">
+          <strong>✓ Automatische Zuweisung:</strong> Nach dem Genehmigen werden die Leads automatisch 
+          aus dem Pool der freien Leads dem Vertriebler zugewiesen.
         </p>
       </div>
     </div>
