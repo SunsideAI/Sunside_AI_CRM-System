@@ -83,44 +83,37 @@ exports.handler = async (event) => {
 
     console.log(`${allLeads.length} Leads total geladen`)
 
-    // 3. Im Code filtern: User zugewiesen UND bereits kontaktiert
-    const userLeads = allLeads.filter(lead => {
+    // 3. Im Code filtern: Alle Leads die dem User zugewiesen sind
+    const alleUserLeads = allLeads.filter(lead => {
       const fields = lead.fields
-      
-      // User-Zuordnung prüfen (Link-Feld)
       const zugewiesen = fields['User_Datenbank'] || fields.User_Datenbank || []
       const userIds = Array.isArray(zugewiesen) ? zugewiesen : [zugewiesen]
-      if (!userIds.includes(vertriebId)) return false
-      
-      // Bereits_kontaktiert prüfen (Single Select mit 'X' oder leer)
-      const kontaktiert = fields['Bereits_kontaktiert'] || fields.Bereits_kontaktiert
-      return kontaktiert === 'X' || kontaktiert === 'x'
+      return userIds.includes(vertriebId)
     })
 
-    console.log(`${userLeads.length} bearbeitete Leads gefunden für ${vertrieblerName}`)
+    console.log(`${alleUserLeads.length} Leads insgesamt zugewiesen an ${vertrieblerName}`)
 
-    if (userLeads.length === 0) {
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify({
-          success: true,
-          message: 'Keine bearbeiteten Leads zum Archivieren gefunden',
-          vertrieblerName,
-          archiviert: 0,
-          zurueckgesetzt: 0
-        })
-      }
-    }
+    // 4. Aufteilen in kontaktierte und nicht-kontaktierte
+    const kontaktierteLeads = alleUserLeads.filter(lead => {
+      const kontaktiert = lead.fields['Bereits_kontaktiert'] || lead.fields.Bereits_kontaktiert
+      return kontaktiert === 'X' || kontaktiert === 'x'
+    })
+    
+    const nichtKontaktierteLeads = alleUserLeads.filter(lead => {
+      const kontaktiert = lead.fields['Bereits_kontaktiert'] || lead.fields.Bereits_kontaktiert
+      return kontaktiert !== 'X' && kontaktiert !== 'x'
+    })
 
-    // 4. Leads filtern: Nur die OHNE "Beratungsgespräch" archivieren
+    console.log(`${kontaktierteLeads.length} bearbeitete Leads, ${nichtKontaktierteLeads.length} nicht-kontaktierte Leads`)
+
+    // 5. Kontaktierte Leads filtern: Nur die OHNE "Beratungsgespräch" archivieren
     // Leads mit Beratungsgespräch sind bereits in Hot_Leads und bleiben unberührt
-    const leadsZuArchivieren = userLeads.filter(lead => {
+    const leadsZuArchivieren = kontaktierteLeads.filter(lead => {
       const ergebnis = (lead.fields.Ergebnis || '').toLowerCase()
       return !ergebnis.includes('beratungsgespräch') && !ergebnis.includes('beratungsgespraech')
     })
 
-    console.log(`${leadsZuArchivieren.length} Leads werden archiviert (${userLeads.length - leadsZuArchivieren.length} Beratungsgespräche übersprungen)`)
+    console.log(`${leadsZuArchivieren.length} Leads werden archiviert (${kontaktierteLeads.length - leadsZuArchivieren.length} Beratungsgespräche übersprungen)`)
 
     // 5. Archiv-Einträge erstellen (Batches von 10)
     const now = new Date().toISOString().split('T')[0]  // Nur Datum: "2025-12-12"
@@ -166,21 +159,9 @@ exports.handler = async (event) => {
     // 6. NUR erfolgreich archivierte Leads zurücksetzen
     let zurueckgesetztCount = 0
     
-    if (erfolgreichArchiviertIds.length === 0) {
-      console.log('Keine Leads archiviert - Reset übersprungen')
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify({
-          success: false,
-          message: `Archivierung fehlgeschlagen für ${vertrieblerName}`,
-          vertrieblerName,
-          gefunden: userLeads.length,
-          archiviert: 0,
-          zurueckgesetzt: 0,
-          fehler: 'Archiv-Einträge konnten nicht erstellt werden'
-        })
-      }
+    if (erfolgreichArchiviertIds.length === 0 && leadsZuArchivieren.length > 0) {
+      // Es gab Leads zu archivieren, aber die Archivierung ist fehlgeschlagen
+      console.log('Archivierung fehlgeschlagen - Reset übersprungen, aber nicht-kontaktierte werden freigegeben')
     }
 
     // Nur die erfolgreich archivierten Leads zurücksetzen
@@ -213,7 +194,36 @@ exports.handler = async (event) => {
       }
     }
 
-    console.log(`${zurueckgesetztCount} Leads zurückgesetzt`)
+    console.log(`${zurueckgesetztCount} archivierte Leads zurückgesetzt`)
+
+    // 7. Nicht-kontaktierte Leads freigeben (nur User-Zuordnung entfernen)
+    let freigegebenCount = 0
+
+    for (let i = 0; i < nichtKontaktierteLeads.length; i += 10) {
+      const batch = nichtKontaktierteLeads.slice(i, i + 10)
+      
+      const freigebenRecords = batch.map(lead => ({
+        id: lead.id,
+        fields: {
+          'User_Datenbank': []  // Nur Verknüpfung lösen, Rest bleibt
+        }
+      }))
+
+      const freigebenResponse = await fetch(LEADS_URL, {
+        method: 'PATCH',
+        headers: airtableHeaders,
+        body: JSON.stringify({ records: freigebenRecords })
+      })
+
+      if (freigebenResponse.ok) {
+        freigegebenCount += batch.length
+      } else {
+        const error = await freigebenResponse.json()
+        console.error('Freigeben-Fehler:', error)
+      }
+    }
+
+    console.log(`${freigegebenCount} nicht-kontaktierte Leads freigegeben`)
 
     return {
       statusCode: 200,
@@ -222,10 +232,13 @@ exports.handler = async (event) => {
         success: true,
         message: `Archivierung für ${vertrieblerName} abgeschlossen`,
         vertrieblerName,
-        gefunden: userLeads.length,
-        beratungsgespraecheUebersprungen: userLeads.length - leadsZuArchivieren.length,
+        gefunden: alleUserLeads.length,
+        kontaktiert: kontaktierteLeads.length,
+        nichtKontaktiert: nichtKontaktierteLeads.length,
+        beratungsgespraecheUebersprungen: kontaktierteLeads.length - leadsZuArchivieren.length,
         archiviert: archiviertCount,
-        zurueckgesetzt: zurueckgesetztCount
+        zurueckgesetzt: zurueckgesetztCount,
+        freigegeben: freigegebenCount
       })
     }
 
