@@ -237,6 +237,32 @@ function MitarbeiterVerwaltung() {
     setError('')
 
     try {
+      // Prüfen ob User ein Coldcaller ist (dann Leads archivieren)
+      const isColdcaller = selectedUser?.rollen?.includes('Coldcaller') || 
+                           selectedUser?.rollen?.includes('Setter')
+      
+      let archiveResult = null
+      
+      if (isColdcaller) {
+        // 1. Zuerst Leads archivieren
+        console.log('Archiviere Leads für:', selectedUser.id)
+        const archiveResponse = await fetch('/.netlify/functions/archive-leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ vertriebId: selectedUser.id })
+        })
+        
+        if (archiveResponse.ok) {
+          archiveResult = await archiveResponse.json()
+          console.log('Archivierung abgeschlossen:', archiveResult)
+        } else {
+          const archiveError = await archiveResponse.json()
+          console.error('Archivierung fehlgeschlagen:', archiveError)
+          // Warnung zeigen aber fortfahren
+        }
+      }
+
+      // 2. Dann User deaktivieren
       const response = await fetch('/.netlify/functions/users', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -249,12 +275,18 @@ function MitarbeiterVerwaltung() {
         throw new Error(data.error)
       }
 
-      setSuccess('Mitarbeiter wurde deaktiviert')
+      // Erfolgs-Meldung mit Archivierungs-Info
+      let successMsg = 'Mitarbeiter wurde deaktiviert'
+      if (archiveResult && archiveResult.archiviert > 0) {
+        successMsg = `Mitarbeiter deaktiviert. ${archiveResult.archiviert} Leads wurden archiviert und zurückgesetzt.`
+      }
+      
+      setSuccess(successMsg)
       setShowDeleteModal(false)
       setShowEditModal(false)
       setSelectedUser(null)
       loadUsers()
-      setTimeout(() => setSuccess(''), 3000)
+      setTimeout(() => setSuccess(''), 5000)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -971,10 +1003,19 @@ function MitarbeiterVerwaltung() {
               <UserX className="w-6 h-6 text-red-600" />
             </div>
             <h3 className="text-lg font-semibold text-center mb-2">Mitarbeiter deaktivieren?</h3>
-            <p className="text-gray-600 text-center">
-              <strong>{selectedUser?.vor_nachname}</strong> wird deaktiviert und kann sich nicht mehr einloggen. 
-              Die Daten bleiben erhalten und können später reaktiviert werden.
+            <p className="text-gray-600 text-center mb-3">
+              <strong>{selectedUser?.vor_nachname}</strong> wird deaktiviert und kann sich nicht mehr einloggen.
             </p>
+            
+            {/* Hinweis für Coldcaller */}
+            {(selectedUser?.rollen?.includes('Coldcaller') || selectedUser?.rollen?.includes('Setter')) && (
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+                <p className="text-amber-800">
+                  <strong>📋 Lead-Archivierung:</strong> Alle bearbeiteten Leads dieses Vertrieblers werden ins Archiv verschoben. 
+                  Die Leads werden zurückgesetzt und können einem neuen Vertriebler zugewiesen werden.
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
@@ -990,7 +1031,7 @@ function MitarbeiterVerwaltung() {
               className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
-              Deaktivieren
+              {saving ? 'Wird verarbeitet...' : 'Deaktivieren'}
             </button>
           </div>
         </div>
