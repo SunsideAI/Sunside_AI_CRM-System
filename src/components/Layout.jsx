@@ -235,6 +235,8 @@ function Layout({ children }) {
                             onClick={() => {
                               if (isAdmin()) {
                                 navigate('/einstellungen?tab=anfragen')
+                              } else {
+                                navigate('/kaltakquise')
                               }
                               setNotificationOpen(false)
                             }}
