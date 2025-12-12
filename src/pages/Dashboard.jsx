@@ -623,24 +623,33 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
             {/* Ergebnis Verteilung Pie */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Prozentuale Ergebnisse</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: 'Beratung', value: stats.summary.beratungsgespraech },
-                      { name: 'Unterlagen', value: stats.summary.unterlagen },
-                      { name: 'Kein Interesse', value: stats.summary.keinInteresse }
-                    ].filter(d => d.value > 0)}
-                    cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    <Cell fill={RESULT_COLORS.beratungsgespraech} />
-                    <Cell fill={RESULT_COLORS.unterlagen} />
-                    <Cell fill={RESULT_COLORS.keinInteresse} />
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              {(stats.summary.beratungsgespraech + stats.summary.unterlagen + stats.summary.keinInteresse) > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Beratung', value: stats.summary.beratungsgespraech },
+                        { name: 'Unterlagen', value: stats.summary.unterlagen },
+                        { name: 'Kein Interesse', value: stats.summary.keinInteresse }
+                      ].filter(d => d.value > 0)}
+                      cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      <Cell fill={RESULT_COLORS.beratungsgespraech} />
+                      <Cell fill={RESULT_COLORS.unterlagen} />
+                      <Cell fill={RESULT_COLORS.keinInteresse} />
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[250px] text-gray-400">
+                  <div className="text-center">
+                    <Target className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Keine Ergebnisse im Zeitraum</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -659,67 +668,95 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
             </ResponsiveContainer>
           </div>
 
-          {/* NEU: Gestapeltes Balkendiagramm - Performance pro Vertriebler (Admin only) */}
-          {isAdmin() && stats.perUser && stats.perUser.length > 0 && selectedUser === 'all' && (
+          {/* Gestapeltes Balkendiagramm - Performance pro Vertriebler (Admin only) */}
+          {isAdmin() && stats.perUser && stats.perUser.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Ergebnisse pro Vertriebler (gestapelt)</h3>
-              <ResponsiveContainer width="100%" height={Math.max(400, stats.perUser.length * 50)}>
-                <BarChart 
-                  data={stats.perUser.slice(0, 20)} 
-                  layout="vertical"
-                  margin={{ left: 20, right: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis type="number" />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    width={140} 
-                    tick={{ fontSize: 12 }}
-                  />
-                  <Tooltip 
-                    formatter={(value, name) => {
-                      const labels = {
-                        beratungsgespraech: 'Beratung',
-                        unterlagen: 'Unterlagen',
-                        keinInteresse: 'Kein Interesse'
-                      }
-                      return [value, labels[name] || name]
-                    }}
-                  />
-                  <Legend 
-                    formatter={(value) => {
-                      const labels = {
-                        beratungsgespraech: 'Beratung',
-                        unterlagen: 'Unterlagen',
-                        keinInteresse: 'Kein Interesse'
-                      }
-                      return labels[value] || value
-                    }}
-                  />
-                  <Bar dataKey="beratungsgespraech" stackId="a" fill={RESULT_COLORS.beratungsgespraech} name="beratungsgespraech" />
-                  <Bar dataKey="unterlagen" stackId="a" fill={RESULT_COLORS.unterlagen} name="unterlagen" />
-                  <Bar dataKey="keinInteresse" stackId="a" fill={RESULT_COLORS.keinInteresse} name="keinInteresse" />
-                </BarChart>
-              </ResponsiveContainer>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">
+                {selectedUser === 'all' ? 'Ergebnisse pro Vertriebler (gestapelt)' : `Ergebnisse: ${selectedUser}`}
+              </h3>
+              {(() => {
+                const chartData = selectedUser === 'all' 
+                  ? stats.perUser.slice(0, 20)
+                  : stats.perUser.filter(u => u.name === selectedUser)
+                
+                return chartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={selectedUser === 'all' ? Math.max(400, stats.perUser.length * 50) : 120}>
+                    <BarChart 
+                      data={chartData} 
+                      layout="vertical"
+                      margin={{ left: 20, right: 20 }}
+                    >
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis type="number" />
+                      <YAxis 
+                        dataKey="name" 
+                        type="category" 
+                        width={140} 
+                        tick={{ fontSize: 12 }}
+                      />
+                      <Tooltip 
+                        formatter={(value, name) => {
+                          const labels = {
+                            beratungsgespraech: 'Beratung',
+                            unterlagen: 'Unterlagen',
+                            keinInteresse: 'Kein Interesse'
+                          }
+                          return [value, labels[name] || name]
+                        }}
+                      />
+                      <Legend 
+                        formatter={(value) => {
+                          const labels = {
+                            beratungsgespraech: 'Beratung',
+                            unterlagen: 'Unterlagen',
+                            keinInteresse: 'Kein Interesse'
+                          }
+                          return labels[value] || value
+                        }}
+                      />
+                      <Bar dataKey="beratungsgespraech" stackId="a" fill={RESULT_COLORS.beratungsgespraech} name="beratungsgespraech" />
+                      <Bar dataKey="unterlagen" stackId="a" fill={RESULT_COLORS.unterlagen} name="unterlagen" />
+                      <Bar dataKey="keinInteresse" stackId="a" fill={RESULT_COLORS.keinInteresse} name="keinInteresse" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[120px] text-gray-400">
+                    <p className="text-sm">Keine Daten für diesen Vertriebler</p>
+                  </div>
+                )
+              })()}
             </div>
           )}
 
-          {/* Einwahlen pro Vertriebler (Admin only, wenn "alle" ausgewählt) */}
-          {isAdmin() && stats.perUser && stats.perUser.length > 0 && selectedUser === 'all' && (
+          {/* Einwahlen pro Vertriebler (Admin only) */}
+          {isAdmin() && stats.perUser && stats.perUser.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Einwahlen & Beratungen pro Vertriebler</h3>
-              <ResponsiveContainer width="100%" height={Math.max(300, stats.perUser.length * 40)}>
-                <BarChart data={stats.perUser.slice(0, 15)} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                  <Tooltip />
-                  <Legend />
-                  <Bar dataKey="einwahlen" name="Einwahlen" fill="#7C3AED" />
-                  <Bar dataKey="beratungsgespraech" name="Beratung" fill="#10B981" />
-                </BarChart>
-              </ResponsiveContainer>
+              <h3 className="text-sm font-medium text-gray-700 mb-4">
+                {selectedUser === 'all' ? 'Einwahlen & Beratungen pro Vertriebler' : `Einwahlen & Beratungen: ${selectedUser}`}
+              </h3>
+              {(() => {
+                const chartData = selectedUser === 'all' 
+                  ? stats.perUser.slice(0, 15)
+                  : stats.perUser.filter(u => u.name === selectedUser)
+                
+                return chartData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={selectedUser === 'all' ? Math.max(300, stats.perUser.length * 40) : 100}>
+                    <BarChart data={chartData} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                      <XAxis type="number" />
+                      <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="einwahlen" name="Einwahlen" fill="#7C3AED" />
+                      <Bar dataKey="beratungsgespraech" name="Beratung" fill="#10B981" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="flex items-center justify-center h-[100px] text-gray-400">
+                    <p className="text-sm">Keine Daten für diesen Vertriebler</p>
+                  </div>
+                )
+              })()}
             </div>
           )}
         </>
