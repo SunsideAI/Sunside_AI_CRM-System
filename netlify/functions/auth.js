@@ -65,9 +65,12 @@ export async function handler(event) {
       }
     }
 
-    // Airtable Query
-    const formula = `OR({E-Mail}='${email}',{E-Mail_Geschäftlich}='${email}')`
+    // Airtable Query - E-Mail escapen und case-insensitive vergleichen
+    const escapedEmail = email.toLowerCase().replace(/'/g, "\\'")
+    const formula = `OR(LOWER({E-Mail})='${escapedEmail}',LOWER({E-Mail_Geschäftlich})='${escapedEmail}')`
     const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`
+
+    console.log('Login attempt for:', email) // Debug log
 
     const response = await fetch(url, {
       headers: {
