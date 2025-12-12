@@ -307,12 +307,12 @@ exports.handler = async (event) => {
   }
 }
 
-// E-Mail an alle Admins senden
+// E-Mail an alle Admins senden (nur geschäftliche E-Mail)
 async function sendAdminNotification(userId, anzahl, nachricht, anfrageId, userUrl, airtableHeaders) {
-  // Admins aus User_Datenbank laden
+  // Admins aus User_Datenbank laden - NUR geschäftliche E-Mail
   const adminFilter = `FIND("Admin", ARRAYJOIN({Rolle}, ","))`
   const adminResponse = await fetch(
-    `${userUrl}?filterByFormula=${encodeURIComponent(adminFilter)}&fields[]=E-Mail&fields[]=Vor_Nachname`,
+    `${userUrl}?filterByFormula=${encodeURIComponent(adminFilter)}&fields[]=E-Mail_Geschäftlich&fields[]=Vor_Nachname`,
     { headers: airtableHeaders }
   )
   
@@ -322,11 +322,11 @@ async function sendAdminNotification(userId, anzahl, nachricht, anfrageId, userU
 
   const adminData = await adminResponse.json()
   const adminEmails = adminData.records
-    .map(r => r.fields['E-Mail'])
+    .map(r => r.fields['E-Mail_Geschäftlich'])
     .filter(Boolean)
 
   if (adminEmails.length === 0) {
-    console.log('Keine Admin-E-Mails gefunden')
+    console.log('Keine geschäftlichen Admin-E-Mails gefunden')
     return
   }
 
@@ -345,13 +345,56 @@ async function sendAdminNotification(userId, anzahl, nachricht, anfrageId, userU
   }
 
   const emailBody = `
-    <h2>Neue Lead-Anfrage</h2>
-    <p><strong>Von:</strong> ${userName}</p>
-    <p><strong>Anzahl:</strong> ${anzahl} Leads</p>
-    ${nachricht ? `<p><strong>Nachricht:</strong> ${nachricht}</p>` : ''}
-    <p><strong>Anfrage-ID:</strong> ${anfrageId}</p>
-    <br>
-    <p><a href="https://crmsunsideai.netlify.app/einstellungen">Jetzt bearbeiten →</a></p>
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #1a1a2e 0%, #7C3AED 100%); padding: 40px; text-align: center;">
+        <h1 style="color: white; margin: 0;">Sunside CRM</h1>
+      </div>
+      <div style="padding: 40px; background: #ffffff;">
+        <h2 style="color: #1a1a2e; margin-top: 0;">🙋 Neue Lead-Anfrage</h2>
+        <p style="color: #4a5568; line-height: 1.6;">
+          Ein Vertriebler hat neue Leads angefordert und wartet auf deine Genehmigung.
+        </p>
+        
+        <div style="background: #f7f7f7; border-radius: 8px; padding: 20px; margin: 24px 0;">
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <td style="padding: 8px 0; color: #718096; font-size: 14px;">Vertriebler:</td>
+              <td style="padding: 8px 0; color: #1a1a2e; font-weight: bold; text-align: right;">${userName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #718096; font-size: 14px;">Anzahl Leads:</td>
+              <td style="padding: 8px 0; color: #7C3AED; font-weight: bold; font-size: 18px; text-align: right;">${anzahl}</td>
+            </tr>
+            ${nachricht ? `
+            <tr>
+              <td style="padding: 8px 0; color: #718096; font-size: 14px; vertical-align: top;">Nachricht:</td>
+              <td style="padding: 8px 0; color: #4a5568; text-align: right;">${nachricht}</td>
+            </tr>
+            ` : ''}
+            <tr>
+              <td style="padding: 8px 0; color: #718096; font-size: 14px;">Anfrage-ID:</td>
+              <td style="padding: 8px 0; color: #a0aec0; font-size: 12px; text-align: right;">${anfrageId}</td>
+            </tr>
+          </table>
+        </div>
+        
+        <div style="text-align: center; margin-top: 32px;">
+          <a href="https://crmsunsideai.netlify.app/einstellungen?tab=anfragen" 
+             style="display: inline-block; background: linear-gradient(135deg, #7C3AED 0%, #9333EA 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+            Jetzt bearbeiten →
+          </a>
+        </div>
+        
+        <p style="color: #718096; font-size: 14px; margin-top: 32px; text-align: center;">
+          Du erhältst diese E-Mail, weil du Admin im Sunside CRM bist.
+        </p>
+      </div>
+      <div style="background: #f7f7f7; padding: 20px; text-align: center;">
+        <p style="color: #a0aec0; font-size: 12px; margin: 0;">
+          © ${new Date().getFullYear()} Sunside AI
+        </p>
+      </div>
+    </div>
   `
 
   const emailResponse = await fetch('https://api.resend.com/emails', {
