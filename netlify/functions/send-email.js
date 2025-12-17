@@ -30,7 +30,6 @@ exports.handler = async (event) => {
       content,         // E-Mail Inhalt (Text)
       senderName,      // Absender Name (z.B. "Phillip Schadek")
       senderEmail,     // Absender E-Mail (muss @sunsideai.de sein)
-      senderTelefon,   // Absender Telefonnummer für Signatur
       replyTo,         // Reply-To (falls anders als Absender)
       leadId,          // Lead ID für Logging
       templateName,    // Template Name für Logging
@@ -73,7 +72,7 @@ exports.handler = async (event) => {
       reply_to: replyTo || fromEmail,
       subject: subject,
       text: content,
-      html: formatEmailHtml(content, fromName, fromEmail, senderTelefon)
+      html: formatEmailHtml(content, fromName, fromEmail)
     }
 
     // Attachments hinzufügen wenn vorhanden
@@ -374,7 +373,7 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
       <!-- Kontaktdaten -->
       <div><strong>Sunside AI GbR</strong></div>
       <div>Schiefer Berg 3 I 38124 Braunschweig I Deutschland<br>
-      E-Mail: <a href="mailto:contact@sunsideai.de" style="color: #000000;">contact@sunsideai.de</a>${senderTelefon ? ` I Tel: ${senderTelefon}` : ''}</div>
+      E-Mail: <a href="mailto:contact@sunsideai.de" style="color: #000000;">contact@sunsideai.de</a> I Tel: +49 176 56039050</div>
       <div>
         <a href="https://www.sunsideai.de/" style="color: #000000;">www.sunsideai.de</a> | 
         <a href="https://sunsideai.de/jetzt-termin-buchen" style="color: #000000;">Jetzt Termin buchen</a> | 
