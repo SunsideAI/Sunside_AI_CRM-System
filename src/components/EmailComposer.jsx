@@ -351,6 +351,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
           content: contentToSend,
           senderName: user?.vor_nachname,
           senderEmail: user?.email_geschaeftlich || user?.email,
+          senderTelefon: user?.telefon,
           replyTo: user?.email_geschaeftlich || user?.email,
           leadId: lead?.id,
           templateName: templates.find(t => t.id === selectedTemplate)?.name || 'Individuell',
