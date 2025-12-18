@@ -19,8 +19,51 @@ import {
   Building2,
   Edit3,
   Save,
-  Filter
+  Filter,
+  Send,
+  FileText,
+  Euro,
+  Package
 } from 'lucide-react'
+
+// Paket-Optionen für Angebot
+const PAKET_OPTIONS = [
+  { 
+    value: 'S', 
+    label: 'Paket S (<500 Besucher)', 
+    setup: 999, 
+    retainer: 349,
+    description: '999 € Setup + 349 €/Monat'
+  },
+  { 
+    value: 'M', 
+    label: 'Paket M (500-1000 Besucher)', 
+    setup: 1199, 
+    retainer: 449,
+    description: '1.199 € Setup + 449 €/Monat'
+  },
+  { 
+    value: 'L', 
+    label: 'Paket L (1000-1500 Besucher)', 
+    setup: 1499, 
+    retainer: 549,
+    description: '1.499 € Setup + 549 €/Monat'
+  },
+  { 
+    value: 'XL', 
+    label: 'Paket XL (>1500 Besucher)', 
+    setup: 1799, 
+    retainer: 649,
+    description: '1.799 € Setup + 649 €/Monat'
+  },
+  { 
+    value: 'individuell', 
+    label: 'Individueller Preis', 
+    setup: null, 
+    retainer: null,
+    description: 'Setup manuell eingeben'
+  }
+]
 
 // Status-Optionen für Dropdown
 const STATUS_OPTIONS = [
@@ -44,8 +87,116 @@ function Closing() {
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState('own') // 'own' oder 'all' (für Admins)
+  
+  // Angebot-Modal State
+  const [showAngebotModal, setShowAngebotModal] = useState(false)
+  const [angebotData, setAngebotData] = useState({
+    paket: '',
+    setup: '',
+    retainer: ''
+  })
+  const [sendingAngebot, setSendingAngebot] = useState(false)
 
   const LEADS_PER_PAGE = 10
+
+  // Retainer aus Setup berechnen (Setup / 2.75, abgerundet auf gerade Beträge, max 10% nach unten)
+  const calculateRetainer = (setup) => {
+    if (!setup || isNaN(setup)) return ''
+    const rawRetainer = setup / 2.75
+    const evenRetainer = Math.floor(rawRetainer / 10) * 10 // Auf 10er abrunden
+    const minRetainer = rawRetainer * 0.9 // Max 10% weniger
+    // Wenn zu viel abgerundet, auf nächsten 10er aufrunden
+    if (evenRetainer < minRetainer) {
+      return Math.ceil(rawRetainer / 10) * 10
+    }
+    return evenRetainer
+  }
+
+  // Paket-Auswahl Handler
+  const handlePaketChange = (paketValue) => {
+    const paket = PAKET_OPTIONS.find(p => p.value === paketValue)
+    if (paket) {
+      if (paket.value === 'individuell') {
+        setAngebotData({
+          paket: paketValue,
+          setup: '',
+          retainer: ''
+        })
+      } else {
+        setAngebotData({
+          paket: paketValue,
+          setup: paket.setup,
+          retainer: paket.retainer
+        })
+      }
+    }
+  }
+
+  // Setup ändern bei individuellem Preis
+  const handleSetupChange = (value) => {
+    const setup = parseFloat(value) || ''
+    const retainer = setup ? calculateRetainer(setup) : ''
+    setAngebotData(prev => ({
+      ...prev,
+      setup,
+      retainer
+    }))
+  }
+
+  // Angebot absenden
+  const handleSendAngebot = async () => {
+    if (!selectedLead || !angebotData.setup || !angebotData.retainer) return
+    
+    try {
+      setSendingAngebot(true)
+      
+      // Hot Lead updaten mit Setup, Retainer und Status
+      const response = await fetch('/.netlify/functions/hot-leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: selectedLead.id,
+          setup: parseFloat(angebotData.setup),
+          retainer: parseFloat(angebotData.retainer),
+          status: 'Angebot versendet'
+        })
+      })
+      
+      if (!response.ok) {
+        throw new Error('Fehler beim Speichern')
+      }
+      
+      // Lead in Liste aktualisieren
+      setLeads(prev => prev.map(lead => 
+        lead.id === selectedLead.id 
+          ? { 
+              ...lead, 
+              setup: parseFloat(angebotData.setup),
+              retainer: parseFloat(angebotData.retainer),
+              status: 'Angebot versendet'
+            }
+          : lead
+      ))
+      
+      // Selected Lead auch aktualisieren
+      setSelectedLead(prev => ({
+        ...prev,
+        setup: parseFloat(angebotData.setup),
+        retainer: parseFloat(angebotData.retainer),
+        status: 'Angebot versendet'
+      }))
+      
+      // Modal schließen und zurücksetzen
+      setShowAngebotModal(false)
+      setAngebotData({ paket: '', setup: '', retainer: '' })
+      
+    } catch (err) {
+      console.error('Fehler beim Senden des Angebots:', err)
+      alert('Fehler beim Senden des Angebots')
+    } finally {
+      setSendingAngebot(false)
+    }
+  }
 
   useEffect(() => {
     loadLeads()
@@ -509,6 +660,17 @@ function Closing() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                {/* Angebot versenden Button - nur bei Status "Lead" */}
+                {selectedLead.status === 'Lead' && !editMode && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAngebotModal(true)}
+                    className="flex items-center px-3 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors"
+                  >
+                    <Send className="w-4 h-4 mr-1" />
+                    Angebot versenden
+                  </button>
+                )}
                 {!editMode ? (
                   <button
                     type="button"
@@ -752,6 +914,166 @@ function Closing() {
                 className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
               >
                 {editMode ? (saving ? 'Speichern...' : 'Speichern') : 'Schließen'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Angebot versenden Modal */}
+      {showAngebotModal && selectedLead && createPortal(
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50"
+            onClick={() => !sendingAngebot && setShowAngebotModal(false)}
+          />
+
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-xl shadow-xl max-w-lg w-full">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <Send className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">Angebot versenden</h3>
+                  <p className="text-sm text-gray-500">{safeString(selectedLead.unternehmen)}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => !sendingAngebot && setShowAngebotModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-6 space-y-6">
+              {/* Paket-Auswahl */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <Package className="w-4 h-4 inline mr-1" />
+                  Paket auswählen
+                </label>
+                <select
+                  value={angebotData.paket}
+                  onChange={(e) => handlePaketChange(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                >
+                  <option value="">Paket wählen...</option>
+                  {PAKET_OPTIONS.map(option => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Paket-Details anzeigen (bei Standardpaketen) */}
+              {angebotData.paket && angebotData.paket !== 'individuell' && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-green-700 font-medium">Gewähltes Paket</p>
+                      <p className="text-lg font-bold text-green-800">
+                        {PAKET_OPTIONS.find(p => p.value === angebotData.paket)?.label}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm text-green-600">Setup: <span className="font-bold">{angebotData.setup} €</span></p>
+                      <p className="text-sm text-green-600">Monatlich: <span className="font-bold">{angebotData.retainer} €</span></p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Individuelle Preiseingabe */}
+              {angebotData.paket === 'individuell' && (
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <Euro className="w-4 h-4 inline mr-1" />
+                      Setup-Gebühr (netto)
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        value={angebotData.setup}
+                        onChange={(e) => handleSetupChange(e.target.value)}
+                        placeholder="z.B. 1500"
+                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">€</span>
+                    </div>
+                  </div>
+
+                  {angebotData.setup && angebotData.retainer && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <p className="text-sm text-blue-700 mb-1">Automatisch berechneter Retainer</p>
+                      <p className="text-sm text-blue-600">
+                        Formel: Setup / 2,75 = {(angebotData.setup / 2.75).toFixed(2)} € → abgerundet auf <span className="font-bold text-blue-800">{angebotData.retainer} €/Monat</span>
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Zusammenfassung */}
+              {angebotData.setup && angebotData.retainer && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3">Zusammenfassung</h4>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-500">Setup-Gebühr</p>
+                      <p className="text-lg font-bold text-gray-900">{angebotData.setup} € netto</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Monatlicher Retainer</p>
+                      <p className="text-lg font-bold text-gray-900">{angebotData.retainer} € netto</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 pt-3 border-t border-gray-200">
+                    <p className="text-gray-500 text-sm">Gesamtwert (12 Monate)</p>
+                    <p className="text-xl font-bold text-green-600">
+                      {(parseFloat(angebotData.setup) + parseFloat(angebotData.retainer) * 12).toLocaleString('de-DE')} € netto
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={() => setShowAngebotModal(false)}
+                disabled={sendingAngebot}
+                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                onClick={handleSendAngebot}
+                disabled={!angebotData.setup || !angebotData.retainer || sendingAngebot}
+                className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendingAngebot ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Wird gespeichert...
+                  </>
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Angebot speichern
+                  </>
+                )}
               </button>
             </div>
           </div>
