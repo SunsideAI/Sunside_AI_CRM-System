@@ -19,7 +19,7 @@ import {
 import { useState, useEffect, useRef, useCallback } from 'react'
 
 function Layout({ children }) {
-  const { user, logout, isSetter, isCloser, isAdmin } = useAuth()
+  const { user, logout, isColdcaller, isCloser, isAdmin } = useAuth()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -180,7 +180,7 @@ function Layout({ children }) {
       name: 'Kaltakquise',
       path: '/kaltakquise',
       icon: Phone,
-      show: isSetter() || isAdmin()
+      show: isColdcaller() || isAdmin()
     },
     {
       name: 'Closing',
