@@ -217,7 +217,10 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             originalLeadId: lead.id,
-            // Namen senden (konsistent mit bestehenden Daten)
+            // Record-IDs für Linked Records
+            setterId: user?.id || '',
+            closerId: selectedCloser.id || '',
+            // Namen als Fallback
             setterName: user?.vor_nachname || user?.name || '',
             closerName: selectedCloser.vor_nachname || '',
             unternehmen: unternehmensname,
