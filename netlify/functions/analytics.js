@@ -7,6 +7,63 @@ const headers = {
   'Content-Type': 'application/json'
 }
 
+// Cache für User-Namen (Record-ID -> Name)
+let userNameCache = null
+let userNameCacheTime = 0
+const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
+
+async function loadUserNames() {
+  // Cache prüfen
+  if (userNameCache && (Date.now() - userNameCacheTime) < CACHE_DURATION) {
+    return userNameCache
+  }
+
+  const USER_TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('User_Datenbank')}`
+  
+  try {
+    const response = await fetch(`${USER_TABLE_URL}?fields[]=Vor_Nachname`, { headers })
+    
+    if (!response.ok) {
+      console.error('User-Namen laden fehlgeschlagen:', response.status)
+      return {}
+    }
+    
+    const data = await response.json()
+    const nameMap = {}
+    
+    for (const record of data.records) {
+      nameMap[record.id] = record.fields.Vor_Nachname || record.id
+    }
+    
+    // Cache aktualisieren
+    userNameCache = nameMap
+    userNameCacheTime = Date.now()
+    
+    console.log('Analytics: User-Namen geladen:', Object.keys(nameMap).length, 'User')
+    return nameMap
+  } catch (err) {
+    console.error('Fehler beim Laden der User-Namen:', err)
+    return {}
+  }
+}
+
+// Helper: Record-ID zu Name auflösen
+function resolveUserName(field, userNames) {
+  if (!field) return ''
+  if (typeof field === 'string') {
+    // Prüfen ob es eine Record-ID ist (beginnt mit "rec")
+    if (field.startsWith('rec') && userNames[field]) {
+      return userNames[field]
+    }
+    return field // Bereits ein Name
+  }
+  if (Array.isArray(field) && field.length > 0) {
+    const id = field[0]
+    return userNames[id] || id
+  }
+  return ''
+}
+
 exports.handler = async (event) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
@@ -95,6 +152,12 @@ async function getUserRecordId(userName) {
 async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDate, startDateStr, endDateStr }) {
   const tableName = 'Immobilienmakler_Hot_Leads'
   
+  console.log('getClosingStats - Params:', { isAdmin, userName, startDateStr, endDateStr })
+  
+  // User-Namen laden für Record-ID -> Name Auflösung
+  const userNames = await loadUserNames()
+  console.log('User-Namen geladen:', Object.keys(userNames).length)
+  
   let allRecords = []
   let offset = null
 
@@ -114,6 +177,8 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
     allRecords = allRecords.concat(data.records || [])
     offset = data.offset
   } while (offset)
+  
+  console.log('Hot Leads geladen:', allRecords.length)
 
   let gewonnen = 0
   let verloren = 0
@@ -140,27 +205,11 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
     const kundeSeit = fields['Kunde seit'] || fields.Kunde_seit || null
     const terminDatum = fields.Termin_Beratungsgespräch || null
     
-    // Closer - kann Text ODER Linked Record (Array) sein
-    // Bei Linked Record: Array mit Record IDs wie ["recXYZ123"]
-    // Bei Text: String wie "Paul Probodziak"
-    let closerId = null
-    let closerName = ''
-    if (Array.isArray(fields.Closer) && fields.Closer.length > 0) {
-      // Linked Record - ID speichern
-      closerId = fields.Closer[0]
-      closerName = closerId // Temporär, wird später durch Namen ersetzt
-    } else if (typeof fields.Closer === 'string') {
-      // Text-Feld
-      closerName = fields.Closer
-    }
+    // Closer - Record-ID zu Name auflösen
+    const closerName = resolveUserName(fields.Closer, userNames)
     
-    // Setter - gleiche Logik
-    let setterName = ''
-    if (Array.isArray(fields.Setter) && fields.Setter.length > 0) {
-      setterName = fields.Setter[0]
-    } else if (typeof fields.Setter === 'string') {
-      setterName = fields.Setter
-    }
+    // Setter - Record-ID zu Name auflösen
+    const setterName = resolveUserName(fields.Setter, userNames)
 
     // Prüfen ob es ein gewonnener Deal ist
     const istGewonnen = status.includes('abgeschlossen')
@@ -185,6 +234,16 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
     // User-Filter (wenn nicht Admin) - nach Closer-Namen filtern
     // Closer sehen nur Records wo sie als Closer eingetragen sind
     if (!isAdmin && userName) {
+      // Debug: Ersten paar Records loggen
+      if (allRecords.indexOf(record) < 3) {
+        console.log('Filter-Check:', {
+          recordId: record.id,
+          closerRaw: fields.Closer,
+          closerResolved: closerName,
+          userName: userName,
+          match: closerName && closerName.toLowerCase().includes(userName.toLowerCase())
+        })
+      }
       if (!closerName || !closerName.toLowerCase().includes(userName.toLowerCase())) continue
     }
 
