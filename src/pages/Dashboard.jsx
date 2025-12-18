@@ -339,14 +339,17 @@ function MeineLeadsImClosing({ userId, userName }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (userId) {
+    if (userName) {
       loadHotLeads()
+    } else {
+      setLoading(false)
     }
-  }, [userId])
+  }, [userName])
 
   const loadHotLeads = async () => {
     try {
-      const response = await fetch(`/.netlify/functions/hot-leads?setterId=${userId}`)
+      // Nach Setter-Namen filtern (bestehende Daten haben Text-Namen, keine IDs)
+      const response = await fetch(`/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`)
       const data = await response.json()
       
       if (response.ok) {
