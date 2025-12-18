@@ -238,8 +238,7 @@ function MitarbeiterVerwaltung() {
 
     try {
       // Prüfen ob User ein Coldcaller ist (dann Leads archivieren)
-      const isColdcaller = selectedUser?.rolle?.includes('Coldcaller') || 
-                           selectedUser?.rolle?.includes('Setter')
+      const isColdcaller = selectedUser?.rolle?.includes('Coldcaller')
       
       let archiveResult = null
       
@@ -1017,7 +1016,7 @@ function MitarbeiterVerwaltung() {
             </p>
             
             {/* Hinweis für Coldcaller */}
-            {(selectedUser?.rolle?.includes('Coldcaller') || selectedUser?.rolle?.includes('Setter')) && (
+            {selectedUser?.rolle?.includes('Coldcaller') && (
               <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
                 <p className="text-amber-800">
                   <strong>📋 Lead-Archivierung:</strong> Alle bearbeiteten Leads dieses Vertrieblers werden ins Archiv verschoben. 
