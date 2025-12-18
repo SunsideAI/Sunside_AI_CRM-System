@@ -332,9 +332,15 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
         </div>
       )}
 
-      {/* Meine Leads im Closing - nur für Coldcaller/Admin */}
-      {(isColdcaller() || isAdmin()) && (
-        <MeineLeadsImClosing userId={user?.id} userName={user?.vor_nachname} />
+      {/* Meine Leads im Closing - für alle Rollen */}
+      {(isColdcaller() || isCloser() || isAdmin()) && (
+        <MeineLeadsImClosing 
+          userId={user?.id} 
+          userName={user?.vor_nachname} 
+          isColdcaller={isColdcaller}
+          isCloser={isCloser}
+          isAdmin={isAdmin}
+        />
       )}
     </div>
   )
@@ -346,7 +352,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
 // ==========================================
 // MEINE LEADS IM CLOSING
 // ==========================================
-function MeineLeadsImClosing({ userId, userName }) {
+function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin }) {
   const [hotLeads, setHotLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -365,7 +371,15 @@ function MeineLeadsImClosing({ userId, userName }) {
 
   const loadHotLeads = async () => {
     try {
-      const url = `/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`
+      // Je nach Rolle: Coldcaller filtert nach setterName, Closer nach closerName
+      let url
+      if (isCloser && isCloser() && !isColdcaller()) {
+        // Nur Closer (nicht Coldcaller): Nach Closer-Namen filtern
+        url = `/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`
+      } else {
+        // Coldcaller oder Admin: Nach Setter-Namen filtern
+        url = `/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`
+      }
       const response = await fetch(url)
       const data = await response.json()
       
