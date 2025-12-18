@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import { 
   Calendar, 
@@ -248,7 +249,7 @@ function Closing() {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-        <span className="ml-3 text-gray-600">Lade Leads...</span>
+        <span className="ml-3 text-gray-600">Leads werden geladen...</span>
       </div>
     )
   }
@@ -480,11 +481,11 @@ function Closing() {
       </div>
 
       {/* Detail/Edit Modal */}
-      {selectedLead && (
+      {selectedLead && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
           <div 
-            className="absolute inset-0 bg-black bg-opacity-50"
+            className="fixed inset-0 bg-black bg-opacity-50"
             onClick={closeModal}
           />
 
@@ -748,7 +749,8 @@ function Closing() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   )
