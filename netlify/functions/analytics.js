@@ -44,7 +44,7 @@ exports.handler = async (event) => {
     const endDate = endDateStr ? new Date(endDateStr + 'T23:59:59') : null
 
     if (type === 'closing') {
-      const result = await getClosingStats({ isAdmin, userEmail, startDate, endDate, startDateStr, endDateStr })
+      const result = await getClosingStats({ isAdmin, userEmail, userName, startDate, endDate, startDateStr, endDateStr })
       return {
         statusCode: 200,
         headers: corsHeaders,
@@ -92,7 +92,7 @@ async function getUserRecordId(userName) {
 // ==========================================
 // CLOSING STATS (Hot Leads)
 // ==========================================
-async function getClosingStats({ isAdmin, userEmail, startDate, endDate, startDateStr, endDateStr }) {
+async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDate, startDateStr, endDateStr }) {
   const tableName = 'Immobilienmakler_Hot_Leads'
   
   let allRecords = []
@@ -117,7 +117,7 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate, startDa
 
   let gewonnen = 0
   let verloren = 0
-  let noShow = 0
+  let angebotVersendet = 0
   let offen = 0
   let umsatzGesamt = 0
   const zeitverlaufMap = {}
@@ -135,35 +135,40 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate, startDa
     const retainer = parseCurrency(fields.Retainer)
     const laufzeit = parseInt(fields.Laufzeit) || 6  // Standard: 6 Monate
     
-    // Datum-Felder
-    // Hinzugefügt = Erstellungsdatum (für Filter und nicht-gewonnene)
-    const hinzugefuegt = fields.Hinzugefügt || fields.Hinzugefuegt || fields['Hinzugefügt'] || fields.Hinzugefugt
-    // Kunde_seit = Abschlussdatum (für gewonnene Deals in Timeline)
-    const kundeSeit = fields.Kunde_seit || fields['Kunde_seit']
+    // Datum-Felder (korrigierte Feldnamen)
+    // "Kunde seit" für Abschlussdatum, "Termin_Beratungsgespräch" als Fallback
+    const kundeSeit = fields['Kunde seit'] || fields.Kunde_seit || null
+    const terminDatum = fields.Termin_Beratungsgespräch || null
     
-    // Closer E-Mail
-    const closerEmail = fields.Weitere_Teilnehmer || fields['Weitere_Teilnehmer'] || ''
+    // Closer Name (Text-Feld, nicht E-Mail!)
+    const closerName = fields.Closer || ''
+    
+    // Setter Name (Text-Feld)
+    const setterName = fields.Setter || ''
 
     // Prüfen ob es ein gewonnener Deal ist
     const istGewonnen = status.includes('abgeschlossen')
 
     // Datum-Filter basierend auf relevantem Datum
-    // Für gewonnene: Kunde_seit, sonst Hinzugefügt
-    const relevantDateStr = istGewonnen ? (kundeSeit || hinzugefuegt) : hinzugefuegt
+    // Für gewonnene: Kunde seit, sonst Termin_Beratungsgespräch
+    const relevantDateStr = istGewonnen ? (kundeSeit || terminDatum) : terminDatum
     
     // String-Vergleich für YYYY-MM-DD Format
     if (startDateStr || endDateStr) {
-      if (!relevantDateStr) continue // Kein Datum = überspringen bei aktivem Zeitfilter
-      
-      // Datum auf YYYY-MM-DD normalisieren falls nötig
-      const dateOnly = relevantDateStr.split('T')[0]
-      if (startDateStr && dateOnly < startDateStr) continue
-      if (endDateStr && dateOnly > endDateStr) continue
+      if (!relevantDateStr) {
+        // Kein Datum vorhanden - Record trotzdem inkludieren wenn kein Zeitfilter
+        // Bei aktivem Zeitfilter: überspringen nur wenn strikt gefiltert werden soll
+      } else {
+        // Datum auf YYYY-MM-DD normalisieren falls nötig
+        const dateOnly = relevantDateStr.split('T')[0]
+        if (startDateStr && dateOnly < startDateStr) continue
+        if (endDateStr && dateOnly > endDateStr) continue
+      }
     }
 
-    // User-Filter (wenn nicht Admin)
-    if (!isAdmin && userEmail && closerEmail) {
-      if (!closerEmail.toLowerCase().includes(userEmail.toLowerCase())) continue
+    // User-Filter (wenn nicht Admin) - nach Closer-Namen filtern
+    if (!isAdmin && userName && closerName) {
+      if (!closerName.toLowerCase().includes(userName.toLowerCase())) continue
     }
 
     // Status kategorisieren
@@ -172,56 +177,68 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate, startDa
       const dealWert = setup + (retainer * laufzeit)
       umsatzGesamt += dealWert
 
-      // Zeitverlauf: Kunde_seit für gewonnene Deals
-      const timelineDateStr = kundeSeit || hinzugefuegt
+      // Zeitverlauf: Kunde seit für gewonnene Deals
+      const timelineDateStr = kundeSeit || terminDatum
       if (timelineDateStr) {
         const date = new Date(timelineDateStr)
-        // Tages-Key für kurze Zeiträume
-        const dayKey = date.toISOString().split('T')[0]
-        // Monats-Key für lange Zeiträume
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-        
-        // Beide Keys speichern
-        if (!zeitverlaufMap[dayKey]) {
-          zeitverlaufMap[dayKey] = { count: 0, umsatz: 0 }
+        if (!isNaN(date.getTime())) {
+          // Tages-Key für kurze Zeiträume
+          const dayKey = date.toISOString().split('T')[0]
+          // Monats-Key für lange Zeiträume
+          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+          
+          // Beide Keys speichern
+          if (!zeitverlaufMap[dayKey]) {
+            zeitverlaufMap[dayKey] = { count: 0, umsatz: 0 }
+          }
+          zeitverlaufMap[dayKey].count++
+          zeitverlaufMap[dayKey].umsatz += dealWert
+          
+          if (!zeitverlaufMap[monthKey]) {
+            zeitverlaufMap[monthKey] = { count: 0, umsatz: 0 }
+          }
+          zeitverlaufMap[monthKey].count++
+          zeitverlaufMap[monthKey].umsatz += dealWert
         }
-        zeitverlaufMap[dayKey].count++
-        zeitverlaufMap[dayKey].umsatz += dealWert
-        
-        if (!zeitverlaufMap[monthKey]) {
-          zeitverlaufMap[monthKey] = { count: 0, umsatz: 0 }
-        }
-        zeitverlaufMap[monthKey].count++
-        zeitverlaufMap[monthKey].umsatz += dealWert
       }
 
-      // Per User Stats (Admin)
-      if (closerEmail && isAdmin) {
-        if (!perUserMap[closerEmail]) {
-          perUserMap[closerEmail] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
+      // Per User Stats (Admin) - nach Closer-Namen gruppieren
+      if (closerName && isAdmin) {
+        if (!perUserMap[closerName]) {
+          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
         }
-        perUserMap[closerEmail].gewonnen++
-        perUserMap[closerEmail].umsatz += dealWert
+        perUserMap[closerName].gewonnen++
+        perUserMap[closerName].umsatz += dealWert
       }
     } 
     // Verloren
     else if (status === 'verloren') {
       verloren++
-      if (closerEmail && isAdmin) {
-        if (!perUserMap[closerEmail]) {
-          perUserMap[closerEmail] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
+      if (closerName && isAdmin) {
+        if (!perUserMap[closerName]) {
+          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
         }
-        perUserMap[closerEmail].verloren++
+        perUserMap[closerName].verloren++
       }
-    } 
-    // Offen: "Lead", "Angebot versendet", oder alles andere
+    }
+    // Angebot versendet
+    else if (status.includes('angebot')) {
+      angebotVersendet++
+      if (closerName && isAdmin) {
+        if (!perUserMap[closerName]) {
+          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
+        }
+        perUserMap[closerName].offen++
+      }
+    }
+    // Offen: "Lead" oder alles andere
     else {
       offen++
-      if (closerEmail && isAdmin) {
-        if (!perUserMap[closerEmail]) {
-          perUserMap[closerEmail] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
+      if (closerName && isAdmin) {
+        if (!perUserMap[closerName]) {
+          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
         }
-        perUserMap[closerEmail].offen++
+        perUserMap[closerName].offen++
       }
     }
   }
@@ -230,13 +247,15 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate, startDa
   const totalEntschieden = gewonnen + verloren
   const closingQuote = totalEntschieden > 0 ? (gewonnen / totalEntschieden) * 100 : 0
 
+  // Durchschnittlicher Umsatz pro Deal
+  const umsatzDurchschnitt = gewonnen > 0 ? umsatzGesamt / gewonnen : 0
+
   // Zeitverlauf formatieren - mit Zeitraum-Parametern
   const zeitverlauf = formatZeitverlauf(zeitverlaufMap, startDate, endDate)
 
-  // Per User formatieren und sortieren
-  const perUser = Object.entries(perUserMap).map(([email, stats]) => ({
-    email,
-    name: extractNameFromEmail(email),
+  // Per User formatieren und sortieren (nach Namen, nicht E-Mail)
+  const perUser = Object.entries(perUserMap).map(([name, stats]) => ({
+    name,
     ...stats
   })).sort((a, b) => b.umsatz - a.umsatz)
 
@@ -244,14 +263,15 @@ async function getClosingStats({ isAdmin, userEmail, startDate, endDate, startDa
     summary: {
       gewonnen,
       verloren,
-      noShow,
-      offen,
+      angebotVersendet,
+      noShow: 0,  // Deprecated, aber für Kompatibilität
+      offen: offen + angebotVersendet,  // Lead + Angebot versendet
       closingQuote,
       umsatzGesamt,
-      umsatzDurchschnitt: gewonnen > 0 ? umsatzGesamt / gewonnen : 0
+      umsatzDurchschnitt
     },
     zeitverlauf,
-    perUser: isAdmin ? perUser : []
+    perUser
   }
 }
 
