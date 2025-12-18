@@ -88,8 +88,8 @@ function Closing() {
   const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState('own') // 'own' oder 'all' (für Admins)
   
-  // Angebot-Modal State
-  const [showAngebotModal, setShowAngebotModal] = useState(false)
+  // Angebot-View State (innerhalb des Modals)
+  const [showAngebotView, setShowAngebotView] = useState(false)
   const [angebotData, setAngebotData] = useState({
     paket: '',
     setup: '',
@@ -186,8 +186,8 @@ function Closing() {
         status: 'Angebot versendet'
       }))
       
-      // Modal schließen und zurücksetzen
-      setShowAngebotModal(false)
+      // View zurücksetzen
+      setShowAngebotView(false)
       setAngebotData({ paket: '', setup: '', retainer: '' })
       
     } catch (err) {
@@ -346,6 +346,8 @@ function Closing() {
     setSelectedLead(null)
     setEditMode(false)
     setEditData({})
+    setShowAngebotView(false)
+    setAngebotData({ paket: '', setup: '', retainer: '' })
   }
 
   const handleEditChange = (field, value) => {
@@ -647,9 +649,9 @@ function Closing() {
           />
 
           {/* Modal Content */}
-          <div className="relative bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between z-10">
+            <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Building2 className="w-6 h-6 text-purple-600" />
                 <div>
@@ -659,422 +661,433 @@ function Closing() {
                   <p className="text-sm text-gray-500">{selectedLead.kategorie || 'Immobilienmakler'}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {/* Angebot versenden Button - nur bei Status "Lead" */}
-                {selectedLead.status === 'Lead' && !editMode && (
-                  <button
-                    type="button"
-                    onClick={() => setShowAngebotModal(true)}
-                    className="flex items-center px-3 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg transition-colors"
-                  >
-                    <Send className="w-4 h-4 mr-1" />
-                    Angebot versenden
-                  </button>
-                )}
-                {!editMode ? (
-                  <button
-                    type="button"
-                    onClick={() => setEditMode(true)}
-                    className="flex items-center px-3 py-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
-                  >
-                    <Edit3 className="w-4 h-4 mr-1" />
-                    Bearbeiten
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleSave}
-                    disabled={saving}
-                    className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
-                  >
-                    {saving ? (
-                      <Loader2 className="w-4 h-4 mr-1 animate-spin" />
-                    ) : (
-                      <Save className="w-4 h-4 mr-1" />
-                    )}
-                    Speichern
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={closeModal}
-                  className="p-2 hover:bg-gray-100 rounded-lg"
-                >
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div className="px-6 py-6 space-y-6">
-              {/* Status (editierbar) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-2">Status</label>
-                {editMode ? (
-                  <select
-                    value={editData.status}
-                    onChange={(e) => handleEditChange('status', e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                  >
-                    {STATUS_OPTIONS.map(option => (
-                      <option key={option.value} value={option.value}>{option.label}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getStatusStyle(selectedLead.status)}`}>
-                    {selectedLead.status || 'Unbekannt'}
-                  </span>
-                )}
-              </div>
-
-              {/* Kontaktdaten Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Ansprechpartner */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 mb-3">Ansprechpartner</h4>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-gray-900">
-                      <Users className="w-4 h-4 text-gray-400" />
-                      <span>{safeString(selectedLead.ansprechpartnerVorname)} {safeString(selectedLead.ansprechpartnerNachname)}</span>
-                    </div>
-                    {safeString(selectedLead.email) && (
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-4 h-4 text-gray-400" />
-                        <a href={`mailto:${safeString(selectedLead.email)}`} className="text-purple-600 hover:underline">
-                          {safeString(selectedLead.email)}
-                        </a>
-                      </div>
-                    )}
-                    {safeString(selectedLead.telefon) && (
-                      <div className="flex items-center gap-2">
-                        <Phone className="w-4 h-4 text-gray-400" />
-                        <a href={`tel:${safeString(selectedLead.telefon)}`} className="text-purple-600 hover:underline">
-                          {safeString(selectedLead.telefon)}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Standort & Web */}
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 mb-3">Standort & Web</h4>
-                  <div className="space-y-2">
-                    {(safeString(selectedLead.ort) || safeString(selectedLead.bundesland)) && (
-                      <div className="flex items-center gap-2 text-gray-900">
-                        <MapPin className="w-4 h-4 text-gray-400" />
-                        <span>{[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ')}</span>
-                      </div>
-                    )}
-                    {safeString(selectedLead.website) && (
-                      <div className="flex items-center gap-2">
-                        <Globe className="w-4 h-4 text-gray-400" />
-                        <a 
-                          href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-purple-600 hover:underline truncate"
-                        >
-                          {safeString(selectedLead.website)}
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Termin & Zuständig */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 mb-3">Termin</h4>
-                  <div className="flex items-center gap-2 text-gray-900">
-                    <Calendar className="w-4 h-4 text-gray-400" />
-                    <span>{formatDate(selectedLead.terminDatum)}</span>
-                  </div>
-                </div>
-
-                <div>
-                  <h4 className="text-sm font-medium text-gray-500 mb-3">Zuständig</h4>
-                  <div className="space-y-1 text-sm">
-                    <p><span className="text-gray-500">Coldcaller:</span> <span className="text-gray-900">{safeString(selectedLead.setterName) || '-'}</span></p>
-                    <p><span className="text-gray-500">Closer:</span> <span className="text-gray-900">{safeString(selectedLead.closerName) || '-'}</span></p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Deal-Werte (editierbar) */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-3">Deal-Details</h4>
-                <div className="bg-gray-50 rounded-lg p-4">
-                  {editMode ? (
-                    <div className="grid grid-cols-3 gap-4">
-                      <div>
-                        <label className="block text-sm text-gray-500 mb-1">Setup (€)</label>
-                        <input
-                          type="number"
-                          value={editData.setup}
-                          onChange={(e) => handleEditChange('setup', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                          min="0"
-                          step="100"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-500 mb-1">Retainer (€/Mon)</label>
-                        <input
-                          type="number"
-                          value={editData.retainer}
-                          onChange={(e) => handleEditChange('retainer', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                          min="0"
-                          step="100"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm text-gray-500 mb-1">Laufzeit (Monate)</label>
-                        <input
-                          type="number"
-                          value={editData.laufzeit}
-                          onChange={(e) => handleEditChange('laufzeit', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                          min="1"
-                          max="36"
-                        />
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-3 gap-4 text-center">
-                      <div>
-                        <span className="block text-sm text-gray-500">Setup</span>
-                        <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</span>
-                      </div>
-                      <div>
-                        <span className="block text-sm text-gray-500">Retainer</span>
-                        <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/Mon</span>
-                      </div>
-                      <div>
-                        <span className="block text-sm text-gray-500">Laufzeit</span>
-                        <span className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || 6} Monate</span>
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Gesamtwert */}
-                  <div className="mt-4 pt-4 border-t border-gray-200 text-center">
-                    <span className="text-sm text-gray-500">Gesamtwert: </span>
-                    <span className="text-xl font-bold text-green-600">
-                      {formatMoney(
-                        (editMode ? parseFloat(editData.setup) || 0 : selectedLead.setup || 0) + 
-                        (editMode ? parseFloat(editData.retainer) || 0 : selectedLead.retainer || 0) * 
-                        (editMode ? parseInt(editData.laufzeit) || 6 : selectedLead.laufzeit || 6)
-                      )}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Notizen (editierbar) */}
-              <div>
-                <h4 className="text-sm font-medium text-gray-500 mb-3">Notizen</h4>
-                {editMode ? (
-                  <textarea
-                    value={editData.kommentar}
-                    onChange={(e) => handleEditChange('kommentar', e.target.value)}
-                    rows={4}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
-                    placeholder="Notizen zum Lead..."
-                  />
-                ) : (
-                  <div className="bg-gray-50 rounded-lg p-4 min-h-[100px]">
-                    {selectedLead.kommentar ? (
-                      <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
-                    ) : (
-                      <p className="text-sm text-gray-400 italic">Keine Notizen vorhanden</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              {editMode && (
-                <button
-                  type="button"
-                  onClick={() => setEditMode(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Abbrechen
-                </button>
-              )}
               <button
                 type="button"
-                onClick={editMode ? handleSave : closeModal}
-                disabled={saving}
-                className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
-              >
-                {editMode ? (saving ? 'Speichern...' : 'Speichern') : 'Schließen'}
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* Angebot versenden Modal */}
-      {showAngebotModal && selectedLead && createPortal(
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50"
-            onClick={() => !sendingAngebot && setShowAngebotModal(false)}
-          />
-
-          {/* Modal Content */}
-          <div className="relative bg-white rounded-xl shadow-xl max-w-lg w-full">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <Send className="w-5 h-5 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Angebot versenden</h3>
-                  <p className="text-sm text-gray-500">{safeString(selectedLead.unternehmen)}</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => !sendingAngebot && setShowAngebotModal(false)}
+                onClick={closeModal}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
 
-            {/* Body */}
-            <div className="px-6 py-6 space-y-6">
-              {/* Paket-Auswahl */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  <Package className="w-4 h-4 inline mr-1" />
-                  Paket auswählen
-                </label>
-                <select
-                  value={angebotData.paket}
-                  onChange={(e) => handlePaketChange(e.target.value)}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                >
-                  <option value="">Paket wählen...</option>
-                  {PAKET_OPTIONS.map(option => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
+            {/* Body - Scrollbar hier */}
+            <div className="flex-1 overflow-y-auto">
+              {showAngebotView ? (
+                /* ========================================
+                   ANGEBOT VERSENDEN VIEW
+                   ======================================== */
+                <div className="px-6 py-6">
+                  {/* Zurück-Link */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAngebotView(false)
+                      setAngebotData({ paket: '', setup: '', retainer: '' })
+                    }}
+                    className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Zurück zur Übersicht
+                  </button>
 
-              {/* Paket-Details anzeigen (bei Standardpaketen) */}
-              {angebotData.paket && angebotData.paket !== 'individuell' && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
+                  {/* Angebot Header */}
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-green-100 rounded-xl">
+                      <FileText className="w-6 h-6 text-green-600" />
+                    </div>
                     <div>
-                      <p className="text-sm text-green-700 font-medium">Gewähltes Paket</p>
-                      <p className="text-lg font-bold text-green-800">
-                        {PAKET_OPTIONS.find(p => p.value === angebotData.paket)?.label}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-green-600">Setup: <span className="font-bold">{angebotData.setup} €</span></p>
-                      <p className="text-sm text-green-600">Monatlich: <span className="font-bold">{angebotData.retainer} €</span></p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Individuelle Preiseingabe */}
-              {angebotData.paket === 'individuell' && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      <Euro className="w-4 h-4 inline mr-1" />
-                      Setup-Gebühr (netto)
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="number"
-                        value={angebotData.setup}
-                        onChange={(e) => handleSetupChange(e.target.value)}
-                        placeholder="z.B. 1500"
-                        className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                      />
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500">€</span>
+                      <h3 className="text-xl font-semibold text-gray-900">Angebot konfigurieren</h3>
+                      <p className="text-sm text-gray-500">Wähle ein Paket oder erstelle ein individuelles Angebot</p>
                     </div>
                   </div>
 
+                  {/* Paket-Auswahl als Cards */}
+                  <div className="space-y-3 mb-6">
+                    {PAKET_OPTIONS.map(option => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handlePaketChange(option.value)}
+                        className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
+                          angebotData.paket === option.value
+                            ? 'border-green-500 bg-green-50'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                              angebotData.paket === option.value
+                                ? 'border-green-500 bg-green-500'
+                                : 'border-gray-300'
+                            }`}>
+                              {angebotData.paket === option.value && (
+                                <div className="w-2 h-2 bg-white rounded-full" />
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-medium text-gray-900">{option.label}</p>
+                              {option.value !== 'individuell' && (
+                                <p className="text-sm text-gray-500">{option.description}</p>
+                              )}
+                            </div>
+                          </div>
+                          {option.value !== 'individuell' && (
+                            <div className="text-right">
+                              <p className="font-bold text-gray-900">{option.setup} €</p>
+                              <p className="text-sm text-gray-500">+ {option.retainer} €/Mon</p>
+                            </div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Individuelle Preiseingabe */}
+                  {angebotData.paket === 'individuell' && (
+                    <div className="bg-gray-50 rounded-xl p-5 mb-6">
+                      <h4 className="font-medium text-gray-900 mb-4">Individuellen Preis festlegen</h4>
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Setup-Gebühr (netto)
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={angebotData.setup}
+                              onChange={(e) => handleSetupChange(e.target.value)}
+                              placeholder="z.B. 1500"
+                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
+                          </div>
+                        </div>
+
+                        {angebotData.setup && angebotData.retainer && (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                            <p className="text-sm text-blue-700 mb-1">Automatisch berechneter Retainer</p>
+                            <p className="text-sm text-blue-600">
+                              {angebotData.setup} € / 2,75 = <span className="font-bold text-blue-800">{angebotData.retainer} €/Monat</span>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Zusammenfassung */}
                   {angebotData.setup && angebotData.retainer && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <p className="text-sm text-blue-700 mb-1">Automatisch berechneter Retainer</p>
-                      <p className="text-sm text-blue-600">
-                        Formel: Setup / 2,75 = {(angebotData.setup / 2.75).toFixed(2)} € → abgerundet auf <span className="font-bold text-blue-800">{angebotData.retainer} €/Monat</span>
-                      </p>
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-5">
+                      <h4 className="font-medium text-green-900 mb-4">Angebot Zusammenfassung</h4>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="bg-white rounded-lg p-4 text-center">
+                          <p className="text-sm text-gray-500 mb-1">Setup-Gebühr</p>
+                          <p className="text-2xl font-bold text-gray-900">{angebotData.setup} €</p>
+                          <p className="text-xs text-gray-400">einmalig, netto</p>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 text-center">
+                          <p className="text-sm text-gray-500 mb-1">Monatlicher Retainer</p>
+                          <p className="text-2xl font-bold text-gray-900">{angebotData.retainer} €</p>
+                          <p className="text-xs text-gray-400">pro Monat, netto</p>
+                        </div>
+                      </div>
+                      <div className="bg-white rounded-lg p-4 text-center">
+                        <p className="text-sm text-gray-500 mb-1">Gesamtwert (12 Monate)</p>
+                        <p className="text-3xl font-bold text-green-600">
+                          {(parseFloat(angebotData.setup) + parseFloat(angebotData.retainer) * 12).toLocaleString('de-DE')} €
+                        </p>
+                      </div>
                     </div>
                   )}
                 </div>
-              )}
+              ) : (
+                /* ========================================
+                   NORMALE LEAD-DETAIL-ANSICHT
+                   ======================================== */
+                <div className="px-6 py-6 space-y-6">
+                  {/* Angebot versenden Button - prominent oben */}
+                  {selectedLead.status === 'Lead' && !editMode && (
+                    <button
+                      type="button"
+                      onClick={() => setShowAngebotView(true)}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-xl hover:from-green-600 hover:to-green-700 transition-all shadow-lg shadow-green-200"
+                    >
+                      <Send className="w-5 h-5" />
+                      <span className="font-semibold">Angebot versenden</span>
+                    </button>
+                  )}
 
-              {/* Zusammenfassung */}
-              {angebotData.setup && angebotData.retainer && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900 mb-3">Zusammenfassung</h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  {/* Status */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-500 mb-2">Status</label>
+                    {editMode ? (
+                      <select
+                        value={editData.status}
+                        onChange={(e) => handleEditChange('status', e.target.value)}
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                      >
+                        {STATUS_OPTIONS.map(option => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getStatusStyle(selectedLead.status)}`}>
+                        {selectedLead.status || 'Unbekannt'}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Kontaktdaten Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Ansprechpartner */}
                     <div>
-                      <p className="text-gray-500">Setup-Gebühr</p>
-                      <p className="text-lg font-bold text-gray-900">{angebotData.setup} € netto</p>
+                      <h4 className="text-sm font-medium text-gray-500 mb-3">Ansprechpartner</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-gray-900">
+                          <Users className="w-4 h-4 text-gray-400" />
+                          <span>{safeString(selectedLead.ansprechpartnerVorname)} {safeString(selectedLead.ansprechpartnerNachname)}</span>
+                        </div>
+                        {safeString(selectedLead.email) && (
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-gray-400" />
+                            <a href={`mailto:${safeString(selectedLead.email)}`} className="text-purple-600 hover:underline">
+                              {safeString(selectedLead.email)}
+                            </a>
+                          </div>
+                        )}
+                        {safeString(selectedLead.telefon) && (
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-gray-400" />
+                            <a href={`tel:${safeString(selectedLead.telefon)}`} className="text-purple-600 hover:underline">
+                              {safeString(selectedLead.telefon)}
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     </div>
+
+                    {/* Standort & Web */}
                     <div>
-                      <p className="text-gray-500">Monatlicher Retainer</p>
-                      <p className="text-lg font-bold text-gray-900">{angebotData.retainer} € netto</p>
+                      <h4 className="text-sm font-medium text-gray-500 mb-3">Standort & Web</h4>
+                      <div className="space-y-2">
+                        {(safeString(selectedLead.ort) || safeString(selectedLead.bundesland)) && (
+                          <div className="flex items-center gap-2 text-gray-900">
+                            <MapPin className="w-4 h-4 text-gray-400" />
+                            <span>{[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ')}</span>
+                          </div>
+                        )}
+                        {safeString(selectedLead.website) && (
+                          <div className="flex items-center gap-2">
+                            <Globe className="w-4 h-4 text-gray-400" />
+                            <a 
+                              href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-purple-600 hover:underline truncate"
+                            >
+                              {safeString(selectedLead.website)}
+                            </a>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <div className="mt-3 pt-3 border-t border-gray-200">
-                    <p className="text-gray-500 text-sm">Gesamtwert (12 Monate)</p>
-                    <p className="text-xl font-bold text-green-600">
-                      {(parseFloat(angebotData.setup) + parseFloat(angebotData.retainer) * 12).toLocaleString('de-DE')} € netto
-                    </p>
+
+                  {/* Termin & Zuständig */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500 mb-3">Termin</h4>
+                      <div className="flex items-center gap-2 text-gray-900">
+                        <Calendar className="w-4 h-4 text-gray-400" />
+                        <span>{formatDate(selectedLead.terminDatum)}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-500 mb-3">Zuständig</h4>
+                      <div className="space-y-1 text-sm">
+                        <p><span className="text-gray-500">Coldcaller:</span> <span className="text-gray-900">{safeString(selectedLead.setterName) || '-'}</span></p>
+                        <p><span className="text-gray-500">Closer:</span> <span className="text-gray-900">{safeString(selectedLead.closerName) || '-'}</span></p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Deal-Werte */}
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-3">Deal-Details</h4>
+                    <div className="bg-gray-50 rounded-lg p-4">
+                      {editMode ? (
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <label className="block text-sm text-gray-500 mb-1">Setup (€)</label>
+                            <input
+                              type="number"
+                              value={editData.setup}
+                              onChange={(e) => handleEditChange('setup', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                              min="0"
+                              step="100"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-500 mb-1">Retainer (€/Mon)</label>
+                            <input
+                              type="number"
+                              value={editData.retainer}
+                              onChange={(e) => handleEditChange('retainer', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                              min="0"
+                              step="100"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm text-gray-500 mb-1">Laufzeit (Monate)</label>
+                            <input
+                              type="number"
+                              value={editData.laufzeit}
+                              onChange={(e) => handleEditChange('laufzeit', e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                              min="1"
+                              max="36"
+                            />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                          <div>
+                            <span className="block text-sm text-gray-500">Setup</span>
+                            <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</span>
+                          </div>
+                          <div>
+                            <span className="block text-sm text-gray-500">Retainer</span>
+                            <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/Mon</span>
+                          </div>
+                          <div>
+                            <span className="block text-sm text-gray-500">Laufzeit</span>
+                            <span className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || 6} Monate</span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Gesamtwert */}
+                      <div className="mt-4 pt-4 border-t border-gray-200 text-center">
+                        <span className="text-sm text-gray-500">Gesamtwert: </span>
+                        <span className="text-xl font-bold text-green-600">
+                          {formatMoney(
+                            (editMode ? parseFloat(editData.setup) || 0 : selectedLead.setup || 0) + 
+                            (editMode ? parseFloat(editData.retainer) || 0 : selectedLead.retainer || 0) * 
+                            (editMode ? parseInt(editData.laufzeit) || 6 : selectedLead.laufzeit || 6)
+                          )}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notizen */}
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-3">Notizen</h4>
+                    {editMode ? (
+                      <textarea
+                        value={editData.kommentar}
+                        onChange={(e) => handleEditChange('kommentar', e.target.value)}
+                        rows={4}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                        placeholder="Notizen zum Lead..."
+                      />
+                    ) : (
+                      <div className="bg-gray-50 rounded-lg p-4 min-h-[100px]">
+                        {selectedLead.kommentar ? (
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
+                        ) : (
+                          <p className="text-sm text-gray-400 italic">Keine Notizen vorhanden</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              <button
-                type="button"
-                onClick={() => setShowAngebotModal(false)}
-                disabled={sendingAngebot}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Abbrechen
-              </button>
-              <button
-                type="button"
-                onClick={handleSendAngebot}
-                disabled={!angebotData.setup || !angebotData.retainer || sendingAngebot}
-                className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {sendingAngebot ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Wird gespeichert...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Angebot speichern
-                  </>
-                )}
-              </button>
+            {/* Footer - unterschiedlich je nach View */}
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              {showAngebotView ? (
+                /* Angebot-View Footer */
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAngebotView(false)
+                      setAngebotData({ paket: '', setup: '', retainer: '' })
+                    }}
+                    disabled={sendingAngebot}
+                    className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSendAngebot}
+                    disabled={!angebotData.setup || !angebotData.retainer || sendingAngebot}
+                    className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {sendingAngebot ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Wird gespeichert...
+                      </>
+                    ) : (
+                      <>
+                        <Send className="w-4 h-4 mr-2" />
+                        Angebot speichern
+                      </>
+                    )}
+                  </button>
+                </>
+              ) : editMode ? (
+                /* Edit-Mode Footer */
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setEditMode(false)}
+                    className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving}
+                    className="flex items-center px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                  >
+                    {saving ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    Speichern
+                  </button>
+                </>
+              ) : (
+                /* Normal-View Footer */
+                <>
+                  <button
+                    type="button"
+                    onClick={closeModal}
+                    className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                  >
+                    Schließen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditMode(true)}
+                    className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    <Edit3 className="w-4 h-4 mr-2" />
+                    Bearbeiten
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>,
