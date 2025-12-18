@@ -73,6 +73,43 @@ function resolveUserName(field, userNames) {
   return ''
 }
 
+// Helper: Kommentar im Original-Lead (Immobilienmakler_Leads) updaten
+async function updateOriginalLeadComment(leadId, comment, airtableHeaders) {
+  const LEADS_TABLE = 'Immobilienmakler_Leads'
+  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}/${leadId}`
+  
+  try {
+    // Erst bestehenden Kommentar laden
+    const getResponse = await fetch(url, { headers: airtableHeaders })
+    const existingData = await getResponse.json()
+    const existingComment = existingData.fields?.Kommentar || ''
+    
+    // Neuen Kommentar anhängen
+    const newComment = existingComment 
+      ? `${existingComment}\n\n--- Infos aus Erstgespräch ---\n${comment}`
+      : `--- Infos aus Erstgespräch ---\n${comment}`
+    
+    const response = await fetch(url, {
+      method: 'PATCH',
+      headers: airtableHeaders,
+      body: JSON.stringify({
+        fields: {
+          'Kommentar': newComment
+        }
+      })
+    })
+    
+    if (response.ok) {
+      console.log('Kommentar in Original-Lead aktualisiert:', leadId)
+    } else {
+      const error = await response.json()
+      console.error('Fehler beim Aktualisieren des Kommentars:', error)
+    }
+  } catch (err) {
+    console.error('Fehler beim Aktualisieren des Kommentars:', err)
+  }
+}
+
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' }
@@ -207,7 +244,7 @@ exports.handler = async (event) => {
         monatlicheBesuche: record.fields.Monatliche_Besuche || 0,
         mehrwert: record.fields.Mehrwert || 0,
         produktDienstleistung: record.fields.Produkt_Dienstleistung || [],
-        kommentar: record.fields.Kommentar || '',
+        kommentar: record.fields.Kommentar || '',  // Lookup aus Immobilienmakler_Leads
         kundeSeit: record.fields['Kunde seit'] || record.fields.Kunde_seit || '',
         // Verknüpfungen
         originalLeadId: record.fields.Immobilienmakler_Leads?.[0] || null,
@@ -328,10 +365,8 @@ exports.handler = async (event) => {
         fields['Closer'] = closerName        // Fallback: Text
       }
 
-      // Optionale Felder
-      if (infosErstgespraech) {
-        fields['Kommentar'] = `--- Infos aus Erstgespräch ---\n${infosErstgespraech}`
-      }
+      // Kommentar wird im Original-Lead (Immobilienmakler_Leads) gespeichert, nicht hier
+      // Das Kommentar-Feld in Hot_Leads ist ein Lookup aus Immobilienmakler_Leads
 
       console.log('Creating Hot Lead with fields:', JSON.stringify(fields, null, 2))
 
@@ -361,6 +396,12 @@ exports.handler = async (event) => {
           
           if (retryResponse.ok) {
             const data = await retryResponse.json()
+            
+            // Kommentar im Original-Lead updaten
+            if (infosErstgespraech && originalLeadId) {
+              await updateOriginalLeadComment(originalLeadId, infosErstgespraech, airtableHeaders)
+            }
+            
             return {
               statusCode: 201,
               headers: corsHeaders,
@@ -377,6 +418,11 @@ exports.handler = async (event) => {
       }
 
       const data = await response.json()
+      
+      // Kommentar im Original-Lead (Immobilienmakler_Leads) updaten
+      if (infosErstgespraech && originalLeadId) {
+        await updateOriginalLeadComment(originalLeadId, infosErstgespraech, airtableHeaders)
+      }
 
       return {
         statusCode: 201,
@@ -404,15 +450,13 @@ exports.handler = async (event) => {
         }
       }
 
-      // Erlaubte Update-Felder
+      // Erlaubte Update-Felder (nur Felder die direkt in Hot_Leads existieren)
       const allowedFields = [
         'Status',
         'Setup',
         'Retainer',
         'Laufzeit',
         'Produkt_Dienstleistung',
-        'Infos_aus_Erstgespräch',
-        'Kommentar',
         'Kunde_seit',
         'Priorität',
         'Closer'  // Falls Closer gewechselt werden soll
@@ -428,8 +472,6 @@ exports.handler = async (event) => {
           'retainer': 'Retainer',
           'laufzeit': 'Laufzeit',
           'produktDienstleistung': 'Produkt_Dienstleistung',
-          'infosErstgespraech': 'Infos_aus_Erstgespräch',
-          'kommentar': 'Kommentar',
           'kundeSeit': 'Kunde_seit',
           'prioritaet': 'Priorität',
           'closerId': 'Closer'
