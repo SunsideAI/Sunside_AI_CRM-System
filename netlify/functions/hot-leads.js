@@ -39,7 +39,7 @@ exports.handler = async (event) => {
     // ==========================================
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
-      const { setterId, closerId, status, limit } = params
+      const { setterId, closerId, setterName, closerName, status, limit } = params
 
       let allRecords = []
       let offset = null
@@ -55,11 +55,19 @@ exports.handler = async (event) => {
         // Filter bauen
         const filters = []
         
-        if (setterId) {
+        // Setter-Filter: Unterstützt sowohl ID (für neue Daten) als auch Name (für bestehende Daten)
+        if (setterName) {
+          // Nach Name filtern (bestehende Daten haben Text im Setter-Feld)
+          filters.push(`FIND("${setterName}", {Setter})`)
+        } else if (setterId) {
+          // Nach ID filtern (für zukünftige Daten mit Link-Feldern)
           filters.push(`FIND("${setterId}", ARRAYJOIN({Setter}, ","))`)
         }
         
-        if (closerId) {
+        // Closer-Filter: Unterstützt sowohl ID als auch Name
+        if (closerName) {
+          filters.push(`FIND("${closerName}", {Closer})`)
+        } else if (closerId) {
           filters.push(`FIND("${closerId}", ARRAYJOIN({Closer}, ","))`)
         }
         
@@ -108,13 +116,14 @@ exports.handler = async (event) => {
         ansprechpartnerVorname: record.fields.Ansprechpartner_Vorname || '',
         ansprechpartnerNachname: record.fields.Ansprechpartner_Nachname || '',
         kategorie: record.fields.Kategorie || '',
-        email: record.fields['E-Mail'] || '',
-        telefon: record.fields.Telefon || '',
+        // Feldnamen aus Airtable: "Mail" und "Telefonnummer"
+        email: record.fields.Mail || record.fields['E-Mail'] || '',
+        telefon: record.fields.Telefonnummer || record.fields.Telefon || '',
         ort: record.fields.Ort || '',
         bundesland: record.fields.Bundesland || '',
         website: record.fields.Website || '',
         terminDatum: record.fields.Termin_Beratungsgespräch || record.fields['Termin_Beratungsgespräch'] || '',
-        status: record.fields.Status || 'Geplant',
+        status: record.fields.Status || 'Lead',
         quelle: record.fields.Quelle || '',
         prioritaet: record.fields.Priorität || record.fields.Prioritaet || '',
         setup: record.fields.Setup || 0,
@@ -125,10 +134,15 @@ exports.handler = async (event) => {
         kommentar: record.fields.Kommentar || '',
         kundeSeit: record.fields.Kunde_seit || record.fields['Kunde_seit'] || '',
         hinzugefuegt: record.fields.Hinzugefügt || record.fields.Hinzugefuegt || '',
-        // Verknüpfungen (Record IDs)
+        // Verknüpfungen - Setter/Closer sind aktuell Text-Felder (Namen)
         originalLeadId: record.fields.Immobilienmakler_Leads?.[0] || null,
-        setterId: record.fields.Setter?.[0] || null,
-        closerId: record.fields.Closer?.[0] || null
+        // Setter/Closer können Text (Name) oder Array (Link) sein
+        setterName: typeof record.fields.Setter === 'string' 
+          ? record.fields.Setter 
+          : record.fields.Setter?.[0] || '',
+        closerName: typeof record.fields.Closer === 'string' 
+          ? record.fields.Closer 
+          : record.fields.Closer?.[0] || ''
       }))
 
       return {
@@ -145,8 +159,8 @@ exports.handler = async (event) => {
       const body = JSON.parse(event.body)
       const {
         originalLeadId,     // Link zu Immobilienmakler_Leads
-        setterId,           // Link zu User_Datenbank (Setter)
-        closerId,           // Link zu User_Datenbank (Closer)
+        setterName,         // Name des Setters (Text)
+        closerName,         // Name des Closers (Text)
         unternehmen,        // Firmenname
         terminDatum,        // Termin-Zeitpunkt
         quelle,             // z.B. "Cold Calling"
@@ -162,11 +176,11 @@ exports.handler = async (event) => {
         }
       }
 
-      if (!setterId || !closerId) {
+      if (!setterName || !closerName) {
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'setterId und closerId sind erforderlich' })
+          body: JSON.stringify({ error: 'setterName und closerName sind erforderlich' })
         }
       }
 
@@ -178,20 +192,20 @@ exports.handler = async (event) => {
         }
       }
 
-      // Hot Lead Felder
+      // Hot Lead Felder - Setter/Closer als Text (konsistent mit bestehenden Daten)
       const fields = {
         'Immobilienmakler_Leads': [originalLeadId],
-        'Setter': [setterId],
-        'Closer': [closerId],
+        'Setter': setterName,      // Text-Feld
+        'Closer': closerName,      // Text-Feld
         'Unternehmen': unternehmen || '',
         'Termin_Beratungsgespräch': terminDatum,
-        'Status': 'Geplant',
+        'Status': 'Lead',          // Konsistent mit bestehenden Status-Werten
         'Quelle': quelle || 'Cold Calling'
       }
 
       // Optionale Felder
       if (infosErstgespraech) {
-        fields['Infos_aus_Erstgespräch'] = infosErstgespraech
+        fields['Kommentar'] = `--- Infos aus Erstgespräch ---\n${infosErstgespraech}`
       }
 
       console.log('Creating Hot Lead:', fields)
