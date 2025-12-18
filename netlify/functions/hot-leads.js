@@ -85,8 +85,9 @@ exports.handler = async (event) => {
           console.log('Hot Leads GET - Filter Formula:', formula)
         }
 
-        // Sortierung: Neueste zuerst
-        queryParams.push('sort[0][field]=Hinzugefügt&sort[0][direction]=desc')
+        // Sortierung: Nach Unternehmen (existierendes Feld)
+        // Hinweis: "Hinzugefügt" Feld existiert nicht in dieser Tabelle
+        queryParams.push('sort[0][field]=Unternehmen&sort[0][direction]=asc')
 
         if (limit) {
           queryParams.push(`maxRecords=${limit}`)
@@ -139,11 +140,11 @@ exports.handler = async (event) => {
         setup: record.fields.Setup || 0,
         retainer: record.fields.Retainer || 0,
         laufzeit: record.fields.Laufzeit || 0,
+        monatlicheBesuche: record.fields.Monatliche_Besuche || 0,
+        mehrwert: record.fields.Mehrwert || 0,
         produktDienstleistung: record.fields.Produkt_Dienstleistung || [],
-        infosErstgespraech: record.fields.Infos_aus_Erstgespräch || record.fields['Infos_aus_Erstgespräch'] || '',
         kommentar: record.fields.Kommentar || '',
-        kundeSeit: record.fields.Kunde_seit || record.fields['Kunde_seit'] || '',
-        hinzugefuegt: record.fields.Hinzugefügt || record.fields.Hinzugefuegt || '',
+        kundeSeit: record.fields['Kunde seit'] || record.fields.Kunde_seit || '',
         // Verknüpfungen - Setter/Closer sind aktuell Text-Felder (Namen)
         originalLeadId: record.fields.Immobilienmakler_Leads?.[0] || null,
         // Setter/Closer können Text (Name) oder Array (Link) sein
