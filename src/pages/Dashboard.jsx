@@ -337,7 +337,6 @@ function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
 function MeineLeadsImClosing({ userId, userName }) {
   const [hotLeads, setHotLeads] = useState([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
 
   useEffect(() => {
     console.log('MeineLeadsImClosing - userName:', userName, 'userId:', userId)
@@ -363,12 +362,14 @@ function MeineLeadsImClosing({ userId, userName }) {
         setHotLeads(data.hotLeads || [])
         console.log('MeineLeadsImClosing - Gefunden:', data.hotLeads?.length || 0, 'Leads')
       } else {
-        setError(data.error || 'Fehler beim Laden')
+        // Bei Fehler: Leere Liste zeigen (nicht Fehlermeldung)
         console.error('MeineLeadsImClosing - API Fehler:', data)
+        setHotLeads([])
       }
     } catch (err) {
+      // Bei Fehler: Leere Liste zeigen
       console.error('Hot Leads laden fehlgeschlagen:', err)
-      setError(err.message)
+      setHotLeads([])
     } finally {
       setLoading(false)
     }
@@ -376,21 +377,19 @@ function MeineLeadsImClosing({ userId, userName }) {
 
   const getStatusBadge = (status) => {
     const statusConfig = {
-      'Geplant': { color: 'bg-blue-100 text-blue-700', icon: Clock },
-      'Im Closing': { color: 'bg-yellow-100 text-yellow-700', icon: TrendingUp },
+      'Lead': { color: 'bg-blue-100 text-blue-700', icon: Clock },
       'Angebot versendet': { color: 'bg-purple-100 text-purple-700', icon: DollarSign },
       'Abgeschlossen': { color: 'bg-green-100 text-green-700', icon: Award },
-      'Verloren': { color: 'bg-red-100 text-red-700', icon: XCircle },
-      'No-Show': { color: 'bg-gray-100 text-gray-700', icon: XCircle }
+      'Verloren': { color: 'bg-red-100 text-red-700', icon: XCircle }
     }
     
-    const config = statusConfig[status] || statusConfig['Geplant']
+    const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-700', icon: Clock }
     const Icon = config.icon
     
     return (
       <span className={`flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
         <Icon className="w-3 h-3 mr-1" />
-        {status}
+        {status || 'Unbekannt'}
       </span>
     )
   }
@@ -407,12 +406,12 @@ function MeineLeadsImClosing({ userId, userName }) {
     })
   }
 
-  // Statistiken berechnen
+  // Statistiken berechnen - basierend auf tatsächlichen Status-Werten in Airtable
   const stats = {
-    geplant: hotLeads.filter(l => l.status === 'Geplant').length,
-    imClosing: hotLeads.filter(l => l.status === 'Im Closing').length,
+    lead: hotLeads.filter(l => l.status === 'Lead').length,
+    angebotVersendet: hotLeads.filter(l => l.status === 'Angebot versendet').length,
     gewonnen: hotLeads.filter(l => l.status === 'Abgeschlossen').length,
-    verloren: hotLeads.filter(l => l.status === 'Verloren' || l.status === 'No-Show').length
+    verloren: hotLeads.filter(l => l.status === 'Verloren').length
   }
 
   if (loading) {
@@ -421,18 +420,6 @@ function MeineLeadsImClosing({ userId, userName }) {
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
           <span className="ml-2 text-gray-500">Lade Hot Leads...</span>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="bg-white rounded-xl border border-red-200 p-6">
-        <div className="text-red-600 text-sm">
-          <p className="font-medium">Fehler beim Laden der Hot Leads:</p>
-          <p className="mt-1">{error}</p>
-          <p className="mt-2 text-gray-500">userName: {userName || 'nicht gesetzt'}</p>
         </div>
       </div>
     )
@@ -455,12 +442,12 @@ function MeineLeadsImClosing({ userId, userName }) {
           {/* Mini-Stats */}
           <div className="flex gap-4 text-sm">
             <div className="text-center">
-              <span className="block text-lg font-bold text-blue-600">{stats.geplant}</span>
-              <span className="text-gray-500">Geplant</span>
+              <span className="block text-lg font-bold text-blue-600">{stats.lead}</span>
+              <span className="text-gray-500">Lead</span>
             </div>
             <div className="text-center">
-              <span className="block text-lg font-bold text-yellow-600">{stats.imClosing}</span>
-              <span className="text-gray-500">Im Closing</span>
+              <span className="block text-lg font-bold text-purple-600">{stats.angebotVersendet}</span>
+              <span className="text-gray-500">Angebot</span>
             </div>
             <div className="text-center">
               <span className="block text-lg font-bold text-green-600">{stats.gewonnen}</span>
