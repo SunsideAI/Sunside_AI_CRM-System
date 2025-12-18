@@ -343,22 +343,22 @@ function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
 // ==========================================
 // MEINE LEADS IM CLOSING (für Setter)
 // ==========================================
+// ==========================================
+// MEINE LEADS IM CLOSING
+// ==========================================
 function MeineLeadsImClosing({ userId, userName }) {
   const [hotLeads, setHotLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedLead, setSelectedLead] = useState(null)
-  const [showModal, setShowModal] = useState(false)
   
   const LEADS_PER_PAGE = 10
 
   useEffect(() => {
-    console.log('MeineLeadsImClosing - userName:', userName, 'userId:', userId)
     if (userName) {
       loadHotLeads()
     } else {
-      console.log('MeineLeadsImClosing - Kein userName, überspringe Laden')
       setLoading(false)
     }
   }, [userName])
@@ -366,24 +366,17 @@ function MeineLeadsImClosing({ userId, userName }) {
   const loadHotLeads = async () => {
     try {
       const url = `/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`
-      console.log('MeineLeadsImClosing - Lade von:', url)
-      
       const response = await fetch(url)
       const data = await response.json()
       
-      console.log('MeineLeadsImClosing - Response:', response.status, data)
-      
-      if (response.ok) {
-        // Sortieren: Neueste zuerst (nach Termin-Datum oder ID als Fallback)
-        const sortedLeads = (data.hotLeads || []).sort((a, b) => {
+      if (response.ok && data.hotLeads) {
+        const sortedLeads = data.hotLeads.sort((a, b) => {
           const dateA = a.terminDatum ? new Date(a.terminDatum) : new Date(0)
           const dateB = b.terminDatum ? new Date(b.terminDatum) : new Date(0)
           return dateB - dateA
         })
         setHotLeads(sortedLeads)
-        console.log('MeineLeadsImClosing - Gefunden:', sortedLeads.length, 'Leads')
       } else {
-        console.error('MeineLeadsImClosing - API Fehler:', data)
         setHotLeads([])
       }
     } catch (err) {
@@ -394,61 +387,83 @@ function MeineLeadsImClosing({ userId, userName }) {
     }
   }
 
-  // Gefilterte Leads basierend auf Suche
-  const filteredLeads = hotLeads.filter(lead => {
-    if (!searchTerm) return true
-    const search = searchTerm.toLowerCase()
-    return (
-      (lead.unternehmen || '').toLowerCase().includes(search) ||
-      (lead.ansprechpartnerVorname || '').toLowerCase().includes(search) ||
-      (lead.ansprechpartnerNachname || '').toLowerCase().includes(search) ||
-      (lead.email || '').toLowerCase().includes(search) ||
-      (lead.ort || '').toLowerCase().includes(search)
-    )
-  })
-
-  // Pagination
-  const totalPages = Math.ceil(filteredLeads.length / LEADS_PER_PAGE)
-  const startIndex = (currentPage - 1) * LEADS_PER_PAGE
-  const paginatedLeads = filteredLeads.slice(startIndex, startIndex + LEADS_PER_PAGE)
-
-  // Reset zur ersten Seite wenn Suche sich ändert
-  useEffect(() => {
-    setCurrentPage(1)
-  }, [searchTerm])
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      'Lead': { color: 'bg-blue-100 text-blue-700', icon: Clock },
-      'Angebot versendet': { color: 'bg-purple-100 text-purple-700', icon: DollarSign },
-      'Abgeschlossen': { color: 'bg-green-100 text-green-700', icon: Award },
-      'Verloren': { color: 'bg-red-100 text-red-700', icon: XCircle }
-    }
-    
-    const config = statusConfig[status] || { color: 'bg-gray-100 text-gray-700', icon: Clock }
-    const Icon = config.icon
-    
-    return (
-      <span className={`flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
-        <Icon className="w-3 h-3 mr-1" />
-        {status || 'Unbekannt'}
-      </span>
-    )
+  // Helper: Wert sicher in String konvertieren
+  const safeString = (value) => {
+    if (!value) return ''
+    if (typeof value === 'string') return value
+    if (Array.isArray(value)) return value[0] || ''
+    return String(value)
   }
 
-  const formatTerminDatum = (dateStr) => {
-    if (!dateStr) return '-'
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  // Gefilterte Leads
+  const getFilteredLeads = () => {
+    if (!searchTerm || !searchTerm.trim()) return hotLeads
+    const search = searchTerm.toLowerCase().trim()
+    return hotLeads.filter(lead => {
+      const unternehmen = safeString(lead.unternehmen).toLowerCase()
+      const vorname = safeString(lead.ansprechpartnerVorname).toLowerCase()
+      const nachname = safeString(lead.ansprechpartnerNachname).toLowerCase()
+      const email = safeString(lead.email).toLowerCase()
+      const ort = safeString(lead.ort).toLowerCase()
+      return unternehmen.includes(search) || 
+             vorname.includes(search) || 
+             nachname.includes(search) || 
+             email.includes(search) || 
+             ort.includes(search)
     })
   }
 
-  const formatCurrency = (value) => {
+  const filteredLeads = getFilteredLeads()
+  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / LEADS_PER_PAGE))
+  const safeCurrentPage = Math.min(currentPage, totalPages)
+  const startIndex = (safeCurrentPage - 1) * LEADS_PER_PAGE
+  const paginatedLeads = filteredLeads.slice(startIndex, startIndex + LEADS_PER_PAGE)
+
+  // Suche Handler
+  const handleSearchChange = (e) => {
+    setSearchTerm(e.target.value)
+    setCurrentPage(1)
+  }
+
+  const clearSearch = () => {
+    setSearchTerm('')
+    setCurrentPage(1)
+  }
+
+  // Pagination Handler
+  const goToPreviousPage = () => {
+    setCurrentPage(p => Math.max(1, p - 1))
+  }
+
+  const goToNextPage = () => {
+    setCurrentPage(p => Math.min(totalPages, p + 1))
+  }
+
+  // Modal Handler
+  const openModal = (lead) => {
+    setSelectedLead(lead)
+  }
+
+  const closeModal = () => {
+    setSelectedLead(null)
+  }
+
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-'
+    try {
+      return new Date(dateStr).toLocaleDateString('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })
+    } catch {
+      return '-'
+    }
+  }
+
+  const formatMoney = (value) => {
     return new Intl.NumberFormat('de-DE', {
       style: 'currency',
       currency: 'EUR',
@@ -456,22 +471,21 @@ function MeineLeadsImClosing({ userId, userName }) {
     }).format(value || 0)
   }
 
-  const openLeadModal = (lead) => {
-    setSelectedLead(lead)
-    setShowModal(true)
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'Lead': return 'bg-blue-100 text-blue-700'
+      case 'Angebot versendet': return 'bg-purple-100 text-purple-700'
+      case 'Abgeschlossen': return 'bg-green-100 text-green-700'
+      case 'Verloren': return 'bg-red-100 text-red-700'
+      default: return 'bg-gray-100 text-gray-700'
+    }
   }
 
-  const closeModal = () => {
-    setShowModal(false)
-    setSelectedLead(null)
-  }
-
-  // Statistiken berechnen
+  // Statistiken
   const stats = {
     lead: hotLeads.filter(l => l.status === 'Lead').length,
-    angebotVersendet: hotLeads.filter(l => l.status === 'Angebot versendet').length,
-    gewonnen: hotLeads.filter(l => l.status === 'Abgeschlossen').length,
-    verloren: hotLeads.filter(l => l.status === 'Verloren').length
+    angebot: hotLeads.filter(l => l.status === 'Angebot versendet').length,
+    gewonnen: hotLeads.filter(l => l.status === 'Abgeschlossen').length
   }
 
   if (loading) {
@@ -486,376 +500,289 @@ function MeineLeadsImClosing({ userId, userName }) {
   }
 
   return (
-    <>
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {/* Header */}
-        <div className="p-6 border-b border-gray-100">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center">
-              <div className="p-2 bg-orange-100 rounded-lg mr-3">
-                <Target className="w-5 h-5 text-orange-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-gray-900">Meine Leads im Closing</h2>
-                <p className="text-sm text-gray-500">{hotLeads.length} Leads von dir im Closing-Prozess</p>
-              </div>
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      {/* Header */}
+      <div className="p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-100 rounded-lg mr-3">
+              <Target className="w-5 h-5 text-orange-600" />
             </div>
-            
-            {/* Mini-Stats */}
-            <div className="flex gap-4 text-sm">
-              <div className="text-center">
-                <span className="block text-lg font-bold text-blue-600">{stats.lead}</span>
-                <span className="text-gray-500">Lead</span>
-              </div>
-              <div className="text-center">
-                <span className="block text-lg font-bold text-purple-600">{stats.angebotVersendet}</span>
-                <span className="text-gray-500">Angebot</span>
-              </div>
-              <div className="text-center">
-                <span className="block text-lg font-bold text-green-600">{stats.gewonnen}</span>
-                <span className="text-gray-500">Gewonnen</span>
-              </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Meine Leads im Closing</h2>
+              <p className="text-sm text-gray-500">{hotLeads.length} Leads im Closing-Prozess</p>
             </div>
           </div>
+          
+          {/* Mini-Stats */}
+          <div className="flex gap-4 text-sm">
+            <div className="text-center">
+              <span className="block text-lg font-bold text-blue-600">{stats.lead}</span>
+              <span className="text-gray-500">Lead</span>
+            </div>
+            <div className="text-center">
+              <span className="block text-lg font-bold text-purple-600">{stats.angebot}</span>
+              <span className="text-gray-500">Angebot</span>
+            </div>
+            <div className="text-center">
+              <span className="block text-lg font-bold text-green-600">{stats.gewonnen}</span>
+              <span className="text-gray-500">Gewonnen</span>
+            </div>
+          </div>
+        </div>
 
-          {/* Suchleiste */}
+        {/* Suchleiste */}
+        {hotLeads.length > 0 && (
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Lead suchen (Name, Firma, Ort, E-Mail...)"
+              placeholder="Lead suchen..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              onChange={handleSearchChange}
+              className="w-full pl-10 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
             {searchTerm && (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.preventDefault()
-                  e.stopPropagation()
-                  setSearchTerm('')
-                }}
+                onClick={clearSearch}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 <X className="w-4 h-4" />
               </button>
             )}
           </div>
-        </div>
-
-        {/* Lead-Liste */}
-        {filteredLeads.length === 0 ? (
-          <div className="p-8 text-center">
-            <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            {searchTerm ? (
-              <>
-                <p className="text-gray-500">Keine Leads gefunden für "{searchTerm}"</p>
-                <button 
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    setSearchTerm('')
-                  }}
-                  className="text-purple-600 hover:text-purple-700 text-sm mt-2"
-                >
-                  Suche zurücksetzen
-                </button>
-              </>
-            ) : (
-              <>
-                <p className="text-gray-500">Noch keine Leads im Closing</p>
-                <p className="text-sm text-gray-400 mt-1">Buche Termine um Leads hierhin zu bringen</p>
-              </>
-            )}
-          </div>
-        ) : (
-          <>
-            <div className="divide-y divide-gray-100">
-              {paginatedLeads.map((lead) => (
-                <div 
-                  key={lead.id} 
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    openLeadModal(lead)
-                  }}
-                  className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <h3 className="font-medium text-gray-900 truncate">{lead.unternehmen || 'Unbekannt'}</h3>
-                        {getStatusBadge(lead.status)}
-                      </div>
-                      <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
-                        <span className="flex items-center">
-                          <Users className="w-3 h-3 mr-1" />
-                          {lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}
-                        </span>
-                        {lead.terminDatum && (
-                          <span className="flex items-center">
-                            <Calendar className="w-3 h-3 mr-1" />
-                            {formatTerminDatum(lead.terminDatum)}
-                          </span>
-                        )}
-                        {lead.ort && (
-                          <span className="flex items-center">
-                            <MapPin className="w-3 h-3 mr-1" />
-                            {lead.ort}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    
-                    {lead.status === 'Abgeschlossen' && (lead.setup > 0 || lead.retainer > 0) && (
-                      <div className="text-right ml-4">
-                        <span className="text-green-600 font-semibold">
-                          {formatCurrency((lead.setup || 0) + (lead.retainer || 0) * (lead.laufzeit || 1))}
-                        </span>
-                        <span className="text-xs text-gray-500 block">Deal-Wert</span>
-                      </div>
-                    )}
-                    
-                    <ChevronRight className="w-5 h-5 text-gray-400 ml-2" />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="p-4 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-sm text-gray-500">
-                  {startIndex + 1}-{Math.min(startIndex + LEADS_PER_PAGE, filteredLeads.length)} von {filteredLeads.length} Leads
-                </span>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setCurrentPage(p => Math.max(1, p - 1))
-                    }}
-                    disabled={currentPage === 1}
-                    className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </button>
-                  <span className="text-sm text-gray-700 px-3">
-                    Seite {currentPage} von {totalPages}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault()
-                      setCurrentPage(p => Math.min(totalPages, p + 1))
-                    }}
-                    disabled={currentPage === totalPages}
-                    className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            )}
-          </>
         )}
       </div>
 
+      {/* Lead-Liste */}
+      {paginatedLeads.length === 0 ? (
+        <div className="p-8 text-center">
+          <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          {searchTerm ? (
+            <div>
+              <p className="text-gray-500">Keine Leads gefunden</p>
+              <button 
+                type="button"
+                onClick={clearSearch}
+                className="text-purple-600 hover:text-purple-700 text-sm mt-2"
+              >
+                Suche zurücksetzen
+              </button>
+            </div>
+          ) : (
+            <div>
+              <p className="text-gray-500">Noch keine Leads im Closing</p>
+              <p className="text-sm text-gray-400 mt-1">Buche Termine um Leads hierhin zu bringen</p>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          {/* Lead Rows */}
+          <div className="divide-y divide-gray-100">
+            {paginatedLeads.map((lead) => (
+              <div 
+                key={lead.id} 
+                onClick={() => openModal(lead)}
+                className="p-4 hover:bg-gray-50 cursor-pointer"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-3">
+                      <span className="font-medium text-gray-900 truncate">{lead.unternehmen || 'Unbekannt'}</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusStyle(lead.status)}`}>
+                        {lead.status || 'Unbekannt'}
+                      </span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
+                      <span>{lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}</span>
+                      {lead.terminDatum && <span>{formatDate(lead.terminDatum)}</span>}
+                      {lead.ort && <span>{lead.ort}</span>}
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400 ml-2 flex-shrink-0" />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Pagination */}
+          {filteredLeads.length > LEADS_PER_PAGE && (
+            <div className="p-4 border-t border-gray-100 flex items-center justify-between">
+              <span className="text-sm text-gray-500">
+                {startIndex + 1}-{Math.min(startIndex + LEADS_PER_PAGE, filteredLeads.length)} von {filteredLeads.length}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={goToPreviousPage}
+                  disabled={safeCurrentPage === 1}
+                  className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <span className="text-sm text-gray-700 px-2">
+                  {safeCurrentPage} / {totalPages}
+                </span>
+                <button
+                  type="button"
+                  onClick={goToNextPage}
+                  disabled={safeCurrentPage === totalPages}
+                  className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Detail Modal */}
-      {showModal && selectedLead && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
-            {/* Backdrop */}
-            <div 
-              className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-              onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                closeModal()
-              }}
-            />
+      {selectedLead && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          {/* Backdrop */}
+          <div 
+            className="absolute inset-0 bg-black bg-opacity-50"
+            onClick={closeModal}
+          />
 
-            {/* Modal */}
-            <div 
-              className="relative bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 overflow-hidden transform transition-all"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-purple-100 rounded-lg">
-                    <Building2 className="w-5 h-5 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">{selectedLead.unternehmen || 'Lead Details'}</h3>
-                    <p className="text-sm text-gray-500">{selectedLead.kategorie || 'Immobilienmakler'}</p>
-                  </div>
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="sticky top-0 bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">{selectedLead.unternehmen || 'Lead Details'}</h3>
+                <span className={`inline-block mt-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusStyle(selectedLead.status)}`}>
+                  {selectedLead.status || 'Unbekannt'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={closeModal}
+                className="p-2 hover:bg-gray-100 rounded-lg"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-4 space-y-6">
+              {/* Kontakt */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">Ansprechpartner</h4>
+                <div className="space-y-1">
+                  <p className="text-gray-900">{safeString(selectedLead.ansprechpartnerVorname)} {safeString(selectedLead.ansprechpartnerNachname)}</p>
+                  {safeString(selectedLead.email) && (
+                    <p className="text-purple-600">{safeString(selectedLead.email)}</p>
+                  )}
+                  {safeString(selectedLead.telefon) && (
+                    <p className="text-gray-600">{safeString(selectedLead.telefon)}</p>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    closeModal()
-                  }}
-                  className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
-                >
-                  <X className="w-5 h-5 text-gray-500" />
-                </button>
               </div>
 
-              {/* Content */}
-              <div className="px-6 py-4 max-h-[70vh] overflow-y-auto">
-                {/* Status Badge */}
-                <div className="mb-6">
-                  {getStatusBadge(selectedLead.status)}
+              {/* Standort */}
+              {(safeString(selectedLead.ort) || safeString(selectedLead.bundesland)) && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 mb-2">Standort</h4>
+                  <p className="text-gray-900">{[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ')}</p>
                 </div>
+              )}
 
-                {/* Kontaktdaten */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-3">Ansprechpartner</h4>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-gray-900">
-                        <Users className="w-4 h-4 text-gray-400" />
-                        <span>{selectedLead.ansprechpartnerVorname} {selectedLead.ansprechpartnerNachname}</span>
-                      </div>
-                      {selectedLead.email && (
-                        <div className="flex items-center gap-2 text-gray-900">
-                          <Mail className="w-4 h-4 text-gray-400" />
-                          <a href={`mailto:${selectedLead.email}`} className="text-purple-600 hover:underline">
-                            {selectedLead.email}
-                          </a>
-                        </div>
-                      )}
-                      {selectedLead.telefon && (
-                        <div className="flex items-center gap-2 text-gray-900">
-                          <Phone className="w-4 h-4 text-gray-400" />
-                          <a href={`tel:${selectedLead.telefon}`} className="text-purple-600 hover:underline">
-                            {selectedLead.telefon}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-3">Standort & Web</h4>
-                    <div className="space-y-2">
-                      {(selectedLead.ort || selectedLead.bundesland) && (
-                        <div className="flex items-center gap-2 text-gray-900">
-                          <MapPin className="w-4 h-4 text-gray-400" />
-                          <span>{[selectedLead.ort, selectedLead.bundesland].filter(Boolean).join(', ')}</span>
-                        </div>
-                      )}
-                      {selectedLead.website && (
-                        <div className="flex items-center gap-2 text-gray-900">
-                          <Globe className="w-4 h-4 text-gray-400" />
-                          <a 
-                            href={selectedLead.website.startsWith('http') ? selectedLead.website : `https://${selectedLead.website}`} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-purple-600 hover:underline truncate"
-                          >
-                            {selectedLead.website}
-                          </a>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+              {/* Website */}
+              {safeString(selectedLead.website) && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 mb-2">Website</h4>
+                  {(() => {
+                    const website = safeString(selectedLead.website)
+                    const url = website.startsWith('http') ? website : `https://${website}`
+                    return (
+                      <a 
+                        href={url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-purple-600 hover:underline"
+                      >
+                        {website}
+                      </a>
+                    )
+                  })()}
                 </div>
+              )}
 
-                {/* Termin & Closer */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-3">Termin</h4>
-                    <div className="flex items-center gap-2 text-gray-900">
-                      <Calendar className="w-4 h-4 text-gray-400" />
-                      <span>{formatTerminDatum(selectedLead.terminDatum)}</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-3">Zuständig</h4>
-                    <div className="space-y-1">
-                      {selectedLead.setterName && (
-                        <div className="text-sm">
-                          <span className="text-gray-500">Setter:</span> <span className="text-gray-900">{selectedLead.setterName}</span>
-                        </div>
-                      )}
-                      {selectedLead.closerName && (
-                        <div className="text-sm">
-                          <span className="text-gray-500">Closer:</span> <span className="text-gray-900">{selectedLead.closerName}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+              {/* Termin */}
+              {selectedLead.terminDatum && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 mb-2">Termin</h4>
+                  <p className="text-gray-900">{formatDate(selectedLead.terminDatum)}</p>
                 </div>
+              )}
 
-                {/* Deal-Werte (wenn vorhanden) */}
-                {(selectedLead.setup > 0 || selectedLead.retainer > 0) && (
-                  <div className="mb-6">
-                    <h4 className="text-sm font-medium text-gray-500 mb-3">Deal-Details</h4>
-                    <div className="bg-green-50 rounded-lg p-4">
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                          <span className="block text-sm text-gray-500">Setup</span>
-                          <span className="text-lg font-semibold text-gray-900">{formatCurrency(selectedLead.setup)}</span>
-                        </div>
-                        <div>
-                          <span className="block text-sm text-gray-500">Retainer</span>
-                          <span className="text-lg font-semibold text-gray-900">{formatCurrency(selectedLead.retainer)}/Monat</span>
-                        </div>
-                        <div>
-                          <span className="block text-sm text-gray-500">Laufzeit</span>
-                          <span className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || '-'} Monate</span>
-                        </div>
-                      </div>
-                      <div className="mt-3 pt-3 border-t border-green-200 text-center">
-                        <span className="text-sm text-gray-500">Gesamtwert: </span>
-                        <span className="text-xl font-bold text-green-600">
-                          {formatCurrency((selectedLead.setup || 0) + (selectedLead.retainer || 0) * (selectedLead.laufzeit || 1))}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Kommentar/Notizen */}
-                {selectedLead.kommentar && (
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-3">Notizen</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-start gap-2">
-                        <FileText className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+              {/* Zuständig */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-500 mb-2">Zuständig</h4>
+                <div className="space-y-1">
+                  {selectedLead.setterName && <p className="text-gray-900">Setter: {selectedLead.setterName}</p>}
+                  {selectedLead.closerName && <p className="text-gray-900">Closer: {selectedLead.closerName}</p>}
+                </div>
               </div>
 
-              {/* Footer */}
-              <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    e.stopPropagation()
-                    closeModal()
-                  }}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  Schließen
-                </button>
-              </div>
+              {/* Deal-Werte */}
+              {(selectedLead.setup > 0 || selectedLead.retainer > 0) && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 mb-2">Deal-Details</h4>
+                  <div className="bg-green-50 rounded-lg p-4">
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <span className="block text-sm text-gray-500">Setup</span>
+                        <span className="font-semibold">{formatMoney(selectedLead.setup)}</span>
+                      </div>
+                      <div>
+                        <span className="block text-sm text-gray-500">Retainer</span>
+                        <span className="font-semibold">{formatMoney(selectedLead.retainer)}/Mon</span>
+                      </div>
+                      <div>
+                        <span className="block text-sm text-gray-500">Laufzeit</span>
+                        <span className="font-semibold">{selectedLead.laufzeit || '-'} Mon</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-green-200 text-center">
+                      <span className="text-sm text-gray-500">Gesamtwert: </span>
+                      <span className="text-lg font-bold text-green-600">
+                        {formatMoney((selectedLead.setup || 0) + (selectedLead.retainer || 0) * (selectedLead.laufzeit || 1))}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Notizen */}
+              {selectedLead.kommentar && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-500 mb-2">Notizen</h4>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="sticky bottom-0 bg-white px-6 py-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={closeModal}
+                className="w-full px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+              >
+                Schließen
+              </button>
             </div>
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }
 
