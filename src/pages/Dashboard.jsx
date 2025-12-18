@@ -555,69 +555,70 @@ function MeineLeadsImClosing({ userId, userName }) {
         )}
       </div>
 
-      {/* Lead-Liste */}
-      {paginatedLeads.length === 0 ? (
-        <div className="p-8 text-center">
-          <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          {searchTerm ? (
-            <div>
-              <p className="text-gray-500">Keine Leads gefunden</p>
-              <button 
-                type="button"
-                onClick={clearSearch}
-                className="text-purple-600 hover:text-purple-700 text-sm mt-2"
-              >
-                Suche zurücksetzen
-              </button>
-            </div>
-          ) : (
-            <div>
-              <p className="text-gray-500">Noch keine Leads im Closing</p>
-              <p className="text-sm text-gray-400 mt-1">Buche Termine um Leads hierhin zu bringen</p>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div>
-          {/* Lead Rows */}
-          <div className="divide-y divide-gray-100">
-            {paginatedLeads.map((lead) => (
-              <div 
-                key={lead.id} 
-                onClick={() => openModal(lead)}
-                className="p-4 hover:bg-gray-50 cursor-pointer"
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3">
-                      <span className="font-medium text-gray-900 truncate">{lead.unternehmen || 'Unbekannt'}</span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusStyle(lead.status)}`}>
-                        {lead.status || 'Unbekannt'}
-                      </span>
-                    </div>
-                    <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
-                      <span>{lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}</span>
-                      {lead.terminDatum && <span>{formatDate(lead.terminDatum)}</span>}
-                      {lead.ort && <span>{lead.ort}</span>}
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-gray-400 ml-2 flex-shrink-0" />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Pagination */}
-          {filteredLeads.length > LEADS_PER_PAGE && (
-            <div className="p-4 border-t border-gray-100 flex items-center justify-between">
-              <span className="text-sm text-gray-500">
-                {startIndex + 1}-{Math.min(startIndex + LEADS_PER_PAGE, filteredLeads.length)} von {filteredLeads.length}
-              </span>
-              <div className="flex items-center gap-2">
-                <button
+      {/* Lead-Liste - feste Mindesthöhe um Layout-Sprünge zu vermeiden */}
+      <div className="min-h-[500px]">
+        {paginatedLeads.length === 0 ? (
+          <div className="p-8 text-center">
+            <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            {searchTerm ? (
+              <div>
+                <p className="text-gray-500">Keine Leads gefunden</p>
+                <button 
                   type="button"
-                  onClick={goToPreviousPage}
-                  disabled={safeCurrentPage === 1}
+                  onClick={clearSearch}
+                  className="text-purple-600 hover:text-purple-700 text-sm mt-2"
+                >
+                  Suche zurücksetzen
+                </button>
+              </div>
+            ) : (
+              <div>
+                <p className="text-gray-500">Noch keine Leads im Closing</p>
+                <p className="text-sm text-gray-400 mt-1">Buche Termine um Leads hierhin zu bringen</p>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div>
+            {/* Lead Rows */}
+            <div className="divide-y divide-gray-100">
+              {paginatedLeads.map((lead) => (
+                <div 
+                  key={lead.id} 
+                  onClick={() => openModal(lead)}
+                  className="p-4 hover:bg-gray-50 cursor-pointer"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3">
+                        <span className="font-medium text-gray-900 truncate">{safeString(lead.unternehmen) || 'Unbekannt'}</span>
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusStyle(lead.status)}`}>
+                          {lead.status || 'Unbekannt'}
+                        </span>
+                      </div>
+                      <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
+                        <span>{safeString(lead.ansprechpartnerVorname)} {safeString(lead.ansprechpartnerNachname)}</span>
+                        {lead.terminDatum && <span>{formatDate(lead.terminDatum)}</span>}
+                        {safeString(lead.ort) && <span>{safeString(lead.ort)}</span>}
+                      </div>
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 ml-2 flex-shrink-0" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {filteredLeads.length > LEADS_PER_PAGE && (
+              <div className="p-4 border-t border-gray-100 flex items-center justify-between">
+                <span className="text-sm text-gray-500">
+                  {startIndex + 1}-{Math.min(startIndex + LEADS_PER_PAGE, filteredLeads.length)} von {filteredLeads.length}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={goToPreviousPage}
+                    disabled={safeCurrentPage === 1}
                   className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -637,7 +638,8 @@ function MeineLeadsImClosing({ userId, userName }) {
             </div>
           )}
         </div>
-      )}
+        )}
+      </div>
 
       {/* Detail Modal */}
       {selectedLead && (
