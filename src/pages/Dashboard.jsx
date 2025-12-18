@@ -771,11 +771,11 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <KPICard title="Einwahlen" value={stats.summary.einwahlen} icon={Phone} color="purple" />
-            <KPICard title="Erreicht" value={stats.summary.erreicht} icon={Users} color="blue" subtitle={formatPercent(stats.summary.erreichQuote)} />
-            <KPICard title="Beratungsgespräch" value={stats.summary.beratungsgespraech} icon={Calendar} color="green" subtitle={formatPercent(stats.summary.beratungsgespraechQuote)} />
-            <KPICard title="Unterlagen" value={stats.summary.unterlagen} icon={Target} color="yellow" subtitle={formatPercent(stats.summary.unterlagenQuote)} />
-            <KPICard title="Kein Interesse" value={stats.summary.keinInteresse} icon={XCircle} color="red" subtitle={formatPercent(stats.summary.keinInteresseQuote || 0)} />
+            <KPICard title="Einwahlen" value={stats.summary?.einwahlen || 0} icon={Phone} color="purple" />
+            <KPICard title="Erreicht" value={stats.summary?.erreicht || 0} icon={Users} color="blue" subtitle={formatPercent(stats.summary?.erreichQuote || 0)} />
+            <KPICard title="Beratungsgespräch" value={stats.summary?.beratungsgespraech || 0} icon={Calendar} color="green" subtitle={formatPercent(stats.summary?.beratungsgespraechQuote || 0)} />
+            <KPICard title="Unterlagen" value={stats.summary?.unterlagen || 0} icon={Target} color="yellow" subtitle={formatPercent(stats.summary?.unterlagenQuote || 0)} />
+            <KPICard title="Kein Interesse" value={stats.summary?.keinInteresse || 0} icon={XCircle} color="red" subtitle={formatPercent(stats.summary?.keinInteresseQuote || 0)} />
           </div>
 
           {/* Charts Row 1 */}
@@ -783,14 +783,14 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
             {/* Conversion Funnel */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Ergebnisse in Zahlen</h3>
-              {stats.summary.einwahlen > 0 ? (
+              {(stats.summary?.einwahlen || 0) > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart 
                     data={[
-                      { name: 'Einwahlen', value: stats.summary.einwahlen },
-                      { name: 'Erreicht', value: stats.summary.erreicht },
-                      { name: 'Beratungsgespräch', value: stats.summary.beratungsgespraech },
-                      { name: 'Unterlagen', value: stats.summary.unterlagen }
+                      { name: 'Einwahlen', value: stats.summary?.einwahlen || 0 },
+                      { name: 'Erreicht', value: stats.summary?.erreicht || 0 },
+                      { name: 'Beratungsgespräch', value: stats.summary?.beratungsgespraech || 0 },
+                      { name: 'Unterlagen', value: stats.summary?.unterlagen || 0 }
                     ]}
                     layout="vertical"
                   >
@@ -819,14 +819,14 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
             {/* Ergebnis Verteilung Pie */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Prozentuale Ergebnisse</h3>
-              {(stats.summary.beratungsgespraech + stats.summary.unterlagen + stats.summary.keinInteresse) > 0 ? (
+              {((stats.summary?.beratungsgespraech || 0) + (stats.summary?.unterlagen || 0) + (stats.summary?.keinInteresse || 0)) > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
                     <Pie
                       data={[
-                        { name: 'Beratungsgespräch', value: stats.summary.beratungsgespraech },
-                        { name: 'Unterlagen', value: stats.summary.unterlagen },
-                        { name: 'Kein Interesse', value: stats.summary.keinInteresse }
+                        { name: 'Beratungsgespräch', value: stats.summary?.beratungsgespraech || 0 },
+                        { name: 'Unterlagen', value: stats.summary?.unterlagen || 0 },
+                        { name: 'Kein Interesse', value: stats.summary?.keinInteresse || 0 }
                       ].filter(d => d.value > 0)}
                       cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
@@ -852,7 +852,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           {/* Aktivität Zeitverlauf */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <h3 className="text-sm font-medium text-gray-700 mb-4">Einwahlen im Zeitverlauf</h3>
-            {stats.zeitverlauf && stats.zeitverlauf.length > 0 && stats.zeitverlauf.some(z => z.count > 0) ? (
+            {stats.zeitverlauf?.length > 0 && stats.zeitverlauf.some(z => (z.count || 0) > 0) ? (
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={stats.zeitverlauf}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -1157,13 +1157,13 @@ function ClosingAnalytics({ user, isAdmin }) {
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-            <KPICard title="Closing Quote" value={formatPercent(stats.summary.closingQuote)} icon={TrendingUp} color="purple" subtitle={`${stats.summary.gewonnen} von ${stats.summary.gewonnen + stats.summary.verloren}`} />
-            <KPICard title="Umsatz Gesamt" value={formatCurrency(stats.summary.umsatzGesamt)} icon={DollarSign} color="green" />
-            <KPICard title="Ø Umsatz" value={formatCurrency(stats.summary.umsatzDurchschnitt)} icon={BarChart3} color="blue" />
-            <KPICard title="Gewonnen" value={stats.summary.gewonnen} icon={Award} color="green" />
-            <KPICard title="Verloren" value={stats.summary.verloren} icon={XCircle} color="red" />
-            <KPICard title="No-Show" value={stats.summary.noShow} icon={Clock} color="yellow" />
-            <KPICard title="Offen" value={stats.summary.offen} icon={Target} color="gray" />
+            <KPICard title="Closing Quote" value={formatPercent(stats.summary?.closingQuote || 0)} icon={TrendingUp} color="purple" subtitle={`${stats.summary?.gewonnen || 0} von ${(stats.summary?.gewonnen || 0) + (stats.summary?.verloren || 0)}`} />
+            <KPICard title="Umsatz Gesamt" value={formatCurrency(stats.summary?.umsatzGesamt || 0)} icon={DollarSign} color="green" />
+            <KPICard title="Ø Umsatz" value={formatCurrency(stats.summary?.umsatzDurchschnitt || 0)} icon={BarChart3} color="blue" />
+            <KPICard title="Gewonnen" value={stats.summary?.gewonnen || 0} icon={Award} color="green" />
+            <KPICard title="Verloren" value={stats.summary?.verloren || 0} icon={XCircle} color="red" />
+            <KPICard title="No-Show" value={stats.summary?.noShow || 0} icon={Clock} color="yellow" />
+            <KPICard title="Offen" value={stats.summary?.offen || 0} icon={Target} color="gray" />
           </div>
 
           {/* Charts */}
@@ -1171,7 +1171,7 @@ function ClosingAnalytics({ user, isAdmin }) {
             {/* Umsatz Zeitverlauf */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Umsatz & Closings im Zeitverlauf</h3>
-              {stats.zeitverlauf && stats.zeitverlauf.some(d => d.umsatz > 0 || d.count > 0) ? (
+              {stats.zeitverlauf?.length > 0 && stats.zeitverlauf.some(d => (d.umsatz || 0) > 0 || (d.count || 0) > 0) ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={stats.zeitverlauf}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
@@ -1197,15 +1197,15 @@ function ClosingAnalytics({ user, isAdmin }) {
             {/* Status Verteilung */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Status Verteilung</h3>
-              {(stats.summary.gewonnen > 0 || stats.summary.verloren > 0 || stats.summary.offen > 0) ? (
+              {((stats.summary?.gewonnen || 0) > 0 || (stats.summary?.verloren || 0) > 0 || (stats.summary?.offen || 0) > 0) ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
                     <Pie
                       data={[
-                        { name: 'Gewonnen', value: stats.summary.gewonnen },
-                        { name: 'Verloren', value: stats.summary.verloren },
-                        { name: 'Offen', value: stats.summary.offen },
-                        { name: 'No-Show', value: stats.summary.noShow }
+                        { name: 'Gewonnen', value: stats.summary?.gewonnen || 0 },
+                        { name: 'Verloren', value: stats.summary?.verloren || 0 },
+                        { name: 'Offen', value: stats.summary?.offen || 0 },
+                        { name: 'No-Show', value: stats.summary?.noShow || 0 }
                       ].filter(d => d.value > 0)}
                       cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
