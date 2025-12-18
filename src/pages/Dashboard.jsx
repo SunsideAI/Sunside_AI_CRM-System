@@ -1058,11 +1058,12 @@ function ClosingAnalytics({ user, isAdmin }) {
 
       const { startDate, endDate } = getDateRange()
       const userEmail = user?.email_geschaeftlich || user?.email
+      const userName = user?.vor_nachname || user?.name
 
       const params = new URLSearchParams({
         type: 'closing',
         admin: isAdmin().toString(),
-        ...(userEmail && !isAdmin() && { email: userEmail }),
+        ...(userName && !isAdmin() && { userName }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate })
       })
