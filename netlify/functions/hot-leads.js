@@ -6,11 +6,71 @@
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
 const TABLE_NAME = 'Immobilienmakler_Hot_Leads'
+const USER_TABLE_NAME = 'User_Datenbank'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS'
+}
+
+// Cache für User-Namen (Record-ID -> Name)
+let userNameCache = null
+let userNameCacheTime = 0
+const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
+
+async function loadUserNames(airtableHeaders) {
+  // Cache prüfen
+  if (userNameCache && (Date.now() - userNameCacheTime) < CACHE_DURATION) {
+    return userNameCache
+  }
+
+  const USER_TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USER_TABLE_NAME)}`
+  
+  try {
+    const response = await fetch(`${USER_TABLE_URL}?fields[]=Vor_Nachname`, {
+      headers: airtableHeaders
+    })
+    
+    if (!response.ok) {
+      console.error('User-Namen laden fehlgeschlagen:', response.status)
+      return {}
+    }
+    
+    const data = await response.json()
+    const nameMap = {}
+    
+    for (const record of data.records) {
+      nameMap[record.id] = record.fields.Vor_Nachname || record.id
+    }
+    
+    // Cache aktualisieren
+    userNameCache = nameMap
+    userNameCacheTime = Date.now()
+    
+    console.log('User-Namen geladen:', Object.keys(nameMap).length, 'User')
+    return nameMap
+  } catch (err) {
+    console.error('Fehler beim Laden der User-Namen:', err)
+    return {}
+  }
+}
+
+// Helper: Record-ID zu Name auflösen
+function resolveUserName(field, userNames) {
+  if (!field) return ''
+  if (typeof field === 'string') {
+    // Prüfen ob es eine Record-ID ist (beginnt mit "rec")
+    if (field.startsWith('rec') && userNames[field]) {
+      return userNames[field]
+    }
+    return field // Bereits ein Name
+  }
+  if (Array.isArray(field) && field.length > 0) {
+    const id = field[0]
+    return userNames[id] || id
+  }
+  return ''
 }
 
 exports.handler = async (event) => {
@@ -120,6 +180,9 @@ exports.handler = async (event) => {
 
       console.log('Hot Leads GET - Gesamt gefunden:', allRecords.length, 'Records')
 
+      // User-Namen laden für ID -> Name Auflösung
+      const userNames = await loadUserNames(airtableHeaders)
+
       // Records formatieren
       const hotLeads = allRecords.map(record => ({
         id: record.id,
@@ -145,15 +208,11 @@ exports.handler = async (event) => {
         produktDienstleistung: record.fields.Produkt_Dienstleistung || [],
         kommentar: record.fields.Kommentar || '',
         kundeSeit: record.fields['Kunde seit'] || record.fields.Kunde_seit || '',
-        // Verknüpfungen - Setter/Closer sind aktuell Text-Felder (Namen)
+        // Verknüpfungen
         originalLeadId: record.fields.Immobilienmakler_Leads?.[0] || null,
-        // Setter/Closer können Text (Name) oder Array (Link) sein
-        setterName: typeof record.fields.Setter === 'string' 
-          ? record.fields.Setter 
-          : record.fields.Setter?.[0] || '',
-        closerName: typeof record.fields.Closer === 'string' 
-          ? record.fields.Closer 
-          : record.fields.Closer?.[0] || ''
+        // Setter/Closer: Record-IDs zu Namen auflösen
+        setterName: resolveUserName(record.fields.Setter, userNames),
+        closerName: resolveUserName(record.fields.Closer, userNames)
       }))
 
       return {
