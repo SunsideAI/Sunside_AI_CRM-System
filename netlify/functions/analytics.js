@@ -183,8 +183,9 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
     }
 
     // User-Filter (wenn nicht Admin) - nach Closer-Namen filtern
-    if (!isAdmin && userName && closerName) {
-      if (!closerName.toLowerCase().includes(userName.toLowerCase())) continue
+    // Closer sehen nur Records wo sie als Closer eingetragen sind
+    if (!isAdmin && userName) {
+      if (!closerName || !closerName.toLowerCase().includes(userName.toLowerCase())) continue
     }
 
     // Status kategorisieren
