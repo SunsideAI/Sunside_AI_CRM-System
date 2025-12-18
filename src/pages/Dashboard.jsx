@@ -322,6 +322,179 @@ function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
           </div>
         </div>
       )}
+
+      {/* Meine Leads im Closing - nur für Setter/Admin */}
+      {(isSetter() || isAdmin()) && (
+        <MeineLeadsImClosing userId={user?.id} userName={user?.vor_nachname} />
+      )}
+    </div>
+  )
+}
+
+// ==========================================
+// MEINE LEADS IM CLOSING (für Setter)
+// ==========================================
+function MeineLeadsImClosing({ userId, userName }) {
+  const [hotLeads, setHotLeads] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (userId) {
+      loadHotLeads()
+    }
+  }, [userId])
+
+  const loadHotLeads = async () => {
+    try {
+      const response = await fetch(`/.netlify/functions/hot-leads?setterId=${userId}`)
+      const data = await response.json()
+      
+      if (response.ok) {
+        setHotLeads(data.hotLeads || [])
+      }
+    } catch (err) {
+      console.error('Hot Leads laden fehlgeschlagen:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const getStatusBadge = (status) => {
+    const statusConfig = {
+      'Geplant': { color: 'bg-blue-100 text-blue-700', icon: Clock },
+      'Im Closing': { color: 'bg-yellow-100 text-yellow-700', icon: TrendingUp },
+      'Angebot versendet': { color: 'bg-purple-100 text-purple-700', icon: DollarSign },
+      'Abgeschlossen': { color: 'bg-green-100 text-green-700', icon: Award },
+      'Verloren': { color: 'bg-red-100 text-red-700', icon: XCircle },
+      'No-Show': { color: 'bg-gray-100 text-gray-700', icon: XCircle }
+    }
+    
+    const config = statusConfig[status] || statusConfig['Geplant']
+    const Icon = config.icon
+    
+    return (
+      <span className={`flex items-center px-2 py-1 rounded-full text-xs font-medium ${config.color}`}>
+        <Icon className="w-3 h-3 mr-1" />
+        {status}
+      </span>
+    )
+  }
+
+  const formatTerminDatum = (dateStr) => {
+    if (!dateStr) return '-'
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    })
+  }
+
+  // Statistiken berechnen
+  const stats = {
+    geplant: hotLeads.filter(l => l.status === 'Geplant').length,
+    imClosing: hotLeads.filter(l => l.status === 'Im Closing').length,
+    gewonnen: hotLeads.filter(l => l.status === 'Abgeschlossen').length,
+    verloren: hotLeads.filter(l => l.status === 'Verloren' || l.status === 'No-Show').length
+  }
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+          <span className="ml-2 text-gray-500">Lade Hot Leads...</span>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="p-6 border-b border-gray-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="p-2 bg-orange-100 rounded-lg mr-3">
+              <Target className="w-5 h-5 text-orange-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900">Meine Leads im Closing</h2>
+              <p className="text-sm text-gray-500">{hotLeads.length} Leads von dir im Closing-Prozess</p>
+            </div>
+          </div>
+          
+          {/* Mini-Stats */}
+          <div className="flex gap-4 text-sm">
+            <div className="text-center">
+              <span className="block text-lg font-bold text-blue-600">{stats.geplant}</span>
+              <span className="text-gray-500">Geplant</span>
+            </div>
+            <div className="text-center">
+              <span className="block text-lg font-bold text-yellow-600">{stats.imClosing}</span>
+              <span className="text-gray-500">Im Closing</span>
+            </div>
+            <div className="text-center">
+              <span className="block text-lg font-bold text-green-600">{stats.gewonnen}</span>
+              <span className="text-gray-500">Gewonnen</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {hotLeads.length === 0 ? (
+        <div className="p-8 text-center">
+          <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+          <p className="text-gray-500">Noch keine Leads im Closing</p>
+          <p className="text-sm text-gray-400 mt-1">Buche Termine um Leads hierhin zu bringen</p>
+        </div>
+      ) : (
+        <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
+          {hotLeads.slice(0, 10).map((lead) => (
+            <div key={lead.id} className="p-4 hover:bg-gray-50 transition-colors">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-medium text-gray-900 truncate">{lead.unternehmen || 'Unbekannt'}</h3>
+                    {getStatusBadge(lead.status)}
+                  </div>
+                  <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
+                    <span className="flex items-center">
+                      <Users className="w-3 h-3 mr-1" />
+                      {lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}
+                    </span>
+                    <span className="flex items-center">
+                      <Calendar className="w-3 h-3 mr-1" />
+                      {formatTerminDatum(lead.terminDatum)}
+                    </span>
+                  </div>
+                </div>
+                
+                {lead.status === 'Abgeschlossen' && (lead.setup > 0 || lead.retainer > 0) && (
+                  <div className="text-right ml-4">
+                    <span className="text-green-600 font-semibold">
+                      {((lead.setup || 0) + (lead.retainer || 0) * (lead.laufzeit || 1)).toLocaleString('de-DE')}€
+                    </span>
+                    <span className="text-xs text-gray-500 block">Deal-Wert</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          
+          {hotLeads.length > 10 && (
+            <div className="p-4 text-center">
+              <Link 
+                to="/closing" 
+                className="text-purple-600 hover:text-purple-700 text-sm font-medium"
+              >
+                Alle {hotLeads.length} Leads anzeigen →
+              </Link>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
