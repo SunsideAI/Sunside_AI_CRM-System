@@ -3,9 +3,7 @@ import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import { 
   Calendar, 
-  Clock,
   Users,
-  XCircle,
   Target,
   Search,
   X,
@@ -18,10 +16,8 @@ import {
   Globe,
   MapPin,
   Building2,
-  FileText,
   Edit3,
   Save,
-  Award,
   Filter
 } from 'lucide-react'
 
@@ -162,15 +158,6 @@ function Closing() {
   const startIndex = (safeCurrentPage - 1) * LEADS_PER_PAGE
   const paginatedLeads = filteredLeads.slice(startIndex, startIndex + LEADS_PER_PAGE)
 
-  // Statistiken
-  const stats = {
-    lead: leads.filter(l => l.status === 'Lead').length,
-    angebot: leads.filter(l => l.status === 'Angebot versendet').length,
-    gewonnen: leads.filter(l => l.status === 'Abgeschlossen').length,
-    verloren: leads.filter(l => l.status === 'Verloren').length,
-    gesamt: leads.length
-  }
-
   // Event Handlers
   const handleSearchChange = (e) => {
     setSearchTerm(e.target.value)
@@ -279,45 +266,6 @@ function Closing() {
           {error}
         </div>
       )}
-
-      {/* Statistik-Karten */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Gesamt</span>
-            <Target className="w-5 h-5 text-gray-400" />
-          </div>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{stats.gesamt}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Lead</span>
-            <Clock className="w-5 h-5 text-blue-500" />
-          </div>
-          <p className="mt-2 text-2xl font-bold text-blue-600">{stats.lead}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Angebot</span>
-            <FileText className="w-5 h-5 text-purple-500" />
-          </div>
-          <p className="mt-2 text-2xl font-bold text-purple-600">{stats.angebot}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Gewonnen</span>
-            <Award className="w-5 h-5 text-green-500" />
-          </div>
-          <p className="mt-2 text-2xl font-bold text-green-600">{stats.gewonnen}</p>
-        </div>
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-gray-500">Verloren</span>
-            <XCircle className="w-5 h-5 text-red-500" />
-          </div>
-          <p className="mt-2 text-2xl font-bold text-red-600">{stats.verloren}</p>
-        </div>
-      </div>
 
       {/* Filter & Suche */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
