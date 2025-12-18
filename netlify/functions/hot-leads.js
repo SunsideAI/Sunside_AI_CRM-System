@@ -1,0 +1,331 @@
+// Hot Leads API
+// GET: Hot Leads laden (für Closing-Seite und Dashboard)
+// POST: Neuen Hot Lead erstellen (bei Termin-Buchung)
+// PATCH: Hot Lead aktualisieren (Status, Deal-Werte)
+
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
+const TABLE_NAME = 'Immobilienmakler_Hot_Leads'
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS'
+}
+
+exports.handler = async (event) => {
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers: corsHeaders, body: '' }
+  }
+
+  if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Airtable nicht konfiguriert' })
+    }
+  }
+
+  const airtableHeaders = {
+    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+    'Content-Type': 'application/json'
+  }
+
+  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}`
+
+  try {
+    // ==========================================
+    // GET: Hot Leads laden
+    // ==========================================
+    if (event.httpMethod === 'GET') {
+      const params = event.queryStringParameters || {}
+      const { setterId, closerId, status, limit } = params
+
+      let allRecords = []
+      let offset = null
+
+      do {
+        let url = TABLE_URL
+        const queryParams = []
+        
+        if (offset) {
+          queryParams.push(`offset=${offset}`)
+        }
+
+        // Filter bauen
+        const filters = []
+        
+        if (setterId) {
+          filters.push(`FIND("${setterId}", ARRAYJOIN({Setter}, ","))`)
+        }
+        
+        if (closerId) {
+          filters.push(`FIND("${closerId}", ARRAYJOIN({Closer}, ","))`)
+        }
+        
+        if (status) {
+          // Mehrere Status mit Komma getrennt möglich: "Geplant,Im Closing"
+          const statusList = status.split(',').map(s => `{Status}="${s.trim()}"`).join(',')
+          filters.push(`OR(${statusList})`)
+        }
+
+        if (filters.length > 0) {
+          const formula = filters.length === 1 ? filters[0] : `AND(${filters.join(',')})`
+          queryParams.push(`filterByFormula=${encodeURIComponent(formula)}`)
+        }
+
+        // Sortierung: Neueste zuerst
+        queryParams.push('sort[0][field]=Hinzugefügt&sort[0][direction]=desc')
+
+        if (limit) {
+          queryParams.push(`maxRecords=${limit}`)
+        }
+
+        if (queryParams.length > 0) {
+          url += '?' + queryParams.join('&')
+        }
+
+        const response = await fetch(url, { headers: airtableHeaders })
+        
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error?.message || 'Fehler beim Laden der Hot Leads')
+        }
+
+        const data = await response.json()
+        allRecords = allRecords.concat(data.records || [])
+        offset = data.offset
+
+        // Bei limit: Nicht paginieren
+        if (limit) break
+
+      } while (offset)
+
+      // Records formatieren
+      const hotLeads = allRecords.map(record => ({
+        id: record.id,
+        unternehmen: record.fields.Unternehmen || '',
+        ansprechpartnerVorname: record.fields.Ansprechpartner_Vorname || '',
+        ansprechpartnerNachname: record.fields.Ansprechpartner_Nachname || '',
+        kategorie: record.fields.Kategorie || '',
+        email: record.fields['E-Mail'] || '',
+        telefon: record.fields.Telefon || '',
+        ort: record.fields.Ort || '',
+        bundesland: record.fields.Bundesland || '',
+        website: record.fields.Website || '',
+        terminDatum: record.fields.Termin_Beratungsgespräch || record.fields['Termin_Beratungsgespräch'] || '',
+        status: record.fields.Status || 'Geplant',
+        quelle: record.fields.Quelle || '',
+        prioritaet: record.fields.Priorität || record.fields.Prioritaet || '',
+        setup: record.fields.Setup || 0,
+        retainer: record.fields.Retainer || 0,
+        laufzeit: record.fields.Laufzeit || 0,
+        produktDienstleistung: record.fields.Produkt_Dienstleistung || [],
+        infosErstgespraech: record.fields.Infos_aus_Erstgespräch || record.fields['Infos_aus_Erstgespräch'] || '',
+        kommentar: record.fields.Kommentar || '',
+        kundeSeit: record.fields.Kunde_seit || record.fields['Kunde_seit'] || '',
+        hinzugefuegt: record.fields.Hinzugefügt || record.fields.Hinzugefuegt || '',
+        // Verknüpfungen (Record IDs)
+        originalLeadId: record.fields.Immobilienmakler_Leads?.[0] || null,
+        setterId: record.fields.Setter?.[0] || null,
+        closerId: record.fields.Closer?.[0] || null
+      }))
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ hotLeads })
+      }
+    }
+
+    // ==========================================
+    // POST: Neuen Hot Lead erstellen
+    // ==========================================
+    if (event.httpMethod === 'POST') {
+      const body = JSON.parse(event.body)
+      const {
+        originalLeadId,     // Link zu Immobilienmakler_Leads
+        setterId,           // Link zu User_Datenbank (Setter)
+        closerId,           // Link zu User_Datenbank (Closer)
+        unternehmen,        // Firmenname
+        terminDatum,        // Termin-Zeitpunkt
+        quelle,             // z.B. "Cold Calling"
+        infosErstgespraech  // Notizen vom Setter (Problemstellung etc.)
+      } = body
+
+      // Validierung
+      if (!originalLeadId) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'originalLeadId ist erforderlich' })
+        }
+      }
+
+      if (!setterId || !closerId) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'setterId und closerId sind erforderlich' })
+        }
+      }
+
+      if (!terminDatum) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'terminDatum ist erforderlich' })
+        }
+      }
+
+      // Hot Lead Felder
+      const fields = {
+        'Immobilienmakler_Leads': [originalLeadId],
+        'Setter': [setterId],
+        'Closer': [closerId],
+        'Unternehmen': unternehmen || '',
+        'Termin_Beratungsgespräch': terminDatum,
+        'Status': 'Geplant',
+        'Quelle': quelle || 'Cold Calling'
+      }
+
+      // Optionale Felder
+      if (infosErstgespraech) {
+        fields['Infos_aus_Erstgespräch'] = infosErstgespraech
+      }
+
+      console.log('Creating Hot Lead:', fields)
+
+      const response = await fetch(TABLE_URL, {
+        method: 'POST',
+        headers: airtableHeaders,
+        body: JSON.stringify({ fields })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        console.error('Airtable Error:', error)
+        throw new Error(error.error?.message || 'Hot Lead konnte nicht erstellt werden')
+      }
+
+      const data = await response.json()
+
+      return {
+        statusCode: 201,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          success: true,
+          message: 'Hot Lead erfolgreich erstellt',
+          hotLeadId: data.id
+        })
+      }
+    }
+
+    // ==========================================
+    // PATCH: Hot Lead aktualisieren
+    // ==========================================
+    if (event.httpMethod === 'PATCH') {
+      const body = JSON.parse(event.body)
+      const { hotLeadId, updates } = body
+
+      if (!hotLeadId) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'hotLeadId ist erforderlich' })
+        }
+      }
+
+      // Erlaubte Update-Felder
+      const allowedFields = [
+        'Status',
+        'Setup',
+        'Retainer',
+        'Laufzeit',
+        'Produkt_Dienstleistung',
+        'Infos_aus_Erstgespräch',
+        'Kommentar',
+        'Kunde_seit',
+        'Priorität',
+        'Closer'  // Falls Closer gewechselt werden soll
+      ]
+
+      const fields = {}
+
+      for (const [key, value] of Object.entries(updates)) {
+        // Mapping von camelCase zu Airtable Feldnamen
+        const fieldMap = {
+          'status': 'Status',
+          'setup': 'Setup',
+          'retainer': 'Retainer',
+          'laufzeit': 'Laufzeit',
+          'produktDienstleistung': 'Produkt_Dienstleistung',
+          'infosErstgespraech': 'Infos_aus_Erstgespräch',
+          'kommentar': 'Kommentar',
+          'kundeSeit': 'Kunde_seit',
+          'prioritaet': 'Priorität',
+          'closerId': 'Closer'
+        }
+
+        const airtableField = fieldMap[key] || key
+
+        if (allowedFields.includes(airtableField)) {
+          // Closer braucht Array-Format für Link
+          if (airtableField === 'Closer' && value) {
+            fields[airtableField] = [value]
+          } else {
+            fields[airtableField] = value
+          }
+        }
+      }
+
+      if (Object.keys(fields).length === 0) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Keine gültigen Update-Felder' })
+        }
+      }
+
+      console.log('Updating Hot Lead:', hotLeadId, fields)
+
+      const response = await fetch(`${TABLE_URL}/${hotLeadId}`, {
+        method: 'PATCH',
+        headers: airtableHeaders,
+        body: JSON.stringify({ fields })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        console.error('Airtable Error:', error)
+        throw new Error(error.error?.message || 'Hot Lead konnte nicht aktualisiert werden')
+      }
+
+      const data = await response.json()
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          success: true,
+          message: 'Hot Lead aktualisiert',
+          hotLeadId: data.id
+        })
+      }
+    }
+
+    return {
+      statusCode: 405,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Method not allowed' })
+    }
+
+  } catch (error) {
+    console.error('Hot Leads Error:', error)
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: error.message })
+    }
+  }
+}
