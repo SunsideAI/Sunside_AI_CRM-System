@@ -41,6 +41,8 @@ exports.handler = async (event) => {
       const params = event.queryStringParameters || {}
       const { setterId, closerId, setterName, closerName, status, limit } = params
 
+      console.log('Hot Leads GET - Params:', { setterId, closerId, setterName, closerName, status, limit })
+
       let allRecords = []
       let offset = null
 
@@ -80,6 +82,7 @@ exports.handler = async (event) => {
         if (filters.length > 0) {
           const formula = filters.length === 1 ? filters[0] : `AND(${filters.join(',')})`
           queryParams.push(`filterByFormula=${encodeURIComponent(formula)}`)
+          console.log('Hot Leads GET - Filter Formula:', formula)
         }
 
         // Sortierung: Neueste zuerst
@@ -93,21 +96,28 @@ exports.handler = async (event) => {
           url += '?' + queryParams.join('&')
         }
 
+        console.log('Hot Leads GET - Airtable URL:', url.substring(0, 200) + '...')
+
         const response = await fetch(url, { headers: airtableHeaders })
         
         if (!response.ok) {
           const error = await response.json()
+          console.error('Hot Leads GET - Airtable Error:', error)
           throw new Error(error.error?.message || 'Fehler beim Laden der Hot Leads')
         }
 
         const data = await response.json()
         allRecords = allRecords.concat(data.records || [])
         offset = data.offset
+        
+        console.log('Hot Leads GET - Batch geladen:', data.records?.length || 0, 'Records, Total bisher:', allRecords.length)
 
         // Bei limit: Nicht paginieren
         if (limit) break
 
       } while (offset)
+
+      console.log('Hot Leads GET - Gesamt gefunden:', allRecords.length, 'Records')
 
       // Records formatieren
       const hotLeads = allRecords.map(record => ({
