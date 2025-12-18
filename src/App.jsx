@@ -69,7 +69,7 @@ function App() {
         <Route 
           path="kaltakquise" 
           element={
-            <ProtectedRoute allowedRoles={['Setter', 'Admin']}>
+            <ProtectedRoute allowedRoles={['Coldcaller', 'Admin']}>
               <Kaltakquise />
             </ProtectedRoute>
           } 
