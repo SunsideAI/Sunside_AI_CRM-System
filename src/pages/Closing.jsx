@@ -155,10 +155,12 @@ function Closing() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: selectedLead.id,
-          setup: parseFloat(angebotData.setup),
-          retainer: parseFloat(angebotData.retainer),
-          status: 'Angebot versendet'
+          hotLeadId: selectedLead.id,
+          updates: {
+            setup: parseFloat(angebotData.setup),
+            retainer: parseFloat(angebotData.retainer),
+            status: 'Angebot versendet'
+          }
         })
       })
       
