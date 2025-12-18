@@ -337,26 +337,38 @@ function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
 function MeineLeadsImClosing({ userId, userName }) {
   const [hotLeads, setHotLeads] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
+    console.log('MeineLeadsImClosing - userName:', userName, 'userId:', userId)
     if (userName) {
       loadHotLeads()
     } else {
+      console.log('MeineLeadsImClosing - Kein userName, überspringe Laden')
       setLoading(false)
     }
   }, [userName])
 
   const loadHotLeads = async () => {
     try {
-      // Nach Setter-Namen filtern (bestehende Daten haben Text-Namen, keine IDs)
-      const response = await fetch(`/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`)
+      const url = `/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`
+      console.log('MeineLeadsImClosing - Lade von:', url)
+      
+      const response = await fetch(url)
       const data = await response.json()
+      
+      console.log('MeineLeadsImClosing - Response:', response.status, data)
       
       if (response.ok) {
         setHotLeads(data.hotLeads || [])
+        console.log('MeineLeadsImClosing - Gefunden:', data.hotLeads?.length || 0, 'Leads')
+      } else {
+        setError(data.error || 'Fehler beim Laden')
+        console.error('MeineLeadsImClosing - API Fehler:', data)
       }
     } catch (err) {
       console.error('Hot Leads laden fehlgeschlagen:', err)
+      setError(err.message)
     } finally {
       setLoading(false)
     }
@@ -409,6 +421,18 @@ function MeineLeadsImClosing({ userId, userName }) {
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
           <span className="ml-2 text-gray-500">Lade Hot Leads...</span>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl border border-red-200 p-6">
+        <div className="text-red-600 text-sm">
+          <p className="font-medium">Fehler beim Laden der Hot Leads:</p>
+          <p className="mt-1">{error}</p>
+          <p className="mt-2 text-gray-500">userName: {userName || 'nicht gesetzt'}</p>
         </div>
       </div>
     )
