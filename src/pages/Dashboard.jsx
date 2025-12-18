@@ -1171,58 +1171,85 @@ function ClosingAnalytics({ user, isAdmin }) {
             {/* Umsatz Zeitverlauf */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Umsatz & Closings im Zeitverlauf</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <BarChart data={stats.zeitverlauf}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                  <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-                  <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value, name) => [name === 'umsatz' ? formatCurrency(value) : value, name === 'umsatz' ? 'Umsatz' : 'Closings']} />
-                  <Legend />
-                  <Bar yAxisId="left" dataKey="umsatz" name="Umsatz" fill="#7C3AED" radius={[4, 4, 0, 0]} />
-                  <Bar yAxisId="right" dataKey="count" name="Closings" fill="#10B981" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {stats.zeitverlauf && stats.zeitverlauf.some(d => d.umsatz > 0 || d.count > 0) ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={stats.zeitverlauf}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                    <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
+                    <Tooltip formatter={(value, name) => [name === 'umsatz' ? formatCurrency(value) : value, name === 'umsatz' ? 'Umsatz' : 'Closings']} />
+                    <Legend />
+                    <Bar yAxisId="left" dataKey="umsatz" name="Umsatz" fill="#7C3AED" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="right" dataKey="count" name="Closings" fill="#10B981" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[250px] text-gray-400">
+                  <div className="text-center">
+                    <DollarSign className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Keine Closings im ausgewählten Zeitraum</p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Status Verteilung */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Status Verteilung</h3>
-              <ResponsiveContainer width="100%" height={250}>
-                <PieChart>
-                  <Pie
-                    data={[
-                      { name: 'Gewonnen', value: stats.summary.gewonnen },
-                      { name: 'Verloren', value: stats.summary.verloren },
-                      { name: 'Offen', value: stats.summary.offen },
-                      { name: 'No-Show', value: stats.summary.noShow }
-                    ].filter(d => d.value > 0)}
-                    cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                  >
-                    {COLORS.map((color, index) => (<Cell key={`cell-${index}`} fill={color} />))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
+              {(stats.summary.gewonnen > 0 || stats.summary.verloren > 0 || stats.summary.offen > 0) ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={[
+                        { name: 'Gewonnen', value: stats.summary.gewonnen },
+                        { name: 'Verloren', value: stats.summary.verloren },
+                        { name: 'Offen', value: stats.summary.offen },
+                        { name: 'No-Show', value: stats.summary.noShow }
+                      ].filter(d => d.value > 0)}
+                      cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
+                      label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    >
+                      {COLORS.map((color, index) => (<Cell key={`cell-${index}`} fill={color} />))}
+                    </Pie>
+                    <Tooltip />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[250px] text-gray-400">
+                  <div className="text-center">
+                    <Target className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Keine Deals im ausgewählten Zeitraum</p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
           {/* Per Closer Stats (Admin only) */}
-          {isAdmin() && stats.perUser && stats.perUser.length > 0 && (
+          {isAdmin() && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Performance pro Closer</h3>
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={stats.perUser.slice(0, 10)} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                  <Tooltip formatter={(value, name) => [name === 'umsatz' ? formatCurrency(value) : value, name === 'umsatz' ? 'Umsatz' : name === 'gewonnen' ? 'Gewonnen' : 'Verloren']} />
-                  <Legend />
-                  <Bar dataKey="gewonnen" name="Gewonnen" fill="#10B981" stackId="a" />
-                  <Bar dataKey="verloren" name="Verloren" fill="#EF4444" stackId="a" />
-                </BarChart>
-              </ResponsiveContainer>
+              {stats.perUser && stats.perUser.length > 0 ? (
+                <ResponsiveContainer width="100%" height={Math.max(200, stats.perUser.length * 50)}>
+                  <BarChart data={stats.perUser.slice(0, 10)} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+                    <XAxis type="number" />
+                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
+                    <Tooltip formatter={(value, name) => [name === 'umsatz' ? formatCurrency(value) : value, name === 'umsatz' ? 'Umsatz' : name === 'gewonnen' ? 'Gewonnen' : 'Verloren']} />
+                    <Legend />
+                    <Bar dataKey="gewonnen" name="Gewonnen" fill="#10B981" stackId="a" />
+                    <Bar dataKey="verloren" name="Verloren" fill="#EF4444" stackId="a" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[150px] text-gray-400">
+                  <div className="text-center">
+                    <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">Keine Closer-Daten im ausgewählten Zeitraum</p>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </>
