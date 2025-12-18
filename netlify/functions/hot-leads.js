@@ -232,11 +232,22 @@ exports.handler = async (event) => {
         originalLeadId,     // Link zu Immobilienmakler_Leads
         setterName,         // Name des Setters (Text)
         closerName,         // Name des Closers (Text)
+        setterId,           // Optional: Record-ID des Setters
+        closerId,           // Optional: Record-ID des Closers
         unternehmen,        // Firmenname
         terminDatum,        // Termin-Zeitpunkt
         quelle,             // z.B. "Cold Calling"
         infosErstgespraech  // Notizen vom Setter (Problemstellung etc.)
       } = body
+
+      console.log('Hot Lead POST - Input:', { 
+        originalLeadId, 
+        setterName, 
+        closerName, 
+        setterId, 
+        closerId,
+        terminDatum 
+      })
 
       // Validierung
       if (!originalLeadId) {
@@ -247,11 +258,19 @@ exports.handler = async (event) => {
         }
       }
 
-      if (!setterName || !closerName) {
+      if (!setterName && !setterId) {
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'setterName und closerName sind erforderlich' })
+          body: JSON.stringify({ error: 'setterName oder setterId ist erforderlich' })
+        }
+      }
+
+      if (!closerName && !closerId) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'closerName oder closerId ist erforderlich' })
         }
       }
 
@@ -263,15 +282,50 @@ exports.handler = async (event) => {
         }
       }
 
-      // Hot Lead Felder - Setter/Closer als Text (konsistent mit bestehenden Daten)
+      // User-Namen laden um Record-IDs zu finden falls nur Namen gegeben
+      const userNames = await loadUserNames(airtableHeaders)
+      
+      // Name → Record-ID Mapping erstellen (umgekehrte Suche)
+      const nameToId = {}
+      for (const [id, name] of Object.entries(userNames)) {
+        nameToId[name.toLowerCase()] = id
+      }
+
+      // Setter Record-ID ermitteln
+      let setterRecordId = setterId
+      if (!setterRecordId && setterName) {
+        setterRecordId = nameToId[setterName.toLowerCase()]
+        console.log('Setter Name → ID:', setterName, '→', setterRecordId)
+      }
+
+      // Closer Record-ID ermitteln
+      let closerRecordId = closerId
+      if (!closerRecordId && closerName) {
+        closerRecordId = nameToId[closerName.toLowerCase()]
+        console.log('Closer Name → ID:', closerName, '→', closerRecordId)
+      }
+
+      // Hot Lead Felder - Setter/Closer als Linked Records (Array mit Record-IDs)
       const fields = {
         'Immobilienmakler_Leads': [originalLeadId],
-        'Setter': setterName,      // Text-Feld
-        'Closer': closerName,      // Text-Feld
         'Unternehmen': unternehmen || '',
         'Termin_Beratungsgespräch': terminDatum,
-        'Status': 'Lead',          // Konsistent mit bestehenden Status-Werten
+        'Status': 'Lead',
         'Quelle': quelle || 'Cold Calling'
+      }
+
+      // Setter als Linked Record oder Text (je nachdem was funktioniert)
+      if (setterRecordId) {
+        fields['Setter'] = [setterRecordId]  // Linked Record Format
+      } else if (setterName) {
+        fields['Setter'] = setterName        // Fallback: Text
+      }
+
+      // Closer als Linked Record oder Text
+      if (closerRecordId) {
+        fields['Closer'] = [closerRecordId]  // Linked Record Format
+      } else if (closerName) {
+        fields['Closer'] = closerName        // Fallback: Text
       }
 
       // Optionale Felder
@@ -279,7 +333,7 @@ exports.handler = async (event) => {
         fields['Kommentar'] = `--- Infos aus Erstgespräch ---\n${infosErstgespraech}`
       }
 
-      console.log('Creating Hot Lead:', fields)
+      console.log('Creating Hot Lead with fields:', JSON.stringify(fields, null, 2))
 
       const response = await fetch(TABLE_URL, {
         method: 'POST',
@@ -289,7 +343,36 @@ exports.handler = async (event) => {
 
       if (!response.ok) {
         const error = await response.json()
-        console.error('Airtable Error:', error)
+        console.error('Airtable Error:', JSON.stringify(error, null, 2))
+        
+        // Falls Linked Record fehlschlägt, versuche mit Text-Feldern
+        if (error.error?.type === 'INVALID_VALUE_FOR_COLUMN') {
+          console.log('Retrying with text fields instead of linked records...')
+          
+          // Zurück zu Text-Feldern
+          if (setterRecordId) fields['Setter'] = setterName
+          if (closerRecordId) fields['Closer'] = closerName
+          
+          const retryResponse = await fetch(TABLE_URL, {
+            method: 'POST',
+            headers: airtableHeaders,
+            body: JSON.stringify({ fields })
+          })
+          
+          if (retryResponse.ok) {
+            const data = await retryResponse.json()
+            return {
+              statusCode: 201,
+              headers: corsHeaders,
+              body: JSON.stringify({
+                success: true,
+                message: 'Hot Lead erfolgreich erstellt (mit Text-Feldern)',
+                hotLeadId: data.id
+              })
+            }
+          }
+        }
+        
         throw new Error(error.error?.message || 'Hot Lead konnte nicht erstellt werden')
       }
 
