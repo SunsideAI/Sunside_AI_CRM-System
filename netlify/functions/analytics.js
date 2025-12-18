@@ -140,11 +140,27 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
     const kundeSeit = fields['Kunde seit'] || fields.Kunde_seit || null
     const terminDatum = fields.Termin_Beratungsgespräch || null
     
-    // Closer Name (Text-Feld, nicht E-Mail!)
-    const closerName = fields.Closer || ''
+    // Closer - kann Text ODER Linked Record (Array) sein
+    // Bei Linked Record: Array mit Record IDs wie ["recXYZ123"]
+    // Bei Text: String wie "Paul Probodziak"
+    let closerId = null
+    let closerName = ''
+    if (Array.isArray(fields.Closer) && fields.Closer.length > 0) {
+      // Linked Record - ID speichern
+      closerId = fields.Closer[0]
+      closerName = closerId // Temporär, wird später durch Namen ersetzt
+    } else if (typeof fields.Closer === 'string') {
+      // Text-Feld
+      closerName = fields.Closer
+    }
     
-    // Setter Name (Text-Feld)
-    const setterName = fields.Setter || ''
+    // Setter - gleiche Logik
+    let setterName = ''
+    if (Array.isArray(fields.Setter) && fields.Setter.length > 0) {
+      setterName = fields.Setter[0]
+    } else if (typeof fields.Setter === 'string') {
+      setterName = fields.Setter
+    }
 
     // Prüfen ob es ein gewonnener Deal ist
     const istGewonnen = status.includes('abgeschlossen')
@@ -253,11 +269,31 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
   // Zeitverlauf formatieren - mit Zeitraum-Parametern
   const zeitverlauf = formatZeitverlauf(zeitverlaufMap, startDate, endDate)
 
-  // Per User formatieren und sortieren (nach Namen, nicht E-Mail)
-  const perUser = Object.entries(perUserMap).map(([name, stats]) => ({
-    name,
-    ...stats
-  })).sort((a, b) => b.umsatz - a.umsatz)
+  // Per User: Namen aus User_Datenbank holen falls Record IDs verwendet wurden
+  let perUser = []
+  if (Object.keys(perUserMap).length > 0) {
+    // Prüfen ob es Record IDs sind (starten mit "rec")
+    const keys = Object.keys(perUserMap)
+    const hasRecordIds = keys.some(k => k.startsWith('rec'))
+    
+    if (hasRecordIds) {
+      // Namen aus User_Datenbank holen
+      const userNames = await getUserNames(keys)
+      perUser = Object.entries(perUserMap).map(([id, stats]) => ({
+        name: userNames[id] || id, // Fallback auf ID wenn Name nicht gefunden
+        ...stats
+      }))
+    } else {
+      // Bereits Namen (Text-Felder)
+      perUser = Object.entries(perUserMap).map(([name, stats]) => ({
+        name,
+        ...stats
+      }))
+    }
+    
+    // Nach Umsatz sortieren
+    perUser.sort((a, b) => b.umsatz - a.umsatz)
+  }
 
   return {
     summary: {
