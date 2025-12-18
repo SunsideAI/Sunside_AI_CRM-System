@@ -387,10 +387,10 @@ function Closing() {
                 {isAdmin() && viewMode === 'all' ? (
                   <>
                     <div className="col-span-1">Closer</div>
-                    <div className="col-span-1">Setter</div>
+                    <div className="col-span-1">Coldcaller</div>
                   </>
                 ) : (
-                  <div className="col-span-2">Setter</div>
+                  <div className="col-span-2">Coldcaller</div>
                 )}
                 <div className="col-span-1"></div>
               </div>
@@ -438,7 +438,7 @@ function Closing() {
                         </div>
                       )}
 
-                      {/* Setter */}
+                      {/* Coldcaller */}
                       <div className={`hidden md:block ${isAdmin() && viewMode === 'all' ? 'col-span-1' : 'col-span-2'}`}>
                         <p className="text-gray-600 text-sm">{safeString(lead.setterName) || '-'}</p>
                       </div>
@@ -634,7 +634,7 @@ function Closing() {
                 <div>
                   <h4 className="text-sm font-medium text-gray-500 mb-3">Zuständig</h4>
                   <div className="space-y-1 text-sm">
-                    <p><span className="text-gray-500">Setter:</span> <span className="text-gray-900">{safeString(selectedLead.setterName) || '-'}</span></p>
+                    <p><span className="text-gray-500">Coldcaller:</span> <span className="text-gray-900">{safeString(selectedLead.setterName) || '-'}</span></p>
                     <p><span className="text-gray-500">Closer:</span> <span className="text-gray-900">{safeString(selectedLead.closerName) || '-'}</span></p>
                   </div>
                 </div>
