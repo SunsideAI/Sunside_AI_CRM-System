@@ -1188,7 +1188,7 @@ function ClosingAnalytics({ user, isAdmin }) {
                 <div className="flex items-center justify-center h-[250px] text-gray-400">
                   <div className="text-center">
                     <DollarSign className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Keine Closings im ausgewählten Zeitraum</p>
+                    <p className="text-sm">Keine Abschlüsse im ausgewählten Zeitraum</p>
                   </div>
                 </div>
               )}
