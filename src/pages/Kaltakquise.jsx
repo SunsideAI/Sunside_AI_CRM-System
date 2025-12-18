@@ -104,7 +104,7 @@ function Kaltakquise() {
     try {
       const params = new URLSearchParams()
       params.append('userName', user?.vor_nachname || '')
-      params.append('userRole', isAdmin() ? 'Admin' : 'Setter')
+      params.append('userRole', isAdmin() ? 'Admin' : 'Coldcaller')
       params.append('view', viewMode)
       params.append('limit', '50')
       
