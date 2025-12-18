@@ -217,8 +217,9 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             originalLeadId: lead.id,
-            setterId: user?.id,
-            closerId: selectedCloser.id,
+            // Namen senden (konsistent mit bestehenden Daten)
+            setterName: user?.vor_nachname || user?.name || '',
+            closerName: selectedCloser.vor_nachname || '',
             unternehmen: unternehmensname,
             terminDatum: selectedSlot.start,
             quelle: 'Cold Calling',
