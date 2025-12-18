@@ -526,11 +526,17 @@ function MeineLeadsImClosing({ userId, userName }) {
               placeholder="Lead suchen (Name, Firma, Ort, E-Mail...)"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
+              onClick={(e) => e.stopPropagation()}
               className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             />
             {searchTerm && (
               <button
-                onClick={() => setSearchTerm('')}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setSearchTerm('')
+                }}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               >
                 <X className="w-4 h-4" />
@@ -547,7 +553,11 @@ function MeineLeadsImClosing({ userId, userName }) {
               <>
                 <p className="text-gray-500">Keine Leads gefunden für "{searchTerm}"</p>
                 <button 
-                  onClick={() => setSearchTerm('')}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    setSearchTerm('')
+                  }}
                   className="text-purple-600 hover:text-purple-700 text-sm mt-2"
                 >
                   Suche zurücksetzen
@@ -566,7 +576,11 @@ function MeineLeadsImClosing({ userId, userName }) {
               {paginatedLeads.map((lead) => (
                 <div 
                   key={lead.id} 
-                  onClick={() => openLeadModal(lead)}
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    openLeadModal(lead)
+                  }}
                   className="p-4 hover:bg-gray-50 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center justify-between">
@@ -618,7 +632,11 @@ function MeineLeadsImClosing({ userId, userName }) {
                 </span>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setCurrentPage(p => Math.max(1, p - 1))
+                    }}
                     disabled={currentPage === 1}
                     className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -628,7 +646,11 @@ function MeineLeadsImClosing({ userId, userName }) {
                     Seite {currentPage} von {totalPages}
                   </span>
                   <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault()
+                      setCurrentPage(p => Math.min(totalPages, p + 1))
+                    }}
                     disabled={currentPage === totalPages}
                     className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
@@ -648,11 +670,18 @@ function MeineLeadsImClosing({ userId, userName }) {
             {/* Backdrop */}
             <div 
               className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity"
-              onClick={closeModal}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                closeModal()
+              }}
             />
 
             {/* Modal */}
-            <div className="relative bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 overflow-hidden transform transition-all">
+            <div 
+              className="relative bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 overflow-hidden transform transition-all"
+              onClick={(e) => e.stopPropagation()}
+            >
               {/* Header */}
               <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between bg-gray-50">
                 <div className="flex items-center gap-3">
@@ -665,7 +694,12 @@ function MeineLeadsImClosing({ userId, userName }) {
                   </div>
                 </div>
                 <button
-                  onClick={closeModal}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    closeModal()
+                  }}
                   className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
                 >
                   <X className="w-5 h-5 text-gray-500" />
@@ -806,7 +840,12 @@ function MeineLeadsImClosing({ userId, userName }) {
               {/* Footer */}
               <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end">
                 <button
-                  onClick={closeModal}
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    e.stopPropagation()
+                    closeModal()
+                  }}
                   className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                 >
                   Schließen
