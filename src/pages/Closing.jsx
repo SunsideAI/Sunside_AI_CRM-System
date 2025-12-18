@@ -68,6 +68,7 @@ const PAKET_OPTIONS = [
 // Status-Optionen für Dropdown
 const STATUS_OPTIONS = [
   { value: 'Lead', label: 'Lead', color: 'bg-blue-100 text-blue-700' },
+  { value: 'Angebot', label: 'Angebot', color: 'bg-yellow-100 text-yellow-700' },
   { value: 'Angebot versendet', label: 'Angebot versendet', color: 'bg-purple-100 text-purple-700' },
   { value: 'Abgeschlossen', label: 'Abgeschlossen', color: 'bg-green-100 text-green-700' },
   { value: 'Verloren', label: 'Verloren', color: 'bg-red-100 text-red-700' }
@@ -159,7 +160,7 @@ function Closing() {
           updates: {
             setup: parseFloat(angebotData.setup),
             retainer: parseFloat(angebotData.retainer),
-            status: 'Angebot versendet'
+            status: 'Angebot'  // Zapier sendet dann das Angebot und setzt auf "Angebot versendet"
           }
         })
       })
@@ -175,7 +176,7 @@ function Closing() {
               ...lead, 
               setup: parseFloat(angebotData.setup),
               retainer: parseFloat(angebotData.retainer),
-              status: 'Angebot versendet'
+              status: 'Angebot'
             }
           : lead
       ))
@@ -185,7 +186,7 @@ function Closing() {
         ...prev,
         setup: parseFloat(angebotData.setup),
         retainer: parseFloat(angebotData.retainer),
-        status: 'Angebot versendet'
+        status: 'Angebot'
       }))
       
       // View zurücksetzen
@@ -1041,7 +1042,7 @@ function Closing() {
                     ) : (
                       <>
                         <Send className="w-4 h-4 mr-2" />
-                        Angebot senden
+                        Angebot speichern
                       </>
                     )}
                   </button>
