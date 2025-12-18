@@ -117,18 +117,19 @@ exports.handler = async (event) => {
         // Filter bauen
         const filters = []
         
-        // Setter-Filter: Unterstützt sowohl ID (für neue Daten) als auch Name (für bestehende Daten)
+        // Setter-Filter: Unterstützt Text-Felder UND Linked Records
         if (setterName) {
-          // Nach Name filtern (bestehende Daten haben Text im Setter-Feld)
-          filters.push(`FIND("${setterName}", {Setter})`)
+          // OR-Kombination: Suche im Text-Feld ODER im Linked Record Namen
+          filters.push(`OR(FIND("${setterName}", {Setter}), FIND("${setterName}", ARRAYJOIN({Setter}, ",")))`)
         } else if (setterId) {
           // Nach ID filtern (für zukünftige Daten mit Link-Feldern)
           filters.push(`FIND("${setterId}", ARRAYJOIN({Setter}, ","))`)
         }
         
-        // Closer-Filter: Unterstützt sowohl ID als auch Name
+        // Closer-Filter: Unterstützt Text-Felder UND Linked Records
         if (closerName) {
-          filters.push(`FIND("${closerName}", {Closer})`)
+          // OR-Kombination: Suche im Text-Feld ODER im Linked Record Namen
+          filters.push(`OR(FIND("${closerName}", {Closer}), FIND("${closerName}", ARRAYJOIN({Closer}, ",")))`)
         } else if (closerId) {
           filters.push(`FIND("${closerId}", ARRAYJOIN({Closer}, ","))`)
         }
