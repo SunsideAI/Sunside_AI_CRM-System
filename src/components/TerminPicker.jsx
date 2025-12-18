@@ -205,10 +205,38 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
           historyEntry: {
             action: 'termin',
             details: `Termin gebucht: ${formatDate(selectedDate)} um ${selectedSlot.startTime} Uhr mit ${selectedCloser.vor_nachname}`,
-            userName: user?.name || 'Unbekannt'
+            userName: user?.vor_nachname || user?.name || 'Unbekannt'
           }
         })
       })
+
+      // 3. Hot Lead in Airtable erstellen
+      try {
+        const hotLeadResponse = await fetch('/.netlify/functions/hot-leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            originalLeadId: lead.id,
+            setterId: user?.id,
+            closerId: selectedCloser.id,
+            unternehmen: unternehmensname,
+            terminDatum: selectedSlot.start,
+            quelle: 'Cold Calling',
+            infosErstgespraech: `Ansprechpartner: ${ansprechpartnerVorname} ${ansprechpartnerNachname}\nTätigkeit: ${taetigkeit}\n\nProblemstellung & Ziele:\n${problemstellung}`
+          })
+        })
+
+        const hotLeadData = await hotLeadResponse.json()
+        
+        if (hotLeadResponse.ok) {
+          console.log('Hot Lead erstellt:', hotLeadData.hotLeadId)
+        } else {
+          console.warn('Hot Lead Erstellung fehlgeschlagen:', hotLeadData.error)
+        }
+      } catch (hotLeadError) {
+        // Hot Lead Fehler nur loggen, nicht abbrechen
+        console.warn('Hot Lead Erstellung fehlgeschlagen:', hotLeadError)
+      }
       
       setTimeout(() => {
         onTerminBooked && onTerminBooked({
