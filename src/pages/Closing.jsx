@@ -293,15 +293,6 @@ function Closing() {
               </button>
             </div>
           )}
-          
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-            Aktualisieren
-          </button>
         </div>
       </div>
 
@@ -349,6 +340,15 @@ function Closing() {
               ))}
             </select>
           </div>
+
+          {/* Aktualisieren */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            <RefreshCw className={`w-5 h-5 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
         </div>
       </div>
 
