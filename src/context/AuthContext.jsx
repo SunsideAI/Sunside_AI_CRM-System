@@ -29,31 +29,15 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('sunside_user')
   }
 
-  // Rollen-Mapping: Airtable "Coldcaller" → App "Setter"
-  const normalizeRole = (role) => {
-    if (role === 'Coldcaller') return 'Setter'
-    return role
-  }
-
-  // Normalisierte Rollen
-  const getNormalizedRoles = () => {
-    if (!user?.rolle) return []
-    return user.rolle.map(normalizeRole)
-  }
-
   // Prüft ob User eine bestimmte Rolle hat
   const hasRole = (role) => {
-    const normalizedRoles = getNormalizedRoles()
-    // "Setter" matcht sowohl "Setter" als auch "Coldcaller"
-    if (role === 'Setter') {
-      return normalizedRoles.includes('Setter') || user?.rolle?.includes('Coldcaller')
-    }
-    return normalizedRoles.includes(role)
+    if (!user?.rolle) return false
+    return user.rolle.includes(role)
   }
 
   // Convenience-Funktionen
   const isAdmin = () => hasRole('Admin')
-  const isSetter = () => hasRole('Setter')
+  const isColdcaller = () => hasRole('Coldcaller')
   const isCloser = () => hasRole('Closer')
 
   const value = {
@@ -64,9 +48,8 @@ export function AuthProvider({ children }) {
     isAuthenticated: !!user,
     hasRole,
     isAdmin,
-    isSetter,
-    isCloser,
-    getNormalizedRoles
+    isColdcaller,
+    isCloser
   }
 
   return (
