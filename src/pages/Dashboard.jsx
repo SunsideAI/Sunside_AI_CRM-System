@@ -69,11 +69,11 @@ function Dashboard() {
   const { user, hasRole } = useAuth()
   const [activeView, setActiveView] = useState('uebersicht')
   
-  const isSetter = () => hasRole('Setter')
+  const isColdcaller = () => hasRole('Coldcaller')
   const isCloser = () => hasRole('Closer')
   const isAdmin = () => hasRole('Admin')
 
-  const showKaltakquiseTab = isSetter() || isAdmin()
+  const showKaltakquiseTab = isColdcaller() || isAdmin()
   const showClosingTab = isCloser() || isAdmin()
 
   return (
@@ -135,7 +135,7 @@ function Dashboard() {
 
       {/* Content */}
       {activeView === 'uebersicht' && (
-        <UebersichtContent user={user} isSetter={isSetter} isCloser={isCloser} isAdmin={isAdmin} />
+        <UebersichtContent user={user} isColdcaller={isColdcaller} isCloser={isCloser} isAdmin={isAdmin} />
       )}
       {activeView === 'kaltakquise' && (
         <KaltakquiseAnalytics user={user} isAdmin={isAdmin} />
@@ -150,7 +150,7 @@ function Dashboard() {
 // ==========================================
 // ÜBERSICHT CONTENT
 // ==========================================
-function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
+function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
   const [data, setData] = useState({
@@ -180,7 +180,7 @@ function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
     try {
       const params = new URLSearchParams()
       params.append('userName', user?.vor_nachname || '')
-      params.append('userRole', isAdmin() ? 'Admin' : isSetter() ? 'Setter' : 'Closer')
+      params.append('userRole', isAdmin() ? 'Admin' : isColdcaller() ? 'Coldcaller' : 'Closer')
 
       const response = await fetch(`/.netlify/functions/dashboard?${params.toString()}`)
       const result = await response.json()
@@ -214,14 +214,14 @@ function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
       value: initialLoading ? '...' : data.zugewiesenLeads.toLocaleString('de-DE'),
       icon: Users,
       color: 'bg-blue-500',
-      show: isSetter() || isAdmin()
+      show: isColdcaller() || isAdmin()
     },
     {
       name: 'Calls heute',
       value: initialLoading ? '...' : data.callsHeute.toLocaleString('de-DE'),
       icon: Phone,
       color: 'bg-green-500',
-      show: isSetter() || isAdmin()
+      show: isColdcaller() || isAdmin()
     },
     {
       name: 'Termine diese Woche',
@@ -246,7 +246,7 @@ function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
       path: '/kaltakquise',
       icon: Phone,
       color: 'text-green-600 bg-green-100',
-      show: isSetter() || isAdmin()
+      show: isColdcaller() || isAdmin()
     },
     {
       name: 'Closing vorbereiten',
@@ -332,8 +332,8 @@ function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
         </div>
       )}
 
-      {/* Meine Leads im Closing - nur für Setter/Admin */}
-      {(isSetter() || isAdmin()) && (
+      {/* Meine Leads im Closing - nur für Coldcaller/Admin */}
+      {(isColdcaller() || isAdmin()) && (
         <MeineLeadsImClosing userId={user?.id} userName={user?.vor_nachname} />
       )}
     </div>
@@ -341,7 +341,7 @@ function UebersichtContent({ user, isSetter, isCloser, isAdmin }) {
 }
 
 // ==========================================
-// MEINE LEADS IM CLOSING (für Setter)
+// MEINE LEADS IM CLOSING (für Coldcaller)
 // ==========================================
 // ==========================================
 // MEINE LEADS IM CLOSING
@@ -726,7 +726,7 @@ function MeineLeadsImClosing({ userId, userName }) {
               <div>
                 <h4 className="text-sm font-medium text-gray-500 mb-2">Zuständig</h4>
                 <div className="space-y-1">
-                  {selectedLead.setterName && <p className="text-gray-900">Setter: {selectedLead.setterName}</p>}
+                  {selectedLead.setterName && <p className="text-gray-900">Coldcaller: {selectedLead.setterName}</p>}
                   {selectedLead.closerName && <p className="text-gray-900">Closer: {selectedLead.closerName}</p>}
                 </div>
               </div>
