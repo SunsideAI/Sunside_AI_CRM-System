@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import { 
   Calendar, 
   Users,
+  User as UserIcon,
   Target,
   Search,
   X,
@@ -42,12 +43,13 @@ function Closing() {
   const [editData, setEditData] = useState({})
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
+  const [viewMode, setViewMode] = useState('own') // 'own' oder 'all' (für Admins)
 
   const LEADS_PER_PAGE = 10
 
   useEffect(() => {
     loadLeads()
-  }, [user])
+  }, [user, viewMode])
 
   const loadLeads = async () => {
     if (!user) return
@@ -56,11 +58,19 @@ function Closing() {
       setLoading(true)
       setError(null)
 
-      // Für Closer: Nur eigene Leads, für Admin: Alle
-      const closerName = isAdmin() ? '' : (user.vor_nachname || user.name)
-      const url = closerName 
-        ? `/.netlify/functions/hot-leads?closerName=${encodeURIComponent(closerName)}`
-        : '/.netlify/functions/hot-leads'
+      // Closer sehen nur eigene Leads
+      // Admin: Je nach viewMode eigene oder alle
+      const userName = user.vor_nachname || user.name
+      let url = '/.netlify/functions/hot-leads'
+      
+      if (!isAdmin()) {
+        // Closer: Immer nur eigene Leads (nach closerName filtern)
+        url += `?closerName=${encodeURIComponent(userName)}`
+      } else if (viewMode === 'own') {
+        // Admin mit "Meine Leads": Nach closerName filtern
+        url += `?closerName=${encodeURIComponent(userName)}`
+      }
+      // Admin mit "Alle Leads": Kein Filter, alle Hot Leads laden
 
       const response = await fetch(url)
       const data = await response.json()
@@ -244,21 +254,55 @@ function Closing() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Closing</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Closing
+            {isAdmin() && viewMode === 'all' && ' (alle Leads)'}
+          </h1>
           <p className="mt-1 text-gray-500">
-            {isAdmin() ? 'Alle Leads im Closing-Prozess' : 'Deine Leads im Closing-Prozess'}
+            {viewMode === 'own' ? 'Deine Leads im Closing-Prozess' : 'Alle Leads im Closing-Prozess'}
           </p>
         </div>
-        <button
-          onClick={handleRefresh}
-          disabled={refreshing}
-          className="flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-        >
-          <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-          Aktualisieren
-        </button>
+        
+        <div className="flex items-center gap-3">
+          {/* Toggle für Admins: Meine / Alle Leads */}
+          {isAdmin() && (
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => { setViewMode('own'); setCurrentPage(1); }}
+                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'own' 
+                    ? 'bg-white text-purple-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <UserIcon className="w-4 h-4 mr-1.5" />
+                Meine Leads
+              </button>
+              <button
+                onClick={() => { setViewMode('all'); setCurrentPage(1); }}
+                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'all' 
+                    ? 'bg-white text-purple-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Users className="w-4 h-4 mr-1.5" />
+                Alle Leads
+              </button>
+            </div>
+          )}
+          
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw className={`w-4 h-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+            Aktualisieren
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -336,11 +380,18 @@ function Closing() {
             <div>
               {/* Tabellen-Header */}
               <div className="hidden md:grid md:grid-cols-12 gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-500">
-                <div className="col-span-3">Unternehmen</div>
+                <div className={isAdmin() && viewMode === 'all' ? 'col-span-3' : 'col-span-3'}>Unternehmen</div>
                 <div className="col-span-2">Ansprechpartner</div>
                 <div className="col-span-2">Termin</div>
                 <div className="col-span-2">Status</div>
-                <div className="col-span-2">Setter</div>
+                {isAdmin() && viewMode === 'all' ? (
+                  <>
+                    <div className="col-span-1">Closer</div>
+                    <div className="col-span-1">Setter</div>
+                  </>
+                ) : (
+                  <div className="col-span-2">Setter</div>
+                )}
                 <div className="col-span-1"></div>
               </div>
 
@@ -380,8 +431,15 @@ function Closing() {
                         </span>
                       </div>
 
+                      {/* Closer - nur bei "Alle Leads" für Admins */}
+                      {isAdmin() && viewMode === 'all' && (
+                        <div className="col-span-1 hidden md:block">
+                          <p className="text-gray-600 text-sm">{safeString(lead.closerName) || '-'}</p>
+                        </div>
+                      )}
+
                       {/* Setter */}
-                      <div className="col-span-2 hidden md:block">
+                      <div className={`hidden md:block ${isAdmin() && viewMode === 'all' ? 'col-span-1' : 'col-span-2'}`}>
                         <p className="text-gray-600 text-sm">{safeString(lead.setterName) || '-'}</p>
                       </div>
 
