@@ -1236,8 +1236,9 @@ function ClosingAnalytics({ user, isAdmin }) {
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                     <XAxis type="number" />
                     <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                    <Tooltip formatter={(value, name) => [name === 'umsatz' ? formatCurrency(value) : value, name === 'umsatz' ? 'Umsatz' : name === 'gewonnen' ? 'Gewonnen' : 'Verloren']} />
+                    <Tooltip formatter={(value, name) => [name === 'umsatz' ? formatCurrency(value) : value, name === 'umsatz' ? 'Umsatz' : name === 'gewonnen' ? 'Gewonnen' : name === 'verloren' ? 'Verloren' : 'Offen']} />
                     <Legend />
+                    <Bar dataKey="offen" name="Offen" fill="#6B7280" stackId="a" />
                     <Bar dataKey="gewonnen" name="Gewonnen" fill="#10B981" stackId="a" />
                     <Bar dataKey="verloren" name="Verloren" fill="#EF4444" stackId="a" />
                   </BarChart>
