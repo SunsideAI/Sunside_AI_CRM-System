@@ -366,8 +366,12 @@ function Closing() {
 
   const openModal = (lead) => {
     setSelectedLead(lead)
+    // Für Edit-Mode: Wenn Status bereits final, beibehalten - sonst "Abgeschlossen" als Default
+    const editStatus = (lead.status === 'Abgeschlossen' || lead.status === 'Verloren') 
+      ? lead.status 
+      : 'Abgeschlossen'
     setEditData({
-      status: lead.status || 'Lead',
+      status: editStatus,
       setup: lead.setup || 0,
       retainer: lead.retainer || 0,
       laufzeit: lead.laufzeit || 6,
@@ -884,15 +888,15 @@ function Closing() {
                    NORMALE LEAD-DETAIL-ANSICHT
                    ======================================== */
                 <div className="px-6 py-6 space-y-6">
-                  {/* Angebot versenden Button */}
-                  {selectedLead.status === 'Lead' && !editMode && (
+                  {/* Angebot versenden Button - immer sichtbar (auch für erneutes Angebot) */}
+                  {!editMode && (
                     <button
                       type="button"
                       onClick={() => setShowAngebotView(true)}
                       className="w-full flex items-center justify-center px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
                     >
                       <Send className="w-4 h-4 mr-2" />
-                      Angebot versenden
+                      {selectedLead.status === 'Lead' ? 'Angebot versenden' : 'Neues Angebot versenden'}
                     </button>
                   )}
 
@@ -905,9 +909,9 @@ function Closing() {
                         onChange={(e) => handleEditChange('status', e.target.value)}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                       >
-                        {STATUS_OPTIONS.map(option => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
+                        {/* Nur finale Status erlaubt */}
+                        <option value="Abgeschlossen">Abgeschlossen</option>
+                        <option value="Verloren">Verloren</option>
                       </select>
                     ) : (
                       <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getStatusStyle(selectedLead.status)}`}>
