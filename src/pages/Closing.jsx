@@ -174,17 +174,19 @@ function Closing() {
       }
 
       // Kommentar im Original-Lead (Immobilienmakler_Leads) hinzufügen
+      console.log('Original Lead ID:', selectedLead.originalLeadId)
       if (selectedLead.originalLeadId) {
         const paketInfo = PAKET_OPTIONS.find(p => p.value === angebotData.paket)?.label || 'Individuell'
         const kommentarText = `Angebot versendet - ${paketInfo}: Setup ${angebotData.setup}€, Retainer ${angebotData.retainer}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
         const userName = user?.vor_nachname || user?.name || 'Closer'
         
         try {
-          await fetch('/.netlify/functions/leads', {
+          const kommentarResponse = await fetch('/.netlify/functions/leads', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               leadId: selectedLead.originalLeadId,
+              updates: {},  // Leeres Objekt, da wir nur historyEntry brauchen
               historyEntry: {
                 action: 'angebot',
                 details: kommentarText,
@@ -192,10 +194,17 @@ function Closing() {
               }
             })
           })
+          console.log('Kommentar Response:', kommentarResponse.ok)
+          if (!kommentarResponse.ok) {
+            const errorData = await kommentarResponse.json()
+            console.error('Kommentar-Update Error:', errorData)
+          }
         } catch (kommentarErr) {
           console.warn('Kommentar-Update fehlgeschlagen:', kommentarErr)
           // Nicht abbrechen, Hot Lead wurde bereits aktualisiert
         }
+      } else {
+        console.warn('Kein originalLeadId vorhanden - Kommentar wird nicht aktualisiert')
       }
       
       // Lead in Liste aktualisieren
@@ -220,9 +229,12 @@ function Closing() {
         status: 'Angebot'
       }))
       
-      // View zurücksetzen
+      // View zurücksetzen und Erfolgsmeldung zeigen
       setShowAngebotView(false)
       setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
+      
+      // Kurze Erfolgsmeldung
+      alert('✅ Angebot wird versendet!')
       
     } catch (err) {
       console.error('Fehler beim Senden des Angebots:', err)
@@ -366,12 +378,9 @@ function Closing() {
 
   const openModal = (lead) => {
     setSelectedLead(lead)
-    // Für Edit-Mode: Wenn Status bereits final, beibehalten - sonst "Abgeschlossen" als Default
-    const editStatus = (lead.status === 'Abgeschlossen' || lead.status === 'Verloren') 
-      ? lead.status 
-      : 'Abgeschlossen'
+    // Für Edit-Mode: Status leer lassen, damit User aktiv wählen muss
     setEditData({
-      status: editStatus,
+      status: '',  // Leer - User muss wählen
       setup: lead.setup || 0,
       retainer: lead.retainer || 0,
       laufzeit: lead.laufzeit || 6,
@@ -909,7 +918,8 @@ function Closing() {
                         onChange={(e) => handleEditChange('status', e.target.value)}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                       >
-                        {/* Nur finale Status erlaubt */}
+                        {/* Leere Option als Default */}
+                        <option value="">Status wählen...</option>
                         <option value="Abgeschlossen">Abgeschlossen</option>
                         <option value="Verloren">Verloren</option>
                       </select>
@@ -1068,12 +1078,12 @@ function Closing() {
                     {sendingAngebot ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Wird gespeichert...
+                        Angebot wird versendet...
                       </>
                     ) : (
                       <>
                         <Send className="w-4 h-4 mr-2" />
-                        Angebot speichern
+                        Angebot versenden
                       </>
                     )}
                   </button>
@@ -1091,8 +1101,8 @@ function Closing() {
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={saving}
-                    className="flex items-center px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                    disabled={saving || !editData.status}
+                    className="flex items-center px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {saving ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
