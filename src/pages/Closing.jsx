@@ -23,7 +23,8 @@ import {
   Send,
   FileText,
   Euro,
-  Package
+  Package,
+  CheckCircle
 } from 'lucide-react'
 
 // Paket-Optionen für Angebot
@@ -88,6 +89,7 @@ function Closing() {
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState('own') // 'own' oder 'all' (für Admins)
+  const [successMessage, setSuccessMessage] = useState('') // Toast-Nachricht
   
   // Angebot-View State (innerhalb des Modals)
   const [showAngebotView, setShowAngebotView] = useState(false)
@@ -100,6 +102,12 @@ function Closing() {
   const [sendingAngebot, setSendingAngebot] = useState(false)
 
   const LEADS_PER_PAGE = 10
+
+  // Toast-Helper: Zeigt Nachricht und blendet nach 4 Sekunden aus
+  const showToast = (message) => {
+    setSuccessMessage(message)
+    setTimeout(() => setSuccessMessage(''), 4000)
+  }
 
   // Retainer aus Setup berechnen (Setup / 2.75, abgerundet auf gerade Beträge, max 10% nach unten)
   const calculateRetainer = (setup) => {
@@ -233,12 +241,12 @@ function Closing() {
       setShowAngebotView(false)
       setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
       
-      // Kurze Erfolgsmeldung
-      alert('✅ Angebot wird versendet!')
+      // Toast-Nachricht
+      showToast('Angebot wird versendet!')
       
     } catch (err) {
       console.error('Fehler beim Senden des Angebots:', err)
-      alert('Fehler beim Senden des Angebots')
+      showToast('Fehler beim Senden des Angebots')
     } finally {
       setSendingAngebot(false)
     }
@@ -402,7 +410,7 @@ function Closing() {
   }
 
   const handleSave = async () => {
-    if (!selectedLead) return
+    if (!selectedLead || !editData.status) return
 
     try {
       setSaving(true)
@@ -422,6 +430,32 @@ function Closing() {
       const data = await response.json()
 
       if (response.ok) {
+        // Kommentar im Original-Lead (Immobilienmakler_Leads) updaten
+        if (selectedLead.originalLeadId) {
+          const userName = user?.vor_nachname || user?.name || 'Closer'
+          const statusText = editData.status === 'Abgeschlossen' 
+            ? 'Deal abgeschlossen ✅' 
+            : 'Lead verloren ❌'
+          
+          try {
+            await fetch('/.netlify/functions/leads', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                leadId: selectedLead.originalLeadId,
+                updates: {},
+                historyEntry: {
+                  action: editData.status === 'Abgeschlossen' ? 'abgeschlossen' : 'verloren',
+                  details: statusText,
+                  userName: userName
+                }
+              })
+            })
+          } catch (kommentarErr) {
+            console.warn('Kommentar-Update fehlgeschlagen:', kommentarErr)
+          }
+        }
+
         // Lokale Liste aktualisieren
         setLeads(prev => prev.map(l => 
           l.id === selectedLead.id 
@@ -430,12 +464,18 @@ function Closing() {
         ))
         setSelectedLead(prev => ({ ...prev, status: editData.status }))
         setEditMode(false)
+        
+        // Toast-Nachricht
+        const toastMsg = editData.status === 'Abgeschlossen' 
+          ? 'Deal wurde abgeschlossen!' 
+          : 'Lead wurde als verloren markiert'
+        showToast(toastMsg)
       } else {
-        alert('Fehler beim Speichern: ' + (data.error || 'Unbekannt'))
+        showToast('Fehler beim Speichern: ' + (data.error || 'Unbekannt'))
       }
     } catch (err) {
       console.error('Speichern fehlgeschlagen:', err)
-      alert('Fehler beim Speichern')
+      showToast('Fehler beim Speichern')
     } finally {
       setSaving(false)
     }
@@ -452,6 +492,22 @@ function Closing() {
 
   return (
     <div className="space-y-6">
+      {/* Erfolgs-Toast */}
+      {successMessage && (
+        <div className="fixed top-4 right-4 z-[100]">
+          <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg shadow-lg animate-in slide-in-from-top-2">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+            <span className="text-green-800 font-medium">{successMessage}</span>
+            <button 
+              onClick={() => setSuccessMessage('')}
+              className="ml-2 text-green-600 hover:text-green-800"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
