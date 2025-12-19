@@ -30,7 +30,7 @@ const markdownToHtml = (text) => {
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     // Bullet Points am Zeilenanfang
     .replace(/^• (.+)$/gm, '• $1')
-    // Zeilenumbrüche zu <br> (aber nicht doppelte)
+    // Zeilenumbrüche zu <br>
     .replace(/\n/g, '<br>')
 }
 
@@ -47,8 +47,12 @@ const htmlToMarkdown = (html) => {
     .replace(/<b>([^<]+)<\/b>/gi, '**$1**')
     // <br> zu Zeilenumbruch
     .replace(/<br\s*\/?>/gi, '\n')
-    // <div> zu Zeilenumbruch (contenteditable fügt divs ein)
-    .replace(/<\/div><div>/gi, '\n')
+    // <p> Tags behandeln (contenteditable erstellt oft <p> statt <div>)
+    .replace(/<\/p>\s*<p>/gi, '\n\n')  // Absatz-Wechsel = doppelter Zeilenumbruch
+    .replace(/<p>/gi, '')
+    .replace(/<\/p>/gi, '\n')
+    // <div> zu Zeilenumbruch (erst </div><div>, dann einzelne)
+    .replace(/<\/div>\s*<div>/gi, '\n')
     .replace(/<div>/gi, '\n')
     .replace(/<\/div>/gi, '')
     // Restliche HTML-Tags entfernen
@@ -59,8 +63,11 @@ const htmlToMarkdown = (html) => {
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    // Führende Zeilenumbrüche entfernen
+    // Mehrfache Zeilenumbrüche auf maximal 2 reduzieren
+    .replace(/\n{3,}/g, '\n\n')
+    // Führende/Trailing Zeilenumbrüche entfernen
     .replace(/^\n+/, '')
+    .replace(/\n+$/, '')
 }
 
 function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie = null }) {
