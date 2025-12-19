@@ -55,7 +55,7 @@ export async function handler(event) {
       const params = event.queryStringParameters || {}
       const {
         userName,      // Name des Users (Vor_Nachname) für Link-Feld Filter
-        userRole,      // 'Admin', 'Setter', 'Closer'
+        userRole,      // 'Admin', 'Coldcaller', 'Closer'
         view,          // 'all' oder 'own' (für Admins)
         search,        // Suchbegriff
         contacted,     // 'true' oder 'false'
@@ -305,6 +305,7 @@ export async function handler(event) {
         const icons = {
           'email': '📧',
           'termin': '📅',
+          'angebot': '💰',
           'kontaktiert': '✅',
           'nicht_kontaktiert': '↩️',
           'ergebnis': '📋',
