@@ -754,12 +754,12 @@ function Closing() {
             </div>
 
             {/* Body - Scrollbar hier */}
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-y-auto px-6 py-4">
               {angebotSuccess ? (
                 /* ========================================
                    ERFOLGS-ANSICHT nach Angebot versenden
                    ======================================== */
-                <div className="px-6 py-12 text-center">
+                <div className="py-8 text-center">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="w-8 h-8 text-green-600" />
                   </div>
@@ -769,22 +769,34 @@ function Closing() {
                 /* ========================================
                    EMAIL COMPOSER für Unterlagen versenden
                    ======================================== */
-                <EmailComposer
-                  lead={selectedLead}
-                  user={user}
-                  inline={true}
-                  kategorie="Closing"
-                  onClose={() => setShowEmailComposer(false)}
-                  onSent={(info) => {
-                    console.log('E-Mail gesendet:', info)
-                    setShowEmailComposer(false)
-                  }}
-                />
+                <div>
+                  {/* Zurück-Link */}
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailComposer(false)}
+                    className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Zurück zur Übersicht
+                  </button>
+                  
+                  <EmailComposer
+                    lead={selectedLead}
+                    user={user}
+                    inline={true}
+                    kategorie="Closing"
+                    onClose={() => setShowEmailComposer(false)}
+                    onSent={(info) => {
+                      console.log('E-Mail gesendet:', info)
+                      setShowEmailComposer(false)
+                    }}
+                  />
+                </div>
               ) : showAngebotView ? (
                 /* ========================================
                    ANGEBOT VERSENDEN VIEW
                    ======================================== */
-                <div className="px-6 py-6">
+                <div className="space-y-6">
                   {/* Zurück-Link */}
                   <button
                     type="button"
@@ -958,7 +970,7 @@ function Closing() {
                 /* ========================================
                    NORMALE LEAD-DETAIL-ANSICHT
                    ======================================== */
-                <div className="px-6 py-6 space-y-6">
+                <div className="space-y-6">
                   {/* Action Buttons - Angebot & Unterlagen versenden */}
                   {!editMode && (
                     <div className="grid grid-cols-2 gap-3">
