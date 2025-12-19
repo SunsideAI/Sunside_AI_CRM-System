@@ -22,8 +22,9 @@ import {
 // Markdown zu HTML konvertieren (für Editor)
 const markdownToHtml = (text) => {
   if (!text) return ''
+  const str = String(text)
   
-  return text
+  return str
     // Markdown-Links: [Text](URL) zu klickbarem Link
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color: #7c3aed; text-decoration: underline;">$1</a>')
     // Fettdruck: **text** zu <strong>
@@ -37,8 +38,9 @@ const markdownToHtml = (text) => {
 // HTML zu Markdown konvertieren (für Speichern)
 const htmlToMarkdown = (html) => {
   if (!html) return ''
+  const str = String(html)
   
-  return html
+  return str
     // Links zu Markdown
     .replace(/<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/gi, '[$2]($1)')
     // Strong/Bold zu **
@@ -46,8 +48,12 @@ const htmlToMarkdown = (html) => {
     .replace(/<b>([^<]+)<\/b>/gi, '**$1**')
     // <br> zu Zeilenumbruch
     .replace(/<br\s*\/?>/gi, '\n')
-    // <div> zu Zeilenumbruch
-    .replace(/<\/div><div>/gi, '\n')
+    // <p> Tags behandeln (contenteditable erstellt oft <p> statt <div>)
+    .replace(/<\/p>\s*<p>/gi, '\n\n')  // Absatz-Wechsel = doppelter Zeilenumbruch
+    .replace(/<p>/gi, '')
+    .replace(/<\/p>/gi, '\n')
+    // <div> zu Zeilenumbruch (erst </div><div>, dann einzelne)
+    .replace(/<\/div>\s*<div>/gi, '\n')
     .replace(/<div>/gi, '\n')
     .replace(/<\/div>/gi, '')
     // Restliche HTML-Tags entfernen
@@ -58,15 +64,19 @@ const htmlToMarkdown = (html) => {
     .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
-    // Führende Zeilenumbrüche entfernen
+    // Mehrfache Zeilenumbrüche auf maximal 2 reduzieren
+    .replace(/\n{3,}/g, '\n\n')
+    // Führende/Trailing Zeilenumbrüche entfernen
     .replace(/^\n+/, '')
+    .replace(/\n+$/, '')
 }
 
 // Markdown-ähnlichen Text zu formatiertem HTML rendern (für Vorschau in Liste)
 const renderFormattedPreview = (text) => {
   if (!text) return ''
+  const str = String(text)
   
-  return text
+  return str
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" class="text-purple-600 underline">$1</a>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/^• (.+)$/gm, '<span class="flex items-start"><span class="mr-2">•</span><span>$1</span></span>')
