@@ -810,6 +810,7 @@ function Kaltakquise() {
                   lead={selectedLead}
                   user={user}
                   inline={true}
+                  kategorie="Kaltakquise"
                   onClose={() => setShowEmailComposer(false)}
                   onSent={(info) => {
                     console.log('E-Mail gesendet:', info)
