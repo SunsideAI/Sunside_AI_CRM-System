@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
+import EmailComposer from '../components/EmailComposer'
 import { 
   Calendar, 
   Users,
@@ -24,7 +25,8 @@ import {
   FileText,
   Euro,
   Package,
-  CheckCircle
+  CheckCircle,
+  Paperclip
 } from 'lucide-react'
 
 // Paket-Optionen für Angebot
@@ -100,6 +102,9 @@ function Closing() {
   })
   const [sendingAngebot, setSendingAngebot] = useState(false)
   const [angebotSuccess, setAngebotSuccess] = useState(false) // Erfolgs-Ansicht im Modal
+  
+  // Email-Composer State (für Unterlagen versenden)
+  const [showEmailComposer, setShowEmailComposer] = useState(false)
 
   const LEADS_PER_PAGE = 10
 
@@ -399,6 +404,7 @@ function Closing() {
     setShowAngebotView(false)
     setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
     setAngebotSuccess(false)
+    setShowEmailComposer(false)
   }
 
   const handleEditChange = (field, value) => {
@@ -759,6 +765,21 @@ function Closing() {
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900">Angebot wird versendet!</h3>
                 </div>
+              ) : showEmailComposer ? (
+                /* ========================================
+                   EMAIL COMPOSER für Unterlagen versenden
+                   ======================================== */
+                <EmailComposer
+                  lead={selectedLead}
+                  user={user}
+                  inline={true}
+                  kategorie="Closing"
+                  onClose={() => setShowEmailComposer(false)}
+                  onSent={(info) => {
+                    console.log('E-Mail gesendet:', info)
+                    setShowEmailComposer(false)
+                  }}
+                />
               ) : showAngebotView ? (
                 /* ========================================
                    ANGEBOT VERSENDEN VIEW
@@ -938,16 +959,26 @@ function Closing() {
                    NORMALE LEAD-DETAIL-ANSICHT
                    ======================================== */
                 <div className="px-6 py-6 space-y-6">
-                  {/* Angebot versenden Button - immer sichtbar (auch für erneutes Angebot) */}
+                  {/* Action Buttons - Angebot & Unterlagen versenden */}
                   {!editMode && (
-                    <button
-                      type="button"
-                      onClick={() => setShowAngebotView(true)}
-                      className="w-full flex items-center justify-center px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                    >
-                      <Send className="w-4 h-4 mr-2" />
-                      {selectedLead.status === 'Lead' ? 'Angebot versenden' : 'Neues Angebot versenden'}
-                    </button>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setShowAngebotView(true)}
+                        className="flex items-center justify-center px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                      >
+                        <Send className="w-4 h-4 mr-2" />
+                        {selectedLead.status === 'Lead' ? 'Angebot versenden' : 'Neues Angebot'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowEmailComposer(true)}
+                        className="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        <Paperclip className="w-4 h-4 mr-2" />
+                        Unterlagen versenden
+                      </button>
+                    </div>
                   )}
 
                   {/* Status */}
@@ -1094,8 +1125,8 @@ function Closing() {
               )}
             </div>
 
-            {/* Footer - unterschiedlich je nach View (nicht bei Success) */}
-            {!angebotSuccess && (
+            {/* Footer - unterschiedlich je nach View (nicht bei Success oder EmailComposer) */}
+            {!angebotSuccess && !showEmailComposer && (
               <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
                 {showAngebotView ? (
                   /* Angebot-View Footer */
