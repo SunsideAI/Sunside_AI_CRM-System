@@ -21,8 +21,9 @@ import {
 // Markdown zu HTML konvertieren (für Template-Laden)
 const markdownToHtml = (text) => {
   if (!text) return ''
+  const str = String(text)
   
-  return text
+  return str
     // Markdown-Links: [Text](URL) zu klickbarem Link
     .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color: #7c3aed; text-decoration: underline;">$1</a>')
     // Fettdruck: **text** zu <strong>
@@ -36,8 +37,9 @@ const markdownToHtml = (text) => {
 // HTML zu Markdown konvertieren (für Speichern)
 const htmlToMarkdown = (html) => {
   if (!html) return ''
+  const str = String(html)
   
-  return html
+  return str
     // Links zu Markdown
     .replace(/<a[^>]+href="([^"]+)"[^>]*>([^<]+)<\/a>/gi, '[$2]($1)')
     // Strong/Bold zu **
@@ -256,14 +258,18 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
     console.log('Lead-Daten für Platzhalter:', lead)
     console.log('User-Daten für Platzhalter:', user)
     
+    // Hot Leads haben andere Feldnamen als normale Leads
+    const firma = lead?.unternehmensname || lead?.unternehmen || ''
+    const stadt = lead?.stadt || lead?.ort || ''
+    
     const replacements = {
       // Firma/Unternehmen (Lead)
-      '{{firma}}': lead?.unternehmensname || '',
-      '{{unternehmen}}': lead?.unternehmensname || '',
+      '{{firma}}': firma,
+      '{{unternehmen}}': firma,
       
       // Ort (Lead)
-      '{{stadt}}': lead?.stadt || '',
-      '{{ort}}': lead?.stadt || '',
+      '{{stadt}}': stadt,
+      '{{ort}}': stadt,
       
       // Lead Kontakt
       '{{lead_email}}': cleanEmail(lead?.email) || '',
@@ -298,8 +304,10 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
   // Markdown-Link aus E-Mail entfernen
   const cleanEmail = (email) => {
     if (!email) return ''
-    const match = email.match(/\[([^\]]+)\]\([^)]+\)/)
-    return match ? match[1] : email
+    // Sicherstellen, dass email ein String ist
+    const emailStr = String(email)
+    const match = emailStr.match(/\[([^\]]+)\]\([^)]+\)/)
+    return match ? match[1] : emailStr
   }
 
   // Datei-Icon basierend auf Typ
