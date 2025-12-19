@@ -234,6 +234,11 @@ function Closing() {
       // Erfolgs-Ansicht im Modal zeigen
       setAngebotSuccess(true)
       
+      // Nach 1.5 Sekunden automatisch schließen
+      setTimeout(() => {
+        closeModal()
+      }, 1500)
+      
     } catch (err) {
       console.error('Fehler beim Senden des Angebots:', err)
       alert('Fehler beim Senden des Angebots')
@@ -752,20 +757,7 @@ function Closing() {
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="w-8 h-8 text-green-600" />
                   </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Angebot wird versendet!</h3>
-                  <p className="text-gray-600 mb-6">
-                    {selectedLead?.unternehmensname}
-                    <br />
-                    <span className="text-sm text-gray-500">
-                      Setup: {angebotData.setup}€ · Retainer: {angebotData.retainer}€/Mon · {angebotData.laufzeit} Monate
-                    </span>
-                  </p>
-                  <button
-                    onClick={closeModal}
-                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                  >
-                    Schließen
-                  </button>
+                  <h3 className="text-xl font-semibold text-gray-900">Angebot wird versendet!</h3>
                 </div>
               ) : showAngebotView ? (
                 /* ========================================
