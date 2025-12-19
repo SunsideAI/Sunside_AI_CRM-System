@@ -61,7 +61,7 @@ const htmlToMarkdown = (html) => {
     .replace(/^\n+/, '')
 }
 
-function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
+function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie = null }) {
   const [templates, setTemplates] = useState([])
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [loading, setLoading] = useState(true)
@@ -89,7 +89,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
   // Templates laden
   useEffect(() => {
     loadTemplates()
-  }, [])
+  }, [kategorie])
 
   // E-Mail aus Lead-Daten extrahieren (Markdown-Link bereinigen)
   useEffect(() => {
@@ -100,7 +100,11 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
 
   const loadTemplates = async () => {
     try {
-      const response = await fetch('/.netlify/functions/email-templates')
+      // Optional nach Kategorie filtern
+      const url = kategorie 
+        ? `/.netlify/functions/email-templates?kategorie=${kategorie}`
+        : '/.netlify/functions/email-templates'
+      const response = await fetch(url)
       const data = await response.json()
       
       if (response.ok) {
@@ -270,7 +274,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
       '{{ansprechpartner_vorname}}': lead?.ansprechpartnerVorname || '',
       '{{ansprechpartner_nachname}}': lead?.ansprechpartnerNachname || '',
       
-      // Setter/Absender (User)
+      // Coldcaller/Absender (User)
       '{{setter_name}}': user?.vor_nachname || '',
       '{{setter_vorname}}': (user?.vor_nachname || '').split(' ')[0] || '',
       '{{setter_nachname}}': (user?.vor_nachname || '').split(' ').slice(1).join(' ') || '',
@@ -351,6 +355,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false }) {
           content: contentToSend,
           senderName: user?.vor_nachname,
           senderEmail: user?.email_geschaeftlich || user?.email,
+          senderTelefon: user?.telefon,
           replyTo: user?.email_geschaeftlich || user?.email,
           leadId: lead?.id,
           templateName: templates.find(t => t.id === selectedTemplate)?.name || 'Individuell',
