@@ -172,6 +172,31 @@ function Closing() {
       if (!response.ok) {
         throw new Error('Fehler beim Speichern')
       }
+
+      // Kommentar im Original-Lead (Immobilienmakler_Leads) hinzufügen
+      if (selectedLead.originalLeadId) {
+        const paketInfo = PAKET_OPTIONS.find(p => p.value === angebotData.paket)?.label || 'Individuell'
+        const kommentarText = `Angebot versendet - ${paketInfo}: Setup ${angebotData.setup}€, Retainer ${angebotData.retainer}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
+        const userName = user?.vor_nachname || user?.name || 'Closer'
+        
+        try {
+          await fetch('/.netlify/functions/leads', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              leadId: selectedLead.originalLeadId,
+              historyEntry: {
+                action: 'angebot',
+                details: kommentarText,
+                userName: userName
+              }
+            })
+          })
+        } catch (kommentarErr) {
+          console.warn('Kommentar-Update fehlgeschlagen:', kommentarErr)
+          // Nicht abbrechen, Hot Lead wurde bereits aktualisiert
+        }
+      }
       
       // Lead in Liste aktualisieren
       setLeads(prev => prev.map(lead => 
@@ -369,16 +394,15 @@ function Closing() {
     try {
       setSaving(true)
 
+      // Nur Status kann bearbeitet werden (Setup/Retainer/Laufzeit nur über "Angebot versenden")
       const response = await fetch('/.netlify/functions/hot-leads', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: selectedLead.id,
-          status: editData.status,
-          setup: parseFloat(editData.setup) || 0,
-          retainer: parseFloat(editData.retainer) || 0,
-          laufzeit: parseInt(editData.laufzeit) || 6,
-          kommentar: editData.kommentar
+          hotLeadId: selectedLead.id,
+          updates: {
+            status: editData.status
+          }
         })
       })
 
@@ -388,10 +412,10 @@ function Closing() {
         // Lokale Liste aktualisieren
         setLeads(prev => prev.map(l => 
           l.id === selectedLead.id 
-            ? { ...l, ...editData }
+            ? { ...l, status: editData.status }
             : l
         ))
-        setSelectedLead(prev => ({ ...prev, ...editData }))
+        setSelectedLead(prev => ({ ...prev, status: editData.status }))
         setEditMode(false)
       } else {
         alert('Fehler beim Speichern: ' + (data.error || 'Unbekannt'))
@@ -967,97 +991,49 @@ function Closing() {
                     </div>
                   </div>
 
-                  {/* Deal-Werte */}
+                  {/* Deal-Werte - nur Anzeige (Änderungen über "Angebot versenden") */}
                   <div>
                     <h4 className="text-sm font-medium text-gray-500 mb-3">Deal-Details</h4>
                     <div className="bg-gray-50 rounded-lg p-4">
-                      {editMode ? (
-                        <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <label className="block text-sm text-gray-500 mb-1">Setup (€)</label>
-                            <input
-                              type="number"
-                              value={editData.setup}
-                              onChange={(e) => handleEditChange('setup', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                              min="0"
-                              step="100"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm text-gray-500 mb-1">Retainer (€/Mon)</label>
-                            <input
-                              type="number"
-                              value={editData.retainer}
-                              onChange={(e) => handleEditChange('retainer', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                              min="0"
-                              step="100"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm text-gray-500 mb-1">Laufzeit (Monate)</label>
-                            <input
-                              type="number"
-                              value={editData.laufzeit}
-                              onChange={(e) => handleEditChange('laufzeit', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                              min="1"
-                              max="36"
-                            />
-                          </div>
+                      <div className="grid grid-cols-3 gap-4 text-center">
+                        <div>
+                          <span className="block text-sm text-gray-500">Setup</span>
+                          <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</span>
                         </div>
-                      ) : (
-                        <div className="grid grid-cols-3 gap-4 text-center">
-                          <div>
-                            <span className="block text-sm text-gray-500">Setup</span>
-                            <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</span>
-                          </div>
-                          <div>
-                            <span className="block text-sm text-gray-500">Retainer</span>
-                            <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/Mon</span>
-                          </div>
-                          <div>
-                            <span className="block text-sm text-gray-500">Laufzeit</span>
-                            <span className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || 6} Monate</span>
-                          </div>
+                        <div>
+                          <span className="block text-sm text-gray-500">Retainer</span>
+                          <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/Mon</span>
                         </div>
-                      )}
+                        <div>
+                          <span className="block text-sm text-gray-500">Laufzeit</span>
+                          <span className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || 12} Monate</span>
+                        </div>
+                      </div>
                       
                       {/* Gesamtwert */}
                       <div className="mt-4 pt-4 border-t border-gray-200 text-center">
                         <span className="text-sm text-gray-500">Gesamtwert: </span>
                         <span className="text-xl font-bold text-green-600">
                           {formatMoney(
-                            (editMode ? parseFloat(editData.setup) || 0 : selectedLead.setup || 0) + 
-                            (editMode ? parseFloat(editData.retainer) || 0 : selectedLead.retainer || 0) * 
-                            (editMode ? parseInt(editData.laufzeit) || 6 : selectedLead.laufzeit || 6)
+                            (selectedLead.setup || 0) + 
+                            (selectedLead.retainer || 0) * 
+                            (selectedLead.laufzeit || 12)
                           )}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Notizen */}
+                  {/* Notizen - nur Anzeige (Kommentar ist Lookup aus Immobilienmakler_Leads) */}
                   <div>
                     <h4 className="text-sm font-medium text-gray-500 mb-3">Notizen</h4>
-                    {editMode ? (
-                      <textarea
-                        value={editData.kommentar}
-                        onChange={(e) => handleEditChange('kommentar', e.target.value)}
-                        rows={4}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
-                        placeholder="Notizen zum Lead..."
-                      />
-                    ) : (
-                      <div className="bg-gray-50 rounded-lg p-4 min-h-[100px]">
-                        {selectedLead.kommentar ? (
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
-                        ) : (
-                          <p className="text-sm text-gray-400 italic">Keine Notizen vorhanden</p>
-                        )}
-                      </div>
-                    )}
+                    <div className="bg-gray-50 rounded-lg p-4 min-h-[100px]">
+                      {selectedLead.kommentar ? (
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">Keine Notizen vorhanden</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
