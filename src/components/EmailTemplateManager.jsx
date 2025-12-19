@@ -73,6 +73,13 @@ const renderFormattedPreview = (text) => {
     .replace(/\n/g, '<br>')
 }
 
+// Kategorie-Optionen für Templates
+const KATEGORIE_OPTIONS = [
+  { value: 'Kaltakquise', label: 'Kaltakquise', description: 'Für Unterlagen nach Cold Calls' },
+  { value: 'Closing', label: 'Closing', description: 'Für Angebote im Closing-Prozess' },
+  { value: 'Allgemein', label: 'Allgemein', description: 'Überall verfügbar' }
+]
+
 function EmailTemplateManager() {
   const [templates, setTemplates] = useState([])
   const [loading, setLoading] = useState(true)
@@ -93,6 +100,7 @@ function EmailTemplateManager() {
   const [formBetreff, setFormBetreff] = useState('')
   const [formInhalt, setFormInhalt] = useState('')
   const [formAktiv, setFormAktiv] = useState(true)
+  const [formKategorie, setFormKategorie] = useState('Allgemein')
   
   // Attachments State
   const [formAttachments, setFormAttachments] = useState([])
@@ -134,6 +142,7 @@ function EmailTemplateManager() {
     setFormBetreff('')
     setFormInhalt('')
     setFormAktiv(true)
+    setFormKategorie('Allgemein')
     setFormAttachments([])
     setEditingTemplate(null)
     setEditMode('create')
@@ -153,6 +162,7 @@ function EmailTemplateManager() {
     const htmlContent = markdownToHtml(template.inhalt)
     setFormInhalt(htmlContent)
     setFormAktiv(template.aktiv)
+    setFormKategorie(template.kategorie || 'Allgemein')
     // Bestehende Attachments laden
     setFormAttachments(template.attachments || [])
     setEditingTemplate(template)
@@ -359,6 +369,7 @@ function EmailTemplateManager() {
         betreff: formBetreff,
         inhalt: markdownContent, // Markdown für Backend
         aktiv: formAktiv,
+        kategorie: formKategorie,
         attachments: formAttachments.map(att => ({
           url: att.url,
           filename: att.filename
@@ -542,10 +553,20 @@ function EmailTemplateManager() {
             >
               <div className="flex items-start justify-between">
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center">
+                  <div className="flex items-center gap-2">
                     <h4 className="font-medium text-gray-900">{template.name}</h4>
+                    {/* Kategorie Badge */}
+                    <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
+                      template.kategorie === 'Kaltakquise' 
+                        ? 'bg-blue-100 text-blue-700'
+                        : template.kategorie === 'Closing'
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}>
+                      {template.kategorie || 'Allgemein'}
+                    </span>
                     {!template.aktiv && (
-                      <span className="ml-2 px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded">
+                      <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded">
                         Inaktiv
                       </span>
                     )}
@@ -635,6 +656,34 @@ function EmailTemplateManager() {
                   placeholder="z.B. Erfolgsgeschichten unserer Kunden"
                   className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
                 />
+              </div>
+
+              {/* Kategorie-Auswahl */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Kategorie
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  {KATEGORIE_OPTIONS.map(option => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setFormKategorie(option.value)}
+                      className={`p-3 rounded-lg border-2 text-left transition-all ${
+                        formKategorie === option.value
+                          ? 'border-purple-500 bg-purple-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <p className={`font-medium text-sm ${
+                        formKategorie === option.value ? 'text-purple-700' : 'text-gray-900'
+                      }`}>
+                        {option.label}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">{option.description}</p>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               <div>
