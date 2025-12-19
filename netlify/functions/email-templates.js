@@ -3,6 +3,9 @@ const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
 const TABLE_NAME = 'E-Mail_Templates'
 
+// Gültige Kategorien
+const VALID_CATEGORIES = ['Kaltakquise', 'Closing', 'Allgemein']
+
 const headers = {
   'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
   'Content-Type': 'application/json'
@@ -24,12 +27,25 @@ exports.handler = async (event) => {
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
       const includeInactive = params.all === 'true'
+      const kategorie = params.kategorie // Optional: Filter nach Kategorie
       
       let url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}`
       
-      // Nur aktive Templates laden (außer Admin will alle sehen)
+      // Filter aufbauen
+      const filters = []
       if (!includeInactive) {
-        url += `?filterByFormula={Aktiv}=TRUE()`
+        filters.push('{Aktiv}=TRUE()')
+      }
+      if (kategorie) {
+        // Kategorie oder "Allgemein" anzeigen
+        filters.push(`OR({Kategorie}='${kategorie}',{Kategorie}='Allgemein',{Kategorie}=BLANK())`)
+      }
+      
+      if (filters.length > 0) {
+        const formula = filters.length === 1 
+          ? filters[0] 
+          : `AND(${filters.join(',')})`
+        url += `?filterByFormula=${encodeURIComponent(formula)}`
       }
       
       const response = await fetch(url, { headers })
@@ -75,6 +91,7 @@ exports.handler = async (event) => {
           betreff: record.fields.Betreff || '',
           inhalt: record.fields.Inhalt || '',
           aktiv: record.fields.Aktiv !== false,
+          kategorie: record.fields.Kategorie || 'Allgemein',
           attachments
         }
       })
@@ -89,7 +106,7 @@ exports.handler = async (event) => {
     // POST: Neues Template erstellen (Admin only)
     if (event.httpMethod === 'POST') {
       const body = JSON.parse(event.body)
-      const { name, betreff, inhalt, aktiv = true, attachments = [] } = body
+      const { name, betreff, inhalt, aktiv = true, kategorie = 'Allgemein', attachments = [] } = body
 
       if (!name || !betreff || !inhalt) {
         return {
@@ -104,7 +121,8 @@ exports.handler = async (event) => {
         Name: name,
         Betreff: betreff,
         Inhalt: inhalt,
-        Aktiv: aktiv
+        Aktiv: aktiv,
+        Kategorie: VALID_CATEGORIES.includes(kategorie) ? kategorie : 'Allgemein'
       }
 
       // Attachments hinzufügen wenn vorhanden
@@ -143,6 +161,7 @@ exports.handler = async (event) => {
             betreff: created.fields.Betreff,
             inhalt: created.fields.Inhalt,
             aktiv: created.fields.Aktiv,
+            kategorie: created.fields.Kategorie || 'Allgemein',
             attachments: created.fields.Attachments || []
           }
         })
@@ -152,7 +171,7 @@ exports.handler = async (event) => {
     // PATCH: Template aktualisieren (Admin only)
     if (event.httpMethod === 'PATCH') {
       const body = JSON.parse(event.body)
-      const { id, name, betreff, inhalt, aktiv, attachments } = body
+      const { id, name, betreff, inhalt, aktiv, kategorie, attachments } = body
 
       if (!id) {
         return {
@@ -167,6 +186,9 @@ exports.handler = async (event) => {
       if (betreff !== undefined) fields.Betreff = betreff
       if (inhalt !== undefined) fields.Inhalt = inhalt
       if (aktiv !== undefined) fields.Aktiv = aktiv
+      if (kategorie !== undefined) {
+        fields.Kategorie = VALID_CATEGORIES.includes(kategorie) ? kategorie : 'Allgemein'
+      }
       
       // Attachments aktualisieren (auch leeres Array um alle zu entfernen)
       if (attachments !== undefined) {
@@ -203,6 +225,7 @@ exports.handler = async (event) => {
             betreff: data.fields.Betreff,
             inhalt: data.fields.Inhalt,
             aktiv: data.fields.Aktiv,
+            kategorie: data.fields.Kategorie || 'Allgemein',
             attachments: data.fields.Attachments || []
           }
         })
