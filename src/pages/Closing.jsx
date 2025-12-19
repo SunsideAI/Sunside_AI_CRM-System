@@ -94,7 +94,8 @@ function Closing() {
   const [angebotData, setAngebotData] = useState({
     paket: '',
     setup: '',
-    retainer: ''
+    retainer: '',
+    laufzeit: 12  // Default 12 Monate
   })
   const [sendingAngebot, setSendingAngebot] = useState(false)
 
@@ -118,17 +119,19 @@ function Closing() {
     const paket = PAKET_OPTIONS.find(p => p.value === paketValue)
     if (paket) {
       if (paket.value === 'individuell') {
-        setAngebotData({
+        setAngebotData(prev => ({
           paket: paketValue,
           setup: '',
-          retainer: ''
-        })
+          retainer: '',
+          laufzeit: prev.laufzeit  // Laufzeit beibehalten
+        }))
       } else {
-        setAngebotData({
+        setAngebotData(prev => ({
           paket: paketValue,
           setup: paket.setup,
-          retainer: paket.retainer
-        })
+          retainer: paket.retainer,
+          laufzeit: prev.laufzeit  // Laufzeit beibehalten
+        }))
       }
     }
   }
@@ -151,7 +154,7 @@ function Closing() {
     try {
       setSendingAngebot(true)
       
-      // Hot Lead updaten mit Setup, Retainer und Status
+      // Hot Lead updaten mit Setup, Retainer, Laufzeit und Status
       const response = await fetch('/.netlify/functions/hot-leads', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -160,6 +163,7 @@ function Closing() {
           updates: {
             setup: parseFloat(angebotData.setup),
             retainer: parseFloat(angebotData.retainer),
+            laufzeit: parseInt(angebotData.laufzeit) || 12,
             status: 'Angebot'  // Zapier sendet dann das Angebot und setzt auf "Angebot versendet"
           }
         })
@@ -176,6 +180,7 @@ function Closing() {
               ...lead, 
               setup: parseFloat(angebotData.setup),
               retainer: parseFloat(angebotData.retainer),
+              laufzeit: parseInt(angebotData.laufzeit) || 12,
               status: 'Angebot'
             }
           : lead
@@ -186,12 +191,13 @@ function Closing() {
         ...prev,
         setup: parseFloat(angebotData.setup),
         retainer: parseFloat(angebotData.retainer),
+        laufzeit: parseInt(angebotData.laufzeit) || 12,
         status: 'Angebot'
       }))
       
       // View zurücksetzen
       setShowAngebotView(false)
-      setAngebotData({ paket: '', setup: '', retainer: '' })
+      setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
       
     } catch (err) {
       console.error('Fehler beim Senden des Angebots:', err)
@@ -350,7 +356,7 @@ function Closing() {
     setEditMode(false)
     setEditData({})
     setShowAngebotView(false)
-    setAngebotData({ paket: '', setup: '', retainer: '' })
+    setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
   }
 
   const handleEditChange = (field, value) => {
@@ -685,7 +691,7 @@ function Closing() {
                     type="button"
                     onClick={() => {
                       setShowAngebotView(false)
-                      setAngebotData({ paket: '', setup: '', retainer: '' })
+                      setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
                     }}
                     className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
                   >
@@ -779,11 +785,51 @@ function Closing() {
                     </div>
                   )}
 
+                  {/* Vertragslaufzeit */}
+                  {angebotData.paket && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Vertragslaufzeit
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          value={angebotData.laufzeit}
+                          onChange={(e) => setAngebotData(prev => ({ 
+                            ...prev, 
+                            laufzeit: Math.min(32, Math.max(3, parseInt(e.target.value) || 12))
+                          }))}
+                          min="3"
+                          max="32"
+                          className="w-24 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-center"
+                        />
+                        <span className="text-gray-600">Monate</span>
+                        <div className="flex gap-2 ml-auto">
+                          {[6, 12, 24].map(months => (
+                            <button
+                              key={months}
+                              type="button"
+                              onClick={() => setAngebotData(prev => ({ ...prev, laufzeit: months }))}
+                              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                                angebotData.laufzeit === months 
+                                  ? 'bg-purple-100 text-purple-700' 
+                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                              }`}
+                            >
+                              {months} Mon
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">Min. 3 Monate, max. 32 Monate</p>
+                    </div>
+                  )}
+
                   {/* Zusammenfassung */}
                   {angebotData.setup && angebotData.retainer && (
                     <div className="bg-green-50 border border-green-200 rounded-xl p-5">
                       <h4 className="font-medium text-green-900 mb-4">Angebot Zusammenfassung</h4>
-                      <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div className="grid grid-cols-3 gap-4 mb-4">
                         <div className="bg-white rounded-lg p-4 text-center">
                           <p className="text-sm text-gray-500 mb-1">Setup-Gebühr</p>
                           <p className="text-2xl font-bold text-gray-900">{angebotData.setup} €</p>
@@ -794,11 +840,16 @@ function Closing() {
                           <p className="text-2xl font-bold text-gray-900">{angebotData.retainer} €</p>
                           <p className="text-xs text-gray-400">pro Monat, netto</p>
                         </div>
+                        <div className="bg-white rounded-lg p-4 text-center">
+                          <p className="text-sm text-gray-500 mb-1">Laufzeit</p>
+                          <p className="text-2xl font-bold text-gray-900">{angebotData.laufzeit}</p>
+                          <p className="text-xs text-gray-400">Monate</p>
+                        </div>
                       </div>
                       <div className="bg-white rounded-lg p-4 text-center">
-                        <p className="text-sm text-gray-500 mb-1">Gesamtwert (12 Monate)</p>
+                        <p className="text-sm text-gray-500 mb-1">Gesamtwert ({angebotData.laufzeit} Monate)</p>
                         <p className="text-3xl font-bold text-green-600">
-                          {(parseFloat(angebotData.setup) + parseFloat(angebotData.retainer) * 12).toLocaleString('de-DE')} €
+                          {(parseFloat(angebotData.setup) + parseFloat(angebotData.retainer) * angebotData.laufzeit).toLocaleString('de-DE')} €
                         </p>
                       </div>
                     </div>
@@ -1021,7 +1072,7 @@ function Closing() {
                     type="button"
                     onClick={() => {
                       setShowAngebotView(false)
-                      setAngebotData({ paket: '', setup: '', retainer: '' })
+                      setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
                     }}
                     disabled={sendingAngebot}
                     className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
