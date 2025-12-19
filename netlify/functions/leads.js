@@ -306,6 +306,8 @@ export async function handler(event) {
           'email': '📧',
           'termin': '📅',
           'angebot': '💰',
+          'abgeschlossen': '🎉',
+          'verloren': '❌',
           'kontaktiert': '✅',
           'nicht_kontaktiert': '↩️',
           'ergebnis': '📋',
