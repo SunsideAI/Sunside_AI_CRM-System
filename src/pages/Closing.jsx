@@ -89,7 +89,6 @@ function Closing() {
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
   const [viewMode, setViewMode] = useState('own') // 'own' oder 'all' (für Admins)
-  const [successMessage, setSuccessMessage] = useState('') // Toast-Nachricht
   
   // Angebot-View State (innerhalb des Modals)
   const [showAngebotView, setShowAngebotView] = useState(false)
@@ -100,14 +99,9 @@ function Closing() {
     laufzeit: 12  // Default 12 Monate
   })
   const [sendingAngebot, setSendingAngebot] = useState(false)
+  const [angebotSuccess, setAngebotSuccess] = useState(false) // Erfolgs-Ansicht im Modal
 
   const LEADS_PER_PAGE = 10
-
-  // Toast-Helper: Zeigt Nachricht und blendet nach 4 Sekunden aus
-  const showToast = (message) => {
-    setSuccessMessage(message)
-    setTimeout(() => setSuccessMessage(''), 4000)
-  }
 
   // Retainer aus Setup berechnen (Setup / 2.75, abgerundet auf gerade Beträge, max 10% nach unten)
   const calculateRetainer = (setup) => {
@@ -237,16 +231,12 @@ function Closing() {
         status: 'Angebot'
       }))
       
-      // View zurücksetzen und Erfolgsmeldung zeigen
-      setShowAngebotView(false)
-      setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
-      
-      // Toast-Nachricht
-      showToast('Angebot wird versendet!')
+      // Erfolgs-Ansicht im Modal zeigen
+      setAngebotSuccess(true)
       
     } catch (err) {
       console.error('Fehler beim Senden des Angebots:', err)
-      showToast('Fehler beim Senden des Angebots')
+      alert('Fehler beim Senden des Angebots')
     } finally {
       setSendingAngebot(false)
     }
@@ -403,6 +393,7 @@ function Closing() {
     setEditData({})
     setShowAngebotView(false)
     setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
+    setAngebotSuccess(false)
   }
 
   const handleEditChange = (field, value) => {
@@ -464,18 +455,13 @@ function Closing() {
         ))
         setSelectedLead(prev => ({ ...prev, status: editData.status }))
         setEditMode(false)
-        
-        // Toast-Nachricht
-        const toastMsg = editData.status === 'Abgeschlossen' 
-          ? 'Deal wurde abgeschlossen!' 
-          : 'Lead wurde als verloren markiert'
-        showToast(toastMsg)
+        closeModal() // Modal schließen nach erfolgreichem Speichern
       } else {
-        showToast('Fehler beim Speichern: ' + (data.error || 'Unbekannt'))
+        alert('Fehler beim Speichern: ' + (data.error || 'Unbekannt'))
       }
     } catch (err) {
       console.error('Speichern fehlgeschlagen:', err)
-      showToast('Fehler beim Speichern')
+      alert('Fehler beim Speichern')
     } finally {
       setSaving(false)
     }
@@ -492,22 +478,6 @@ function Closing() {
 
   return (
     <div className="space-y-6">
-      {/* Erfolgs-Toast */}
-      {successMessage && (
-        <div className="fixed top-4 right-4 z-[100]">
-          <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg shadow-lg animate-in slide-in-from-top-2">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-            <span className="text-green-800 font-medium">{successMessage}</span>
-            <button 
-              onClick={() => setSuccessMessage('')}
-              className="ml-2 text-green-600 hover:text-green-800"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -774,7 +744,30 @@ function Closing() {
 
             {/* Body - Scrollbar hier */}
             <div className="flex-1 overflow-y-auto">
-              {showAngebotView ? (
+              {angebotSuccess ? (
+                /* ========================================
+                   ERFOLGS-ANSICHT nach Angebot versenden
+                   ======================================== */
+                <div className="px-6 py-12 text-center">
+                  <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CheckCircle className="w-8 h-8 text-green-600" />
+                  </div>
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">Angebot wird versendet!</h3>
+                  <p className="text-gray-600 mb-6">
+                    {selectedLead?.unternehmensname}
+                    <br />
+                    <span className="text-sm text-gray-500">
+                      Setup: {angebotData.setup}€ · Retainer: {angebotData.retainer}€/Mon · {angebotData.laufzeit} Monate
+                    </span>
+                  </p>
+                  <button
+                    onClick={closeModal}
+                    className="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                  >
+                    Schließen
+                  </button>
+                </div>
+              ) : showAngebotView ? (
                 /* ========================================
                    ANGEBOT VERSENDEN VIEW
                    ======================================== */
@@ -1109,32 +1102,33 @@ function Closing() {
               )}
             </div>
 
-            {/* Footer - unterschiedlich je nach View */}
-            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-              {showAngebotView ? (
-                /* Angebot-View Footer */
-                <>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAngebotView(false)
-                      setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
-                    }}
-                    disabled={sendingAngebot}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-                  >
-                    Abbrechen
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleSendAngebot}
-                    disabled={!angebotData.setup || !angebotData.retainer || sendingAngebot}
-                    className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  >
-                    {sendingAngebot ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Angebot wird versendet...
+            {/* Footer - unterschiedlich je nach View (nicht bei Success) */}
+            {!angebotSuccess && (
+              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+                {showAngebotView ? (
+                  /* Angebot-View Footer */
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowAngebotView(false)
+                        setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
+                      }}
+                      disabled={sendingAngebot}
+                      className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSendAngebot}
+                      disabled={!angebotData.setup || !angebotData.retainer || sendingAngebot}
+                      className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      {sendingAngebot ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Angebot wird versendet...
                       </>
                     ) : (
                       <>
@@ -1188,7 +1182,8 @@ function Closing() {
                   </button>
                 </>
               )}
-            </div>
+              </div>
+            )}
           </div>
         </div>,
         document.body
