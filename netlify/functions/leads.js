@@ -242,7 +242,7 @@ export async function handler(event) {
   // PATCH - Lead aktualisieren
   if (event.httpMethod === 'PATCH') {
     try {
-      const { leadId, updates, historyEntry } = JSON.parse(event.body)
+      const { leadId, updates = {}, historyEntry } = JSON.parse(event.body)
 
       if (!leadId) {
         return {
