@@ -90,7 +90,12 @@ function Closing() {
   const [editData, setEditData] = useState({})
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
-  const [viewMode, setViewMode] = useState('own') // 'own' oder 'all' (für Admins)
+  const [viewMode, setViewMode] = useState('own') // 'own', 'all' (für Admins), oder 'pool'
+  
+  // Pool-State
+  const [poolLeads, setPoolLeads] = useState([])
+  const [loadingPool, setLoadingPool] = useState(false)
+  const [claimingLead, setClaimingLead] = useState(null)
   
   // Angebot-View State (innerhalb des Modals)
   const [showAngebotView, setShowAngebotView] = useState(false)
@@ -253,8 +258,32 @@ function Closing() {
   }
 
   useEffect(() => {
-    loadLeads()
+    if (viewMode === 'pool') {
+      loadPoolLeads()
+    } else {
+      loadLeads()
+    }
   }, [user, viewMode])
+
+  // Pool-Anzahl initial laden (für Badge)
+  useEffect(() => {
+    if (user) {
+      loadPoolCount()
+    }
+  }, [user])
+
+  // Nur die Anzahl der Pool-Leads laden (für Badge)
+  const loadPoolCount = async () => {
+    try {
+      const response = await fetch('/.netlify/functions/hot-leads?pool=true')
+      const data = await response.json()
+      if (response.ok && data.hotLeads) {
+        setPoolLeads(data.hotLeads)
+      }
+    } catch (err) {
+      console.error('Pool-Count laden fehlgeschlagen:', err)
+    }
+  }
 
   const loadLeads = async () => {
     if (!user) return
@@ -301,9 +330,83 @@ function Closing() {
     }
   }
 
+  // Pool-Leads laden (Termine ohne Closer)
+  const loadPoolLeads = async () => {
+    if (!user) return
+    
+    try {
+      setLoadingPool(true)
+      setError(null)
+
+      const response = await fetch('/.netlify/functions/hot-leads?pool=true')
+      const data = await response.json()
+
+      if (response.ok && data.hotLeads) {
+        // Sortieren: Nächste Termine zuerst
+        const sortedLeads = data.hotLeads.sort((a, b) => {
+          const dateA = a.terminDatum ? new Date(a.terminDatum) : new Date(0)
+          const dateB = b.terminDatum ? new Date(b.terminDatum) : new Date(0)
+          return dateA - dateB // Aufsteigend - nächste Termine zuerst
+        })
+        setPoolLeads(sortedLeads)
+      } else {
+        setError(data.error || 'Fehler beim Laden')
+        setPoolLeads([])
+      }
+    } catch (err) {
+      console.error('Pool-Leads laden fehlgeschlagen:', err)
+      setError('Verbindungsfehler')
+      setPoolLeads([])
+    } finally {
+      setLoadingPool(false)
+    }
+  }
+
+  // Termin übernehmen
+  const claimLead = async (lead) => {
+    if (!user) return
+    
+    const userName = user.vor_nachname || user.name
+    
+    try {
+      setClaimingLead(lead.id)
+      
+      const response = await fetch('/.netlify/functions/hot-leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hotLeadId: lead.id,
+          updates: {
+            closerName: userName
+          }
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (response.ok && data.success) {
+        // Lead aus Pool entfernen
+        setPoolLeads(prev => prev.filter(l => l.id !== lead.id))
+        // Optional: Success-Feedback
+        alert(`Termin mit ${lead.unternehmen} erfolgreich übernommen!`)
+      } else {
+        throw new Error(data.error || 'Fehler beim Übernehmen')
+      }
+    } catch (err) {
+      console.error('Termin übernehmen fehlgeschlagen:', err)
+      alert('Fehler: ' + err.message)
+    } finally {
+      setClaimingLead(null)
+    }
+  }
+
   const handleRefresh = async () => {
     setRefreshing(true)
-    await loadLeads()
+    if (viewMode === 'pool') {
+      await loadPoolLeads()
+    } else {
+      await loadLeads()
+    }
     setRefreshing(false)
   }
 
@@ -478,7 +581,7 @@ function Closing() {
     }
   }
 
-  if (loading) {
+  if (loading && viewMode !== 'pool') {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
@@ -493,29 +596,50 @@ function Closing() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">
-            Closing
+            {viewMode === 'pool' ? 'Closer-Pool' : 'Closing'}
             {isAdmin() && viewMode === 'all' && ' (alle Leads)'}
           </h1>
           <p className="mt-1 text-gray-500">
-            {viewMode === 'own' ? 'Deine Leads im Closing-Prozess' : 'Alle Leads im Closing-Prozess'}
+            {viewMode === 'pool' 
+              ? 'Offene Beratungsgespräche - noch kein Closer zugewiesen'
+              : viewMode === 'own' 
+                ? 'Deine Leads im Closing-Prozess' 
+                : 'Alle Leads im Closing-Prozess'
+            }
           </p>
         </div>
         
         <div className="flex items-center gap-3">
-          {/* Toggle für Admins: Meine / Alle Leads */}
-          {isAdmin() && (
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => { setViewMode('own'); setCurrentPage(1); }}
-                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'own' 
-                    ? 'bg-white text-purple-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <UserIcon className="w-4 h-4 mr-1.5" />
-                Meine Leads
-              </button>
+          {/* Toggle: Meine Leads / Pool / Alle (für Admins) */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => { setViewMode('own'); setCurrentPage(1); }}
+              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'own' 
+                  ? 'bg-white text-purple-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <UserIcon className="w-4 h-4 mr-1.5" />
+              Meine Leads
+            </button>
+            <button
+              onClick={() => { setViewMode('pool'); setCurrentPage(1); }}
+              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'pool' 
+                  ? 'bg-white text-blue-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Calendar className="w-4 h-4 mr-1.5" />
+              Pool
+              {poolLeads.length > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                  {poolLeads.length}
+                </span>
+              )}
+            </button>
+            {isAdmin() && (
               <button
                 onClick={() => { setViewMode('all'); setCurrentPage(1); }}
                 className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
@@ -525,10 +649,10 @@ function Closing() {
                 }`}
               >
                 <Users className="w-4 h-4 mr-1.5" />
-                Alle Leads
+                Alle
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
 
@@ -538,7 +662,141 @@ function Closing() {
         </div>
       )}
 
-      {/* Filter & Suche */}
+      {/* ==================== POOL-ANSICHT ==================== */}
+      {viewMode === 'pool' ? (
+        <>
+          {/* Pool Refresh Button */}
+          <div className="flex justify-end">
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing || loadingPool}
+              className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 text-gray-600 ${(refreshing || loadingPool) ? 'animate-spin' : ''}`} />
+              Aktualisieren
+            </button>
+          </div>
+
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {loadingPool ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <span className="ml-3 text-gray-600">Pool wird geladen...</span>
+            </div>
+          ) : poolLeads.length === 0 ? (
+            <div className="p-12 text-center">
+              <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <p className="text-gray-500 text-lg">Keine offenen Termine im Pool</p>
+              <p className="text-gray-400 mt-1">Alle Beratungsgespräche wurden bereits übernommen</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {poolLeads.map((lead) => {
+                const terminDate = lead.terminDatum ? new Date(lead.terminDatum) : null
+                const isUpcoming = terminDate && terminDate > new Date()
+                const isPast = terminDate && terminDate < new Date()
+                
+                return (
+                  <div 
+                    key={lead.id}
+                    className={`p-5 hover:bg-gray-50 transition-colors ${isPast ? 'bg-red-50' : ''}`}
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      {/* Lead-Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold text-gray-900 truncate">
+                            {lead.unternehmen || 'Unbekannt'}
+                          </h3>
+                          {lead.terminart && (
+                            <span className={`px-2 py-0.5 text-xs rounded-full ${
+                              lead.terminart === 'Video' 
+                                ? 'bg-purple-100 text-purple-700' 
+                                : 'bg-blue-100 text-blue-700'
+                            }`}>
+                              {lead.terminart === 'Video' ? '📹 Video' : '📞 Telefon'}
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                          {(lead.ansprechpartnerVorname || lead.ansprechpartnerNachname) && (
+                            <span className="flex items-center gap-1">
+                              <UserIcon className="w-3.5 h-3.5" />
+                              {lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}
+                            </span>
+                          )}
+                          {lead.ort && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5" />
+                              {lead.ort}
+                            </span>
+                          )}
+                          {lead.setterName && (
+                            <span className="flex items-center gap-1 text-gray-400">
+                              Gebucht von: {lead.setterName}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Problemstellung / Infos aus Kommentar */}
+                        {lead.kommentar && (
+                          <p className="mt-2 text-sm text-gray-600 line-clamp-2">
+                            💬 {lead.kommentar}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Termin & Action */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                        {/* Termin-Datum */}
+                        <div className={`text-center px-4 py-2 rounded-lg ${
+                          isPast 
+                            ? 'bg-red-100 text-red-700' 
+                            : 'bg-blue-50 text-blue-700'
+                        }`}>
+                          <div className="text-xs font-medium uppercase">
+                            {terminDate?.toLocaleDateString('de-DE', { weekday: 'short' })}
+                          </div>
+                          <div className="text-lg font-bold">
+                            {terminDate?.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                          </div>
+                          <div className="text-sm font-medium">
+                            {terminDate?.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
+                          </div>
+                          {isPast && (
+                            <div className="text-xs mt-1">⚠️ Verpasst</div>
+                          )}
+                        </div>
+
+                        {/* Übernehmen Button */}
+                        <button
+                          onClick={() => claimLead(lead)}
+                          disabled={claimingLead === lead.id}
+                          className="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                        >
+                          {claimingLead === lead.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <>
+                              <CheckCircle className="w-4 h-4 mr-2" />
+                              Übernehmen
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+        </>
+      ) : (
+        /* ==================== NORMALE CLOSING-ANSICHT ==================== */
+        <>
+          {/* Filter & Suche */}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Suche */}
@@ -1222,6 +1480,8 @@ function Closing() {
           </div>
         </div>,
         document.body
+      )}
+        </>
       )}
     </div>
   )
