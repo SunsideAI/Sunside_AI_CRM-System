@@ -242,7 +242,10 @@ export async function handler(event) {
   // PATCH - Lead aktualisieren
   if (event.httpMethod === 'PATCH') {
     try {
-      const { leadId, updates = {}, historyEntry } = JSON.parse(event.body)
+      const body = JSON.parse(event.body)
+      const leadId = body.leadId || body.id  // Beide Varianten akzeptieren
+      const updates = body.updates || {}
+      const historyEntry = body.historyEntry
 
       if (!leadId) {
         return {
