@@ -96,6 +96,7 @@ function Closing() {
   const [poolLeads, setPoolLeads] = useState([])
   const [loadingPool, setLoadingPool] = useState(false)
   const [claimingLead, setClaimingLead] = useState(null)
+  const [toast, setToast] = useState(null) // { type: 'success'|'error', message: string }
   
   // Angebot-View State (innerhalb des Modals)
   const [showAngebotView, setShowAngebotView] = useState(false)
@@ -112,6 +113,12 @@ function Closing() {
   const [showEmailComposer, setShowEmailComposer] = useState(false)
 
   const LEADS_PER_PAGE = 10
+
+  // Toast anzeigen (verschwindet nach 4 Sekunden)
+  const showToast = (type, message) => {
+    setToast({ type, message })
+    setTimeout(() => setToast(null), 4000)
+  }
 
   // Retainer aus Setup berechnen (Setup / 2.75, abgerundet auf gerade Beträge, max 10% nach unten)
   const calculateRetainer = (setup) => {
@@ -251,7 +258,7 @@ function Closing() {
       
     } catch (err) {
       console.error('Fehler beim Senden des Angebots:', err)
-      alert('Fehler beim Senden des Angebots')
+      showToast('error', 'Fehler beim Senden des Angebots')
     } finally {
       setSendingAngebot(false)
     }
@@ -387,14 +394,14 @@ function Closing() {
       if (response.ok && data.success) {
         // Lead aus Pool entfernen
         setPoolLeads(prev => prev.filter(l => l.id !== lead.id))
-        // Optional: Success-Feedback
-        alert(`Termin mit ${lead.unternehmen} erfolgreich übernommen!`)
+        // Success-Toast
+        showToast('success', `Termin mit ${lead.unternehmen} erfolgreich übernommen!`)
       } else {
         throw new Error(data.error || 'Fehler beim Übernehmen')
       }
     } catch (err) {
       console.error('Termin übernehmen fehlgeschlagen:', err)
-      alert('Fehler: ' + err.message)
+      showToast('error', 'Fehler: ' + err.message)
     } finally {
       setClaimingLead(null)
     }
@@ -571,11 +578,11 @@ function Closing() {
         setEditMode(false)
         closeModal() // Modal schließen nach erfolgreichem Speichern
       } else {
-        alert('Fehler beim Speichern: ' + (data.error || 'Unbekannt'))
+        showToast('error', 'Fehler beim Speichern: ' + (data.error || 'Unbekannt'))
       }
     } catch (err) {
       console.error('Speichern fehlgeschlagen:', err)
-      alert('Fehler beim Speichern')
+      showToast('error', 'Fehler beim Speichern')
     } finally {
       setSaving(false)
     }
@@ -592,6 +599,28 @@ function Closing() {
 
   return (
     <div className="space-y-6">
+      {/* Toast Notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg transition-all ${
+          toast.type === 'success' 
+            ? 'bg-green-50 border border-green-200 text-green-800' 
+            : 'bg-red-50 border border-red-200 text-red-800'
+        }`}>
+          {toast.type === 'success' ? (
+            <CheckCircle className="w-5 h-5 text-green-500" />
+          ) : (
+            <X className="w-5 h-5 text-red-500" />
+          )}
+          <span className="font-medium">{toast.message}</span>
+          <button 
+            onClick={() => setToast(null)}
+            className="ml-2 hover:opacity-70"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
