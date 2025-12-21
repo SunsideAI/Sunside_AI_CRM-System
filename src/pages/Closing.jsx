@@ -75,7 +75,8 @@ const STATUS_OPTIONS = [
   { value: 'Angebot', label: 'Angebot', color: 'bg-yellow-100 text-yellow-700' },
   { value: 'Angebot versendet', label: 'Angebot versendet', color: 'bg-purple-100 text-purple-700' },
   { value: 'Abgeschlossen', label: 'Abgeschlossen', color: 'bg-green-100 text-green-700' },
-  { value: 'Abgesagt', label: 'Abgesagt', color: 'bg-orange-100 text-orange-700' },
+  { value: 'Termin abgesagt', label: 'Termin abgesagt', color: 'bg-orange-100 text-orange-700' },
+  { value: 'Termin verschoben', label: 'Termin verschoben', color: 'bg-amber-100 text-amber-700' },
   { value: 'Verloren', label: 'Verloren', color: 'bg-red-100 text-red-700' }
 ]
 
