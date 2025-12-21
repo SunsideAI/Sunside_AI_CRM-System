@@ -239,8 +239,13 @@ function MitarbeiterVerwaltung() {
     try {
       // Prüfen ob User ein Coldcaller ist (dann Leads archivieren)
       const isColdcaller = selectedUser?.rolle?.includes('Coldcaller')
+      // Prüfen ob User ein Closer ist (dann Hot Leads in Pool freigeben)
+      const isCloser = selectedUser?.rolle?.some(r => 
+        r.toLowerCase().includes('closer') || r.toLowerCase() === 'admin'
+      )
       
       let archiveResult = null
+      let releaseResult = null
       
       if (isColdcaller) {
         // 1. Zuerst Leads archivieren
@@ -260,8 +265,29 @@ function MitarbeiterVerwaltung() {
           // Warnung zeigen aber fortfahren
         }
       }
+      
+      if (isCloser) {
+        // 2. Hot Leads in Pool freigeben
+        console.log('Gebe Hot Leads frei für:', selectedUser.id)
+        const releaseResponse = await fetch('/.netlify/functions/hot-leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            action: 'release-closer-leads',
+            closerId: selectedUser.id 
+          })
+        })
+        
+        if (releaseResponse.ok) {
+          releaseResult = await releaseResponse.json()
+          console.log('Hot Leads freigegeben:', releaseResult)
+        } else {
+          const releaseError = await releaseResponse.json()
+          console.error('Hot Lead Freigabe fehlgeschlagen:', releaseError)
+        }
+      }
 
-      // 2. Dann User deaktivieren
+      // 3. Dann User deaktivieren
       const response = await fetch('/.netlify/functions/users', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
@@ -274,8 +300,10 @@ function MitarbeiterVerwaltung() {
         throw new Error(data.error)
       }
 
-      // Erfolgs-Meldung mit Archivierungs-Info
+      // Erfolgs-Meldung mit Archivierungs- und Release-Info
       let successMsg = 'Mitarbeiter wurde deaktiviert'
+      const infoParts = []
+      
       if (archiveResult) {
         const parts = []
         if (archiveResult.archiviert > 0) {
@@ -285,8 +313,16 @@ function MitarbeiterVerwaltung() {
           parts.push(`${archiveResult.freigegeben} freigegeben`)
         }
         if (parts.length > 0) {
-          successMsg = `Mitarbeiter deaktiviert. ${archiveResult.gefunden} Leads verarbeitet (${parts.join(', ')}).`
+          infoParts.push(`${archiveResult.gefunden} Leads verarbeitet (${parts.join(', ')})`)
         }
+      }
+      
+      if (releaseResult && releaseResult.released > 0) {
+        infoParts.push(`${releaseResult.released} Hot Leads in Pool freigegeben`)
+      }
+      
+      if (infoParts.length > 0) {
+        successMsg = `Mitarbeiter deaktiviert. ${infoParts.join('. ')}.`
       }
       
       setSuccess(successMsg)
@@ -1017,10 +1053,19 @@ function MitarbeiterVerwaltung() {
             
             {/* Hinweis für Coldcaller */}
             {selectedUser?.rolle?.includes('Coldcaller') && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm mb-3">
                 <p className="text-amber-800">
                   <strong>📋 Lead-Archivierung:</strong> Alle bearbeiteten Leads dieses Vertrieblers werden ins Archiv verschoben. 
                   Die Leads werden zurückgesetzt und können einem neuen Vertriebler zugewiesen werden.
+                </p>
+              </div>
+            )}
+            
+            {/* Hinweis für Closer */}
+            {selectedUser?.rolle?.some(r => r.toLowerCase().includes('closer') || r.toLowerCase() === 'admin') && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+                <p className="text-blue-800">
+                  <strong>🔄 Hot Leads:</strong> Alle Closing-Leads dieses Mitarbeiters werden in den Pool zurückgegeben und können von anderen Closern übernommen werden.
                 </p>
               </div>
             )}
