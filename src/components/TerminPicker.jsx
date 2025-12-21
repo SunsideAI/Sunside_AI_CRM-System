@@ -748,7 +748,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
               <button
                 onClick={() => bookTermin(true)}
                 disabled={booking}
-                className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className={`flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors ${!canSelfClose ? 'col-span-2' : ''}`}
               >
                 {booking ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -760,8 +760,8 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 )}
               </button>
               
-              {/* Selbst übernehmen - nur für Closer */}
-              {canSelfClose ? (
+              {/* Selbst übernehmen - nur für Closer sichtbar */}
+              {canSelfClose && (
                 <button
                   onClick={() => bookTermin(false)}
                   disabled={booking}
@@ -775,15 +775,6 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                       Ich übernehme das Closing
                     </>
                   )}
-                </button>
-              ) : (
-                <button
-                  disabled
-                  className="flex items-center justify-center px-4 py-3 bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed"
-                  title="Nur für Closer verfügbar"
-                >
-                  <User className="w-5 h-5 mr-2" />
-                  Selbst übernehmen
                 </button>
               )}
             </div>
