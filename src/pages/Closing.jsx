@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import EmailComposer from '../components/EmailComposer'
+import TerminPicker from '../components/TerminPicker'
 import { 
   Calendar, 
   Users,
@@ -27,7 +28,8 @@ import {
   Package,
   CheckCircle,
   AlertCircle,
-  Paperclip
+  Paperclip,
+  CalendarPlus
 } from 'lucide-react'
 
 // Paket-Optionen für Angebot
@@ -114,6 +116,10 @@ function Closing() {
   
   // Email-Composer State (für Unterlagen versenden)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
+  
+  // Neu-Terminieren State
+  const [showTerminPicker, setShowTerminPicker] = useState(false)
+  const [terminPickerLead, setTerminPickerLead] = useState(null)
 
   const LEADS_PER_PAGE = 10
 
@@ -1271,23 +1277,40 @@ function Closing() {
                 <div className="space-y-6">
                   {/* Action Buttons - Angebot & Unterlagen versenden */}
                   {!editMode && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        type="button"
-                        onClick={() => setShowAngebotView(true)}
-                        className="flex items-center justify-center px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                      >
-                        <Send className="w-4 h-4 mr-2" />
-                        {selectedLead.status === 'Lead' ? 'Angebot versenden' : 'Neues Angebot'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowEmailComposer(true)}
-                        className="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        <Paperclip className="w-4 h-4 mr-2" />
-                        Unterlagen versenden
-                      </button>
+                    <div className="space-y-3">
+                      {/* Neu terminieren Button - nur bei abgesagten Terminen */}
+                      {selectedLead.status === 'Termin abgesagt' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setTerminPickerLead(selectedLead)
+                            setShowTerminPicker(true)
+                          }}
+                          className="w-full flex items-center justify-center px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                        >
+                          <CalendarPlus className="w-5 h-5 mr-2" />
+                          Neuen Termin buchen
+                        </button>
+                      )}
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setShowAngebotView(true)}
+                          className="flex items-center justify-center px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                        >
+                          <Send className="w-4 h-4 mr-2" />
+                          {selectedLead.status === 'Lead' ? 'Angebot versenden' : 'Neues Angebot'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowEmailComposer(true)}
+                          className="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          <Paperclip className="w-4 h-4 mr-2" />
+                          Unterlagen versenden
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -1522,6 +1545,57 @@ function Closing() {
         document.body
       )}
         </>
+      )}
+
+      {/* Neu-Terminieren Modal */}
+      {showTerminPicker && terminPickerLead && createPortal(
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900">Neuen Termin buchen</h2>
+                <p className="text-sm text-gray-500">{terminPickerLead.unternehmen}</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowTerminPicker(false)
+                  setTerminPickerLead(null)
+                }}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6">
+              <TerminPicker
+                lead={{
+                  id: terminPickerLead.originalLeadId,
+                  unternehmen: terminPickerLead.unternehmen,
+                  email: terminPickerLead.email,
+                  telefon: terminPickerLead.telefon,
+                  ansprechpartnerVorname: terminPickerLead.ansprechpartnerVorname,
+                  ansprechpartnerNachname: terminPickerLead.ansprechpartnerNachname,
+                  stadt: terminPickerLead.ort,
+                  kategorie: terminPickerLead.kategorie
+                }}
+                hotLeadId={terminPickerLead.id}
+                onTerminBooked={(result) => {
+                  setShowTerminPicker(false)
+                  setTerminPickerLead(null)
+                  setSelectedLead(null)
+                  showToast('success', `Neuer Termin gebucht für ${terminPickerLead.unternehmen}`)
+                  // Leads neu laden
+                  loadLeads()
+                }}
+                onCancel={() => {
+                  setShowTerminPicker(false)
+                  setTerminPickerLead(null)
+                }}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )
