@@ -77,55 +77,23 @@ exports.handler = async (event) => {
         }
 
         // Email an alle Closer senden
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <div style="background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%); padding: 20px; border-radius: 10px 10px 0 0;">
-              <h1 style="color: white; margin: 0; font-size: 24px;">🗓️ Neues Beratungsgespräch!</h1>
-            </div>
-            <div style="background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
-              <p style="color: #374151; font-size: 16px; margin-bottom: 20px;">
-                Ein neues Beratungsgespräch wartet darauf, übernommen zu werden:
-              </p>
-              
-              <div style="background: white; padding: 20px; border-radius: 10px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
-                <table style="width: 100%; border-collapse: collapse;">
-                  <tr>
-                    <td style="padding: 8px 0; color: #6b7280; width: 140px;">📅 Termin:</td>
-                    <td style="padding: 8px 0; color: #111827; font-weight: 600;">${termin.datum}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #6b7280;">📞 Art:</td>
-                    <td style="padding: 8px 0; color: #111827;">${termin.art}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #6b7280;">🏢 Unternehmen:</td>
-                    <td style="padding: 8px 0; color: #111827; font-weight: 600;">${termin.unternehmen}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #6b7280;">👤 Ansprechpartner:</td>
-                    <td style="padding: 8px 0; color: #111827;">${termin.ansprechpartner}</td>
-                  </tr>
-                  <tr>
-                    <td style="padding: 8px 0; color: #6b7280;">📣 Gebucht von:</td>
-                    <td style="padding: 8px 0; color: #111827;">${termin.setter}</td>
-                  </tr>
-                </table>
-              </div>
-              
-              <p style="color: #6b7280; font-size: 14px;">
-                Logge dich ins CRM ein um den Termin zu übernehmen.
-              </p>
-              
-              <a href="https://sunside-crm.netlify.app/closing" 
-                 style="display: inline-block; background: #7c3aed; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 10px;">
-                Zum Closing-Bereich →
-              </a>
-            </div>
-            <div style="padding: 15px; text-align: center; color: #9ca3af; font-size: 12px;">
-              Sunside AI GbR | Automatische Benachrichtigung
-            </div>
-          </div>
-        `
+        // Email-Text erstellen (wird dann mit formatEmailHtml formatiert)
+        const emailText = `Hallo zusammen,
+
+es wurde ein neues Beratungsgespräch gebucht, das noch keinem Closer zugewiesen ist.
+
+**Termin-Details:**
+• Datum: ${termin.datum}
+• Art: ${termin.art}
+• Unternehmen: ${termin.unternehmen}
+• Ansprechpartner: ${termin.ansprechpartner}
+• Gebucht von: ${termin.setter}
+
+Bitte logge dich ins CRM ein, um den Termin zu übernehmen:
+[Zum Closer-Pool](https://sunside-crm.netlify.app/closing)`
+
+        // Mit Standard-Formatierung und Signatur versehen
+        const emailHtml = formatEmailHtml(emailText, 'Sunside AI CRM', 'team@sunsideai.de', null)
 
         const emailResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
@@ -136,7 +104,7 @@ exports.handler = async (event) => {
           body: JSON.stringify({
             from: 'Sunside AI CRM <team@sunsideai.de>',
             to: closerEmails,
-            subject: `🗓️ Neues Beratungsgespräch: ${termin.unternehmen}`,
+            subject: `Neues Beratungsgespräch: ${termin.unternehmen}`,
             html: emailHtml
           })
         })
