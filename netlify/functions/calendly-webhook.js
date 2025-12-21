@@ -29,41 +29,59 @@ exports.handler = async (event) => {
   try {
     const payload = JSON.parse(event.body)
     
-    console.log('Calendly Webhook received:', {
-      event: payload.event,
-      createdAt: payload.created_at,
-      payload: JSON.stringify(payload.payload, null, 2)
-    })
+    console.log('=== Calendly Webhook received ===')
+    console.log('Event:', payload.event)
+    console.log('Payload:', JSON.stringify(payload.payload, null, 2))
 
     const eventType = payload.event
     const data = payload.payload
 
     // ==========================================
-    // Event: invitee.canceled (Termin abgesagt)
+    // Event: invitee.canceled (Termin abgesagt ODER verschoben)
     // ==========================================
     if (eventType === 'invitee.canceled') {
       const inviteeEmail = data.email
-      const eventName = data.event_type?.name || 'Unbekannt'
+      const inviteeName = data.name
       const scheduledTime = data.scheduled_event?.start_time
-      const cancellationReason = data.cancellation?.reason || 'Keine Angabe'
-      const canceledBy = data.cancellation?.canceled_by || 'Unbekannt'
+      const cancellation = data.cancellation || {}
+      const canceledBy = cancellation.canceled_by || 'Unbekannt'
+      const cancellationReason = cancellation.reason || ''
       
-      console.log('Termin abgesagt:', {
+      // WICHTIG: Bei Reschedule wird rescheduled=true gesetzt
+      // In dem Fall NICHT als "Abgesagt" markieren!
+      const isReschedule = data.rescheduled === true
+      
+      console.log('Cancel Event Details:', {
         email: inviteeEmail,
-        event: eventName,
+        name: inviteeName,
         time: scheduledTime,
-        reason: cancellationReason,
-        canceledBy
+        isReschedule,
+        canceledBy,
+        reason: cancellationReason
       })
 
-      // Hot Lead in Airtable finden und Status auf "Abgesagt" setzen
+      if (isReschedule) {
+        // Bei Verschiebung: Nur loggen, das Update kommt mit invitee.created
+        console.log('→ Ist Reschedule, warte auf invitee.created Event')
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ 
+            success: true, 
+            message: 'Reschedule erkannt - warte auf neuen Termin'
+          })
+        }
+      }
+
+      // Echte Absage - Hot Lead finden und Status setzen
+      console.log('→ Echte Absage, suche Hot Lead...')
       const hotLead = await findHotLeadByTermin(scheduledTime, inviteeEmail)
       
       if (hotLead) {
-        await updateHotLeadStatus(hotLead.id, 'Abgesagt', `Abgesagt: ${cancellationReason}`)
-        console.log('Hot Lead Status aktualisiert:', hotLead.id)
+        await updateHotLeadStatus(hotLead.id, 'Abgesagt', `Abgesagt von ${canceledBy}: ${cancellationReason}`)
+        console.log('✓ Hot Lead auf Abgesagt gesetzt:', hotLead.id, hotLead.unternehmen)
       } else {
-        console.log('Kein passender Hot Lead gefunden für:', scheduledTime, inviteeEmail)
+        console.log('✗ Kein passender Hot Lead gefunden')
       }
 
       return {
@@ -83,27 +101,38 @@ exports.handler = async (event) => {
     if (eventType === 'invitee.created') {
       const inviteeEmail = data.email
       const inviteeName = data.name
-      const scheduledTime = data.scheduled_event?.start_time
-      const eventName = data.event_type?.name || 'Unbekannt'
+      const newScheduledTime = data.scheduled_event?.start_time
+      const eventUri = data.scheduled_event?.uri
       
-      // Prüfen ob es ein Reschedule ist (durch Rescheduled-Flag oder alte Buchung)
-      const isReschedule = data.rescheduled || data.old_invitee
+      // old_invitee enthält die Daten des alten Termins bei Reschedule
+      const oldInvitee = data.old_invitee
+      const isReschedule = !!oldInvitee
       
-      if (isReschedule) {
-        const oldTime = data.old_invitee?.scheduled_event?.start_time
-        
-        console.log('Termin verschoben:', {
-          email: inviteeEmail,
-          oldTime,
-          newTime: scheduledTime
-        })
+      console.log('Created Event Details:', {
+        email: inviteeEmail,
+        name: inviteeName,
+        newTime: newScheduledTime,
+        isReschedule,
+        oldInvitee: oldInvitee ? {
+          email: oldInvitee.email,
+          oldTime: oldInvitee.scheduled_event?.start_time
+        } : null
+      })
 
-        // Hot Lead finden und Termin aktualisieren
-        const hotLead = await findHotLeadByTermin(oldTime, inviteeEmail)
+      if (isReschedule) {
+        const oldScheduledTime = oldInvitee.scheduled_event?.start_time
+        const oldEmail = oldInvitee.email
+        
+        console.log('→ Verschiebung erkannt:', oldScheduledTime, '→', newScheduledTime)
+        
+        // Hot Lead anhand des ALTEN Termins finden
+        const hotLead = await findHotLeadByTermin(oldScheduledTime, oldEmail || inviteeEmail)
         
         if (hotLead) {
-          await updateHotLeadTermin(hotLead.id, scheduledTime, 'Verschoben')
-          console.log('Hot Lead Termin aktualisiert:', hotLead.id)
+          await updateHotLeadTermin(hotLead.id, newScheduledTime)
+          console.log('✓ Hot Lead Termin aktualisiert:', hotLead.id, hotLead.unternehmen)
+        } else {
+          console.log('✗ Kein passender Hot Lead für Verschiebung gefunden')
         }
 
         return {
@@ -112,23 +141,27 @@ exports.handler = async (event) => {
           body: JSON.stringify({ 
             success: true, 
             message: 'Verschiebung verarbeitet',
-            hotLeadId: hotLead?.id || null
+            hotLeadId: hotLead?.id || null,
+            newTime: newScheduledTime
           })
         }
       }
 
       // Normale neue Buchung (wird schon vom TerminPicker behandelt)
-      console.log('Neue Buchung (wird von TerminPicker behandelt):', inviteeName, scheduledTime)
+      console.log('→ Neue Buchung (wird von CRM/TerminPicker behandelt)')
       
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ success: true, message: 'Neue Buchung ignoriert (wird vom CRM behandelt)' })
+        body: JSON.stringify({ 
+          success: true, 
+          message: 'Neue Buchung - wird vom CRM behandelt'
+        })
       }
     }
 
     // Unbekanntes Event
-    console.log('Unbekanntes Calendly Event:', eventType)
+    console.log('→ Unbekanntes Event ignoriert:', eventType)
     return {
       statusCode: 200,
       headers: corsHeaders,
@@ -149,7 +182,12 @@ exports.handler = async (event) => {
 // Helper: Hot Lead anhand Termin-Zeit und Email finden
 // ==========================================
 async function findHotLeadByTermin(terminDatum, email) {
-  if (!terminDatum) return null
+  if (!terminDatum) {
+    console.log('findHotLeadByTermin: Kein terminDatum übergeben')
+    return null
+  }
+
+  console.log('findHotLeadByTermin: Suche nach', { terminDatum, email })
 
   const airtableHeaders = {
     'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
@@ -159,16 +197,9 @@ async function findHotLeadByTermin(terminDatum, email) {
   const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Hot_Leads')}`
 
   try {
-    // Termin-Datum formatieren für Vergleich (nur Datum + Stunde)
-    const searchDate = new Date(terminDatum)
-    const dateStr = searchDate.toISOString().split('T')[0]
+    // Alle Hot Leads laden (nicht abgesagte)
+    const filterFormula = `{Status} != "Abgesagt"`
     
-    // Filter: Termin am gleichen Tag
-    const filterFormula = `AND(
-      IS_SAME({Termin_Beratungsgespräch}, "${dateStr}", "day"),
-      {Status} != "Abgesagt"
-    )`
-
     const response = await fetch(
       `${TABLE_URL}?filterByFormula=${encodeURIComponent(filterFormula)}`,
       { headers: airtableHeaders }
@@ -176,35 +207,71 @@ async function findHotLeadByTermin(terminDatum, email) {
 
     const data = await response.json()
 
-    if (!response.ok || !data.records || data.records.length === 0) {
+    if (!response.ok) {
+      console.log('Airtable Error:', data)
       return null
     }
 
-    // Besten Match finden (gleiche Uhrzeit und/oder Email)
+    if (!data.records || data.records.length === 0) {
+      console.log('Keine Hot Leads gefunden')
+      return null
+    }
+
+    console.log(`${data.records.length} Hot Leads geladen, suche Match...`)
+
+    // Suche nach bestem Match
+    const searchDate = new Date(terminDatum)
     const targetTime = searchDate.getTime()
     
+    // 1. Erst nach exakter Zeit suchen (±10 Minuten Toleranz)
     for (const record of data.records) {
-      const recordTime = new Date(record.fields.Termin_Beratungsgespräch).getTime()
-      const recordEmail = record.fields.Mail || record.fields['E-Mail'] || ''
+      const recordTermin = record.fields.Termin_Beratungsgespräch || record.fields['Termin_Beratungsgespräch']
+      if (!recordTermin) continue
       
-      // Exakte Zeit-Match (±5 Minuten Toleranz)
+      const recordTime = new Date(recordTermin).getTime()
       const timeDiff = Math.abs(recordTime - targetTime)
-      if (timeDiff < 5 * 60 * 1000) {
-        return {
-          id: record.id,
-          unternehmen: record.fields.Unternehmen,
-          email: recordEmail
-        }
-      }
       
-      // Email-Match als Fallback
-      if (email && recordEmail.toLowerCase() === email.toLowerCase()) {
+      if (timeDiff < 10 * 60 * 1000) { // 10 Minuten Toleranz
+        console.log(`✓ Zeit-Match gefunden: ${record.fields.Unternehmen} (Diff: ${Math.round(timeDiff/1000)}s)`)
         return {
           id: record.id,
           unternehmen: record.fields.Unternehmen,
-          email: recordEmail
+          email: record.fields.Mail || record.fields['E-Mail'] || ''
         }
       }
+    }
+
+    // 2. Falls keine Zeit-Match, nach Email suchen (am gleichen Tag)
+    if (email) {
+      const searchDateStr = searchDate.toISOString().split('T')[0]
+      
+      for (const record of data.records) {
+        const recordEmail = (record.fields.Mail || record.fields['E-Mail'] || '').toLowerCase()
+        const recordTermin = record.fields.Termin_Beratungsgespräch || record.fields['Termin_Beratungsgespräch']
+        
+        if (recordEmail === email.toLowerCase() && recordTermin) {
+          const recordDateStr = new Date(recordTermin).toISOString().split('T')[0]
+          
+          if (recordDateStr === searchDateStr) {
+            console.log(`✓ Email+Tag-Match gefunden: ${record.fields.Unternehmen}`)
+            return {
+              id: record.id,
+              unternehmen: record.fields.Unternehmen,
+              email: recordEmail
+            }
+          }
+        }
+      }
+    }
+
+    console.log('✗ Kein Match gefunden')
+    return null
+    
+  } catch (err) {
+    console.error('Fehler beim Suchen des Hot Leads:', err)
+    return null
+  }
+}
     }
 
     return null
