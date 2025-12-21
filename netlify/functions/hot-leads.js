@@ -262,8 +262,10 @@ exports.handler = async (event) => {
         // User-Namen laden für ID-Auflösung
         const userNames = await loadUserNames(airtableHeaders)
         
-        // Name → ID Mapping
+        // Name → ID Mapping und umgekehrt
         let targetCloserId = closerId
+        let targetCloserName = closerName
+        
         if (!targetCloserId && closerName) {
           for (const [id, name] of Object.entries(userNames)) {
             if (name.toLowerCase() === closerName.toLowerCase()) {
@@ -271,6 +273,10 @@ exports.handler = async (event) => {
               break
             }
           }
+        }
+        
+        if (targetCloserId && !targetCloserName) {
+          targetCloserName = userNames[targetCloserId] || 'Unbekannt'
         }
         
         if (!targetCloserId) {
@@ -281,16 +287,15 @@ exports.handler = async (event) => {
           }
         }
         
-        // Alle Hot Leads des Closers finden
+        console.log('Target Closer:', { targetCloserId, targetCloserName })
+        
+        // ALLE Hot Leads laden (ohne Filter - robuster bei Link-Feldern)
         let allRecords = []
         let offset = null
         
         do {
           let url = TABLE_URL
-          const params = []
-          params.push(`filterByFormula=FIND("${targetCloserId}",ARRAYJOIN({Closer}))`)
-          if (offset) params.push(`offset=${offset}`)
-          if (params.length > 0) url += '?' + params.join('&')
+          if (offset) url += `?offset=${offset}`
           
           const response = await fetch(url, { headers: airtableHeaders })
           const data = await response.json()
@@ -301,13 +306,36 @@ exports.handler = async (event) => {
           offset = data.offset
         } while (offset)
         
-        console.log(`${allRecords.length} Hot Leads gefunden für Closer ${targetCloserId}`)
+        console.log(`${allRecords.length} Hot Leads total geladen`)
+        
+        // Im Code filtern: Hot Leads die dem Closer zugewiesen sind
+        const closerLeads = allRecords.filter(record => {
+          const closerField = record.fields.Closer || []
+          const closerIds = Array.isArray(closerField) ? closerField : [closerField]
+          return closerIds.includes(targetCloserId)
+        })
+        
+        console.log(`${closerLeads.length} Hot Leads gefunden für Closer ${targetCloserName}`)
+        
+        if (closerLeads.length === 0) {
+          return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              success: true,
+              message: 'Keine Hot Leads zum Freigeben gefunden',
+              released: 0,
+              total: 0
+            })
+          }
+        }
         
         // Closer-Feld leeren (in Batches von 10)
         let releasedCount = 0
+        const releasedLeads = [] // Für Benachrichtigung
         
-        for (let i = 0; i < allRecords.length; i += 10) {
-          const batch = allRecords.slice(i, i + 10)
+        for (let i = 0; i < closerLeads.length; i += 10) {
+          const batch = closerLeads.slice(i, i + 10)
           
           const updateRecords = batch.map(record => ({
             id: record.id,
@@ -324,6 +352,13 @@ exports.handler = async (event) => {
           
           if (updateResponse.ok) {
             releasedCount += batch.length
+            // Lead-Infos für Benachrichtigung sammeln
+            batch.forEach(record => {
+              releasedLeads.push({
+                unternehmen: resolveUserName(record.fields.Unternehmen, {}) || record.fields.Unternehmen || 'Unbekannt',
+                terminDatum: record.fields.Termin_Datum
+              })
+            })
           } else {
             const error = await updateResponse.json()
             console.error('Release-Fehler:', error)
@@ -332,6 +367,97 @@ exports.handler = async (event) => {
         
         console.log(`${releasedCount} Hot Leads in Pool freigegeben`)
         
+        // Email-Benachrichtigung an alle aktiven Closer senden
+        if (releasedCount > 0) {
+          try {
+            // Aktive Closer aus User_Datenbank laden
+            const userTableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('User_Datenbank')}`
+            const usersResponse = await fetch(userTableUrl, { headers: airtableHeaders })
+            const usersData = await usersResponse.json()
+            
+            const activeClosers = (usersData.records || []).filter(user => {
+              const status = user.fields.Status
+              const rolle = user.fields.Rolle || []
+              const isActive = status === true || status === 'true'
+              const isCloser = rolle.some(r => 
+                r.toLowerCase().includes('closer') || r.toLowerCase() === 'admin'
+              )
+              // Nicht den deaktivierten Closer benachrichtigen
+              const isNotDeactivated = user.id !== targetCloserId
+              return isActive && isCloser && isNotDeactivated && user.fields.Mail
+            })
+            
+            console.log(`${activeClosers.length} aktive Closer für Benachrichtigung gefunden`)
+            
+            // Email an jeden aktiven Closer senden
+            for (const closer of activeClosers) {
+              const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+      <h1 style="color: white; margin: 0; font-size: 24px;">🔄 Neue Leads im Pool</h1>
+    </div>
+    
+    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
+        <strong>${targetCloserName}</strong> wurde deaktiviert. 
+        <strong style="color: #3B82F6;">${releasedCount} Beratungsgespräche</strong> sind jetzt im Closer-Pool verfügbar.
+      </p>
+      
+      <div style="background: #F3F4F6; border-radius: 12px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 15px 0; color: #374151; font-size: 14px; text-transform: uppercase;">Freigegebene Termine:</h3>
+        ${releasedLeads.slice(0, 10).map(lead => `
+          <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #E5E7EB;">
+            <span style="color: #374151; font-weight: 500;">${lead.unternehmen}</span>
+            <span style="color: #6B7280;">${lead.terminDatum ? new Date(lead.terminDatum).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Kein Termin'}</span>
+          </div>
+        `).join('')}
+        ${releasedLeads.length > 10 ? `<p style="color: #6B7280; font-size: 14px; margin: 10px 0 0 0;">... und ${releasedLeads.length - 10} weitere</p>` : ''}
+      </div>
+      
+      <div style="text-align: center; margin-top: 25px;">
+        <a href="https://crm.sunside.ai/closing" 
+           style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+          Zum Closer-Pool →
+        </a>
+      </div>
+      
+      <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 30px; margin-bottom: 0;">
+        Sunside AI CRM System
+      </p>
+    </div>
+  </div>
+</body>
+</html>`
+
+              // Email senden via send-email Funktion
+              await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                  'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  from: 'Sunside AI <noreply@sunside.ai>',
+                  to: closer.fields.Mail,
+                  subject: `🔄 ${releasedCount} neue Leads im Closer-Pool`,
+                  html: emailHtml
+                })
+              })
+              
+              console.log(`Pool-Benachrichtigung gesendet an: ${closer.fields.Mail}`)
+            }
+          } catch (emailError) {
+            console.error('Fehler beim Senden der Pool-Benachrichtigung:', emailError)
+            // Fehler nicht werfen - Hauptfunktion war erfolgreich
+          }
+        }
+        
         return {
           statusCode: 200,
           headers: corsHeaders,
@@ -339,7 +465,8 @@ exports.handler = async (event) => {
             success: true,
             message: `${releasedCount} Hot Leads in Pool freigegeben`,
             released: releasedCount,
-            total: allRecords.length
+            total: closerLeads.length,
+            closerName: targetCloserName
           })
         }
       }
