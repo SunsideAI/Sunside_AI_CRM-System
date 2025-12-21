@@ -24,12 +24,165 @@ exports.handler = async (event) => {
 
   try {
     const body = JSON.parse(event.body)
+    
+    // ==========================================
+    // NOTIFY CLOSERS - Benachrichtigung an alle Closer bei neuem Termin
+    // ==========================================
+    if (body.action === 'notify-closers') {
+      const { termin } = body
+      
+      if (!termin) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'termin ist erforderlich' })
+        }
+      }
+
+      if (!RESEND_API_KEY || !AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'API Keys nicht konfiguriert' })
+        }
+      }
+
+      try {
+        // Alle Closer aus Airtable laden
+        const usersUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('User_Datenbank')}?fields[]=E-Mail_Geschäftlich&fields[]=Vor_Nachname&fields[]=Rolle`
+        const usersResponse = await fetch(usersUrl, {
+          headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
+        })
+        const usersData = await usersResponse.json()
+
+        // Closer filtern (Rolle enthält "Closer" oder "Admin" oder "Coldcaller + Closer")
+        const closerEmails = usersData.records
+          ?.filter(record => {
+            const rollen = record.fields.Rolle || []
+            return rollen.some(r => 
+              r.toLowerCase().includes('closer') || 
+              r.toLowerCase() === 'admin'
+            )
+          })
+          .map(record => record.fields['E-Mail_Geschäftlich'])
+          .filter(email => email && email.includes('@')) || []
+
+        if (closerEmails.length === 0) {
+          console.log('Keine Closer gefunden für Benachrichtigung')
+          return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({ success: true, message: 'Keine Closer gefunden' })
+          }
+        }
+
+        // Email an alle Closer senden
+        const emailHtml = `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #7c3aed 0%, #9333ea 100%); padding: 20px; border-radius: 10px 10px 0 0;">
+              <h1 style="color: white; margin: 0; font-size: 24px;">🗓️ Neues Beratungsgespräch!</h1>
+            </div>
+            <div style="background: #f9fafb; padding: 20px; border: 1px solid #e5e7eb; border-top: none;">
+              <p style="color: #374151; font-size: 16px; margin-bottom: 20px;">
+                Ein neues Beratungsgespräch wartet darauf, übernommen zu werden:
+              </p>
+              
+              <div style="background: white; padding: 20px; border-radius: 10px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280; width: 140px;">📅 Termin:</td>
+                    <td style="padding: 8px 0; color: #111827; font-weight: 600;">${termin.datum}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">📞 Art:</td>
+                    <td style="padding: 8px 0; color: #111827;">${termin.art}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">🏢 Unternehmen:</td>
+                    <td style="padding: 8px 0; color: #111827; font-weight: 600;">${termin.unternehmen}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">👤 Ansprechpartner:</td>
+                    <td style="padding: 8px 0; color: #111827;">${termin.ansprechpartner}</td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 8px 0; color: #6b7280;">📣 Gebucht von:</td>
+                    <td style="padding: 8px 0; color: #111827;">${termin.setter}</td>
+                  </tr>
+                </table>
+              </div>
+              
+              <p style="color: #6b7280; font-size: 14px;">
+                Logge dich ins CRM ein um den Termin zu übernehmen.
+              </p>
+              
+              <a href="https://sunside-crm.netlify.app/closing" 
+                 style="display: inline-block; background: #7c3aed; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; margin-top: 10px;">
+                Zum Closing-Bereich →
+              </a>
+            </div>
+            <div style="padding: 15px; text-align: center; color: #9ca3af; font-size: 12px;">
+              Sunside AI GbR | Automatische Benachrichtigung
+            </div>
+          </div>
+        `
+
+        const emailResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'Sunside AI CRM <team@sunsideai.de>',
+            to: closerEmails,
+            subject: `🗓️ Neues Beratungsgespräch: ${termin.unternehmen}`,
+            html: emailHtml
+          })
+        })
+
+        const emailResult = await emailResponse.json()
+
+        if (!emailResponse.ok) {
+          console.error('Closer-Benachrichtigung fehlgeschlagen:', emailResult)
+          return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Email-Versand fehlgeschlagen', details: emailResult })
+          }
+        }
+
+        console.log(`Closer-Benachrichtigung an ${closerEmails.length} Empfänger gesendet`)
+        
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ 
+            success: true, 
+            message: `Benachrichtigung an ${closerEmails.length} Closer gesendet`,
+            recipients: closerEmails
+          })
+        }
+      } catch (notifyError) {
+        console.error('Notify-Closers Fehler:', notifyError)
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Interner Fehler', details: notifyError.message })
+        }
+      }
+    }
+
+    // ==========================================
+    // STANDARD EMAIL SENDEN
+    // ==========================================
     const {
       to,              // Empfänger E-Mail
       subject,         // Betreff
       content,         // E-Mail Inhalt (Text)
       senderName,      // Absender Name (z.B. "Phillip Schadek")
       senderEmail,     // Absender E-Mail (muss @sunsideai.de sein)
+      senderTelefon,   // Absender Telefonnummer für Signatur
       replyTo,         // Reply-To (falls anders als Absender)
       leadId,          // Lead ID für Logging
       templateName,    // Template Name für Logging
@@ -72,7 +225,7 @@ exports.handler = async (event) => {
       reply_to: replyTo || fromEmail,
       subject: subject,
       text: content,
-      html: formatEmailHtml(content, fromName, fromEmail)
+      html: formatEmailHtml(content, fromName, fromEmail, senderTelefon)
     }
 
     // Attachments hinzufügen wenn vorhanden
@@ -342,8 +495,8 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
   // Signatur HTML - basierend auf IONOS Vorlage
   const signatur = `
     <div style="font-size: 10pt; font-family: Arial, Helvetica, sans-serif; margin-top: 20px; color: #000000;">
-      <div>Mit freundlichen Grüßen</div>
       <br>
+      <div>Mit freundlichen Grüßen</div>
       <div><strong>${senderName || 'Sunside AI Team'}</strong></div>
       <div>KI-Entwicklung für Immobilienmakler</div>
       <br>
@@ -373,7 +526,7 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
       <!-- Kontaktdaten -->
       <div><strong>Sunside AI GbR</strong></div>
       <div>Schiefer Berg 3 I 38124 Braunschweig I Deutschland<br>
-      E-Mail: <a href="mailto:contact@sunsideai.de" style="color: #000000;">contact@sunsideai.de</a> I Tel: +49 176 56039050</div>
+      E-Mail: <a href="mailto:contact@sunsideai.de" style="color: #000000;">contact@sunsideai.de</a>${senderTelefon ? ` I Tel: ${senderTelefon}` : ''}</div>
       <div>
         <a href="https://www.sunsideai.de/" style="color: #000000;">www.sunsideai.de</a> | 
         <a href="https://sunsideai.de/jetzt-termin-buchen" style="color: #000000;">Jetzt Termin buchen</a> | 
