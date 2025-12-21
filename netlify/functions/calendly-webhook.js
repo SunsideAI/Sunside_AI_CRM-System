@@ -108,25 +108,37 @@ exports.handler = async (event) => {
       const oldInvitee = data.old_invitee
       const isReschedule = !!oldInvitee
       
+      // Vollständiges old_invitee loggen um Struktur zu sehen
       console.log('Created Event Details:', {
         email: inviteeEmail,
         name: inviteeName,
         newTime: newScheduledTime,
         isReschedule,
-        oldInvitee: oldInvitee ? {
-          email: oldInvitee.email,
-          oldTime: oldInvitee.scheduled_event?.start_time
-        } : null
+        oldInvitee_full: oldInvitee // Vollständig loggen
       })
 
       if (isReschedule) {
-        const oldScheduledTime = oldInvitee.scheduled_event?.start_time
-        const oldEmail = oldInvitee.email
+        // Verschiedene mögliche Pfade für die alte Zeit
+        const oldScheduledTime = oldInvitee.scheduled_event?.start_time 
+          || oldInvitee.start_time 
+          || oldInvitee.event?.start_time
+        const oldEmail = oldInvitee.email || inviteeEmail
         
         console.log('→ Verschiebung erkannt:', oldScheduledTime, '→', newScheduledTime)
+        console.log('→ Suche mit Email:', oldEmail)
         
-        // Hot Lead anhand des ALTEN Termins finden
-        const hotLead = await findHotLeadByTermin(oldScheduledTime, oldEmail || inviteeEmail)
+        // Hot Lead finden - erst über alte Zeit, dann über Email
+        let hotLead = null
+        
+        if (oldScheduledTime) {
+          hotLead = await findHotLeadByTermin(oldScheduledTime, oldEmail)
+        }
+        
+        // Fallback: Über Email suchen wenn keine alte Zeit
+        if (!hotLead) {
+          console.log('→ Fallback: Suche über Email...')
+          hotLead = await findHotLeadByEmail(oldEmail)
+        }
         
         if (hotLead) {
           await updateHotLeadTermin(hotLead.id, newScheduledTime)
@@ -269,6 +281,65 @@ async function findHotLeadByTermin(terminDatum, email) {
     
   } catch (err) {
     console.error('Fehler beim Suchen des Hot Leads:', err)
+    return null
+  }
+}
+
+// ==========================================
+// Helper: Hot Lead anhand Email finden (Fallback)
+// ==========================================
+async function findHotLeadByEmail(email) {
+  if (!email) {
+    console.log('findHotLeadByEmail: Keine Email übergeben')
+    return null
+  }
+
+  console.log('findHotLeadByEmail: Suche nach', email)
+
+  const airtableHeaders = {
+    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+    'Content-Type': 'application/json'
+  }
+
+  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Hot_Leads')}`
+
+  try {
+    // Hot Leads laden die nicht abgesagt sind und einen Termin haben
+    const filterFormula = `AND({Status} != "Abgesagt", {Termin_Beratungsgespräch} != "")`
+    
+    const response = await fetch(
+      `${TABLE_URL}?filterByFormula=${encodeURIComponent(filterFormula)}`,
+      { headers: airtableHeaders }
+    )
+
+    const data = await response.json()
+
+    if (!response.ok || !data.records || data.records.length === 0) {
+      console.log('Keine Hot Leads gefunden')
+      return null
+    }
+
+    console.log(`${data.records.length} Hot Leads geladen, suche Email-Match...`)
+
+    // Nach Email suchen
+    for (const record of data.records) {
+      const recordEmail = (record.fields.Mail || record.fields['E-Mail'] || '').toLowerCase()
+      
+      if (recordEmail === email.toLowerCase()) {
+        console.log(`✓ Email-Match gefunden: ${record.fields.Unternehmen}`)
+        return {
+          id: record.id,
+          unternehmen: record.fields.Unternehmen,
+          email: recordEmail
+        }
+      }
+    }
+
+    console.log('✗ Kein Email-Match gefunden')
+    return null
+    
+  } catch (err) {
+    console.error('Fehler beim Suchen des Hot Leads via Email:', err)
     return null
   }
 }
