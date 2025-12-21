@@ -10,8 +10,11 @@ const toLocalDateString = (date) => {
   return `${year}-${month}-${day}`
 }
 
-function TerminPicker({ lead, onTerminBooked, onCancel }) {
+function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
   const { user } = useAuth()
+  
+  // Modus: Neuer Termin oder Neu-Terminierung eines bestehenden Hot Leads
+  const isReschedule = !!hotLeadId
   
   // Calendly Event Types
   const [eventTypes, setEventTypes] = useState([])
@@ -211,8 +214,61 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
         throw new Error(calendlyData.error || calendlyData.details || 'Calendly Buchung fehlgeschlagen')
       }
 
-      // Hot Lead in Airtable erstellen
-      if (lead?.id) {
+      // Hot Lead in Airtable erstellen oder aktualisieren
+      if (isReschedule && hotLeadId) {
+        // Bestehenden Hot Lead aktualisieren (Neu-Terminierung)
+        try {
+          const updateResponse = await fetch('/.netlify/functions/hot-leads', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              hotLeadId: hotLeadId,
+              updates: {
+                terminDatum: selectedSlot.start,
+                status: 'Lead', // Status zurücksetzen
+                terminart: selectedType === 'video' ? 'Video' : 'Telefonisch'
+              }
+            })
+          })
+          
+          const updateData = await updateResponse.json()
+          if (!updateResponse.ok) {
+            console.error('Hot Lead Update fehlgeschlagen:', updateData)
+          } else {
+            console.log('Hot Lead aktualisiert:', hotLeadId)
+          }
+          
+          // Kommentar im Original-Lead hinzufügen
+          if (lead?.id) {
+            const terminDatum = new Date(selectedSlot.start).toLocaleDateString('de-DE', {
+              weekday: 'long',
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit'
+            })
+            const terminTyp = selectedType === 'video' ? 'Video' : 'Telefonisch'
+            const terminDetails = `Neuer Termin gebucht (nach Absage): ${terminDatum} Uhr (${terminTyp}) - ${problemstellung}`
+            
+            await fetch('/.netlify/functions/leads', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: lead.id,
+                historyEntry: {
+                  action: 'termin',
+                  details: terminDetails,
+                  userName: user?.vor_nachname || 'System'
+                }
+              })
+            })
+          }
+        } catch (err) {
+          console.error('Hot Lead Update fehlgeschlagen:', err)
+        }
+      } else if (lead?.id) {
+        // Neuen Hot Lead erstellen
         try {
           const hotLeadResponse = await fetch('/.netlify/functions/hot-leads', {
             method: 'POST',
@@ -278,7 +334,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
       }
 
       // Bei "An Closer vergeben": Email an alle Closer senden
-      if (assignToPool) {
+      if (assignToPool && !isReschedule) {
         try {
           await fetch('/.netlify/functions/send-email', {
             method: 'POST',
@@ -669,50 +725,69 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
             {selectedType === 'video' ? ' (Video)' : ' (Telefon)'}
           </p>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {/* An Closer vergeben - für alle */}
+          {isReschedule ? (
+            /* Bei Neu-Terminierung: Nur ein Button */
             <button
-              onClick={() => bookTermin(true)}
+              onClick={() => bookTermin(false)}
               disabled={booking}
-              className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="w-full flex items-center justify-center px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
             >
               {booking ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
                 <>
-                  <Users className="w-5 h-5 mr-2" />
-                  An Closer vergeben
+                  <Calendar className="w-5 h-5 mr-2" />
+                  Neuen Termin buchen
                 </>
               )}
             </button>
-            
-            {/* Selbst übernehmen - nur für Closer */}
-            {canSelfClose ? (
+          ) : (
+            /* Normale Buchung: Zwei Buttons */
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* An Closer vergeben - für alle */}
               <button
-                onClick={() => bookTermin(false)}
+                onClick={() => bookTermin(true)}
                 disabled={booking}
-                className="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
               >
                 {booking ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>
-                    <User className="w-5 h-5 mr-2" />
-                    Ich übernehme das Closing
+                    <Users className="w-5 h-5 mr-2" />
+                    An Closer vergeben
                   </>
                 )}
               </button>
-            ) : (
-              <button
-                disabled
-                className="flex items-center justify-center px-4 py-3 bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed"
-                title="Nur für Closer verfügbar"
-              >
-                <User className="w-5 h-5 mr-2" />
-                Selbst übernehmen
-              </button>
-            )}
-          </div>
+              
+              {/* Selbst übernehmen - nur für Closer */}
+              {canSelfClose ? (
+                <button
+                  onClick={() => bookTermin(false)}
+                  disabled={booking}
+                  className="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                >
+                  {booking ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <>
+                      <User className="w-5 h-5 mr-2" />
+                      Ich übernehme das Closing
+                    </>
+                  )}
+                </button>
+              ) : (
+                <button
+                  disabled
+                  className="flex items-center justify-center px-4 py-3 bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed"
+                  title="Nur für Closer verfügbar"
+                >
+                  <User className="w-5 h-5 mr-2" />
+                  Selbst übernehmen
+                </button>
+              )}
+            </div>
+          )}
           
           <button
             onClick={onCancel}
