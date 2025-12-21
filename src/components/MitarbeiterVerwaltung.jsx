@@ -237,12 +237,19 @@ function MitarbeiterVerwaltung() {
     setError('')
 
     try {
+      // Debug: Rolle ausgeben
+      console.log('Deaktiviere User:', selectedUser?.vor_nachname)
+      console.log('User Rollen:', selectedUser?.rolle)
+      
       // Prüfen ob User ein Coldcaller ist (dann Leads archivieren)
       const isColdcaller = selectedUser?.rolle?.includes('Coldcaller')
       // Prüfen ob User ein Closer ist (dann Hot Leads in Pool freigeben)
-      const isCloser = selectedUser?.rolle?.some(r => 
-        r.toLowerCase().includes('closer') || r.toLowerCase() === 'admin'
-      )
+      const isCloser = selectedUser?.rolle?.some(r => {
+        const lowerRole = (r || '').toLowerCase()
+        return lowerRole.includes('closer') || lowerRole === 'admin'
+      })
+      
+      console.log('isColdcaller:', isColdcaller, 'isCloser:', isCloser)
       
       let archiveResult = null
       let releaseResult = null
