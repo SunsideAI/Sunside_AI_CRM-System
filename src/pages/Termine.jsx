@@ -48,7 +48,7 @@ function Termine() {
       // Als Termine formatieren
       const formattedTermine = uniqueLeads
         .filter(lead => lead.terminDatum) // Nur mit Termin
-        .filter(lead => lead.status !== 'Abgesagt') // Keine abgesagten
+        .filter(lead => lead.status !== 'Abgesagt' && lead.status !== 'Termin abgesagt') // Keine abgesagten
         .map(lead => {
           const isMyClosing = lead.closerName === userName
           const isMyBooking = lead.setterName === userName
