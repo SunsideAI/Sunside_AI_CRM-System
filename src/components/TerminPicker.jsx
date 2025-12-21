@@ -41,7 +41,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
   const [contactPhone, setContactPhone] = useState(lead?.telefon || '')
   const [ansprechpartnerVorname, setAnsprechpartnerVorname] = useState(lead?.ansprechpartnerVorname || '')
   const [ansprechpartnerNachname, setAnsprechpartnerNachname] = useState(lead?.ansprechpartnerNachname || '')
-  const [unternehmensname, setUnternehmensname] = useState(lead?.unternehmensname || '')
+  const [unternehmensname, setUnternehmensname] = useState(lead?.unternehmensname || lead?.unternehmen || '')
   const [taetigkeit, setTaetigkeit] = useState('Makler')
   const [problemstellung, setProblemstellung] = useState('')
 
@@ -287,6 +287,12 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
           
           const hotLeadData = await hotLeadResponse.json()
           if (!hotLeadResponse.ok) {
+            // Duplikat-Prüfung: 409 = Hot Lead existiert bereits
+            if (hotLeadResponse.status === 409) {
+              setError('Für diesen Lead wurde bereits ein Beratungsgespräch gebucht. Bitte wähle einen anderen Lead.')
+              setBooking(false)
+              return
+            }
             console.error('Hot Lead Erstellung fehlgeschlagen:', hotLeadData)
           } else {
             console.log('Hot Lead erstellt:', hotLeadData.hotLeadId)
