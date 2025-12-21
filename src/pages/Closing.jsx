@@ -117,9 +117,8 @@ function Closing() {
   // Email-Composer State (für Unterlagen versenden)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
   
-  // Neu-Terminieren State
+  // Neu-Terminieren State (innerhalb des Modals)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
-  const [terminPickerLead, setTerminPickerLead] = useState(null)
 
   const LEADS_PER_PAGE = 10
 
@@ -524,6 +523,7 @@ function Closing() {
     setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
     setAngebotSuccess(false)
     setShowEmailComposer(false)
+    setShowTerminPicker(false)
   }
 
   const handleEditChange = (field, value) => {
@@ -1270,6 +1270,55 @@ function Closing() {
                     </div>
                   )}
                 </div>
+              ) : showTerminPicker ? (
+                /* ========================================
+                   NEU-TERMINIEREN VIEW
+                   ======================================== */
+                <div className="space-y-6">
+                  {/* Zurück-Link */}
+                  <button
+                    type="button"
+                    onClick={() => setShowTerminPicker(false)}
+                    className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Zurück zur Übersicht
+                  </button>
+
+                  {/* Header */}
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-3 bg-orange-100 rounded-xl">
+                      <CalendarPlus className="w-6 h-6 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-semibold text-gray-900">Neuen Termin buchen</h3>
+                      <p className="text-sm text-gray-500">{selectedLead.unternehmen}</p>
+                    </div>
+                  </div>
+
+                  {/* TerminPicker */}
+                  <TerminPicker
+                    lead={{
+                      id: selectedLead.originalLeadId,
+                      unternehmen: selectedLead.unternehmen,
+                      unternehmensname: selectedLead.unternehmen,
+                      email: selectedLead.email,
+                      telefon: selectedLead.telefon,
+                      ansprechpartnerVorname: selectedLead.ansprechpartnerVorname,
+                      ansprechpartnerNachname: selectedLead.ansprechpartnerNachname,
+                      stadt: selectedLead.ort,
+                      kategorie: selectedLead.kategorie
+                    }}
+                    hotLeadId={selectedLead.id}
+                    onTerminBooked={(result) => {
+                      setShowTerminPicker(false)
+                      setSelectedLead(null)
+                      showToast('success', `Neuer Termin gebucht für ${selectedLead.unternehmen}`)
+                      loadLeads()
+                    }}
+                    onCancel={() => setShowTerminPicker(false)}
+                  />
+                </div>
               ) : (
                 /* ========================================
                    NORMALE LEAD-DETAIL-ANSICHT
@@ -1282,10 +1331,7 @@ function Closing() {
                       {selectedLead.status === 'Termin abgesagt' && (
                         <button
                           type="button"
-                          onClick={() => {
-                            setTerminPickerLead(selectedLead)
-                            setShowTerminPicker(true)
-                          }}
+                          onClick={() => setShowTerminPicker(true)}
                           className="w-full flex items-center justify-center px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
                         >
                           <CalendarPlus className="w-5 h-5 mr-2" />
@@ -1458,8 +1504,8 @@ function Closing() {
               )}
             </div>
 
-            {/* Footer - unterschiedlich je nach View (nicht bei Success oder EmailComposer) */}
-            {!angebotSuccess && !showEmailComposer && (
+            {/* Footer - unterschiedlich je nach View (nicht bei Success, EmailComposer oder TerminPicker) */}
+            {!angebotSuccess && !showEmailComposer && !showTerminPicker && (
               <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
                 {showAngebotView ? (
                   /* Angebot-View Footer */
@@ -1545,57 +1591,6 @@ function Closing() {
         document.body
       )}
         </>
-      )}
-
-      {/* Neu-Terminieren Modal */}
-      {showTerminPicker && terminPickerLead && createPortal(
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900">Neuen Termin buchen</h2>
-                <p className="text-sm text-gray-500">{terminPickerLead.unternehmen}</p>
-              </div>
-              <button
-                onClick={() => {
-                  setShowTerminPicker(false)
-                  setTerminPickerLead(null)
-                }}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6">
-              <TerminPicker
-                lead={{
-                  id: terminPickerLead.originalLeadId,
-                  unternehmen: terminPickerLead.unternehmen,
-                  email: terminPickerLead.email,
-                  telefon: terminPickerLead.telefon,
-                  ansprechpartnerVorname: terminPickerLead.ansprechpartnerVorname,
-                  ansprechpartnerNachname: terminPickerLead.ansprechpartnerNachname,
-                  stadt: terminPickerLead.ort,
-                  kategorie: terminPickerLead.kategorie
-                }}
-                hotLeadId={terminPickerLead.id}
-                onTerminBooked={(result) => {
-                  setShowTerminPicker(false)
-                  setTerminPickerLead(null)
-                  setSelectedLead(null)
-                  showToast('success', `Neuer Termin gebucht für ${terminPickerLead.unternehmen}`)
-                  // Leads neu laden
-                  loadLeads()
-                }}
-                onCancel={() => {
-                  setShowTerminPicker(false)
-                  setTerminPickerLead(null)
-                }}
-              />
-            </div>
-          </div>
-        </div>,
-        document.body
       )}
     </div>
   )
