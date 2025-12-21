@@ -77,23 +77,88 @@ exports.handler = async (event) => {
         }
 
         // Email an alle Closer senden
-        // Email-Text erstellen (wird dann mit formatEmailHtml formatiert)
-        const emailText = `Hallo zusammen,
-
-es wurde ein neues Beratungsgespräch gebucht, das noch keinem Closer zugewiesen ist.
-
-**Termin-Details:**
-• Datum: ${termin.datum}
-• Art: ${termin.art}
-• Unternehmen: ${termin.unternehmen}
-• Ansprechpartner: ${termin.ansprechpartner}
-• Gebucht von: ${termin.setter}
-
-Bitte logge dich ins CRM ein, um den Termin zu übernehmen:
-[Zum Closer-Pool](https://sunside-crm.netlify.app/closing)`
-
-        // Mit Standard-Formatierung und Signatur versehen
-        const emailHtml = formatEmailHtml(emailText, 'Sunside AI CRM', 'team@sunsideai.de', null)
+        // Schönes HTML-Template erstellen
+        const emailHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333; margin: 0; padding: 20px; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #7C3AED 0%, #9333EA 100%); padding: 30px; text-align: center;">
+      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">
+        📅 Neues Beratungsgespräch
+      </h1>
+      <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">
+        Ein Termin wartet auf dich im Closer-Pool
+      </p>
+    </div>
+    
+    <!-- Content -->
+    <div style="padding: 30px;">
+      <p style="margin: 0 0 20px 0; color: #555555;">
+        Hallo zusammen,<br><br>
+        es wurde ein neues Beratungsgespräch gebucht, das noch keinem Closer zugewiesen ist.
+      </p>
+      
+      <!-- Termin-Details Box -->
+      <div style="background-color: #F3F4F6; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 15px 0; color: #7C3AED; font-size: 16px;">Termin-Details</h3>
+        
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #666666; width: 140px;">📆 Datum:</td>
+            <td style="padding: 8px 0; color: #333333; font-weight: 600;">${termin.datum}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666666;">🎥 Art:</td>
+            <td style="padding: 8px 0; color: #333333; font-weight: 600;">${termin.art}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666666;">🏢 Unternehmen:</td>
+            <td style="padding: 8px 0; color: #333333; font-weight: 600;">${termin.unternehmen}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666666;">👤 Ansprechpartner:</td>
+            <td style="padding: 8px 0; color: #333333; font-weight: 600;">${termin.ansprechpartner}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666666;">📞 Gebucht von:</td>
+            <td style="padding: 8px 0; color: #333333; font-weight: 600;">${termin.setter}</td>
+          </tr>
+        </table>
+      </div>
+      
+      <!-- CTA Button -->
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://crmsunsideai.netlify.app/closing" 
+           style="display: inline-block; background: linear-gradient(135deg, #7C3AED 0%, #9333EA 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+          Zum Closer-Pool →
+        </a>
+      </div>
+      
+      <p style="margin: 20px 0 0 0; color: #888888; font-size: 13px; text-align: center;">
+        Wer zuerst kommt, mahlt zuerst! 🚀
+      </p>
+    </div>
+    
+    <!-- Footer -->
+    <div style="background-color: #F9FAFB; padding: 20px 30px; border-top: 1px solid #E5E7EB;">
+      <div style="text-align: center;">
+        <img src="https://onecdn.io/media/8c3e476c-82b3-4db6-8cbe-85b46cd452d0/full" 
+             alt="Sunside AI" width="120" style="margin-bottom: 10px;">
+        <p style="margin: 0; color: #888888; font-size: 12px;">
+          Diese E-Mail wurde automatisch vom Sunside AI CRM versendet.
+        </p>
+      </div>
+    </div>
+    
+  </div>
+</body>
+</html>`
 
         const emailResponse = await fetch('https://api.resend.com/emails', {
           method: 'POST',
