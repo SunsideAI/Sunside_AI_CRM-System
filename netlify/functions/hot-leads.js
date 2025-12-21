@@ -136,9 +136,9 @@ exports.handler = async (event) => {
     // ==========================================
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
-      const { setterId, closerId, setterName, closerName, status, limit } = params
+      const { setterId, closerId, setterName, closerName, status, limit, pool } = params
 
-      console.log('Hot Leads GET - Params:', { setterId, closerId, setterName, closerName, status, limit })
+      console.log('Hot Leads GET - Params:', { setterId, closerId, setterName, closerName, status, limit, pool })
 
       let allRecords = []
       let offset = null
@@ -153,6 +153,11 @@ exports.handler = async (event) => {
 
         // Filter bauen
         const filters = []
+        
+        // Pool-Filter: Termine ohne Closer (offene Termine für Closer-Pool)
+        if (pool === 'true') {
+          filters.push(`OR({Closer} = '', {Closer} = BLANK())`)
+        }
         
         // Setter-Filter: Unterstützt Text-Felder UND Linked Records
         if (setterName) {
@@ -235,6 +240,7 @@ exports.handler = async (event) => {
         bundesland: record.fields.Bundesland || '',
         website: record.fields.Website || '',
         terminDatum: record.fields.Termin_Beratungsgespräch || record.fields['Termin_Beratungsgespräch'] || '',
+        terminart: record.fields.Terminart || '',  // Video oder Telefonisch
         status: record.fields.Status || 'Lead',
         quelle: record.fields.Quelle || '',
         prioritaet: record.fields.Priorität || record.fields.Prioritaet || '',
@@ -268,11 +274,12 @@ exports.handler = async (event) => {
       const {
         originalLeadId,     // Link zu Immobilienmakler_Leads
         setterName,         // Name des Setters (Text)
-        closerName,         // Name des Closers (Text)
+        closerName,         // Name des Closers (Text) - optional für Pool
         setterId,           // Optional: Record-ID des Setters
         closerId,           // Optional: Record-ID des Closers
         unternehmen,        // Firmenname
         terminDatum,        // Termin-Zeitpunkt
+        terminart,          // 'Video' oder 'Telefonisch'
         quelle,             // z.B. "Cold Calling"
         infosErstgespraech  // Notizen vom Setter (Problemstellung etc.)
       } = body
@@ -283,7 +290,9 @@ exports.handler = async (event) => {
         closerName, 
         setterId, 
         closerId,
-        terminDatum 
+        terminDatum,
+        terminart,
+        infosErstgespraech
       })
 
       // Validierung
@@ -303,13 +312,8 @@ exports.handler = async (event) => {
         }
       }
 
-      if (!closerName && !closerId) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'closerName oder closerId ist erforderlich' })
-        }
-      }
+      // Closer ist optional - wenn leer, geht Termin in den Pool
+      // if (!closerName && !closerId) { ... }
 
       if (!terminDatum) {
         return {
@@ -351,6 +355,13 @@ exports.handler = async (event) => {
         'Quelle': quelle || 'Cold Calling'
       }
 
+      // Terminart (Video oder Telefonisch)
+      if (terminart) {
+        fields['Terminart'] = terminart
+      }
+
+      // Infos Erstgespräch wird im Original-Lead Kommentar-Feld gespeichert (nicht hier)
+
       // Setter als Linked Record oder Text (je nachdem was funktioniert)
       if (setterRecordId) {
         fields['Setter'] = [setterRecordId]  // Linked Record Format
@@ -358,12 +369,13 @@ exports.handler = async (event) => {
         fields['Setter'] = setterName        // Fallback: Text
       }
 
-      // Closer als Linked Record oder Text
+      // Closer als Linked Record oder Text (leer = Pool-Termin)
       if (closerRecordId) {
         fields['Closer'] = [closerRecordId]  // Linked Record Format
       } else if (closerName) {
         fields['Closer'] = closerName        // Fallback: Text
       }
+      // Wenn weder closerRecordId noch closerName, bleibt Closer leer → Pool-Termin
 
       // Kommentar wird im Original-Lead (Immobilienmakler_Leads) gespeichert, nicht hier
       // Das Kommentar-Feld in Hot_Leads ist ein Lookup aus Immobilienmakler_Leads
@@ -450,6 +462,13 @@ exports.handler = async (event) => {
         }
       }
 
+      // User-Namen laden für Name → ID Auflösung
+      const userNames = await loadUserNames(airtableHeaders)
+      const nameToId = {}
+      for (const [id, name] of Object.entries(userNames)) {
+        nameToId[name.toLowerCase()] = id
+      }
+
       // Erlaubte Update-Felder (nur Felder die direkt in Hot_Leads existieren)
       const allowedFields = [
         'Status',
@@ -474,7 +493,8 @@ exports.handler = async (event) => {
           'produktDienstleistung': 'Produkt_Dienstleistung',
           'kundeSeit': 'Kunde_seit',
           'prioritaet': 'Priorität',
-          'closerId': 'Closer'
+          'closerId': 'Closer',
+          'closerName': 'Closer'
         }
 
         const airtableField = fieldMap[key] || key
@@ -482,7 +502,19 @@ exports.handler = async (event) => {
         if (allowedFields.includes(airtableField)) {
           // Closer braucht Array-Format für Link
           if (airtableField === 'Closer' && value) {
-            fields[airtableField] = [value]
+            // Wenn closerName gegeben, zu ID auflösen
+            if (key === 'closerName') {
+              const closerRecordId = nameToId[value.toLowerCase()]
+              if (closerRecordId) {
+                fields[airtableField] = [closerRecordId]
+              } else {
+                // Fallback: als Text speichern
+                fields[airtableField] = value
+              }
+            } else {
+              // closerId direkt verwenden
+              fields[airtableField] = [value]
+            }
           } else {
             fields[airtableField] = value
           }
