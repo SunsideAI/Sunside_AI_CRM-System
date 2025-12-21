@@ -85,6 +85,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
     setLoadingSlots(true)
     setSlots([])
     setSelectedSlot(null)
+    setError('') // Error zurücksetzen bei neuem Laden
     
     try {
       // Start: gewähltes Datum, End: gewähltes Datum + 1 Tag
@@ -98,10 +99,13 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
       )
       const data = await response.json()
       
-      if (response.ok && data.success) {
-        // Nur zukünftige Slots
+      if (response.ok) {
+        // Erfolgreiche Antwort - auch wenn keine Slots verfügbar sind
+        const availableSlots = data.slots || []
+        
+        // Nur zukünftige Slots filtern
         const now = new Date()
-        const futureSlots = data.slots
+        const futureSlots = availableSlots
           .filter(slot => new Date(slot.start) > now)
           .map(slot => {
             const startTime = new Date(slot.start)
@@ -112,15 +116,15 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
             }
           })
         setSlots(futureSlots)
-        // Keine Fehlermeldung wenn keine Slots verfügbar - das ist normal (z.B. Montag geblockt)
-      } else if (!response.ok) {
-        // Nur bei echtem API-Fehler eine Meldung zeigen
-        console.error('Calendly API Fehler:', data)
+        // Keine Fehlermeldung wenn keine Slots - das ist normal (z.B. Montag geblockt)
+      } else {
+        // Nur bei echtem API-Fehler (4xx, 5xx) eine Meldung zeigen
+        console.error('Calendly API Fehler:', response.status, data)
         setError('Fehler beim Laden der Termine')
       }
     } catch (err) {
       console.error('Slot-Loading Fehler:', err)
-      setError('Fehler beim Laden der Termine')
+      setError('Verbindungsfehler beim Laden der Termine')
     } finally {
       setLoadingSlots(false)
     }
@@ -346,7 +350,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
         </label>
         <div className="grid grid-cols-2 gap-3">
           <button
-            onClick={() => { setSelectedType('video'); setSelectedDate(null); setSelectedSlot(null); setSlots([]) }}
+            onClick={() => { setSelectedType('video'); setSelectedDate(null); setSelectedSlot(null); setSlots([]); setError('') }}
             className={`p-4 rounded-lg border-2 transition-all ${
               selectedType === 'video'
                 ? 'border-purple-500 bg-purple-50'
@@ -359,7 +363,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
           </button>
           
           <button
-            onClick={() => { setSelectedType('phone'); setSelectedDate(null); setSelectedSlot(null); setSlots([]) }}
+            onClick={() => { setSelectedType('phone'); setSelectedDate(null); setSelectedSlot(null); setSlots([]); setError('') }}
             className={`p-4 rounded-lg border-2 transition-all ${
               selectedType === 'phone'
                 ? 'border-purple-500 bg-purple-50'
@@ -412,7 +416,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
               return (
                 <button
                   key={idx}
-                  onClick={() => { setSelectedDate(dateStr); setSelectedSlot(null) }}
+                  onClick={() => { setSelectedDate(dateStr); setSelectedSlot(null); setError('') }}
                   disabled={past}
                   className={`p-2 rounded-lg text-center transition-all ${
                     selected
