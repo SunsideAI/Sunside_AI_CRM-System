@@ -13,6 +13,14 @@ function getEmailFromField(field) {
   return ''
 }
 
+// Helper: Unternehmen aus Airtable-Feld extrahieren (kann String oder Array sein)
+function getUnternehmenFromField(field) {
+  if (!field) return ''
+  if (typeof field === 'string') return field
+  if (Array.isArray(field) && field.length > 0) return String(field[0])
+  return ''
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Calendly-Webhook-Signature',
@@ -397,43 +405,61 @@ async function findHotLeadByUnternehmen(unternehmen) {
   const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}`
 
   try {
-    // Hot Leads laden die nicht abgesagt sind und einen Termin haben
+    // Alle Hot Leads mit Termin laden (nicht abgesagt)
     const filterFormula = `AND({Status} != "Abgesagt", {Termin_Beratungsgespräch} != "")`
     
-    const response = await fetch(
-      `${TABLE_URL}?filterByFormula=${encodeURIComponent(filterFormula)}`,
-      { headers: airtableHeaders }
-    )
+    let allRecords = []
+    let offset = null
+    
+    // Pagination: Alle Records laden
+    do {
+      const url = offset 
+        ? `${TABLE_URL}?filterByFormula=${encodeURIComponent(filterFormula)}&offset=${offset}`
+        : `${TABLE_URL}?filterByFormula=${encodeURIComponent(filterFormula)}`
+      
+      const response = await fetch(url, { headers: airtableHeaders })
+      const data = await response.json()
+      
+      if (!response.ok) {
+        console.log('Airtable Error:', data)
+        return null
+      }
+      
+      if (data.records) {
+        allRecords = allRecords.concat(data.records)
+      }
+      offset = data.offset
+    } while (offset)
 
-    const data = await response.json()
+    console.log(`${allRecords.length} Hot Leads geladen, suche Unternehmens-Match...`)
 
-    if (!response.ok || !data.records || data.records.length === 0) {
-      console.log('Keine Hot Leads gefunden')
-      return null
-    }
-
-    console.log(`${data.records.length} Hot Leads geladen, suche Unternehmens-Match...`)
-
-    // Nach Unternehmen suchen (case-insensitive, partial match)
+    // Nach Unternehmen suchen
     const searchTerm = unternehmen.toLowerCase().trim()
     
-    for (const record of data.records) {
-      const recordUnternehmen = (record.fields.Unternehmen || '').toLowerCase().trim()
+    for (const record of allRecords) {
+      // Unternehmen kann String oder Array sein
+      const recordUnternehmen = getUnternehmenFromField(record.fields.Unternehmen)
+      const recordUnternehmenLower = recordUnternehmen.toLowerCase().trim()
       
-      // Exakter Match oder partial match
-      if (recordUnternehmen === searchTerm || 
-          recordUnternehmen.includes(searchTerm) || 
-          searchTerm.includes(recordUnternehmen)) {
-        console.log(`✓ Unternehmens-Match gefunden: ${record.fields.Unternehmen}`)
+      // Debug: Erste paar loggen
+      if (allRecords.indexOf(record) < 3) {
+        console.log(`  Record ${record.id}: "${recordUnternehmen}"`)
+      }
+      
+      // Match prüfen
+      if (recordUnternehmenLower === searchTerm || 
+          recordUnternehmenLower.includes(searchTerm) || 
+          searchTerm.includes(recordUnternehmenLower)) {
+        console.log(`✓ Unternehmens-Match gefunden: ${recordUnternehmen}`)
         return {
           id: record.id,
-          unternehmen: record.fields.Unternehmen,
+          unternehmen: recordUnternehmen,
           email: getEmailFromField(record.fields.Mail || record.fields['E-Mail'])
         }
       }
     }
 
-    console.log('✗ Kein Unternehmens-Match gefunden')
+    console.log('✗ Kein Unternehmens-Match gefunden für:', searchTerm)
     return null
     
   } catch (err) {
