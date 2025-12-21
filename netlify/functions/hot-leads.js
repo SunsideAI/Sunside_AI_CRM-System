@@ -73,43 +73,6 @@ function resolveUserName(field, userNames) {
   return ''
 }
 
-// Helper: Kommentar im Original-Lead (Immobilienmakler_Leads) updaten
-async function updateOriginalLeadComment(leadId, comment, airtableHeaders) {
-  const LEADS_TABLE = 'Immobilienmakler_Leads'
-  const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}/${leadId}`
-  
-  try {
-    // Erst bestehenden Kommentar laden
-    const getResponse = await fetch(url, { headers: airtableHeaders })
-    const existingData = await getResponse.json()
-    const existingComment = existingData.fields?.Kommentar || ''
-    
-    // Neuen Kommentar anhängen
-    const newComment = existingComment 
-      ? `${existingComment}\n\n--- Infos aus Erstgespräch ---\n${comment}`
-      : `--- Infos aus Erstgespräch ---\n${comment}`
-    
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers: airtableHeaders,
-      body: JSON.stringify({
-        fields: {
-          'Kommentar': newComment
-        }
-      })
-    })
-    
-    if (response.ok) {
-      console.log('Kommentar in Original-Lead aktualisiert:', leadId)
-    } else {
-      const error = await response.json()
-      console.error('Fehler beim Aktualisieren des Kommentars:', error)
-    }
-  } catch (err) {
-    console.error('Fehler beim Aktualisieren des Kommentars:', err)
-  }
-}
-
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' }
@@ -409,11 +372,6 @@ exports.handler = async (event) => {
           if (retryResponse.ok) {
             const data = await retryResponse.json()
             
-            // Kommentar im Original-Lead updaten
-            if (infosErstgespraech && originalLeadId) {
-              await updateOriginalLeadComment(originalLeadId, infosErstgespraech, airtableHeaders)
-            }
-            
             return {
               statusCode: 201,
               headers: corsHeaders,
@@ -430,11 +388,6 @@ exports.handler = async (event) => {
       }
 
       const data = await response.json()
-      
-      // Kommentar im Original-Lead (Immobilienmakler_Leads) updaten
-      if (infosErstgespraech && originalLeadId) {
-        await updateOriginalLeadComment(originalLeadId, infosErstgespraech, airtableHeaders)
-      }
 
       return {
         statusCode: 201,
