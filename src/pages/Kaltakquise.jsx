@@ -1000,7 +1000,7 @@ function Kaltakquise() {
                         className="w-full flex items-center justify-center px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                       >
                         <Calendar className="w-4 h-4 mr-2" />
-                        Termin mit Closer buchen
+                        Beratungsgespräch buchen
                       </button>
                     )}
                     
