@@ -238,10 +238,115 @@ exports.handler = async (event) => {
     }
 
     // ==========================================
-    // POST: Neuen Hot Lead erstellen
+    // POST: Neuen Hot Lead erstellen ODER Closer-Leads freigeben
     // ==========================================
     if (event.httpMethod === 'POST') {
       const body = JSON.parse(event.body)
+      
+      // ==========================================
+      // ACTION: release-closer-leads - Alle Hot Leads eines Closers in Pool zurückgeben
+      // ==========================================
+      if (body.action === 'release-closer-leads') {
+        const { closerId, closerName } = body
+        
+        if (!closerId && !closerName) {
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'closerId oder closerName ist erforderlich' })
+          }
+        }
+        
+        console.log('Release Closer Leads:', { closerId, closerName })
+        
+        // User-Namen laden für ID-Auflösung
+        const userNames = await loadUserNames(airtableHeaders)
+        
+        // Name → ID Mapping
+        let targetCloserId = closerId
+        if (!targetCloserId && closerName) {
+          for (const [id, name] of Object.entries(userNames)) {
+            if (name.toLowerCase() === closerName.toLowerCase()) {
+              targetCloserId = id
+              break
+            }
+          }
+        }
+        
+        if (!targetCloserId) {
+          return {
+            statusCode: 404,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Closer nicht gefunden' })
+          }
+        }
+        
+        // Alle Hot Leads des Closers finden
+        let allRecords = []
+        let offset = null
+        
+        do {
+          let url = TABLE_URL
+          const params = []
+          params.push(`filterByFormula=FIND("${targetCloserId}",ARRAYJOIN({Closer}))`)
+          if (offset) params.push(`offset=${offset}`)
+          if (params.length > 0) url += '?' + params.join('&')
+          
+          const response = await fetch(url, { headers: airtableHeaders })
+          const data = await response.json()
+          
+          if (data.records) {
+            allRecords = allRecords.concat(data.records)
+          }
+          offset = data.offset
+        } while (offset)
+        
+        console.log(`${allRecords.length} Hot Leads gefunden für Closer ${targetCloserId}`)
+        
+        // Closer-Feld leeren (in Batches von 10)
+        let releasedCount = 0
+        
+        for (let i = 0; i < allRecords.length; i += 10) {
+          const batch = allRecords.slice(i, i + 10)
+          
+          const updateRecords = batch.map(record => ({
+            id: record.id,
+            fields: {
+              'Closer': [] // Closer entfernen = zurück in Pool
+            }
+          }))
+          
+          const updateResponse = await fetch(TABLE_URL, {
+            method: 'PATCH',
+            headers: airtableHeaders,
+            body: JSON.stringify({ records: updateRecords })
+          })
+          
+          if (updateResponse.ok) {
+            releasedCount += batch.length
+          } else {
+            const error = await updateResponse.json()
+            console.error('Release-Fehler:', error)
+          }
+        }
+        
+        console.log(`${releasedCount} Hot Leads in Pool freigegeben`)
+        
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            success: true,
+            message: `${releasedCount} Hot Leads in Pool freigegeben`,
+            released: releasedCount,
+            total: allRecords.length
+          })
+        }
+      }
+      
+      // ==========================================
+      // Standard POST: Neuen Hot Lead erstellen
+      // ==========================================
       const {
         originalLeadId,     // Link zu Immobilienmakler_Leads
         setterName,         // Name des Setters (Text)
