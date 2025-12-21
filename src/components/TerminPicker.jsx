@@ -2,6 +2,14 @@ import { useState, useEffect } from 'react'
 import { Calendar, Clock, Loader2, Check, ChevronLeft, ChevronRight, Mail, Phone, Video, Users, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
+// Helper: Lokales Datum als YYYY-MM-DD (ohne UTC-Konvertierung)
+const toLocalDateString = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 function TerminPicker({ lead, onTerminBooked, onCancel }) {
   const { user } = useAuth()
   
@@ -241,7 +249,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
               updates: {
                 ergebnis: 'Beratungsgespräch',
                 kontaktiert: true,
-                datum: new Date().toISOString().split('T')[0],
+                datum: toLocalDateString(new Date()),
                 kommentar: problemstellung,
                 ansprechpartnerVorname: ansprechpartnerVorname,
                 ansprechpartnerNachname: ansprechpartnerNachname
@@ -322,6 +330,24 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
       days.push(day)
     }
     return days
+  }
+
+  // Wochenbereich formatieren (z.B. "01. Februar - 07. Februar")
+  const getWeekRange = () => {
+    const days = getWeekDays()
+    const monday = days[0]
+    const sunday = days[6]
+    
+    const formatDay = (date) => {
+      return date.toLocaleDateString('de-DE', { day: '2-digit', month: 'long' })
+    }
+    
+    // Wenn gleicher Monat, nur einmal den Monat anzeigen
+    if (monday.getMonth() === sunday.getMonth()) {
+      return `${monday.getDate()}. - ${formatDay(sunday)}`
+    }
+    
+    return `${formatDay(monday)} - ${formatDay(sunday)}`
   }
 
   const formatDate = (date) => {
@@ -420,8 +446,8 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <span className="text-sm text-gray-600">
-              {weekOffset === 0 ? 'Diese Woche' : weekOffset === 1 ? 'Nächste Woche' : `In ${weekOffset} Wochen`}
+            <span className="text-sm font-medium text-gray-700">
+              {getWeekRange()}
             </span>
             <button
               onClick={() => setWeekOffset(w => w + 1)}
@@ -435,7 +461,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
           {/* Tage */}
           <div className="grid grid-cols-7 gap-1">
             {getWeekDays().map((day, idx) => {
-              const dateStr = day.toISOString().split('T')[0]
+              const dateStr = toLocalDateString(day)
               const past = isPast(day)
               const today = isToday(day)
               const selected = selectedDate === dateStr
