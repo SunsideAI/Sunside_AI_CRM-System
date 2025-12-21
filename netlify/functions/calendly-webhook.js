@@ -524,7 +524,7 @@ async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
     'Content-Type': 'application/json'
   }
 
-  // 1. Datum im Hot Lead löschen
+  // 1. Datum löschen + Status setzen (Closer bleibt erhalten für Nachverfolgung)
   const hotLeadUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}/${hotLeadId}`
   
   try {
@@ -534,7 +534,8 @@ async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
       body: JSON.stringify({ 
         fields: {
           'Termin_Beratungsgespräch': null,
-          'Closer': null // Closer entfernen
+          'Status': 'Termin abgesagt'
+          // Closer bleibt erhalten damit er ggf. neuen Termin machen kann
         }
       })
     })
@@ -576,7 +577,8 @@ async function updateHotLeadTermin(hotLeadId, neuerTermin, originalLeadId, alter
       headers: airtableHeaders,
       body: JSON.stringify({ 
         fields: {
-          'Termin_Beratungsgespräch': neuerTermin
+          'Termin_Beratungsgespräch': neuerTermin,
+          'Status': 'Termin verschoben'
         }
       })
     })
