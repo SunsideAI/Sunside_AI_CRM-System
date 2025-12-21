@@ -3,7 +3,7 @@
 
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
-const CALENDLY_WEBHOOK_SECRET = process.env.CALENDLY_WEBHOOK_SECRET // Optional für Signatur-Verifizierung
+const CALENDLY_WEBHOOK_SECRET = process.env.CALENDLY_WEBHOOK_SECRET
 
 // Helper: Email aus Airtable-Feld extrahieren (kann String oder Array sein)
 function getEmailFromField(field) {
@@ -19,6 +19,28 @@ function getUnternehmenFromField(field) {
   if (typeof field === 'string') return field
   if (Array.isArray(field) && field.length > 0) return String(field[0])
   return ''
+}
+
+// Helper: Linked Record ID extrahieren
+function getLinkedRecordId(field) {
+  if (!field) return null
+  if (typeof field === 'string') return field
+  if (Array.isArray(field) && field.length > 0) return field[0]
+  return null
+}
+
+// Helper: Datum formatieren für Anzeige
+function formatDate(isoString) {
+  if (!isoString) return 'Unbekannt'
+  const date = new Date(isoString)
+  return date.toLocaleDateString('de-DE', { 
+    weekday: 'long',
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }
 
 const corsHeaders = {
@@ -112,8 +134,19 @@ exports.handler = async (event) => {
       }
       
       if (hotLead) {
-        await updateHotLeadStatus(hotLead.id, 'Abgesagt', `Abgesagt von ${canceledBy}: ${cancellationReason}`)
-        console.log('✓ Hot Lead auf Abgesagt gesetzt:', hotLead.id, hotLead.unternehmen)
+        // Datum löschen + Kommentar setzen
+        const grund = cancellationReason 
+          ? `Abgesagt von ${canceledBy}: ${cancellationReason}`
+          : `Abgesagt von ${canceledBy}`
+        
+        await updateHotLeadAbsage(hotLead.id, hotLead.originalLeadId, grund)
+        console.log('✓ Hot Lead Termin gelöscht:', hotLead.id, hotLead.unternehmen)
+        
+        // Benachrichtigungen an Setter & Closer senden
+        await sendNotifications(hotLead, 'absage', { 
+          grund,
+          alterTermin: scheduledTime
+        })
       } else {
         console.log('✗ Kein passender Hot Lead gefunden')
       }
@@ -183,8 +216,15 @@ exports.handler = async (event) => {
         }
         
         if (hotLead) {
-          await updateHotLeadTermin(hotLead.id, newScheduledTime)
+          // Termin aktualisieren + Kommentar setzen
+          await updateHotLeadTermin(hotLead.id, newScheduledTime, hotLead.originalLeadId, hotLead.termin)
           console.log('✓ Hot Lead Termin aktualisiert:', hotLead.id, hotLead.unternehmen)
+          
+          // Benachrichtigungen an Setter & Closer senden
+          await sendNotifications(hotLead, 'verschiebung', { 
+            neuerTermin: newScheduledTime,
+            alterTermin: hotLead.termin
+          })
         } else {
           console.log('✗ Kein passender Hot Lead für Verschiebung gefunden')
         }
@@ -451,10 +491,17 @@ async function findHotLeadByUnternehmen(unternehmen) {
           recordUnternehmenLower.includes(searchTerm) || 
           searchTerm.includes(recordUnternehmenLower)) {
         console.log(`✓ Unternehmens-Match gefunden: ${recordUnternehmen}`)
+        
+        // Mehr Daten zurückgeben für Email-Benachrichtigungen
         return {
           id: record.id,
           unternehmen: recordUnternehmen,
-          email: getEmailFromField(record.fields.Mail || record.fields['E-Mail'])
+          email: getEmailFromField(record.fields.Mail || record.fields['E-Mail']),
+          termin: record.fields.Termin_Beratungsgespräch || '',
+          setterId: getLinkedRecordId(record.fields.Setter),
+          closerId: getLinkedRecordId(record.fields.Closer),
+          originalLeadId: getLinkedRecordId(record.fields.Original_Lead || record.fields.Lead),
+          ansprechpartner: record.fields.Ansprechpartner || ''
         }
       }
     }
@@ -469,36 +516,43 @@ async function findHotLeadByUnternehmen(unternehmen) {
 }
 
 // ==========================================
-// Helper: Hot Lead Status aktualisieren
+// Helper: Hot Lead bei Absage aktualisieren (Datum löschen)
 // ==========================================
-async function updateHotLeadStatus(hotLeadId, status, kommentar) {
+async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
   const airtableHeaders = {
     'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
     'Content-Type': 'application/json'
   }
 
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}/${hotLeadId}`
-
-  const fields = {
-    'Status': status
-  }
-
-  // Optional: Kommentar anhängen (falls Feld existiert)
-  // fields['Absagegrund'] = kommentar
-
+  // 1. Datum im Hot Lead löschen
+  const hotLeadUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}/${hotLeadId}`
+  
   try {
-    const response = await fetch(TABLE_URL, {
+    const response = await fetch(hotLeadUrl, {
       method: 'PATCH',
       headers: airtableHeaders,
-      body: JSON.stringify({ fields })
+      body: JSON.stringify({ 
+        fields: {
+          'Termin_Beratungsgespräch': null,
+          'Closer': null // Closer entfernen
+        }
+      })
     })
 
     if (!response.ok) {
       const error = await response.json()
-      console.error('Airtable Update Error:', error)
+      console.error('Airtable Hot Lead Update Error:', error)
+      return false
+    }
+    
+    console.log('✓ Hot Lead Termin gelöscht')
+
+    // 2. Kommentar im Original-Lead setzen (falls ID vorhanden)
+    if (originalLeadId) {
+      await updateOriginalLeadKommentar(originalLeadId, `TERMIN ABGESAGT: ${grund}`)
     }
 
-    return response.ok
+    return true
   } catch (err) {
     console.error('Fehler beim Aktualisieren des Hot Leads:', err)
     return false
@@ -508,7 +562,7 @@ async function updateHotLeadStatus(hotLeadId, status, kommentar) {
 // ==========================================
 // Helper: Hot Lead Termin aktualisieren (bei Verschiebung)
 // ==========================================
-async function updateHotLeadTermin(hotLeadId, neuerTermin, notiz) {
+async function updateHotLeadTermin(hotLeadId, neuerTermin, originalLeadId, alterTermin) {
   const airtableHeaders = {
     'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
     'Content-Type': 'application/json'
@@ -516,26 +570,175 @@ async function updateHotLeadTermin(hotLeadId, neuerTermin, notiz) {
 
   const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}/${hotLeadId}`
 
-  const fields = {
-    'Termin_Beratungsgespräch': neuerTermin
-    // Optional: 'Notiz': notiz
-  }
-
   try {
     const response = await fetch(TABLE_URL, {
       method: 'PATCH',
       headers: airtableHeaders,
-      body: JSON.stringify({ fields })
+      body: JSON.stringify({ 
+        fields: {
+          'Termin_Beratungsgespräch': neuerTermin
+        }
+      })
     })
 
     if (!response.ok) {
       const error = await response.json()
       console.error('Airtable Update Error:', error)
+      return false
     }
 
-    return response.ok
+    console.log('✓ Hot Lead Termin aktualisiert')
+
+    // Kommentar im Original-Lead setzen (falls ID vorhanden)
+    if (originalLeadId) {
+      const kommentar = `TERMIN VERSCHOBEN: ${formatDate(alterTermin)} → ${formatDate(neuerTermin)}`
+      await updateOriginalLeadKommentar(originalLeadId, kommentar)
+    }
+
+    return true
   } catch (err) {
     console.error('Fehler beim Aktualisieren des Termins:', err)
     return false
   }
+}
+
+// ==========================================
+// Helper: Kommentar im Original-Lead (Immobilienmakler_Leads) updaten
+// ==========================================
+async function updateOriginalLeadKommentar(leadId, neuerKommentar) {
+  const airtableHeaders = {
+    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+    'Content-Type': 'application/json'
+  }
+
+  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Leads')}/${leadId}`
+
+  try {
+    // Erst bestehenden Kommentar laden
+    const getResponse = await fetch(TABLE_URL, { headers: airtableHeaders })
+    const existingData = await getResponse.json()
+    const existingComment = existingData.fields?.Kommentar || ''
+    
+    // Timestamp hinzufügen
+    const timestamp = new Date().toLocaleDateString('de-DE', { 
+      day: '2-digit', month: '2-digit', year: 'numeric', 
+      hour: '2-digit', minute: '2-digit' 
+    })
+    
+    // Neuen Kommentar anhängen
+    const newComment = existingComment 
+      ? `${existingComment}\n\n[${timestamp}] ${neuerKommentar}`
+      : `[${timestamp}] ${neuerKommentar}`
+
+    const response = await fetch(TABLE_URL, {
+      method: 'PATCH',
+      headers: airtableHeaders,
+      body: JSON.stringify({ 
+        fields: { 'Kommentar': newComment }
+      })
+    })
+
+    if (response.ok) {
+      console.log('✓ Kommentar in Original-Lead aktualisiert')
+    }
+  } catch (err) {
+    console.error('Fehler beim Aktualisieren des Kommentars:', err)
+  }
+}
+
+// ==========================================
+// Helper: User-Daten laden (Name + Email)
+// ==========================================
+async function loadUserData(userId) {
+  if (!userId) return null
+  
+  const airtableHeaders = {
+    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+    'Content-Type': 'application/json'
+  }
+
+  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Users')}/${userId}`
+
+  try {
+    const response = await fetch(TABLE_URL, { headers: airtableHeaders })
+    const data = await response.json()
+    
+    if (response.ok && data.fields) {
+      return {
+        id: userId,
+        name: data.fields.Name || data.fields.Vorname || 'Unbekannt',
+        email: data.fields.Email || data.fields['E-Mail'] || ''
+      }
+    }
+  } catch (err) {
+    console.error('Fehler beim Laden der User-Daten:', err)
+  }
+  return null
+}
+
+// ==========================================
+// Helper: System-Message erstellen
+// ==========================================
+async function createSystemMessage(empfaengerId, nachricht, typ) {
+  const airtableHeaders = {
+    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+    'Content-Type': 'application/json'
+  }
+
+  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('System_Messages')}`
+
+  try {
+    const response = await fetch(TABLE_URL, {
+      method: 'POST',
+      headers: airtableHeaders,
+      body: JSON.stringify({
+        fields: {
+          'Empfänger': empfaengerId ? [empfaengerId] : [],
+          'Nachricht': nachricht,
+          'Typ': typ || 'Info',
+          'Gelesen': false,
+          'Erstellt': new Date().toISOString()
+        }
+      })
+    })
+
+    if (response.ok) {
+      console.log('✓ System-Message erstellt für:', empfaengerId)
+    } else {
+      const error = await response.json()
+      console.log('System-Message Fehler (evtl. Tabelle existiert nicht):', error.error?.message)
+    }
+  } catch (err) {
+    console.error('Fehler beim Erstellen der System-Message:', err)
+  }
+}
+
+// ==========================================
+// Helper: Benachrichtigungen senden (System-Messages an Setter & Closer)
+// ==========================================
+async function sendNotifications(hotLead, eventType, details) {
+  const { setterId, closerId, unternehmen } = hotLead
+  
+  let nachricht = ''
+  let typ = 'Info'
+  
+  if (eventType === 'absage') {
+    nachricht = `❌ Termin abgesagt: ${unternehmen}\n${details.grund || 'Kein Grund angegeben'}`
+    typ = 'Warnung'
+  } else if (eventType === 'verschiebung') {
+    nachricht = `📅 Termin verschoben: ${unternehmen}\nNeuer Termin: ${formatDate(details.neuerTermin)}`
+    typ = 'Info'
+  }
+  
+  // System-Message an Setter
+  if (setterId) {
+    await createSystemMessage(setterId, nachricht, typ)
+  }
+  
+  // System-Message an Closer (falls vorhanden)
+  if (closerId) {
+    await createSystemMessage(closerId, nachricht, typ)
+  }
+  
+  console.log('✓ Benachrichtigungen gesendet')
 }
