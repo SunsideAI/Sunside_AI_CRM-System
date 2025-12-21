@@ -478,7 +478,9 @@ exports.handler = async (event) => {
         'Produkt_Dienstleistung',
         'Kunde_seit',
         'Priorität',
-        'Closer'  // Falls Closer gewechselt werden soll
+        'Closer',  // Falls Closer gewechselt werden soll
+        'Termin_Beratungsgespräch',  // Für Neu-Terminierung
+        'Terminart'  // Video oder Telefonisch
       ]
 
       const fields = {}
@@ -494,7 +496,9 @@ exports.handler = async (event) => {
           'kundeSeit': 'Kunde_seit',
           'prioritaet': 'Priorität',
           'closerId': 'Closer',
-          'closerName': 'Closer'
+          'closerName': 'Closer',
+          'terminDatum': 'Termin_Beratungsgespräch',
+          'terminart': 'Terminart'
         }
 
         const airtableField = fieldMap[key] || key
