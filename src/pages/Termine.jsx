@@ -1,67 +1,59 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Calendar, ChevronLeft, ChevronRight, Clock, MapPin, User, Loader2, ExternalLink, Building2, Phone, Video, AlertCircle } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Clock, User, Loader2, Building2, Phone, Video, RefreshCw } from 'lucide-react'
 
 function Termine() {
   const { user } = useAuth()
-  const [events, setEvents] = useState([])
-  const [hotLeadTermine, setHotLeadTermine] = useState([])
+  const [termine, setTermine] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedEvent, setSelectedEvent] = useState(null)
   
-  const calendarId = user?.google_calendar_id
   const userName = user?.vor_nachname || user?.name
 
   useEffect(() => {
-    loadAllTermine()
-  }, [currentDate, calendarId, userName])
+    loadTermine()
+  }, [currentDate, userName])
 
-  const loadAllTermine = async () => {
+  const loadTermine = async () => {
+    if (!userName) {
+      setLoading(false)
+      return
+    }
+    
     setLoading(true)
     setError('')
     
     try {
-      // Parallel laden: Google Calendar + Hot Leads
-      const promises = []
+      // Beide Abfragen parallel: Als Closer UND als Setter
+      const [closerResponse, setterResponse] = await Promise.all([
+        fetch(`/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`)
+          .then(r => r.json())
+          .catch(() => ({ hotLeads: [] })),
+        fetch(`/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`)
+          .then(r => r.json())
+          .catch(() => ({ hotLeads: [] }))
+      ])
       
-      // Google Calendar Events (falls verbunden)
-      if (calendarId) {
-        const dateStr = currentDate.toISOString().split('T')[0]
-        promises.push(
-          fetch(`/.netlify/functions/calendar?action=events&calendarId=${encodeURIComponent(calendarId)}&date=${dateStr}`)
-            .then(r => r.json())
-            .then(data => ({ type: 'google', data }))
-            .catch(() => ({ type: 'google', data: { events: [] } }))
-        )
-      }
+      // Kombinieren und Duplikate entfernen (basierend auf ID)
+      const allLeads = [...(closerResponse.hotLeads || []), ...(setterResponse.hotLeads || [])]
+      const uniqueLeads = allLeads.reduce((acc, lead) => {
+        if (!acc.find(l => l.id === lead.id)) {
+          acc.push(lead)
+        }
+        return acc
+      }, [])
       
-      // Hot Leads des Closers laden
-      if (userName) {
-        promises.push(
-          fetch(`/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`)
-            .then(r => r.json())
-            .then(data => ({ type: 'hotleads', data }))
-            .catch(() => ({ type: 'hotleads', data: { hotLeads: [] } }))
-        )
-      }
-      
-      const results = await Promise.all(promises)
-      
-      // Google Events setzen
-      const googleResult = results.find(r => r.type === 'google')
-      if (googleResult?.data?.events) {
-        setEvents(googleResult.data.events)
-      }
-      
-      // Hot Leads als Termine formatieren
-      const hotLeadsResult = results.find(r => r.type === 'hotleads')
-      if (hotLeadsResult?.data?.hotLeads) {
-        const termine = hotLeadsResult.data.hotLeads
-          .filter(lead => lead.terminDatum) // Nur mit Termin
-          .filter(lead => lead.status !== 'Abgesagt') // Keine abgesagten
-          .map(lead => ({
+      // Als Termine formatieren
+      const formattedTermine = uniqueLeads
+        .filter(lead => lead.terminDatum) // Nur mit Termin
+        .filter(lead => lead.status !== 'Abgesagt') // Keine abgesagten
+        .map(lead => {
+          const isMyClosing = lead.closerName === userName
+          const isMyBooking = lead.setterName === userName
+          
+          return {
             id: `hotlead-${lead.id}`,
             hotLeadId: lead.id,
             title: lead.unternehmen || 'Beratungsgespräch',
@@ -70,6 +62,9 @@ function Termine() {
             source: 'beratungsgespraech',
             terminart: lead.terminart,
             status: lead.status,
+            // Rolle des Users für diesen Termin
+            isMyClosing,
+            isMyBooking,
             // Lead-Details
             unternehmen: lead.unternehmen,
             ansprechpartner: `${lead.ansprechpartnerVorname || ''} ${lead.ansprechpartnerNachname || ''}`.trim(),
@@ -77,20 +72,18 @@ function Termine() {
             telefon: lead.telefon,
             ort: lead.ort,
             kommentar: lead.kommentar,
-            setterName: lead.setterName
-          }))
-        setHotLeadTermine(termine)
-      }
+            setterName: lead.setterName,
+            closerName: lead.closerName
+          }
+        })
+      
+      setTermine(formattedTermine)
       
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
     }
-  }
-
-  const loadEvents = async () => {
-    loadAllTermine()
   }
 
   const navigateWeek = (direction) => {
@@ -133,67 +126,41 @@ function Termine() {
   const getEventsForDay = (date) => {
     const dateStr = date.toISOString().split('T')[0]
     
-    // Google Calendar Events
-    const googleEvents = events.filter(event => {
-      const eventDate = new Date(event.start).toISOString().split('T')[0]
-      return eventDate === dateStr
-    })
-    
-    // Hot Lead Termine
-    const hotLeadEvents = hotLeadTermine.filter(event => {
-      const eventDate = new Date(event.start).toISOString().split('T')[0]
-      return eventDate === dateStr
-    })
-    
-    // Kombinieren und nach Zeit sortieren
-    return [...googleEvents, ...hotLeadEvents].sort((a, b) => 
-      new Date(a.start) - new Date(b.start)
-    )
+    return termine
+      .filter(event => {
+        const eventDate = new Date(event.start).toISOString().split('T')[0]
+        return eventDate === dateStr
+      })
+      .sort((a, b) => new Date(a.start) - new Date(b.start))
   }
 
   const getEventColor = (event) => {
-    if (event.source === 'beratungsgespraech') {
-      // Beratungsgespräche grün
+    // Mein Closing (ich bin Closer) = Grün
+    if (event.isMyClosing) {
       return 'bg-green-100 border-green-300 text-green-800'
     }
-    if (event.source === 'sunside-crm') {
+    // Meine Buchung (ich bin Setter, aber nicht Closer) = Lila
+    if (event.isMyBooking && !event.isMyClosing) {
       return 'bg-purple-100 border-purple-300 text-purple-800'
     }
     return 'bg-blue-100 border-blue-300 text-blue-800'
   }
 
   const getEventIcon = (event) => {
-    if (event.source === 'beratungsgespraech') {
-      return event.terminart === 'Video' 
-        ? <Video className="w-3 h-3 mr-1" />
-        : <Phone className="w-3 h-3 mr-1" />
-    }
-    return null
+    return event.terminart === 'Video' 
+      ? <Video className="w-3 h-3 mr-1" />
+      : <Phone className="w-3 h-3 mr-1" />
   }
 
   const weekDays = getWeekDays()
   const weekStart = weekDays[0]
   const weekEnd = weekDays[6]
 
-  // Nur Warnung wenn kein Google Calendar UND keine Hot Leads
-  const showCalendarWarning = !calendarId && hotLeadTermine.length === 0 && !loading
-
   return (
     <div className="p-6">
-      {/* Warnung wenn kein Google Calendar verbunden */}
-      {!calendarId && (
-        <div className="mb-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-          <div>
-            <p className="text-yellow-800 font-medium">Google Kalender nicht verbunden</p>
-            <p className="text-yellow-700 text-sm">Nur Beratungsgespräche aus dem CRM werden angezeigt. Für alle Termine verbinde deinen Google Kalender im Profil.</p>
-          </div>
-        </div>
-      )}
-
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Termine</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Meine Termine</h1>
           <p className="text-gray-500 text-sm">
             {formatDateLong(weekStart)} - {formatDateLong(weekEnd)}
           </p>
@@ -215,10 +182,11 @@ function Termine() {
             </button>
           </div>
           <button
-            onClick={loadEvents}
+            onClick={loadTermine}
+            disabled={loading}
             className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
           >
-            <Loader2 className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -292,15 +260,11 @@ function Termine() {
       <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-600">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-green-200 border border-green-300"></div>
-          <span>Beratungsgespräche</span>
+          <span>Mein Closing</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-purple-200 border border-purple-300"></div>
-          <span>CRM-Termine</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-blue-200 border border-blue-300"></div>
-          <span>Andere Termine</span>
+          <span>Von mir gebucht</span>
         </div>
       </div>
 
@@ -384,61 +348,39 @@ function Termine() {
                       </div>
                     )}
 
-                    <div className="pt-3 border-t">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                        Beratungsgespräch
-                      </span>
+                    <div className="pt-3 border-t flex flex-wrap gap-2">
+                      {selectedEvent.isMyClosing && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          Mein Closing
+                        </span>
+                      )}
+                      {selectedEvent.isMyBooking && !selectedEvent.isMyClosing && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          Von mir gebucht
+                        </span>
+                      )}
+                      {selectedEvent.closerName && selectedEvent.isMyBooking && !selectedEvent.isMyClosing && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          Closer: {selectedEvent.closerName}
+                        </span>
+                      )}
+                      {!selectedEvent.closerName && selectedEvent.isMyBooking && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                          Noch kein Closer
+                        </span>
+                      )}
                       {selectedEvent.status && selectedEvent.status !== 'Lead' && (
-                        <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                           Status: {selectedEvent.status}
                         </span>
                       )}
                     </div>
                   </>
                 )}
-
-                {/* Standard Google Calendar Infos */}
-                {selectedEvent.source !== 'beratungsgespraech' && (
-                  <>
-                    {selectedEvent.location && (
-                      <div className="flex items-start gap-3">
-                        <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div className="text-gray-600">{selectedEvent.location}</div>
-                      </div>
-                    )}
-
-                    {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
-                      <div className="flex items-start gap-3">
-                        <User className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <div className="font-medium text-sm mb-1">Teilnehmer</div>
-                          {selectedEvent.attendees.map((a, idx) => (
-                            <div key={idx} className="text-sm text-gray-600">{a.name || a.email}</div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedEvent.description && (
-                      <div className="pt-3 border-t">
-                        <div className="text-sm font-medium text-gray-700 mb-1">Beschreibung</div>
-                        <div className="text-sm text-gray-600 whitespace-pre-wrap">{selectedEvent.description}</div>
-                      </div>
-                    )}
-
-                    {selectedEvent.source === 'sunside-crm' && (
-                      <div className="pt-3 border-t">
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                          Über CRM gebucht
-                        </span>
-                      </div>
-                    )}
-                  </>
-                )}
               </div>
 
               <div className="flex gap-3 mt-6 pt-4 border-t">
-                {selectedEvent.source === 'beratungsgespraech' && (
+                {selectedEvent.isMyClosing && (
                   <a
                     href="/closing"
                     className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -447,20 +389,9 @@ function Termine() {
                     Zum Closing
                   </a>
                 )}
-                {selectedEvent.htmlLink && (
-                  <a
-                    href={selectedEvent.htmlLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700"
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                    Google Kalender
-                  </a>
-                )}
                 <button
                   onClick={() => setSelectedEvent(null)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
                 >
                   Schließen
                 </button>
