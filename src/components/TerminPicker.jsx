@@ -203,8 +203,35 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
         throw new Error(calendlyData.error || calendlyData.details || 'Calendly Buchung fehlgeschlagen')
       }
 
-      // Lead in Airtable aktualisieren (als Hot Lead markieren)
+      // Hot Lead in Airtable erstellen
       if (lead?.id) {
+        try {
+          const hotLeadResponse = await fetch('/.netlify/functions/hot-leads', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              originalLeadId: lead.id,
+              setterName: user?.vor_nachname,
+              closerName: assignToPool ? null : user?.vor_nachname, // Leer = Pool
+              unternehmen: unternehmensname,
+              terminDatum: selectedSlot.start,
+              terminart: selectedType === 'video' ? 'Video' : 'Telefonisch',
+              quelle: 'Cold Calling',
+              infosErstgespraech: problemstellung
+            })
+          })
+          
+          const hotLeadData = await hotLeadResponse.json()
+          if (!hotLeadResponse.ok) {
+            console.error('Hot Lead Erstellung fehlgeschlagen:', hotLeadData)
+          } else {
+            console.log('Hot Lead erstellt:', hotLeadData.hotLeadId)
+          }
+        } catch (err) {
+          console.error('Hot Lead Erstellung fehlgeschlagen:', err)
+        }
+
+        // Original-Lead aktualisieren
         try {
           await fetch('/.netlify/functions/leads', {
             method: 'PATCH',
@@ -215,7 +242,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
                 ergebnis: 'Beratungsgespräch',
                 kontaktiert: true,
                 datum: new Date().toISOString().split('T')[0],
-                // Ansprechpartner aktualisieren falls geändert
+                kommentar: problemstellung,
                 ansprechpartnerVorname: ansprechpartnerVorname,
                 ansprechpartnerNachname: ansprechpartnerNachname
               }
