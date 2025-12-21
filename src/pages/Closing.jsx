@@ -26,6 +26,7 @@ import {
   Euro,
   Package,
   CheckCircle,
+  AlertCircle,
   Paperclip
 } from 'lucide-react'
 
@@ -74,6 +75,7 @@ const STATUS_OPTIONS = [
   { value: 'Angebot', label: 'Angebot', color: 'bg-yellow-100 text-yellow-700' },
   { value: 'Angebot versendet', label: 'Angebot versendet', color: 'bg-purple-100 text-purple-700' },
   { value: 'Abgeschlossen', label: 'Abgeschlossen', color: 'bg-green-100 text-green-700' },
+  { value: 'Abgesagt', label: 'Abgesagt', color: 'bg-orange-100 text-orange-700' },
   { value: 'Verloren', label: 'Verloren', color: 'bg-red-100 text-red-700' }
 ]
 
@@ -599,25 +601,33 @@ function Closing() {
 
   return (
     <div className="space-y-6">
-      {/* Toast Notification */}
+      {/* Toast Notification - wie in LeadAnfragenVerwaltung */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg transition-all ${
-          toast.type === 'success' 
-            ? 'bg-green-50 border border-green-200 text-green-800' 
-            : 'bg-red-50 border border-red-200 text-red-800'
-        }`}>
-          {toast.type === 'success' ? (
-            <CheckCircle className="w-5 h-5 text-green-500" />
-          ) : (
-            <X className="w-5 h-5 text-red-500" />
-          )}
-          <span className="font-medium">{toast.message}</span>
-          <button 
-            onClick={() => setToast(null)}
-            className="ml-2 hover:opacity-70"
-          >
-            <X className="w-4 h-4" />
-          </button>
+        <div className="fixed top-4 right-4 z-50">
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${
+            toast.type === 'success' 
+              ? 'bg-green-50 border border-green-200' 
+              : 'bg-red-50 border border-red-200'
+          }`}>
+            {toast.type === 'success' ? (
+              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+            )}
+            <span className={`font-medium ${
+              toast.type === 'success' ? 'text-green-800' : 'text-red-800'
+            }`}>{toast.message}</span>
+            <button 
+              onClick={() => setToast(null)}
+              className={`ml-2 ${
+                toast.type === 'success' 
+                  ? 'text-green-600 hover:text-green-800' 
+                  : 'text-red-600 hover:text-red-800'
+              }`}
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
