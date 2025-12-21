@@ -493,6 +493,9 @@ async function findHotLeadByUnternehmen(unternehmen) {
         console.log(`✓ Unternehmens-Match gefunden: ${recordUnternehmen}`)
         
         // Mehr Daten zurückgeben für Email-Benachrichtigungen
+        const originalLeadId = getLinkedRecordId(record.fields.Immobilienmakler_Leads)
+        console.log('  → originalLeadId:', originalLeadId, '(Feld:', record.fields.Immobilienmakler_Leads, ')')
+        
         return {
           id: record.id,
           unternehmen: recordUnternehmen,
@@ -500,7 +503,7 @@ async function findHotLeadByUnternehmen(unternehmen) {
           termin: record.fields.Termin_Beratungsgespräch || '',
           setterId: getLinkedRecordId(record.fields.Setter),
           closerId: getLinkedRecordId(record.fields.Closer),
-          originalLeadId: getLinkedRecordId(record.fields.Immobilienmakler_Leads),
+          originalLeadId: originalLeadId,
           ansprechpartner: record.fields.Ansprechpartner || ''
         }
       }
@@ -519,6 +522,8 @@ async function findHotLeadByUnternehmen(unternehmen) {
 // Helper: Hot Lead bei Absage aktualisieren (Datum löschen)
 // ==========================================
 async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
+  console.log('updateHotLeadAbsage aufgerufen:', { hotLeadId, originalLeadId, grund })
+  
   const airtableHeaders = {
     'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
     'Content-Type': 'application/json'
@@ -546,11 +551,14 @@ async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
       return false
     }
     
-    console.log('✓ Hot Lead Termin gelöscht')
+    console.log('✓ Hot Lead Termin gelöscht und Status gesetzt')
 
     // 2. Kommentar im Original-Lead setzen (falls ID vorhanden)
     if (originalLeadId) {
+      console.log('→ Aktualisiere Kommentar in Original-Lead:', originalLeadId)
       await updateOriginalLeadKommentar(originalLeadId, `TERMIN ABGESAGT: ${grund}`)
+    } else {
+      console.log('⚠ Kein originalLeadId vorhanden - Kommentar wird nicht aktualisiert')
     }
 
     return true
@@ -564,6 +572,8 @@ async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
 // Helper: Hot Lead Termin aktualisieren (bei Verschiebung)
 // ==========================================
 async function updateHotLeadTermin(hotLeadId, neuerTermin, originalLeadId, alterTermin) {
+  console.log('updateHotLeadTermin aufgerufen:', { hotLeadId, neuerTermin, originalLeadId, alterTermin })
+  
   const airtableHeaders = {
     'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
     'Content-Type': 'application/json'
@@ -589,12 +599,15 @@ async function updateHotLeadTermin(hotLeadId, neuerTermin, originalLeadId, alter
       return false
     }
 
-    console.log('✓ Hot Lead Termin aktualisiert')
+    console.log('✓ Hot Lead Termin und Status aktualisiert')
 
     // Kommentar im Original-Lead setzen (falls ID vorhanden)
     if (originalLeadId) {
+      console.log('→ Aktualisiere Kommentar in Original-Lead:', originalLeadId)
       const kommentar = `TERMIN VERSCHOBEN: ${formatDate(alterTermin)} → ${formatDate(neuerTermin)}`
       await updateOriginalLeadKommentar(originalLeadId, kommentar)
+    } else {
+      console.log('⚠ Kein originalLeadId vorhanden - Kommentar wird nicht aktualisiert')
     }
 
     return true
@@ -608,6 +621,8 @@ async function updateHotLeadTermin(hotLeadId, neuerTermin, originalLeadId, alter
 // Helper: Kommentar im Original-Lead (Immobilienmakler_Leads) updaten
 // ==========================================
 async function updateOriginalLeadKommentar(leadId, neuerKommentar) {
+  console.log('updateOriginalLeadKommentar aufgerufen:', { leadId, neuerKommentar })
+  
   const airtableHeaders = {
     'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
     'Content-Type': 'application/json'
@@ -619,7 +634,14 @@ async function updateOriginalLeadKommentar(leadId, neuerKommentar) {
     // Erst bestehenden Kommentar laden
     const getResponse = await fetch(TABLE_URL, { headers: airtableHeaders })
     const existingData = await getResponse.json()
+    
+    if (!getResponse.ok) {
+      console.error('Fehler beim Laden des Original-Leads:', existingData)
+      return
+    }
+    
     const existingComment = existingData.fields?.Kommentar || ''
+    console.log('  Bestehender Kommentar:', existingComment ? existingComment.substring(0, 50) + '...' : '(leer)')
     
     // Timestamp hinzufügen
     const timestamp = new Date().toLocaleDateString('de-DE', { 
@@ -643,6 +665,9 @@ async function updateOriginalLeadKommentar(leadId, neuerKommentar) {
 
     if (response.ok) {
       console.log('✓ Kommentar in Original-Lead aktualisiert')
+    } else {
+      const error = await response.json()
+      console.error('Fehler beim Speichern des Kommentars:', error)
     }
   } catch (err) {
     console.error('Fehler beim Aktualisieren des Kommentars:', err)
