@@ -5,6 +5,14 @@ const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
 const CALENDLY_WEBHOOK_SECRET = process.env.CALENDLY_WEBHOOK_SECRET // Optional für Signatur-Verifizierung
 
+// Helper: Email aus Airtable-Feld extrahieren (kann String oder Array sein)
+function getEmailFromField(field) {
+  if (!field) return ''
+  if (typeof field === 'string') return field.toLowerCase()
+  if (Array.isArray(field) && field.length > 0) return String(field[0]).toLowerCase()
+  return ''
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Calendly-Webhook-Signature',
@@ -248,7 +256,7 @@ async function findHotLeadByTermin(terminDatum, email) {
         return {
           id: record.id,
           unternehmen: record.fields.Unternehmen,
-          email: record.fields.Mail || record.fields['E-Mail'] || ''
+          email: getEmailFromField(record.fields.Mail || record.fields['E-Mail'])
         }
       }
     }
@@ -258,7 +266,7 @@ async function findHotLeadByTermin(terminDatum, email) {
       const searchDateStr = searchDate.toISOString().split('T')[0]
       
       for (const record of data.records) {
-        const recordEmail = (record.fields.Mail || record.fields['E-Mail'] || '').toLowerCase()
+        const recordEmail = getEmailFromField(record.fields.Mail || record.fields['E-Mail'])
         const recordTermin = record.fields.Termin_Beratungsgespräch || record.fields['Termin_Beratungsgespräch']
         
         if (recordEmail === email.toLowerCase() && recordTermin) {
@@ -323,7 +331,7 @@ async function findHotLeadByEmail(email) {
 
     // Nach Email suchen
     for (const record of data.records) {
-      const recordEmail = (record.fields.Mail || record.fields['E-Mail'] || '').toLowerCase()
+      const recordEmail = getEmailFromField(record.fields.Mail || record.fields['E-Mail'])
       
       if (recordEmail === email.toLowerCase()) {
         console.log(`✓ Email-Match gefunden: ${record.fields.Unternehmen}`)
