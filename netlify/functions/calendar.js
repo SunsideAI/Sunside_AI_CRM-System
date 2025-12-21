@@ -95,22 +95,37 @@ exports.handler = async (event) => {
     return { statusCode: 200, headers, body: '' }
   }
 
-  if (!process.env.GOOGLE_SERVICE_ACCOUNT) {
-    return {
-      statusCode: 500,
-      headers,
-      body: JSON.stringify({ error: 'Google Service Account nicht konfiguriert' })
+  // Google Calendar nur initialisieren wenn benötigt (nicht für Calendly-Actions)
+  const params = event.queryStringParameters || {}
+  const { action } = params
+  
+  // Calendly-Actions brauchen kein Google
+  const isCalendlyAction = action && (
+    action.startsWith('calendly-') || 
+    action === 'calendly-test' || 
+    action === 'calendly-event-types' || 
+    action === 'calendly-slots' ||
+    action === 'calendly-book'
+  )
+
+  let auth, calendar
+  if (!isCalendlyAction) {
+    if (!process.env.GOOGLE_SERVICE_ACCOUNT) {
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: 'Google Service Account nicht konfiguriert' })
+      }
     }
+    auth = getAuthClient()
+    calendar = google.calendar({ version: 'v3', auth })
   }
 
   try {
-    const auth = getAuthClient()
-    const calendar = google.calendar({ version: 'v3', auth })
 
     // GET: Freie Slots abrufen
     if (event.httpMethod === 'GET') {
-      const params = event.queryStringParameters || {}
-      const { action, calendarId, date } = params
+      const { calendarId, date } = params
 
       if (action === 'test') {
         // Einfacher Test ob Kalender-Zugriff funktioniert
