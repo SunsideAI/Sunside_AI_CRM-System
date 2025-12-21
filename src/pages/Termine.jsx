@@ -1,23 +1,28 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Calendar, ChevronLeft, ChevronRight, Clock, User, Loader2, Building2, Phone, Video, RefreshCw } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Clock, User, Users, Loader2, Building2, Phone, Video, RefreshCw, CalendarDays, CalendarRange } from 'lucide-react'
 
 function Termine() {
-  const { user } = useAuth()
+  const { user, isAdmin } = useAuth()
   const [termine, setTermine] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedEvent, setSelectedEvent] = useState(null)
   
+  // View Mode: own = Meine Termine, all = Alle Termine (nur Admin)
+  const [viewMode, setViewMode] = useState('own')
+  // Calendar Mode: week = Wochenansicht, month = Monatsansicht
+  const [calendarMode, setCalendarMode] = useState('week')
+  
   const userName = user?.vor_nachname || user?.name
 
   useEffect(() => {
     loadTermine()
-  }, [currentDate, userName])
+  }, [currentDate, userName, viewMode])
 
   const loadTermine = async () => {
-    if (!userName) {
+    if (!userName && viewMode === 'own') {
       setLoading(false)
       return
     }
@@ -26,27 +31,36 @@ function Termine() {
     setError('')
     
     try {
-      // Beide Abfragen parallel: Als Closer UND als Setter
-      const [closerResponse, setterResponse] = await Promise.all([
-        fetch(`/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`)
-          .then(r => r.json())
-          .catch(() => ({ hotLeads: [] })),
-        fetch(`/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`)
-          .then(r => r.json())
-          .catch(() => ({ hotLeads: [] }))
-      ])
+      let allLeads = []
       
-      // Kombinieren und Duplikate entfernen (basierend auf ID)
-      const allLeads = [...(closerResponse.hotLeads || []), ...(setterResponse.hotLeads || [])]
-      const uniqueLeads = allLeads.reduce((acc, lead) => {
-        if (!acc.find(l => l.id === lead.id)) {
-          acc.push(lead)
-        }
-        return acc
-      }, [])
+      if (viewMode === 'all' && isAdmin()) {
+        // Admin: Alle Hot Leads laden
+        const response = await fetch('/.netlify/functions/hot-leads')
+        const data = await response.json()
+        allLeads = data.hotLeads || []
+      } else {
+        // Normale User: Nur eigene Termine
+        const [closerResponse, setterResponse] = await Promise.all([
+          fetch(`/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`)
+            .then(r => r.json())
+            .catch(() => ({ hotLeads: [] })),
+          fetch(`/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`)
+            .then(r => r.json())
+            .catch(() => ({ hotLeads: [] }))
+        ])
+        
+        // Kombinieren und Duplikate entfernen
+        const combined = [...(closerResponse.hotLeads || []), ...(setterResponse.hotLeads || [])]
+        allLeads = combined.reduce((acc, lead) => {
+          if (!acc.find(l => l.id === lead.id)) {
+            acc.push(lead)
+          }
+          return acc
+        }, [])
+      }
       
       // Als Termine formatieren
-      const formattedTermine = uniqueLeads
+      const formattedTermine = allLeads
         .filter(lead => lead.terminDatum) // Nur mit Termin
         .filter(lead => lead.status !== 'Abgesagt' && lead.status !== 'Termin abgesagt') // Keine abgesagten
         .map(lead => {
@@ -62,10 +76,8 @@ function Termine() {
             source: 'beratungsgespraech',
             terminart: lead.terminart,
             status: lead.status,
-            // Rolle des Users für diesen Termin
             isMyClosing,
             isMyBooking,
-            // Lead-Details
             unternehmen: lead.unternehmen,
             ansprechpartner: `${lead.ansprechpartnerVorname || ''} ${lead.ansprechpartnerNachname || ''}`.trim(),
             email: lead.email,
@@ -86,12 +98,28 @@ function Termine() {
     }
   }
 
+  // Navigation
   const navigateWeek = (direction) => {
     const newDate = new Date(currentDate)
     newDate.setDate(newDate.getDate() + (direction * 7))
     setCurrentDate(newDate)
   }
 
+  const navigateMonth = (direction) => {
+    const newDate = new Date(currentDate)
+    newDate.setMonth(newDate.getMonth() + direction)
+    setCurrentDate(newDate)
+  }
+
+  const navigate = (direction) => {
+    if (calendarMode === 'week') {
+      navigateWeek(direction)
+    } else {
+      navigateMonth(direction)
+    }
+  }
+
+  // Formatierung
   const formatTime = (dateStr) => {
     return new Date(dateStr).toLocaleTimeString('de-DE', {
       hour: '2-digit',
@@ -108,6 +136,7 @@ function Termine() {
     })
   }
 
+  // Wochenansicht Helpers
   const getWeekDays = () => {
     const days = []
     const start = new Date(currentDate)
@@ -123,6 +152,42 @@ function Termine() {
     return days
   }
 
+  // Monatsansicht Helpers
+  const getMonthDays = () => {
+    const year = currentDate.getFullYear()
+    const month = currentDate.getMonth()
+    
+    // Erster Tag des Monats
+    const firstDay = new Date(year, month, 1)
+    // Letzter Tag des Monats
+    const lastDay = new Date(year, month + 1, 0)
+    
+    // Tage vom vorherigen Monat (für vollständige Woche)
+    const startWeekday = firstDay.getDay() || 7 // Montag = 1
+    const daysFromPrevMonth = startWeekday - 1
+    
+    const days = []
+    
+    // Vorherige Monatstage
+    for (let i = daysFromPrevMonth; i > 0; i--) {
+      const date = new Date(year, month, 1 - i)
+      days.push({ date, isCurrentMonth: false })
+    }
+    
+    // Aktuelle Monatstage
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      days.push({ date: new Date(year, month, i), isCurrentMonth: true })
+    }
+    
+    // Nächste Monatstage (für vollständige Wochen)
+    const remaining = 42 - days.length // 6 Wochen x 7 Tage
+    for (let i = 1; i <= remaining; i++) {
+      days.push({ date: new Date(year, month + 1, i), isCurrentMonth: false })
+    }
+    
+    return days
+  }
+
   const getEventsForDay = (date) => {
     const dateStr = date.toISOString().split('T')[0]
     
@@ -135,6 +200,14 @@ function Termine() {
   }
 
   const getEventColor = (event) => {
+    if (viewMode === 'all') {
+      // In "Alle Termine" Ansicht: Farbe nach Closer
+      if (event.closerName) {
+        return 'bg-green-100 border-green-300 text-green-800'
+      }
+      return 'bg-orange-100 border-orange-300 text-orange-800' // Kein Closer = Pool
+    }
+    
     // Mein Closing (ich bin Closer) = Grün
     if (event.isMyClosing) {
       return 'bg-green-100 border-green-300 text-green-800'
@@ -153,41 +226,108 @@ function Termine() {
   }
 
   const weekDays = getWeekDays()
+  const monthDays = getMonthDays()
   const weekStart = weekDays[0]
   const weekEnd = weekDays[6]
 
+  // Header Text je nach Modus
+  const getHeaderDateText = () => {
+    if (calendarMode === 'week') {
+      return `${weekStart.toLocaleDateString('de-DE', { day: '2-digit', month: 'long' })} - ${weekEnd.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', year: 'numeric' })}`
+    }
+    return currentDate.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })
+  }
+
   return (
     <div className="p-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      {/* Header */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Meine Termine</h1>
-          <p className="text-gray-500 text-sm">
-            {formatDateLong(weekStart)} - {formatDateLong(weekEnd)}
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {viewMode === 'all' ? 'Alle Termine' : 'Meine Termine'}
+          </h1>
+          <p className="text-gray-500 text-sm">{getHeaderDateText()}</p>
         </div>
         
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setCurrentDate(new Date())}
-            className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
-          >
-            Heute
-          </button>
-          <div className="flex items-center border border-gray-300 rounded-lg">
-            <button onClick={() => navigateWeek(-1)} className="p-2 hover:bg-gray-50 rounded-l-lg">
-              <ChevronLeft className="w-5 h-5" />
+        <div className="flex flex-wrap items-center gap-3">
+          {/* View Mode Toggle - nur für Admins */}
+          {isAdmin() && (
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('own')}
+                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'own' 
+                    ? 'bg-white text-purple-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <User className="w-4 h-4 mr-1.5" />
+                Meine
+              </button>
+              <button
+                onClick={() => setViewMode('all')}
+                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  viewMode === 'all' 
+                    ? 'bg-white text-purple-600 shadow-sm' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                <Users className="w-4 h-4 mr-1.5" />
+                Alle
+              </button>
+            </div>
+          )}
+
+          {/* Calendar Mode Toggle */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            <button
+              onClick={() => setCalendarMode('week')}
+              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                calendarMode === 'week' 
+                  ? 'bg-white text-purple-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <CalendarRange className="w-4 h-4 mr-1.5" />
+              Woche
             </button>
-            <button onClick={() => navigateWeek(1)} className="p-2 hover:bg-gray-50 rounded-r-lg">
-              <ChevronRight className="w-5 h-5" />
+            <button
+              onClick={() => setCalendarMode('month')}
+              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                calendarMode === 'month' 
+                  ? 'bg-white text-purple-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <CalendarDays className="w-4 h-4 mr-1.5" />
+              Monat
             </button>
           </div>
-          <button
-            onClick={loadTermine}
-            disabled={loading}
-            className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-          >
-            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+
+          {/* Navigation */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCurrentDate(new Date())}
+              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Heute
+            </button>
+            <div className="flex items-center border border-gray-300 rounded-lg">
+              <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-50 rounded-l-lg">
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button onClick={() => navigate(1)} className="p-2 hover:bg-gray-50 rounded-r-lg">
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+            <button
+              onClick={loadTermine}
+              disabled={loading}
+              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+            >
+              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -197,59 +337,118 @@ function Termine() {
         </div>
       )}
 
+      {/* Kalender */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-gray-200">
-          {weekDays.map((date, idx) => {
-            const isToday = date.toDateString() === new Date().toDateString()
-            return (
-              <div key={idx} className={`p-3 text-center border-r last:border-r-0 ${isToday ? 'bg-purple-50' : ''}`}>
-                <div className="text-xs text-gray-500 uppercase">
-                  {date.toLocaleDateString('de-DE', { weekday: 'short' })}
-                </div>
-                <div className={`text-lg font-semibold ${isToday ? 'text-sunside-primary' : 'text-gray-900'}`}>
-                  {date.getDate()}
-                </div>
-              </div>
-            )
-          })}
+        {/* Wochentage Header */}
+        <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+          {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((day, idx) => (
+            <div key={idx} className="p-3 text-center text-xs font-medium text-gray-500 uppercase border-r last:border-r-0">
+              {day}
+            </div>
+          ))}
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-sunside-primary" />
+            <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
           </div>
+        ) : calendarMode === 'week' ? (
+          /* ========== WOCHENANSICHT ========== */
+          <>
+            {/* Datum-Header für Woche */}
+            <div className="grid grid-cols-7 border-b border-gray-200">
+              {weekDays.map((date, idx) => {
+                const isToday = date.toDateString() === new Date().toDateString()
+                return (
+                  <div key={idx} className={`p-3 text-center border-r last:border-r-0 ${isToday ? 'bg-purple-50' : ''}`}>
+                    <div className={`text-lg font-semibold ${isToday ? 'text-purple-600' : 'text-gray-900'}`}>
+                      {date.getDate()}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Termine Grid für Woche */}
+            <div className="grid grid-cols-7 min-h-[400px]">
+              {weekDays.map((date, idx) => {
+                const dayEvents = getEventsForDay(date)
+                const isToday = date.toDateString() === new Date().toDateString()
+                const isWeekend = date.getDay() === 0 || date.getDay() === 6
+                
+                return (
+                  <div key={idx} className={`border-r last:border-r-0 p-2 ${isToday ? 'bg-purple-50/50' : isWeekend ? 'bg-gray-50' : ''}`}>
+                    {dayEvents.length === 0 ? (
+                      <div className="text-xs text-gray-400 text-center py-4">Keine Termine</div>
+                    ) : (
+                      <div className="space-y-1">
+                        {dayEvents.map(event => (
+                          <button
+                            key={event.id}
+                            onClick={() => setSelectedEvent(event)}
+                            className={`w-full text-left p-2 rounded-lg border text-xs hover:shadow-md transition-shadow ${getEventColor(event)}`}
+                          >
+                            <div className="font-medium truncate flex items-center">
+                              {getEventIcon(event)}
+                              {event.title}
+                            </div>
+                            <div className="text-[10px] opacity-75">
+                              {formatTime(event.start)}
+                            </div>
+                            {viewMode === 'all' && event.closerName && (
+                              <div className="text-[10px] opacity-75 truncate">
+                                {event.closerName}
+                              </div>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </>
         ) : (
-          <div className="grid grid-cols-7 min-h-[400px]">
-            {weekDays.map((date, idx) => {
+          /* ========== MONATSANSICHT ========== */
+          <div className="grid grid-cols-7">
+            {monthDays.map((dayInfo, idx) => {
+              const { date, isCurrentMonth } = dayInfo
               const dayEvents = getEventsForDay(date)
               const isToday = date.toDateString() === new Date().toDateString()
               const isWeekend = date.getDay() === 0 || date.getDay() === 6
               
               return (
-                <div key={idx} className={`border-r last:border-r-0 p-2 ${isToday ? 'bg-purple-50/50' : isWeekend ? 'bg-gray-50' : ''}`}>
-                  {dayEvents.length === 0 ? (
-                    <div className="text-xs text-gray-400 text-center py-4">Keine Termine</div>
-                  ) : (
-                    <div className="space-y-1">
-                      {dayEvents.map(event => (
-                        <button
-                          key={event.id}
-                          onClick={() => setSelectedEvent(event)}
-                          className={`w-full text-left p-2 rounded-lg border text-xs hover:shadow-md transition-shadow ${getEventColor(event)}`}
-                        >
-                          <div className="font-medium truncate flex items-center">
-                            {getEventIcon(event)}
-                            {event.title}
-                          </div>
-                          {!event.allDay && (
-                            <div className="text-[10px] opacity-75">
-                              {formatTime(event.start)} - {formatTime(event.end)}
-                            </div>
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                <div 
+                  key={idx} 
+                  className={`min-h-[100px] border-b border-r p-1 ${
+                    !isCurrentMonth ? 'bg-gray-50 text-gray-400' : 
+                    isToday ? 'bg-purple-50' : 
+                    isWeekend ? 'bg-gray-50/50' : ''
+                  }`}
+                >
+                  <div className={`text-sm font-medium mb-1 px-1 ${
+                    isToday ? 'text-purple-600' : 
+                    !isCurrentMonth ? 'text-gray-400' : 'text-gray-700'
+                  }`}>
+                    {date.getDate()}
+                  </div>
+                  <div className="space-y-0.5">
+                    {dayEvents.slice(0, 3).map(event => (
+                      <button
+                        key={event.id}
+                        onClick={() => setSelectedEvent(event)}
+                        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] truncate hover:shadow-sm transition-shadow ${getEventColor(event)}`}
+                      >
+                        <span className="font-medium">{formatTime(event.start)}</span> {event.title}
+                      </button>
+                    ))}
+                    {dayEvents.length > 3 && (
+                      <div className="text-[10px] text-gray-500 px-1">
+                        +{dayEvents.length - 3} weitere
+                      </div>
+                    )}
+                  </div>
                 </div>
               )
             })}
@@ -257,17 +456,34 @@ function Termine() {
         )}
       </div>
 
+      {/* Legende */}
       <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-600">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-green-200 border border-green-300"></div>
-          <span>Mein Closing</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-purple-200 border border-purple-300"></div>
-          <span>Von mir gebucht</span>
-        </div>
+        {viewMode === 'own' ? (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-green-200 border border-green-300"></div>
+              <span>Mein Closing</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-purple-200 border border-purple-300"></div>
+              <span>Von mir gebucht</span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-green-200 border border-green-300"></div>
+              <span>Mit Closer</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-orange-200 border border-orange-300"></div>
+              <span>Im Pool (kein Closer)</span>
+            </div>
+          </>
+        )}
       </div>
 
+      {/* Termin-Detail Modal */}
       {selectedEvent && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
@@ -294,13 +510,10 @@ function Termine() {
                   <Clock className="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
                     <div className="font-medium">{formatDateLong(selectedEvent.start)}</div>
-                    {!selectedEvent.allDay && (
-                      <div className="text-gray-600">{formatTime(selectedEvent.start)} - {formatTime(selectedEvent.end)}</div>
-                    )}
+                    <div className="text-gray-600">{formatTime(selectedEvent.start)} - {formatTime(selectedEvent.end)}</div>
                   </div>
                 </div>
 
-                {/* Beratungsgespräch-spezifische Infos */}
                 {selectedEvent.source === 'beratungsgespraech' && (
                   <>
                     {selectedEvent.ansprechpartner && (
@@ -342,13 +555,20 @@ function Termine() {
                       </div>
                     )}
 
-                    {selectedEvent.setterName && (
-                      <div className="text-sm text-gray-500">
-                        Gebucht von: {selectedEvent.setterName}
-                      </div>
-                    )}
+                    <div className="pt-3 border-t">
+                      {selectedEvent.setterName && (
+                        <div className="text-sm text-gray-500 mb-2">
+                          Gebucht von: <span className="font-medium">{selectedEvent.setterName}</span>
+                        </div>
+                      )}
+                      {selectedEvent.closerName && (
+                        <div className="text-sm text-gray-500 mb-2">
+                          Closer: <span className="font-medium">{selectedEvent.closerName}</span>
+                        </div>
+                      )}
+                    </div>
 
-                    <div className="pt-3 border-t flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2">
                       {selectedEvent.isMyClosing && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
                           Mein Closing
@@ -359,19 +579,14 @@ function Termine() {
                           Von mir gebucht
                         </span>
                       )}
-                      {selectedEvent.closerName && selectedEvent.isMyBooking && !selectedEvent.isMyClosing && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          Closer: {selectedEvent.closerName}
-                        </span>
-                      )}
-                      {!selectedEvent.closerName && selectedEvent.isMyBooking && (
+                      {!selectedEvent.closerName && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                          Noch kein Closer
+                          Im Pool
                         </span>
                       )}
                       {selectedEvent.status && selectedEvent.status !== 'Lead' && (
                         <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          Status: {selectedEvent.status}
+                          {selectedEvent.status}
                         </span>
                       )}
                     </div>
@@ -383,7 +598,7 @@ function Termine() {
                 {selectedEvent.isMyClosing && (
                   <a
                     href="/closing"
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
                   >
                     <Building2 className="w-4 h-4" />
                     Zum Closing
