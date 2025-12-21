@@ -190,37 +190,45 @@ exports.handler = async (event) => {
       const userNames = await loadUserNames(airtableHeaders)
 
       // Records formatieren
-      const hotLeads = allRecords.map(record => ({
-        id: record.id,
-        unternehmen: record.fields.Unternehmen || '',
-        ansprechpartnerVorname: record.fields.Ansprechpartner_Vorname || '',
-        ansprechpartnerNachname: record.fields.Ansprechpartner_Nachname || '',
-        kategorie: record.fields.Kategorie || '',
-        // Feldnamen aus Airtable: "Mail" und "Telefonnummer"
-        email: record.fields.Mail || record.fields['E-Mail'] || '',
-        telefon: record.fields.Telefonnummer || record.fields.Telefon || '',
-        ort: record.fields.Ort || '',
-        bundesland: record.fields.Bundesland || '',
-        website: record.fields.Website || '',
-        terminDatum: record.fields.Termin_Beratungsgespräch || record.fields['Termin_Beratungsgespräch'] || '',
-        terminart: record.fields.Terminart || '',  // Video oder Telefonisch
-        status: record.fields.Status || 'Lead',
-        quelle: record.fields.Quelle || '',
-        prioritaet: record.fields.Priorität || record.fields.Prioritaet || '',
-        setup: record.fields.Setup || 0,
-        retainer: record.fields.Retainer || 0,
-        laufzeit: record.fields.Laufzeit || 0,
-        monatlicheBesuche: record.fields.Monatliche_Besuche || 0,
-        mehrwert: record.fields.Mehrwert || 0,
-        produktDienstleistung: record.fields.Produkt_Dienstleistung || [],
-        kommentar: record.fields.Kommentar || '',  // Lookup aus Immobilienmakler_Leads
-        kundeSeit: record.fields['Kunde seit'] || record.fields.Kunde_seit || '',
-        // Verknüpfungen
-        originalLeadId: record.fields.Immobilienmakler_Leads?.[0] || null,
-        // Setter/Closer: Record-IDs zu Namen auflösen
-        setterName: resolveUserName(record.fields.Setter, userNames),
-        closerName: resolveUserName(record.fields.Closer, userNames)
-      }))
+      const hotLeads = allRecords.map(record => {
+        // Helper für Lookup-Felder (Arrays zu String)
+        const getLookupValue = (field) => {
+          if (Array.isArray(field)) return field[0] || ''
+          return field || ''
+        }
+        
+        return {
+          id: record.id,
+          unternehmen: getLookupValue(record.fields.Unternehmen),
+          ansprechpartnerVorname: getLookupValue(record.fields.Ansprechpartner_Vorname),
+          ansprechpartnerNachname: getLookupValue(record.fields.Ansprechpartner_Nachname),
+          kategorie: getLookupValue(record.fields.Kategorie),
+          // Feldnamen aus Airtable: "Mail" und "Telefonnummer"
+          email: getLookupValue(record.fields.Mail || record.fields['E-Mail']),
+          telefon: getLookupValue(record.fields.Telefonnummer || record.fields.Telefon),
+          ort: getLookupValue(record.fields.Ort),
+          bundesland: getLookupValue(record.fields.Bundesland),
+          website: getLookupValue(record.fields.Website),
+          terminDatum: record.fields.Termin_Beratungsgespräch || record.fields['Termin_Beratungsgespräch'] || '',
+          terminart: record.fields.Terminart || '',  // Video oder Telefonisch
+          status: record.fields.Status || 'Lead',
+          quelle: record.fields.Quelle || '',
+          prioritaet: record.fields.Priorität || record.fields.Prioritaet || '',
+          setup: record.fields.Setup || 0,
+          retainer: record.fields.Retainer || 0,
+          laufzeit: record.fields.Laufzeit || 0,
+          monatlicheBesuche: record.fields.Monatliche_Besuche || 0,
+          mehrwert: record.fields.Mehrwert || 0,
+          produktDienstleistung: record.fields.Produkt_Dienstleistung || [],
+          kommentar: getLookupValue(record.fields.Kommentar),  // Lookup aus Immobilienmakler_Leads
+          kundeSeit: record.fields['Kunde seit'] || record.fields.Kunde_seit || '',
+          // Verknüpfungen
+          originalLeadId: record.fields.Immobilienmakler_Leads?.[0] || null,
+          // Setter/Closer: Record-IDs zu Namen auflösen
+          setterName: resolveUserName(record.fields.Setter, userNames),
+          closerName: resolveUserName(record.fields.Closer, userNames)
+        }
+      })
 
       return {
         statusCode: 200,
