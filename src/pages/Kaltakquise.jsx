@@ -986,8 +986,8 @@ function Kaltakquise() {
                       </div>
                     </div>
                       
-                    {/* Termin buchen Button bei Beratungsgespräch */}
-                    {editForm.ergebnis === 'Beratungsgespräch' && (
+                    {/* Termin buchen Button bei Beratungsgespräch - nur wenn noch kein Termin gebucht */}
+                    {editForm.ergebnis === 'Beratungsgespräch' && selectedLead.ergebnis !== 'Beratungsgespräch' && (
                       <button
                         onClick={() => {
                           if (!editForm.ansprechpartnerVorname || !editForm.ansprechpartnerNachname) {
@@ -1002,6 +1002,14 @@ function Kaltakquise() {
                         <Calendar className="w-4 h-4 mr-2" />
                         Beratungsgespräch buchen
                       </button>
+                    )}
+                    
+                    {/* Hinweis wenn bereits Termin gebucht */}
+                    {selectedLead.ergebnis === 'Beratungsgespräch' && (
+                      <div className="w-full flex items-center justify-center px-4 py-2.5 bg-green-100 text-green-700 rounded-lg">
+                        <Calendar className="w-4 h-4 mr-2" />
+                        Beratungsgespräch bereits gebucht
+                      </div>
                     )}
                     
                     {/* Unterlagen senden Button */}
