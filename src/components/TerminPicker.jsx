@@ -58,6 +58,17 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
     loadEventTypes()
   }, [])
 
+  // Kontaktdaten aktualisieren wenn lead sich ändert (z.B. bei Reschedule)
+  useEffect(() => {
+    if (lead) {
+      setContactEmail(lead.email || '')
+      setContactPhone(lead.telefon || '')
+      setAnsprechpartnerVorname(lead.ansprechpartnerVorname || '')
+      setAnsprechpartnerNachname(lead.ansprechpartnerNachname || '')
+      setUnternehmensname(lead.unternehmensname || lead.unternehmen || '')
+    }
+  }, [lead])
+
   // Slots laden wenn Typ und Datum gewählt
   useEffect(() => {
     if (selectedType && selectedDate) {
