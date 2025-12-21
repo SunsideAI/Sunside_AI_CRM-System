@@ -222,6 +222,153 @@ exports.handler = async (event) => {
         }
       }
 
+      // Calendly Event Types abrufen (für Video/Telefon Auswahl)
+      if (action === 'calendly-event-types') {
+        if (!process.env.CALENDLY_API_KEY) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'CALENDLY_API_KEY nicht konfiguriert' })
+          }
+        }
+
+        try {
+          // User-Info für Organization URI
+          const userResponse = await fetch('https://api.calendly.com/users/me', {
+            headers: {
+              'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          const userData = await userResponse.json()
+          
+          if (!userResponse.ok) {
+            throw new Error(userData.message || 'Calendly User-Fehler')
+          }
+
+          const orgUri = userData.resource.current_organization
+
+          // Event Types abrufen
+          const eventTypesResponse = await fetch(
+            `https://api.calendly.com/event_types?organization=${encodeURIComponent(orgUri)}&active=true`,
+            {
+              headers: {
+                'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
+                'Content-Type': 'application/json'
+              }
+            }
+          )
+          const eventTypesData = await eventTypesResponse.json()
+
+          // Die zwei relevanten Event Types finden (Video + Telefon)
+          const eventTypes = eventTypesData.collection?.map(et => ({
+            uri: et.uri,
+            name: et.name,
+            slug: et.slug,
+            duration: et.duration,
+            scheduling_url: et.scheduling_url,
+            // Video wenn "klon" im Slug oder "video"/"meet" im Namen
+            type: (et.slug?.includes('klon') || et.name?.toLowerCase().includes('video') || et.name?.toLowerCase().includes('meet')) 
+              ? 'video' 
+              : 'phone'
+          })) || []
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              success: true,
+              eventTypes
+            })
+          }
+        } catch (calendlyError) {
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: 'Calendly Fehler', 
+              details: calendlyError.message 
+            })
+          }
+        }
+      }
+
+      // Calendly verfügbare Slots abrufen
+      if (action === 'calendly-slots') {
+        if (!process.env.CALENDLY_API_KEY) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'CALENDLY_API_KEY nicht konfiguriert' })
+          }
+        }
+
+        const eventTypeUri = params.eventTypeUri
+        const startDate = params.startDate // ISO Format
+        const endDate = params.endDate // ISO Format
+
+        if (!eventTypeUri) {
+          return {
+            statusCode: 400,
+            headers,
+            body: JSON.stringify({ error: 'eventTypeUri erforderlich' })
+          }
+        }
+
+        try {
+          // Start/End berechnen (Standard: ab jetzt, 14 Tage)
+          const now = new Date()
+          const start = startDate ? new Date(startDate) : now
+          const end = endDate ? new Date(endDate) : new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+
+          // Verfügbare Zeiten abrufen
+          const slotsUrl = new URL('https://api.calendly.com/event_type_available_times')
+          slotsUrl.searchParams.append('event_type', eventTypeUri)
+          slotsUrl.searchParams.append('start_time', start.toISOString())
+          slotsUrl.searchParams.append('end_time', end.toISOString())
+
+          const slotsResponse = await fetch(slotsUrl.toString(), {
+            headers: {
+              'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          const slotsData = await slotsResponse.json()
+
+          if (!slotsResponse.ok) {
+            throw new Error(slotsData.message || 'Calendly Slots-Fehler')
+          }
+
+          // Slots formatieren
+          const slots = slotsData.collection?.map(slot => ({
+            start: slot.start_time,
+            status: slot.status, // 'available' oder 'unavailable'
+            inviteesRemaining: slot.invitees_remaining
+          })).filter(slot => slot.status === 'available') || []
+
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              success: true,
+              eventTypeUri,
+              startDate: start.toISOString(),
+              endDate: end.toISOString(),
+              slots
+            })
+          }
+        } catch (calendlyError) {
+          return {
+            statusCode: 500,
+            headers,
+            body: JSON.stringify({ 
+              error: 'Calendly Slots-Fehler', 
+              details: calendlyError.message 
+            })
+          }
+        }
+      }
+
       // Termine für einen Zeitraum abrufen
       if (action === 'events') {
         if (!calendarId) {
