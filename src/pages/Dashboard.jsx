@@ -488,17 +488,20 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
   const getStatusStyle = (status) => {
     switch (status) {
       case 'Lead': return 'bg-blue-100 text-blue-700'
+      case 'Angebot': return 'bg-yellow-100 text-yellow-700'
       case 'Angebot versendet': return 'bg-purple-100 text-purple-700'
       case 'Abgeschlossen': return 'bg-green-100 text-green-700'
+      case 'Termin abgesagt': return 'bg-orange-100 text-orange-700'
+      case 'Termin verschoben': return 'bg-amber-100 text-amber-700'
       case 'Verloren': return 'bg-red-100 text-red-700'
       default: return 'bg-gray-100 text-gray-700'
     }
   }
 
-  // Statistiken
+  // Statistiken - Termin abgesagt/verschoben zählen als "offen" (müssen neu terminiert werden)
   const stats = {
-    lead: hotLeads.filter(l => l.status === 'Lead').length,
-    angebot: hotLeads.filter(l => l.status === 'Angebot versendet').length,
+    lead: hotLeads.filter(l => l.status === 'Lead' || l.status === 'Termin abgesagt' || l.status === 'Termin verschoben').length,
+    angebot: hotLeads.filter(l => l.status === 'Angebot versendet' || l.status === 'Angebot').length,
     gewonnen: hotLeads.filter(l => l.status === 'Abgeschlossen').length
   }
 
@@ -532,7 +535,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
           <div className="flex gap-4 text-sm">
             <div className="text-center">
               <span className="block text-lg font-bold text-blue-600">{stats.lead}</span>
-              <span className="text-gray-500">Lead</span>
+              <span className="text-gray-500">Offen</span>
             </div>
             <div className="text-center">
               <span className="block text-lg font-bold text-purple-600">{stats.angebot}</span>
