@@ -286,6 +286,27 @@ exports.handler = async (event) => {
         }
       }
 
+      // Duplikat-Prüfung: Existiert bereits ein Hot Lead für diesen Original-Lead?
+      const duplicateCheckUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(HOT_LEADS_TABLE)}?filterByFormula=FIND("${originalLeadId}",ARRAYJOIN({Immobilienmakler_Leads}))&maxRecords=1`
+      const duplicateCheckResponse = await fetch(duplicateCheckUrl, {
+        headers: airtableHeaders
+      })
+      const duplicateCheckData = await duplicateCheckResponse.json()
+      
+      if (duplicateCheckData.records && duplicateCheckData.records.length > 0) {
+        const existingHotLead = duplicateCheckData.records[0]
+        console.log('Duplikat gefunden - Hot Lead existiert bereits:', existingHotLead.id)
+        return {
+          statusCode: 409, // Conflict
+          headers: corsHeaders,
+          body: JSON.stringify({ 
+            error: 'Hot Lead existiert bereits',
+            message: 'Für diesen Lead wurde bereits ein Beratungsgespräch gebucht.',
+            existingHotLeadId: existingHotLead.id
+          })
+        }
+      }
+
       // User-Namen laden um Record-IDs zu finden falls nur Namen gegeben
       const userNames = await loadUserNames(airtableHeaders)
       
