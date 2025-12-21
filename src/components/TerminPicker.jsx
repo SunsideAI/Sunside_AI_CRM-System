@@ -23,6 +23,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
   // Status
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [validationErrors, setValidationErrors] = useState({})
   
   // Kontaktdaten
   const [contactEmail, setContactEmail] = useState(lead?.email || '')
@@ -111,10 +112,14 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
             }
           })
         setSlots(futureSlots)
-      } else {
+        // Keine Fehlermeldung wenn keine Slots verfügbar - das ist normal (z.B. Montag geblockt)
+      } else if (!response.ok) {
+        // Nur bei echtem API-Fehler eine Meldung zeigen
+        console.error('Calendly API Fehler:', data)
         setError('Fehler beim Laden der Termine')
       }
     } catch (err) {
+      console.error('Slot-Loading Fehler:', err)
       setError('Fehler beim Laden der Termine')
     } finally {
       setLoadingSlots(false)
@@ -122,29 +127,32 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
   }
 
   const bookTermin = async (assignToPool) => {
-    // Validierung
+    // Validierung mit visuellen Errors
+    const errors = {}
+    
     if (!ansprechpartnerVorname || !ansprechpartnerNachname) {
-      setError('Bitte Ansprechpartner (Vor- und Nachname) eingeben')
-      return
+      errors.ansprechpartner = true
     }
     if (!contactEmail || !contactEmail.includes('@')) {
-      setError('Bitte gültige E-Mail-Adresse eingeben')
-      return
+      errors.email = true
     }
     if (!contactPhone || contactPhone.length < 6) {
-      setError('Bitte gültige Telefonnummer eingeben')
-      return
+      errors.telefon = true
     }
     if (!unternehmensname) {
-      setError('Bitte Unternehmensname eingeben')
-      return
+      errors.unternehmen = true
     }
     if (!problemstellung) {
-      setError('Bitte Problemstellung & Ziele eingeben')
-      return
+      errors.problemstellung = true
     }
     if (!selectedSlot) {
-      setError('Bitte einen Termin-Slot wählen')
+      errors.slot = true
+    }
+    
+    setValidationErrors(errors)
+    
+    if (Object.keys(errors).length > 0) {
+      setError('Bitte alle Pflichtfelder ausfüllen')
       return
     }
     
@@ -559,12 +567,21 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
 
           {/* Problemstellung */}
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Problemstellung & Ziele *</label>
+            <label className={`block text-xs mb-1 ${validationErrors.problemstellung ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
+              Problemstellung & Ziele *
+            </label>
             <textarea
               value={problemstellung}
-              onChange={(e) => setProblemstellung(e.target.value)}
+              onChange={(e) => {
+                setProblemstellung(e.target.value)
+                if (validationErrors.problemstellung) {
+                  setValidationErrors(prev => ({ ...prev, problemstellung: false }))
+                }
+              }}
               rows={3}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none ${
+                validationErrors.problemstellung ? 'border-red-500 bg-red-50' : ''
+              }`}
               placeholder="Was sind die Herausforderungen und Ziele des Maklers?"
             />
           </div>
