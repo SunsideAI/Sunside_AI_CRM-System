@@ -500,7 +500,7 @@ async function findHotLeadByUnternehmen(unternehmen) {
           termin: record.fields.Termin_Beratungsgespräch || '',
           setterId: getLinkedRecordId(record.fields.Setter),
           closerId: getLinkedRecordId(record.fields.Closer),
-          originalLeadId: getLinkedRecordId(record.fields.Original_Lead || record.fields.Lead),
+          originalLeadId: getLinkedRecordId(record.fields.Immobilienmakler_Leads),
           ansprechpartner: record.fields.Ansprechpartner || ''
         }
       }
@@ -627,10 +627,11 @@ async function updateOriginalLeadKommentar(leadId, neuerKommentar) {
       hour: '2-digit', minute: '2-digit' 
     })
     
-    // Neuen Kommentar anhängen
+    // Neuen Kommentar OBEN anhängen (neueste zuerst)
+    const newEntry = `[${timestamp}] 📅 ${neuerKommentar}`
     const newComment = existingComment 
-      ? `${existingComment}\n\n[${timestamp}] ${neuerKommentar}`
-      : `[${timestamp}] ${neuerKommentar}`
+      ? `${newEntry}\n${existingComment}`
+      : newEntry
 
     const response = await fetch(TABLE_URL, {
       method: 'PATCH',
