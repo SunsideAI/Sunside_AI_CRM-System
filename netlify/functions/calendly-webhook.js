@@ -272,14 +272,6 @@ async function findHotLeadByTermin(terminDatum, email) {
     return null
   }
 }
-    }
-
-    return null
-  } catch (err) {
-    console.error('Fehler beim Suchen des Hot Leads:', err)
-    return null
-  }
-}
 
 // ==========================================
 // Helper: Hot Lead Status aktualisieren
