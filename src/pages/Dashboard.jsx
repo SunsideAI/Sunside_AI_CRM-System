@@ -370,29 +370,38 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
   }, [userName])
 
   const loadHotLeads = async () => {
+    if (!userName) {
+      setLoading(false)
+      return
+    }
+    
     try {
-      // Je nach Rolle: Coldcaller filtert nach setterName, Closer nach closerName
-      let url
-      if (isCloser && isCloser() && !isColdcaller()) {
-        // Nur Closer (nicht Coldcaller): Nach Closer-Namen filtern
-        url = `/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`
-      } else {
-        // Coldcaller oder Admin: Nach Setter-Namen filtern
-        url = `/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`
-      }
-      const response = await fetch(url)
-      const data = await response.json()
+      // Beide Abfragen parallel: Als Closer UND als Setter (wie in Termine.jsx)
+      const [closerResponse, setterResponse] = await Promise.all([
+        fetch(`/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`)
+          .then(r => r.json())
+          .catch(() => ({ hotLeads: [] })),
+        fetch(`/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`)
+          .then(r => r.json())
+          .catch(() => ({ hotLeads: [] }))
+      ])
       
-      if (response.ok && data.hotLeads) {
-        const sortedLeads = data.hotLeads.sort((a, b) => {
-          const dateA = a.terminDatum ? new Date(a.terminDatum) : new Date(0)
-          const dateB = b.terminDatum ? new Date(b.terminDatum) : new Date(0)
-          return dateB - dateA
-        })
-        setHotLeads(sortedLeads)
-      } else {
-        setHotLeads([])
-      }
+      // Kombinieren und Duplikate entfernen (basierend auf ID)
+      const allLeads = [...(closerResponse.hotLeads || []), ...(setterResponse.hotLeads || [])]
+      const uniqueLeads = allLeads.reduce((acc, lead) => {
+        if (!acc.find(l => l.id === lead.id)) {
+          acc.push(lead)
+        }
+        return acc
+      }, [])
+      
+      // Sortieren: Neueste Termine zuerst
+      const sortedLeads = uniqueLeads.sort((a, b) => {
+        const dateA = a.terminDatum ? new Date(a.terminDatum) : new Date(0)
+        const dateB = b.terminDatum ? new Date(b.terminDatum) : new Date(0)
+        return dateB - dateA
+      })
+      setHotLeads(sortedLeads)
     } catch (err) {
       console.error('Hot Leads laden fehlgeschlagen:', err)
       setHotLeads([])
@@ -1468,10 +1477,17 @@ function ClosingAnalytics({ user, isAdmin }) {
                     <XAxis dataKey="label" tick={{ fontSize: 12 }} />
                     <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
                     <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
-                    <Tooltip formatter={(value, name) => [name === 'umsatz' ? formatCurrency(value) : value, name === 'umsatz' ? 'Umsatz' : 'Closings']} />
+                    <Tooltip 
+                      formatter={(value, name) => {
+                        if (name === 'umsatz' || name === 'Umsatz') {
+                          return [formatCurrency(value), 'Umsatz']
+                        }
+                        return [value, 'Abschlüsse']
+                      }} 
+                    />
                     <Legend />
                     <Bar yAxisId="left" dataKey="umsatz" name="Umsatz" fill="#7C3AED" radius={[4, 4, 0, 0]} />
-                    <Bar yAxisId="right" dataKey="count" name="Closings" fill="#10B981" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="right" dataKey="count" name="Abschlüsse" fill="#10B981" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -1526,7 +1542,19 @@ function ClosingAnalytics({ user, isAdmin }) {
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                     <XAxis type="number" />
                     <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                    <Tooltip formatter={(value, name) => [name === 'umsatz' ? formatCurrency(value) : value, name === 'umsatz' ? 'Umsatz' : name === 'gewonnen' ? 'Gewonnen' : name === 'verloren' ? 'Verloren' : 'Offen']} />
+                    <Tooltip 
+                      formatter={(value, name) => {
+                        const labels = {
+                          offen: 'Offen',
+                          gewonnen: 'Gewonnen',
+                          verloren: 'Verloren',
+                          umsatz: 'Umsatz'
+                        }
+                        const label = labels[name] || name
+                        const displayValue = name === 'umsatz' ? formatCurrency(value) : value
+                        return [displayValue, label]
+                      }} 
+                    />
                     <Legend />
                     <Bar dataKey="offen" name="Offen" fill="#6B7280" stackId="a" />
                     <Bar dataKey="gewonnen" name="Gewonnen" fill="#10B981" stackId="a" />
