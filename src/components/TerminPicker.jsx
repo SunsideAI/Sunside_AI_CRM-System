@@ -1,95 +1,115 @@
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, User, Loader2, Check, ChevronLeft, ChevronRight, Mail, Phone } from 'lucide-react'
+import { Calendar, Clock, Loader2, Check, ChevronLeft, ChevronRight, Mail, Phone, Video, Users, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
 function TerminPicker({ lead, onTerminBooked, onCancel }) {
   const { user } = useAuth()
-  const [closers, setClosers] = useState([])
-  const [selectedCloser, setSelectedCloser] = useState(null)
+  
+  // Calendly Event Types
+  const [eventTypes, setEventTypes] = useState([])
+  const [selectedType, setSelectedType] = useState(null) // 'video' oder 'phone'
+  
+  // Datum & Slots
   const [selectedDate, setSelectedDate] = useState(null)
   const [selectedSlot, setSelectedSlot] = useState(null)
   const [slots, setSlots] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [loadingSlots, setLoadingSlots] = useState(false)
-  const [booking, setBooking] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
   const [weekOffset, setWeekOffset] = useState(0)
   
-  // Editierbare Kontaktdaten
+  // Loading States
+  const [loading, setLoading] = useState(true)
+  const [loadingSlots, setLoadingSlots] = useState(false)
+  const [booking, setBooking] = useState(false)
+  
+  // Status
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState(false)
+  
+  // Kontaktdaten
   const [contactEmail, setContactEmail] = useState(lead?.email || '')
   const [contactPhone, setContactPhone] = useState(lead?.telefon || '')
-  
-  // Ansprechpartner (Pflichtfeld!)
   const [ansprechpartnerVorname, setAnsprechpartnerVorname] = useState(lead?.ansprechpartnerVorname || '')
   const [ansprechpartnerNachname, setAnsprechpartnerNachname] = useState(lead?.ansprechpartnerNachname || '')
-  
-  // Calendly Pflichtfelder
   const [unternehmensname, setUnternehmensname] = useState(lead?.unternehmensname || '')
-  const [taetigkeit, setTaetigkeit] = useState('Makler') // Makler oder Sachverständiger
+  const [taetigkeit, setTaetigkeit] = useState('Makler')
   const [problemstellung, setProblemstellung] = useState('')
 
-  // Closer laden
+  // Prüfen ob User selbst Closer sein kann
+  const userRoles = user?.rolle || []
+  const canSelfClose = userRoles.some(r => 
+    r.toLowerCase() === 'closer' || 
+    r.toLowerCase() === 'admin' ||
+    r.toLowerCase() === 'coldcaller + closer'
+  )
+
+  // Calendly Event Types laden
   useEffect(() => {
-    loadClosers()
+    loadEventTypes()
   }, [])
 
-  // Slots laden wenn Closer und Datum gewählt
+  // Slots laden wenn Typ und Datum gewählt
   useEffect(() => {
-    if (selectedCloser && selectedDate) {
+    if (selectedType && selectedDate) {
       loadSlots()
     }
-  }, [selectedCloser, selectedDate])
+  }, [selectedType, selectedDate])
 
-  const loadClosers = async () => {
+  const loadEventTypes = async () => {
     setLoading(true)
     try {
-      const response = await fetch('/.netlify/functions/users')
+      const response = await fetch('/.netlify/functions/calendar?action=calendly-event-types')
       const data = await response.json()
       
-      if (response.ok) {
-        // Nur Closer mit Google Calendar ID
-        const closerUsers = data.users.filter(user => {
-          const rollen = user.rolle || []
-          const isCloser = rollen.some(r => 
-            r.toLowerCase() === 'closer' || r.toLowerCase() === 'admin'
-          )
-          // Muss Google Calendar ID haben
-          const hasCalendar = user.google_calendar_id || user.email
-          return isCloser && hasCalendar
-        })
-        setClosers(closerUsers)
-        
-        // Wenn nur ein Closer, automatisch auswählen
-        if (closerUsers.length === 1) {
-          setSelectedCloser(closerUsers[0])
-        }
+      if (response.ok && data.success) {
+        setEventTypes(data.eventTypes)
+      } else {
+        setError('Fehler beim Laden der Terminarten')
       }
     } catch (err) {
-      setError('Fehler beim Laden der Closer')
+      setError('Fehler beim Laden der Terminarten')
     } finally {
       setLoading(false)
     }
   }
 
   const loadSlots = async () => {
-    if (!selectedCloser || !selectedDate) return
+    if (!selectedType || !selectedDate) return
+    
+    // Event Type URI finden
+    const eventType = eventTypes.find(et => et.type === selectedType)
+    if (!eventType) {
+      setError('Event Type nicht gefunden')
+      return
+    }
     
     setLoadingSlots(true)
     setSlots([])
     setSelectedSlot(null)
     
     try {
-      const calendarId = selectedCloser.google_calendar_id || selectedCloser.email
+      // Start: gewähltes Datum, End: gewähltes Datum + 1 Tag
+      const startDate = new Date(selectedDate)
+      startDate.setHours(0, 0, 0, 0)
+      const endDate = new Date(selectedDate)
+      endDate.setHours(23, 59, 59, 999)
+      
       const response = await fetch(
-        `/.netlify/functions/calendar?action=slots&calendarId=${encodeURIComponent(calendarId)}&date=${selectedDate}`
+        `/.netlify/functions/calendar?action=calendly-slots&eventTypeUri=${encodeURIComponent(eventType.uri)}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
       )
       const data = await response.json()
       
-      if (response.ok) {
-        // Nur zukünftige Slots anzeigen
+      if (response.ok && data.success) {
+        // Nur zukünftige Slots
         const now = new Date()
-        const futureSlots = data.freeSlots.filter(slot => new Date(slot.start) > now)
+        const futureSlots = data.slots
+          .filter(slot => new Date(slot.start) > now)
+          .map(slot => {
+            const startTime = new Date(slot.start)
+            return {
+              start: slot.start,
+              startTime: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+              inviteesRemaining: slot.inviteesRemaining
+            }
+          })
         setSlots(futureSlots)
       } else {
         setError('Fehler beim Laden der Termine')
@@ -101,9 +121,7 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
     }
   }
 
-  const bookTermin = async () => {
-    if (!selectedCloser || !selectedSlot || !lead) return
-    
+  const bookTermin = async (assignToPool) => {
     // Validierung
     if (!ansprechpartnerVorname || !ansprechpartnerNachname) {
       setError('Bitte Ansprechpartner (Vor- und Nachname) eingeben')
@@ -125,184 +143,164 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
       setError('Bitte Problemstellung & Ziele eingeben')
       return
     }
+    if (!selectedSlot) {
+      setError('Bitte einen Termin-Slot wählen')
+      return
+    }
     
     setBooking(true)
     setError('')
     
-    // Ansprechpartner Name für Calendly
     const ansprechpartnerName = `${ansprechpartnerVorname} ${ansprechpartnerNachname}`.trim()
+    const eventType = eventTypes.find(et => et.type === selectedType)
     
     try {
-      const calendarId = selectedCloser.google_calendar_id || selectedCloser.email
-      
-      // 1. Google Calendar Termin erstellen
-      const gcalResponse = await fetch('/.netlify/functions/calendar', {
+      // Calendly Termin erstellen
+      const calendlyResponse = await fetch('/.netlify/functions/calendar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          calendarId: calendarId,
-          title: `Beratungsgespräch: ${unternehmensname} (${ansprechpartnerName})`,
-          description: `Ansprechpartner: ${ansprechpartnerName}\nUnternehmen: ${unternehmensname}\nTätigkeit: ${taetigkeit}\nStadt: ${lead.stadt || '-'}\nTelefon: ${contactPhone}\nE-Mail: ${contactEmail}\n\nProblemstellung & Ziele:\n${problemstellung}\n\nGebucht über Sunside CRM`,
+          action: 'calendly-book',
+          eventTypeUri: eventType.uri,
           startTime: selectedSlot.start,
-          endTime: selectedSlot.end,
-          leadId: lead.id
-        })
-      })
-      
-      const gcalData = await gcalResponse.json()
-      
-      if (!gcalResponse.ok || !gcalData.success) {
-        throw new Error(gcalData.error || 'Google Calendar Fehler')
-      }
-
-      // 2. Calendly Termin erstellen (falls konfiguriert)
-      try {
-        const calendlyResponse = await fetch('/.netlify/functions/calendar', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'calendly-book',
-            eventTypeUri: 'https://api.calendly.com/event_types/b7fa6cb8-8dcf-42f9-a8cf-9e73a776c57c',
-            startTime: selectedSlot.start,
-            inviteeName: ansprechpartnerName, // Ansprechpartner statt Unternehmensname!
-            inviteeEmail: contactEmail,
-            inviteePhone: contactPhone,
-            leadInfo: {
-              ansprechpartner: ansprechpartnerName,
-              firma: unternehmensname,
-              stadt: lead.stadt,
-              telefon: contactPhone,
-              kategorie: lead.kategorie,
-              taetigkeit: taetigkeit,
-              problemstellung: problemstellung,
-              closerEmail: selectedCloser.email || selectedCloser.email_geschaeftlich
-            }
-          })
-        })
-        
-        const calendlyData = await calendlyResponse.json()
-        console.log('Calendly Booking Result:', calendlyData)
-        
-      } catch (calendlyError) {
-        // Calendly-Fehler nur loggen, nicht abbrechen
-        console.warn('Calendly Booking fehlgeschlagen:', calendlyError)
-      }
-      
-      setSuccess(true)
-      
-      // Lead in Airtable aktualisieren mit History-Eintrag
-      await fetch('/.netlify/functions/leads', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          leadId: lead.id,
-          updates: {
-            ergebnis: 'Beratungsgespräch',
-            kontaktiert: true,
-            ansprechpartnerVorname: ansprechpartnerVorname,
-            ansprechpartnerNachname: ansprechpartnerNachname
-          },
-          historyEntry: {
-            action: 'termin',
-            details: `Termin gebucht: ${formatDate(selectedDate)} um ${selectedSlot.startTime} Uhr mit ${selectedCloser.vor_nachname}`,
-            userName: user?.vor_nachname || user?.name || 'Unbekannt'
+          inviteeName: ansprechpartnerName,
+          inviteeEmail: contactEmail,
+          inviteePhone: contactPhone,
+          leadInfo: {
+            ansprechpartner: ansprechpartnerName,
+            firma: unternehmensname,
+            stadt: lead?.stadt,
+            telefon: contactPhone,
+            kategorie: lead?.kategorie,
+            taetigkeit: taetigkeit,
+            problemstellung: problemstellung,
+            terminart: selectedType,
+            // Closer-Info
+            assignToPool: assignToPool,
+            closerName: assignToPool ? null : user?.vor_nachname,
+            closerEmail: assignToPool ? null : (user?.email_geschaeftlich || user?.email),
+            setterName: user?.vor_nachname,
+            setterEmail: user?.email_geschaeftlich || user?.email
           }
         })
       })
-
-      // 3. Hot Lead in Airtable erstellen
-      try {
-        const hotLeadResponse = await fetch('/.netlify/functions/hot-leads', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            originalLeadId: lead.id,
-            // Record-IDs für Linked Records
-            setterId: user?.id || '',
-            closerId: selectedCloser.id || '',
-            // Namen als Fallback
-            setterName: user?.vor_nachname || user?.name || '',
-            closerName: selectedCloser.vor_nachname || '',
-            unternehmen: unternehmensname,
-            terminDatum: selectedSlot.start,
-            quelle: 'Cold Calling',
-            infosErstgespraech: `Ansprechpartner: ${ansprechpartnerVorname} ${ansprechpartnerNachname}\nTätigkeit: ${taetigkeit}\n\nProblemstellung & Ziele:\n${problemstellung}`
-          })
-        })
-
-        const hotLeadData = await hotLeadResponse.json()
-        
-        if (hotLeadResponse.ok) {
-          console.log('Hot Lead erstellt:', hotLeadData.hotLeadId)
-        } else {
-          console.warn('Hot Lead Erstellung fehlgeschlagen:', hotLeadData.error)
-        }
-      } catch (hotLeadError) {
-        // Hot Lead Fehler nur loggen, nicht abbrechen
-        console.warn('Hot Lead Erstellung fehlgeschlagen:', hotLeadError)
+      
+      const calendlyData = await calendlyResponse.json()
+      
+      if (!calendlyResponse.ok || !calendlyData.success) {
+        throw new Error(calendlyData.error || calendlyData.details || 'Calendly Buchung fehlgeschlagen')
       }
+
+      // Lead in Airtable aktualisieren (als Hot Lead markieren)
+      if (lead?.id) {
+        try {
+          await fetch('/.netlify/functions/leads', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: lead.id,
+              updates: {
+                ergebnis: 'Beratungsgespräch',
+                kontaktiert: true,
+                datum: new Date().toISOString().split('T')[0],
+                // Ansprechpartner aktualisieren falls geändert
+                ansprechpartnerVorname: ansprechpartnerVorname,
+                ansprechpartnerNachname: ansprechpartnerNachname
+              }
+            })
+          })
+        } catch (err) {
+          console.error('Lead-Update fehlgeschlagen:', err)
+        }
+      }
+
+      // Bei "An Closer vergeben": Email an alle Closer senden
+      if (assignToPool) {
+        try {
+          await fetch('/.netlify/functions/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'notify-closers',
+              termin: {
+                datum: new Date(selectedSlot.start).toLocaleDateString('de-DE', { 
+                  weekday: 'long', 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                }),
+                art: selectedType === 'video' ? 'Video (Google Meet)' : 'Telefonisch',
+                unternehmen: unternehmensname,
+                ansprechpartner: ansprechpartnerName,
+                setter: user?.vor_nachname
+              }
+            })
+          })
+        } catch (err) {
+          console.error('Closer-Benachrichtigung fehlgeschlagen:', err)
+          // Kein harter Fehler - Termin wurde trotzdem gebucht
+        }
+      }
+
+      setSuccess(true)
       
+      // Auto-close nach 1.5s
       setTimeout(() => {
-        onTerminBooked && onTerminBooked({
-          date: selectedDate,
-          time: selectedSlot.startTime,
-          closer: selectedCloser.vor_nachname,
-          eventLink: gcalData.event?.htmlLink
-        })
+        if (onTerminBooked) {
+          onTerminBooked({
+            slot: selectedSlot,
+            type: selectedType,
+            assignedToPool: assignToPool
+          })
+        }
       }, 1500)
-      
+
     } catch (err) {
-      setError(err.message || 'Fehler beim Buchen des Termins')
+      console.error('Buchungsfehler:', err)
+      setError(err.message || 'Fehler bei der Terminbuchung')
     } finally {
       setBooking(false)
     }
   }
 
-  // Nächste 7 Werktage generieren
+  // Wochentage berechnen
   const getWeekDays = () => {
-    const days = []
     const today = new Date()
-    today.setDate(today.getDate() + (weekOffset * 7))
+    today.setHours(0, 0, 0, 0)
     
-    let count = 0
-    let offset = weekOffset === 0 ? 0 : 0
+    // Start bei Montag dieser Woche + offset
+    const monday = new Date(today)
+    const dayOfWeek = monday.getDay()
+    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
+    monday.setDate(monday.getDate() + diff + (weekOffset * 7))
     
-    while (days.length < 5) {
-      const date = new Date(today)
-      date.setDate(today.getDate() + count + offset)
-      
-      // Wochenende überspringen
-      if (date.getDay() !== 0 && date.getDay() !== 6) {
-        // Nur zukünftige Tage (oder heute)
-        const now = new Date()
-        now.setHours(0, 0, 0, 0)
-        if (date >= now || weekOffset > 0) {
-          days.push({
-            date: date.toISOString().split('T')[0],
-            dayName: date.toLocaleDateString('de-DE', { weekday: 'short' }),
-            dayNumber: date.getDate(),
-            month: date.toLocaleDateString('de-DE', { month: 'short' })
-          })
-        }
-      }
-      count++
-      if (count > 14) break // Safety
+    const days = []
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(monday)
+      day.setDate(monday.getDate() + i)
+      days.push(day)
     }
-    
     return days
   }
 
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr)
-    return date.toLocaleDateString('de-DE', { 
-      weekday: 'long', 
-      day: 'numeric', 
-      month: 'long' 
-    })
+  const formatDate = (date) => {
+    return date.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })
   }
 
-  const weekDays = getWeekDays()
+  const isToday = (date) => {
+    const today = new Date()
+    return date.toDateString() === today.toDateString()
+  }
 
+  const isPast = (date) => {
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    return date < today
+  }
+
+  // Success Screen
   if (success) {
     return (
       <div className="text-center py-8">
@@ -310,274 +308,153 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
           <Check className="w-8 h-8 text-green-600" />
         </div>
         <h3 className="text-xl font-semibold text-gray-900 mb-2">Termin gebucht!</h3>
-        <p className="text-gray-600">
-          {formatDate(selectedDate)} um {selectedSlot.startTime} Uhr
-          <br />mit {selectedCloser.vor_nachname}
-        </p>
+        <p className="text-gray-500">Der Termin wurde erfolgreich in Calendly erstellt.</p>
+      </div>
+    )
+  }
+
+  // Loading
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900">Beratungsgespräch buchen</h3>
-        <p className="text-sm text-gray-500">Für: {lead?.unternehmensname}</p>
-      </div>
-
+      {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+        <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
           {error}
         </div>
       )}
 
-      {/* Closer Auswahl */}
+      {/* Step 1: Terminart wählen */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          <User className="w-4 h-4 inline mr-1" />
-          Closer auswählen
+          1. Terminart wählen
         </label>
-        {loading ? (
-          <div className="flex items-center text-gray-500">
-            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            Laden...
-          </div>
-        ) : closers.length === 0 ? (
-          <p className="text-gray-500 text-sm">Keine Closer mit Kalender gefunden</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-2">
-            {closers.map(closer => (
-              <button
-                key={closer.id}
-                onClick={() => setSelectedCloser(closer)}
-                className={`p-3 rounded-lg border text-left transition-all ${
-                  selectedCloser?.id === closer.id
-                    ? 'border-sunside-primary bg-purple-50 text-sunside-primary'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="font-medium">{closer.vor_nachname}</div>
-                <div className="text-xs text-gray-500">{closer.email}</div>
-              </button>
-            ))}
-          </div>
-        )}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => { setSelectedType('video'); setSelectedDate(null); setSelectedSlot(null); setSlots([]) }}
+            className={`p-4 rounded-lg border-2 transition-all ${
+              selectedType === 'video'
+                ? 'border-purple-500 bg-purple-50'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <Video className={`w-6 h-6 mx-auto mb-2 ${selectedType === 'video' ? 'text-purple-600' : 'text-gray-400'}`} />
+            <p className={`font-medium ${selectedType === 'video' ? 'text-purple-700' : 'text-gray-700'}`}>Video</p>
+            <p className="text-xs text-gray-500">Google Meet</p>
+          </button>
+          
+          <button
+            onClick={() => { setSelectedType('phone'); setSelectedDate(null); setSelectedSlot(null); setSlots([]) }}
+            className={`p-4 rounded-lg border-2 transition-all ${
+              selectedType === 'phone'
+                ? 'border-purple-500 bg-purple-50'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <Phone className={`w-6 h-6 mx-auto mb-2 ${selectedType === 'phone' ? 'text-purple-600' : 'text-gray-400'}`} />
+            <p className={`font-medium ${selectedType === 'phone' ? 'text-purple-700' : 'text-gray-700'}`}>Telefonisch</p>
+            <p className="text-xs text-gray-500">Anruf</p>
+          </button>
+        </div>
       </div>
 
-      {/* Kontaktdaten für den Termin */}
-      {selectedCloser && (
-        <div className="space-y-4">
-          <label className="block text-sm font-medium text-gray-700">
-            Kontaktdaten für den Termin <span className="text-red-500">*</span>
+      {/* Step 2: Datum wählen */}
+      {selectedType && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            2. Datum wählen
           </label>
           
-          {/* E-Mail und Telefon */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">
-                <Mail className="w-3 h-3 inline mr-1" />
-                E-Mail <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="email"
-                value={contactEmail}
-                onChange={(e) => setContactEmail(e.target.value)}
-                placeholder="E-Mail für Terminbestätigung"
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
-                  !contactEmail || !contactEmail.includes('@') 
-                    ? 'border-red-300 bg-red-50' 
-                    : 'border-gray-300'
-                }`}
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">
-                <Phone className="w-3 h-3 inline mr-1" />
-                Telefon <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="tel"
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-                placeholder="Telefonnummer"
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
-                  !contactPhone || contactPhone.length < 6
-                    ? 'border-red-300 bg-red-50' 
-                    : 'border-gray-300'
-                }`}
-              />
-            </div>
+          {/* Wochennavigation */}
+          <div className="flex items-center justify-between mb-3">
+            <button
+              onClick={() => setWeekOffset(w => w - 1)}
+              disabled={weekOffset <= 0}
+              className="p-1 hover:bg-gray-100 rounded disabled:opacity-50"
+            >
+              <ChevronLeft className="w-5 h-5" />
+            </button>
+            <span className="text-sm text-gray-600">
+              {weekOffset === 0 ? 'Diese Woche' : weekOffset === 1 ? 'Nächste Woche' : `In ${weekOffset} Wochen`}
+            </span>
+            <button
+              onClick={() => setWeekOffset(w => w + 1)}
+              disabled={weekOffset >= 8}
+              className="p-1 hover:bg-gray-100 rounded disabled:opacity-50"
+            >
+              <ChevronRight className="w-5 h-5" />
+            </button>
           </div>
 
-          {/* Ansprechpartner - PFLICHTFELD */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">
-                <User className="w-3 h-3 inline mr-1" />
-                Ansprechpartner Vorname <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={ansprechpartnerVorname}
-                onChange={(e) => setAnsprechpartnerVorname(e.target.value)}
-                placeholder="Vorname"
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
-                  !ansprechpartnerVorname ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                }`}
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-500 mb-1">
-                Ansprechpartner Nachname <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={ansprechpartnerNachname}
-                onChange={(e) => setAnsprechpartnerNachname(e.target.value)}
-                placeholder="Nachname"
-                className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
-                  !ansprechpartnerNachname ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                }`}
-              />
-            </div>
-          </div>
-
-          {/* Unternehmensname */}
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">
-              Unternehmensname <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              value={unternehmensname}
-              onChange={(e) => setUnternehmensname(e.target.value)}
-              placeholder="Name des Unternehmens"
-              className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
-                !unternehmensname ? 'border-red-300 bg-red-50' : 'border-gray-300'
-              }`}
-            />
-          </div>
-
-          {/* Makler oder Sachverständiger */}
-          <div>
-            <label className="block text-xs text-gray-500 mb-2">
-              Tätigkeit <span className="text-red-500">*</span>
-            </label>
-            <div className="flex gap-4">
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  name="taetigkeit"
-                  value="Makler"
-                  checked={taetigkeit === 'Makler'}
-                  onChange={(e) => setTaetigkeit(e.target.value)}
-                  className="w-4 h-4 text-sunside-primary border-gray-300 focus:ring-sunside-primary"
-                />
-                <span className="ml-2 text-sm text-gray-700">Makler</span>
-              </label>
-              <label className="flex items-center cursor-pointer">
-                <input
-                  type="radio"
-                  name="taetigkeit"
-                  value="Sachverständiger"
-                  checked={taetigkeit === 'Sachverständiger'}
-                  onChange={(e) => setTaetigkeit(e.target.value)}
-                  className="w-4 h-4 text-sunside-primary border-gray-300 focus:ring-sunside-primary"
-                />
-                <span className="ml-2 text-sm text-gray-700">Sachverständiger</span>
-              </label>
-            </div>
-          </div>
-
-          {/* Problemstellung & Ziele */}
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">
-              Problemstellung & Ziele <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              value={problemstellung}
-              onChange={(e) => setProblemstellung(e.target.value)}
-              placeholder="Was sind die Herausforderungen und Ziele des Kunden?"
-              rows={3}
-              className={`w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none ${
-                !problemstellung ? 'border-red-300 bg-red-50' : 'border-gray-300'
-              }`}
-            />
+          {/* Tage */}
+          <div className="grid grid-cols-7 gap-1">
+            {getWeekDays().map((day, idx) => {
+              const dateStr = day.toISOString().split('T')[0]
+              const past = isPast(day)
+              const today = isToday(day)
+              const selected = selectedDate === dateStr
+              
+              return (
+                <button
+                  key={idx}
+                  onClick={() => { setSelectedDate(dateStr); setSelectedSlot(null) }}
+                  disabled={past}
+                  className={`p-2 rounded-lg text-center transition-all ${
+                    selected
+                      ? 'bg-purple-600 text-white'
+                      : past
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : today
+                          ? 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                          : 'bg-gray-50 hover:bg-gray-100'
+                  }`}
+                >
+                  <div className="text-xs font-medium">
+                    {day.toLocaleDateString('de-DE', { weekday: 'short' })}
+                  </div>
+                  <div className="text-lg font-semibold">
+                    {day.getDate()}
+                  </div>
+                </button>
+              )
+            })}
           </div>
         </div>
       )}
 
-      {/* Datum Auswahl */}
-      {selectedCloser && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <label className="block text-sm font-medium text-gray-700">
-              <Calendar className="w-4 h-4 inline mr-1" />
-              Datum auswählen
-            </label>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setWeekOffset(Math.max(0, weekOffset - 1))}
-                disabled={weekOffset === 0}
-                className="p-1 rounded hover:bg-gray-100 disabled:opacity-30"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setWeekOffset(weekOffset + 1)}
-                className="p-1 rounded hover:bg-gray-100"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-          <div className="grid grid-cols-5 gap-2">
-            {weekDays.map(day => (
-              <button
-                key={day.date}
-                onClick={() => setSelectedDate(day.date)}
-                className={`p-3 rounded-lg border text-center transition-all ${
-                  selectedDate === day.date
-                    ? 'border-sunside-primary bg-purple-50 text-sunside-primary'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="text-xs text-gray-500">{day.dayName}</div>
-                <div className="text-lg font-semibold">{day.dayNumber}</div>
-                <div className="text-xs text-gray-500">{day.month}</div>
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Zeit Auswahl */}
+      {/* Step 3: Uhrzeit wählen */}
       {selectedDate && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            <Clock className="w-4 h-4 inline mr-1" />
-            Uhrzeit auswählen
+            3. Uhrzeit wählen
           </label>
+          
           {loadingSlots ? (
-            <div className="flex items-center justify-center py-8 text-gray-500">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              Verfügbare Zeiten laden...
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+              <span className="ml-2 text-gray-500">Lade verfügbare Termine...</span>
             </div>
           ) : slots.length === 0 ? (
-            <p className="text-gray-500 text-sm py-4 text-center">
-              Keine freien Termine an diesem Tag
-            </p>
+            <div className="text-center py-6 text-gray-500">
+              Keine verfügbaren Termine an diesem Tag
+            </div>
           ) : (
             <div className="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto">
-              {slots.map(slot => (
+              {slots.map((slot, idx) => (
                 <button
-                  key={slot.start}
+                  key={idx}
                   onClick={() => setSelectedSlot(slot)}
-                  className={`p-2 rounded-lg border text-center transition-all ${
+                  className={`p-2 rounded-lg text-sm font-medium transition-all ${
                     selectedSlot?.start === slot.start
-                      ? 'border-sunside-primary bg-purple-50 text-sunside-primary font-medium'
-                      : 'border-gray-200 hover:border-gray-300'
+                      ? 'bg-purple-600 text-white'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                   }`}
                 >
                   {slot.startTime}
@@ -588,41 +465,185 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
         </div>
       )}
 
+      {/* Step 4: Kontaktdaten */}
+      {selectedSlot && (
+        <div className="space-y-4 border-t pt-4">
+          <h4 className="font-medium text-gray-900">4. Kontaktdaten des Maklers</h4>
+          
+          {/* Ansprechpartner */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Vorname *</label>
+              <input
+                type="text"
+                value={ansprechpartnerVorname}
+                onChange={(e) => setAnsprechpartnerVorname(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Vorname"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Nachname *</label>
+              <input
+                type="text"
+                value={ansprechpartnerNachname}
+                onChange={(e) => setAnsprechpartnerNachname(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="Nachname"
+              />
+            </div>
+          </div>
+
+          {/* Unternehmen */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Unternehmen *</label>
+            <input
+              type="text"
+              value={unternehmensname}
+              onChange={(e) => setUnternehmensname(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              placeholder="Firmenname"
+            />
+          </div>
+
+          {/* Email & Telefon */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">E-Mail *</label>
+              <input
+                type="email"
+                value={contactEmail}
+                onChange={(e) => setContactEmail(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="email@beispiel.de"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-500 mb-1">Telefon *</label>
+              <input
+                type="tel"
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                placeholder="+49 123 456789"
+              />
+            </div>
+          </div>
+
+          {/* Tätigkeit */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Tätigkeit</label>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setTaetigkeit('Makler')}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                  taetigkeit === 'Makler'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 hover:bg-gray-200'
+                }`}
+              >
+                Makler
+              </button>
+              <button
+                onClick={() => setTaetigkeit('Sachverständiger')}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                  taetigkeit === 'Sachverständiger'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 hover:bg-gray-200'
+                }`}
+              >
+                Sachverständiger
+              </button>
+            </div>
+          </div>
+
+          {/* Problemstellung */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Problemstellung & Ziele *</label>
+            <textarea
+              value={problemstellung}
+              onChange={(e) => setProblemstellung(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+              placeholder="Was sind die Herausforderungen und Ziele des Maklers?"
+            />
+          </div>
+        </div>
+      )}
+
       {/* Actions */}
-      <div className="flex justify-end gap-3 pt-4 border-t">
-        <button
-          onClick={onCancel}
-          className="px-4 py-2 text-gray-600 hover:text-gray-800"
-        >
-          Abbrechen
-        </button>
-        <button
-          onClick={bookTermin}
-          disabled={
-            !selectedCloser || 
-            !selectedSlot || 
-            booking || 
-            !ansprechpartnerVorname ||
-            !ansprechpartnerNachname ||
-            !contactEmail || 
-            !contactEmail.includes('@') || 
-            !contactPhone || 
-            contactPhone.length < 6 ||
-            !unternehmensname ||
-            !problemstellung
-          }
-          className="px-6 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-        >
-          {booking ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              Wird gebucht...
-            </>
-          ) : (
-            'Termin buchen'
-          )}
-        </button>
-      </div>
+      {selectedSlot && (
+        <div className="border-t pt-4 space-y-3">
+          <p className="text-sm text-gray-600 text-center">
+            Termin: <strong>{new Date(selectedSlot.start).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' })}</strong> um <strong>{selectedSlot.startTime} Uhr</strong>
+            {selectedType === 'video' ? ' (Video)' : ' (Telefon)'}
+          </p>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* An Closer vergeben - für alle */}
+            <button
+              onClick={() => bookTermin(true)}
+              disabled={booking}
+              className="flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            >
+              {booking ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <Users className="w-5 h-5 mr-2" />
+                  An Closer vergeben
+                </>
+              )}
+            </button>
+            
+            {/* Selbst übernehmen - nur für Closer */}
+            {canSelfClose ? (
+              <button
+                onClick={() => bookTermin(false)}
+                disabled={booking}
+                className="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+              >
+                {booking ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <User className="w-5 h-5 mr-2" />
+                    Ich übernehme das Closing
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                disabled
+                className="flex items-center justify-center px-4 py-3 bg-gray-200 text-gray-500 rounded-lg cursor-not-allowed"
+                title="Nur für Closer verfügbar"
+              >
+                <User className="w-5 h-5 mr-2" />
+                Selbst übernehmen
+              </button>
+            )}
+          </div>
+          
+          <button
+            onClick={onCancel}
+            className="w-full py-2 text-gray-600 hover:text-gray-800"
+          >
+            Abbrechen
+          </button>
+        </div>
+      )}
+
+      {/* Abbrechen wenn noch kein Slot gewählt */}
+      {!selectedSlot && (
+        <div className="flex justify-end pt-4 border-t">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            Abbrechen
+          </button>
+        </div>
+      )}
     </div>
   )
 }
