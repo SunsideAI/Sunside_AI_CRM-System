@@ -241,6 +241,18 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
 
         // Original-Lead aktualisieren
         try {
+          // Formatierter Termin-Text
+          const terminDatum = new Date(selectedSlot.start).toLocaleDateString('de-DE', {
+            weekday: 'long',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+          const terminTyp = selectedType === 'video' ? 'Video' : 'Telefonisch'
+          const terminDetails = `Termin gebucht: ${terminDatum} Uhr (${terminTyp}) - ${problemstellung}`
+          
           await fetch('/.netlify/functions/leads', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -250,9 +262,13 @@ function TerminPicker({ lead, onTerminBooked, onCancel }) {
                 ergebnis: 'Beratungsgespräch',
                 kontaktiert: true,
                 datum: toLocalDateString(new Date()),
-                kommentar: problemstellung,
                 ansprechpartnerVorname: ansprechpartnerVorname,
                 ansprechpartnerNachname: ansprechpartnerNachname
+              },
+              historyEntry: {
+                action: 'termin',
+                details: terminDetails,
+                userName: user?.vor_nachname || 'System'
               }
             })
           })
