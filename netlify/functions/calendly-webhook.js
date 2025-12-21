@@ -206,7 +206,7 @@ async function findHotLeadByTermin(terminDatum, email) {
     'Content-Type': 'application/json'
   }
 
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Hot_Leads')}`
+  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}`
 
   try {
     // Alle Hot Leads laden (nicht abgesagte)
@@ -301,7 +301,7 @@ async function findHotLeadByEmail(email) {
     'Content-Type': 'application/json'
   }
 
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Hot_Leads')}`
+  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}`
 
   try {
     // Hot Leads laden die nicht abgesagt sind und einen Termin haben
@@ -353,7 +353,7 @@ async function updateHotLeadStatus(hotLeadId, status, kommentar) {
     'Content-Type': 'application/json'
   }
 
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Hot_Leads')}/${hotLeadId}`
+  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}/${hotLeadId}`
 
   const fields = {
     'Status': status
@@ -390,7 +390,7 @@ async function updateHotLeadTermin(hotLeadId, neuerTermin, notiz) {
     'Content-Type': 'application/json'
   }
 
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Hot_Leads')}/${hotLeadId}`
+  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}/${hotLeadId}`
 
   const fields = {
     'Termin_Beratungsgespräch': neuerTermin
