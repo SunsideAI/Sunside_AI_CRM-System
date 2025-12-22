@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Calendar, ChevronLeft, ChevronRight, Clock, User, Users, Loader2, Building2, Phone, Video, RefreshCw, CalendarDays, CalendarRange } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Clock, User, Users, Loader2, Building2, Phone, Video, RefreshCw, CalendarDays, CalendarRange, PhoneCall } from 'lucide-react'
 
 function Termine() {
   const { user, isAdmin } = useAuth()
@@ -59,7 +59,30 @@ function Termine() {
         }, [])
       }
       
-      // Als Termine formatieren
+      // Wiedervorlagen für den User laden
+      let wiedervorlagen = []
+      try {
+        const wiedervorlageParams = new URLSearchParams({
+          wiedervorlage: 'true',
+          userName: userName || ''
+        })
+        
+        // Für Admins in "Alle" Ansicht: Alle Wiedervorlagen laden
+        if (viewMode === 'all' && isAdmin()) {
+          wiedervorlageParams.set('view', 'all')
+          wiedervorlageParams.set('userRole', 'Admin')
+        }
+        
+        const wvResponse = await fetch(`/.netlify/functions/leads?${wiedervorlageParams}`)
+        if (wvResponse.ok) {
+          const wvData = await wvResponse.json()
+          wiedervorlagen = wvData.leads || []
+        }
+      } catch (wvErr) {
+        console.warn('Wiedervorlagen laden fehlgeschlagen:', wvErr)
+      }
+      
+      // Hot Leads als Termine formatieren
       const formattedTermine = allLeads
         .filter(lead => lead.terminDatum) // Nur mit Termin
         .filter(lead => lead.status !== 'Abgesagt' && lead.status !== 'Termin abgesagt') // Keine abgesagten
@@ -89,7 +112,26 @@ function Termine() {
           }
         })
       
-      setTermine(formattedTermine)
+      // Wiedervorlagen als Termine formatieren
+      const formattedWiedervorlagen = wiedervorlagen
+        .filter(lead => lead.wiedervorlageDatum)
+        .map(lead => ({
+          id: `wiedervorlage-${lead.id}`,
+          leadId: lead.id,
+          title: lead.unternehmen || 'Wiedervorlage',
+          start: lead.wiedervorlageDatum,
+          end: new Date(new Date(lead.wiedervorlageDatum).getTime() + 15 * 60000).toISOString(), // +15 Min
+          source: 'wiedervorlage',
+          unternehmen: lead.unternehmen,
+          ansprechpartner: `${lead.ansprechpartnerVorname || ''} ${lead.ansprechpartnerNachname || ''}`.trim(),
+          email: lead.email,
+          telefon: lead.telefon,
+          ort: lead.stadt,
+          kommentar: lead.kommentar,
+          zugewiesenAn: lead.zugewiesenAn
+        }))
+      
+      setTermine([...formattedTermine, ...formattedWiedervorlagen])
       
     } catch (err) {
       setError(err.message)
@@ -200,12 +242,17 @@ function Termine() {
   }
 
   const getEventColor = (event) => {
+    // Wiedervorlage = Orange
+    if (event.source === 'wiedervorlage') {
+      return 'bg-orange-100 border-orange-300 text-orange-800'
+    }
+    
     if (viewMode === 'all') {
       // In "Alle Termine" Ansicht: Farbe nach Closer
       if (event.closerName) {
         return 'bg-green-100 border-green-300 text-green-800'
       }
-      return 'bg-orange-100 border-orange-300 text-orange-800' // Kein Closer = Pool
+      return 'bg-amber-100 border-amber-300 text-amber-800' // Kein Closer = Pool
     }
     
     // Mein Closing (ich bin Closer) = Grün
@@ -220,6 +267,10 @@ function Termine() {
   }
 
   const getEventIcon = (event) => {
+    // Wiedervorlage = Telefon mit Klingel
+    if (event.source === 'wiedervorlage') {
+      return <PhoneCall className="w-3 h-3 mr-1" />
+    }
     return event.terminart === 'Video' 
       ? <Video className="w-3 h-3 mr-1" />
       : <Phone className="w-3 h-3 mr-1" />
@@ -468,6 +519,10 @@ function Termine() {
               <div className="w-3 h-3 rounded bg-purple-200 border border-purple-300"></div>
               <span>Von mir gebucht</span>
             </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-orange-200 border border-orange-300"></div>
+              <span>Wiedervorlage</span>
+            </div>
           </>
         ) : (
           <>
@@ -476,8 +531,12 @@ function Termine() {
               <span>Mit Closer</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-orange-200 border border-orange-300"></div>
+              <div className="w-3 h-3 rounded bg-amber-200 border border-amber-300"></div>
               <span>Im Pool (kein Closer)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-3 h-3 rounded bg-orange-200 border border-orange-300"></div>
+              <span>Wiedervorlage</span>
             </div>
           </>
         )}
@@ -499,6 +558,12 @@ function Termine() {
                     }`}>
                       {selectedEvent.terminart === 'Video' ? <Video className="w-3 h-3 mr-1" /> : <Phone className="w-3 h-3 mr-1" />}
                       {selectedEvent.terminart || 'Telefonisch'}
+                    </span>
+                  )}
+                  {selectedEvent.source === 'wiedervorlage' && (
+                    <span className="inline-flex items-center mt-2 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                      <PhoneCall className="w-3 h-3 mr-1" />
+                      Wiedervorlage
                     </span>
                   )}
                 </div>
@@ -589,6 +654,68 @@ function Termine() {
                           {selectedEvent.status}
                         </span>
                       )}
+                    </div>
+                  </>
+                )}
+
+                {/* Wiedervorlage Details */}
+                {selectedEvent.source === 'wiedervorlage' && (
+                  <>
+                    {selectedEvent.ansprechpartner && (
+                      <div className="flex items-start gap-3">
+                        <User className="w-5 h-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <div className="font-medium text-sm">Ansprechpartner</div>
+                          <div className="text-gray-600">{selectedEvent.ansprechpartner}</div>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedEvent.unternehmen && (
+                      <div className="flex items-start gap-3">
+                        <Building2 className="w-5 h-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <div className="font-medium text-sm">Unternehmen</div>
+                          <div className="text-gray-600">{selectedEvent.unternehmen}</div>
+                          {selectedEvent.ort && <div className="text-gray-500 text-sm">{selectedEvent.ort}</div>}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedEvent.telefon && (
+                      <div className="flex items-start gap-3">
+                        <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
+                        <div>
+                          <a href={`tel:${selectedEvent.telefon}`} className="text-purple-600 hover:underline">
+                            {selectedEvent.telefon}
+                          </a>
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedEvent.kommentar && (
+                      <div className="pt-3 border-t">
+                        <div className="text-sm font-medium text-gray-700 mb-1">Notizen</div>
+                        <div className="text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg max-h-40 overflow-y-auto">{selectedEvent.kommentar}</div>
+                      </div>
+                    )}
+
+                    {selectedEvent.zugewiesenAn && (
+                      <div className="pt-3 border-t">
+                        <div className="text-sm text-gray-500">
+                          Zugewiesen an: <span className="font-medium">{selectedEvent.zugewiesenAn}</span>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-3 border-t">
+                      <a 
+                        href="/kaltakquise" 
+                        className="w-full inline-flex items-center justify-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                      >
+                        <PhoneCall className="w-4 h-4 mr-2" />
+                        Zur Kaltakquise
+                      </a>
                     </div>
                   </>
                 )}
