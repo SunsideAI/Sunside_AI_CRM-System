@@ -32,7 +32,7 @@ function Layout({ children }) {
   const notificationRef = useRef(null)
 
   // Benachrichtigung als gelesen markieren (lokal + Airtable für System Messages)
-  const markAsRead = useCallback(async (notificationId, isSystemMessage = false, airtableId = null) => {
+  const markAsRead = useCallback(async (notificationId, isSystemMessage = false, airtableId = null, isReminder = false, terminId = null) => {
     const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]')
     if (!readNotifications.includes(notificationId)) {
       readNotifications.push(notificationId)
@@ -55,6 +55,15 @@ function Layout({ children }) {
         } catch (err) {
           console.error('Fehler beim Markieren der System Message:', err)
         }
+      }
+      
+      // Reminder dismisssen (für diese Session nicht mehr anzeigen)
+      if (isReminder && terminId) {
+        const dismissKey = notificationId.startsWith('wiedervorlage') 
+          ? `wiedervorlage-dismissed-${terminId}`
+          : `termin-dismissed-${terminId}`
+        // Dismiss für 2 Stunden (nach dem Termin sollte er eh vorbei sein)
+        localStorage.setItem(dismissKey, Date.now().toString())
       }
     }
   }, [])
@@ -197,8 +206,114 @@ function Layout({ children }) {
           allNotifications = [...allNotifications, ...systemNotifs]
         }
         
-        // Nach Zeit sortieren (neueste zuerst)
-        allNotifications.sort((a, b) => new Date(b.time) - new Date(a.time))
+        // 3. Termin-Erinnerungen laden (Beratungsgespräche + Wiedervorlagen)
+        const userName = user?.vor_nachname || user?.name
+        if (userName) {
+          try {
+            const now = new Date()
+            const in30Min = new Date(now.getTime() + 30 * 60 * 1000)
+            const in15Min = new Date(now.getTime() + 15 * 60 * 1000)
+            
+            // Hot Leads (Beratungsgespräche) laden
+            const [closerResponse, setterResponse] = await Promise.all([
+              fetch(`/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`)
+                .then(r => r.json())
+                .catch(() => ({ hotLeads: [] })),
+              fetch(`/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`)
+                .then(r => r.json())
+                .catch(() => ({ hotLeads: [] }))
+            ])
+            
+            const hotLeads = [...(closerResponse.hotLeads || []), ...(setterResponse.hotLeads || [])]
+              .filter((lead, idx, arr) => arr.findIndex(l => l.id === lead.id) === idx) // Duplikate entfernen
+            
+            // Wiedervorlagen laden
+            const wvParams = new URLSearchParams({
+              wiedervorlage: 'true',
+              userName: userName
+            })
+            const wvResponse = await fetch(`/.netlify/functions/leads?${wvParams}`)
+            const wvData = wvResponse.ok ? await wvResponse.json() : { leads: [] }
+            const wiedervorlagen = wvData.leads || []
+            
+            // Beratungsgespräche prüfen (in nächsten 30 Min)
+            hotLeads.forEach(lead => {
+              if (!lead.terminDatum) return
+              const terminDate = new Date(lead.terminDatum)
+              
+              // Termin in der Vergangenheit oder mehr als 30 Min entfernt? Skip
+              if (terminDate < now || terminDate > in30Min) return
+              
+              // Bereits dismissed? Prüfen ob noch gültig (2 Stunden)
+              const dismissKey = `termin-dismissed-${lead.id}`
+              const dismissedAt = localStorage.getItem(dismissKey)
+              if (dismissedAt) {
+                const dismissAge = Date.now() - parseInt(dismissedAt)
+                if (dismissAge < 2 * 60 * 60 * 1000) return // Noch dismissed
+                localStorage.removeItem(dismissKey) // Abgelaufen, entfernen
+              }
+              
+              const minutesUntil = Math.round((terminDate - now) / 60000)
+              const isUrgent = terminDate <= in15Min
+              const isMyClosing = lead.closerName === userName
+              
+              allNotifications.push({
+                id: `termin-${lead.id}`,
+                type: isUrgent ? 'urgent' : 'reminder',
+                title: `${isUrgent ? '🔴' : '🔔'} ${isMyClosing ? 'Closing' : 'Termin'} in ${minutesUntil} Min`,
+                message: `${lead.unternehmen || 'Beratungsgespräch'}${lead.terminart ? ` (${lead.terminart})` : ''}`,
+                time: new Date().toISOString(),
+                unread: true,
+                link: '/closing',
+                isReminder: true,
+                terminId: lead.id
+              })
+            })
+            
+            // Wiedervorlagen prüfen (in nächsten 30 Min)
+            wiedervorlagen.forEach(lead => {
+              if (!lead.wiedervorlageDatum) return
+              const terminDate = new Date(lead.wiedervorlageDatum)
+              
+              if (terminDate < now || terminDate > in30Min) return
+              
+              // Bereits dismissed? Prüfen ob noch gültig (2 Stunden)
+              const dismissKey = `wiedervorlage-dismissed-${lead.id}`
+              const dismissedAt = localStorage.getItem(dismissKey)
+              if (dismissedAt) {
+                const dismissAge = Date.now() - parseInt(dismissedAt)
+                if (dismissAge < 2 * 60 * 60 * 1000) return
+                localStorage.removeItem(dismissKey)
+              }
+              
+              const minutesUntil = Math.round((terminDate - now) / 60000)
+              const isUrgent = terminDate <= in15Min
+              
+              allNotifications.push({
+                id: `wiedervorlage-reminder-${lead.id}`,
+                type: isUrgent ? 'urgent' : 'reminder',
+                title: `${isUrgent ? '🔴' : '📞'} Wiedervorlage in ${minutesUntil} Min`,
+                message: lead.unternehmen || 'Rückruf',
+                time: new Date().toISOString(),
+                unread: true,
+                link: '/kaltakquise',
+                isReminder: true,
+                terminId: lead.id
+              })
+            })
+          } catch (terminErr) {
+            console.warn('Termin-Erinnerungen laden fehlgeschlagen:', terminErr)
+          }
+        }
+        
+        // Nach Zeit sortieren (neueste zuerst), aber Reminder nach oben
+        allNotifications.sort((a, b) => {
+          // Reminder immer oben
+          if (a.isReminder && !b.isReminder) return -1
+          if (!a.isReminder && b.isReminder) return 1
+          // Dann nach Zeit
+          return new Date(b.time) - new Date(a.time)
+        })
         
         setNotifications(allNotifications)
         setNotificationCount(allNotifications.filter(n => n.unread).length)
@@ -361,10 +476,10 @@ function Layout({ children }) {
                           <div 
                             key={notif.id}
                             className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                              notif.unread ? 'bg-purple-50' : ''
+                              notif.unread ? (notif.type === 'urgent' ? 'bg-red-50' : 'bg-purple-50') : ''
                             }`}
                             onClick={() => {
-                              markAsRead(notif.id, notif.isSystemMessage, notif.airtableId)
+                              markAsRead(notif.id, notif.isSystemMessage, notif.airtableId, notif.isReminder, notif.terminId)
                               navigate(notif.link || (isAdmin() ? '/einstellungen?tab=anfragen' : '/kaltakquise'))
                               setNotificationOpen(false)
                             }}
@@ -377,12 +492,18 @@ function Layout({ children }) {
                                 notif.type === 'partial' ? 'bg-orange-100' :
                                 notif.type === 'warning' ? 'bg-amber-100' :
                                 notif.type === 'info' ? 'bg-blue-100' :
+                                notif.type === 'urgent' ? 'bg-red-100 animate-pulse' :
+                                notif.type === 'reminder' ? 'bg-orange-100' :
                                 'bg-purple-100'
                               }`}>
                                 {notif.type === 'success' ? (
                                   <Check className="w-4 h-4 text-green-600" />
                                 ) : notif.type === 'rejected' ? (
                                   <X className="w-4 h-4 text-red-600" />
+                                ) : notif.type === 'urgent' ? (
+                                  <Clock className="w-4 h-4 text-red-600" />
+                                ) : notif.type === 'reminder' ? (
+                                  <Bell className="w-4 h-4 text-orange-600" />
                                 ) : notif.type === 'pending' ? (
                                   <Clock className="w-4 h-4 text-amber-600" />
                                 ) : notif.type === 'partial' ? (
