@@ -61,7 +61,8 @@ export async function handler(event) {
         contacted,     // 'true' oder 'false'
         result,        // Ergebnis-Filter
         vertriebler,   // Filter nach Vertriebler (Name)
-        offset         // Pagination offset
+        offset,        // Pagination offset
+        wiedervorlage  // 'true' = nur Leads mit Wiedervorlage-Datum
       } = params
 
       // User-Map laden für Namen-Auflösung
@@ -96,6 +97,11 @@ export async function handler(event) {
       // Ergebnis-Filter
       if (result && result !== 'all') {
         filters.push(`{Ergebnis} = '${result}'`)
+      }
+
+      // Wiedervorlage-Filter: Nur Leads mit Wiedervorlage-Datum
+      if (wiedervorlage === 'true') {
+        filters.push(`NOT({Wiedervorlage_Datum} = '')`)
       }
 
       // Suchfilter (Unternehmensname oder Stadt)
@@ -205,6 +211,7 @@ export async function handler(event) {
           kommentar: record.fields.Kommentar || '',
           ansprechpartnerVorname: record.fields.Ansprechpartner_Vorname || '',
           ansprechpartnerNachname: record.fields.Ansprechpartner_Nachname || '',
+          wiedervorlageDatum: record.fields.Wiedervorlage_Datum || '',
           // Website-Statistiken
           absprungrate: record.fields.Absprungrate || null,
           monatlicheBesuche: record.fields.Monatliche_Besuche || null,
@@ -286,6 +293,10 @@ export async function handler(event) {
       if (updates.ansprechpartnerNachname !== undefined) {
         fieldsToUpdate['Ansprechpartner_Nachname'] = updates.ansprechpartnerNachname || null
       }
+      if (updates.wiedervorlageDatum !== undefined) {
+        // ISO-Datum für Airtable DateTime Feld
+        fieldsToUpdate['Wiedervorlage_Datum'] = updates.wiedervorlageDatum || null
+      }
 
       // Automatisch Datum setzen wenn kontaktiert
       if (updates.kontaktiert === true && !updates.datum) {
@@ -315,7 +326,8 @@ export async function handler(event) {
           'nicht_kontaktiert': '↩️',
           'ergebnis': '📋',
           'ansprechpartner': '👤',
-          'kommentar': '💬'
+          'kommentar': '💬',
+          'wiedervorlage': '🔔'
         }
         const icon = icons[historyEntry.action] || '📋'
         
