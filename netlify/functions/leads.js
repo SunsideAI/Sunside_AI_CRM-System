@@ -296,14 +296,14 @@ export async function handler(event) {
       }
       if (updates.wiedervorlageDatum !== undefined) {
         // datetime-local liefert "2024-12-22T14:30"
-        // Ohne Z senden, damit Airtable es als lokale Zeit interpretiert
+        // Airtable speichert als UTC und zeigt dann +1h an
+        // Deshalb 1 Stunde abziehen beim Speichern
         if (updates.wiedervorlageDatum) {
-          const inputDate = updates.wiedervorlageDatum
-          // Format: "2024-12-22T11:00" -> "2024-12-22T11:00:00" (ohne Z!)
-          const isoDate = inputDate.includes(':') && inputDate.length === 16 
-            ? `${inputDate}:00`  // "2024-12-22T11:00" -> "2024-12-22T11:00:00"
-            : `${inputDate}:00:00`
-          console.log('Wiedervorlage Datum:', { input: inputDate, output: isoDate })
+          const inputDate = new Date(updates.wiedervorlageDatum)
+          // 1 Stunde abziehen
+          inputDate.setHours(inputDate.getHours() - 1)
+          const isoDate = inputDate.toISOString()
+          console.log('Wiedervorlage Datum:', { input: updates.wiedervorlageDatum, output: isoDate })
           fieldsToUpdate['Wiedervorlage_Datum'] = isoDate
         } else {
           fieldsToUpdate['Wiedervorlage_Datum'] = null
