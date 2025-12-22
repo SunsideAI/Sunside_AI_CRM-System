@@ -31,8 +31,8 @@ function Layout({ children }) {
   const userMenuRef = useRef(null)
   const notificationRef = useRef(null)
 
-  // Benachrichtigung als gelesen markieren
-  const markAsRead = useCallback((notificationId) => {
+  // Benachrichtigung als gelesen markieren (lokal + Airtable für System Messages)
+  const markAsRead = useCallback(async (notificationId, isSystemMessage = false, airtableId = null) => {
     const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]')
     if (!readNotifications.includes(notificationId)) {
       readNotifications.push(notificationId)
@@ -43,6 +43,19 @@ function Layout({ children }) {
         n.id === notificationId ? { ...n, unread: false } : n
       ))
       setNotificationCount(prev => Math.max(0, prev - 1))
+      
+      // System Message in Airtable als gelesen markieren
+      if (isSystemMessage && airtableId) {
+        try {
+          await fetch('/.netlify/functions/system-messages', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ messageId: airtableId })
+          })
+        } catch (err) {
+          console.error('Fehler beim Markieren der System Message:', err)
+        }
+      }
     }
   }, [])
 
@@ -56,32 +69,31 @@ function Layout({ children }) {
     setNotificationCount(0)
   }, [notifications])
 
-  // Benachrichtigungen laden
+  // Benachrichtigungen laden (Lead-Anfragen + System Messages)
   useEffect(() => {
     const loadNotifications = async () => {
       if (!user?.id) return
       
       try {
-        // Alle Anfragen laden (kein Status-Filter)
+        // Gelesene Benachrichtigungen aus localStorage laden
+        const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]')
+        
+        let allNotifications = []
+        
+        // 1. Lead-Anfragen laden (wie bisher)
         const params = new URLSearchParams({
           isAdmin: isAdmin() ? 'true' : 'false',
           userId: user.id
         })
-        // Kein Status-Filter → alle Anfragen laden
         
-        const response = await fetch(`/.netlify/functions/lead-requests?${params}`)
-        if (response.ok) {
-          const data = await response.json()
+        const anfragenResponse = await fetch(`/.netlify/functions/lead-requests?${params}`)
+        if (anfragenResponse.ok) {
+          const data = await anfragenResponse.json()
           const anfragen = data.anfragen || []
           
-          // Gelesene Benachrichtigungen aus localStorage laden
-          const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]')
-          
           if (isAdmin()) {
-            // Admin sieht:
-            // 1. Offene Anfragen (zu bearbeiten) - mit User-Icon
-            // 2. Bearbeitete Anfragen (erledigt) - mit Check/X Icon
-            const allNotifications = anfragen.map(a => {
+            // Admin sieht alle Anfragen
+            const anfragenNotifs = anfragen.map(a => {
               if (a.status === 'Offen') {
                 return {
                   id: a.id,
@@ -89,7 +101,8 @@ function Layout({ children }) {
                   title: `🙋 ${a.userName} möchte ${a.anzahl} Leads`,
                   message: a.nachricht || 'Neue Lead-Anfrage',
                   time: a.erstelltAm,
-                  unread: !readNotifications.includes(a.id)
+                  unread: !readNotifications.includes(a.id),
+                  link: '/einstellungen?tab=anfragen'
                 }
               } else {
                 return {
@@ -102,21 +115,16 @@ function Layout({ children }) {
                       : `❌ ${a.userName}: Abgelehnt`,
                   message: a.adminKommentar || '',
                   time: a.bearbeitetAm || a.erstelltAm,
-                  unread: !readNotifications.includes(a.id)
+                  unread: !readNotifications.includes(a.id),
+                  link: '/einstellungen?tab=anfragen'
                 }
               }
             })
-            
-            setNotifications(allNotifications)
-            // Badge zeigt nur offene (unbearbeitete) Anfragen
-            const offeneAnfragen = anfragen.filter(a => a.status === 'Offen')
-            setNotificationCount(offeneAnfragen.filter(a => !readNotifications.includes(a.id)).length)
+            allNotifications = [...allNotifications, ...anfragenNotifs]
           } else {
-            // Vertriebler sehen ihre Anfragen-Status
-            // Nur bearbeitete Anfragen (nicht "Offen") als Benachrichtigungen anzeigen
+            // Vertriebler sehen ihre bearbeiteten Anfragen
             const bearbeiteteAnfragen = anfragen.filter(a => a.status !== 'Offen')
-            
-            setNotifications(bearbeiteteAnfragen.map(a => ({
+            const anfragenNotifs = bearbeiteteAnfragen.map(a => ({
               id: a.id,
               type: a.status === 'Genehmigt' ? 'success' : a.status === 'Abgelehnt' ? 'rejected' : 'partial',
               title: a.status === 'Genehmigt' 
@@ -126,13 +134,75 @@ function Layout({ children }) {
                   : `❌ Anfrage über ${a.anzahl} Leads abgelehnt`,
               message: a.adminKommentar || (a.status === 'Genehmigt' ? 'Deine Leads sind bereit!' : ''),
               time: a.bearbeitetAm || a.erstelltAm,
-              unread: !readNotifications.includes(a.id)
-            })))
-            
-            // Badge zeigt ungelesene bearbeitete Anfragen
-            setNotificationCount(bearbeiteteAnfragen.filter(a => !readNotifications.includes(a.id)).length)
+              unread: !readNotifications.includes(a.id),
+              link: '/kaltakquise'
+            }))
+            allNotifications = [...allNotifications, ...anfragenNotifs]
           }
         }
+        
+        // 2. System Messages laden
+        const systemResponse = await fetch(`/.netlify/functions/system-messages?userId=${user.id}`)
+        if (systemResponse.ok) {
+          const systemData = await systemResponse.json()
+          const systemMessages = systemData.messages || []
+          
+          // System Messages zu Notifications konvertieren
+          const systemNotifs = systemMessages.map(msg => {
+            // Icon und Typ basierend auf Message-Typ
+            let type = 'info'
+            let icon = '📬'
+            let link = '/dashboard'
+            
+            switch (msg.typ) {
+              case 'Termin abgesagt':
+                type = 'rejected'
+                icon = '❌'
+                link = '/closing'
+                break
+              case 'Termin verschoben':
+                type = 'warning'
+                icon = '🔄'
+                link = '/closing'
+                break
+              case 'Lead gewonnen':
+                type = 'success'
+                icon = '🎉'
+                link = '/dashboard'
+                break
+              case 'Lead verloren':
+                type = 'rejected'
+                icon = '😔'
+                link = '/dashboard'
+                break
+              case 'Pool Update':
+                type = 'info'
+                icon = '📢'
+                link = '/closing'
+                break
+            }
+            
+            return {
+              id: `sys-${msg.id}`,
+              type,
+              title: `${icon} ${msg.titel}`,
+              message: msg.nachricht || '',
+              time: msg.erstelltAm,
+              unread: !msg.gelesen && !readNotifications.includes(`sys-${msg.id}`),
+              link,
+              isSystemMessage: true,
+              airtableId: msg.id
+            }
+          })
+          allNotifications = [...allNotifications, ...systemNotifs]
+        }
+        
+        // Nach Zeit sortieren (neueste zuerst)
+        allNotifications.sort((a, b) => new Date(b.time) - new Date(a.time))
+        
+        setNotifications(allNotifications)
+        setNotificationCount(allNotifications.filter(n => n.unread).length)
+        
       } catch (err) {
         console.error('Fehler beim Laden der Benachrichtigungen:', err)
       }
@@ -294,12 +364,8 @@ function Layout({ children }) {
                               notif.unread ? 'bg-purple-50' : ''
                             }`}
                             onClick={() => {
-                              markAsRead(notif.id)
-                              if (isAdmin()) {
-                                navigate('/einstellungen?tab=anfragen')
-                              } else {
-                                navigate('/kaltakquise')
-                              }
+                              markAsRead(notif.id, notif.isSystemMessage, notif.airtableId)
+                              navigate(notif.link || (isAdmin() ? '/einstellungen?tab=anfragen' : '/kaltakquise'))
                               setNotificationOpen(false)
                             }}
                           >
@@ -309,6 +375,8 @@ function Layout({ children }) {
                                 notif.type === 'rejected' ? 'bg-red-100' :
                                 notif.type === 'pending' ? 'bg-amber-100' :
                                 notif.type === 'partial' ? 'bg-orange-100' :
+                                notif.type === 'warning' ? 'bg-amber-100' :
+                                notif.type === 'info' ? 'bg-blue-100' :
                                 'bg-purple-100'
                               }`}>
                                 {notif.type === 'success' ? (
@@ -319,6 +387,10 @@ function Layout({ children }) {
                                   <Clock className="w-4 h-4 text-amber-600" />
                                 ) : notif.type === 'partial' ? (
                                   <Check className="w-4 h-4 text-orange-600" />
+                                ) : notif.type === 'warning' ? (
+                                  <Clock className="w-4 h-4 text-amber-600" />
+                                ) : notif.type === 'info' ? (
+                                  <Bell className="w-4 h-4 text-blue-600" />
                                 ) : (
                                   <User className="w-4 h-4 text-purple-600" />
                                 )}
