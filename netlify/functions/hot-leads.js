@@ -529,7 +529,7 @@ exports.handler = async (event) => {
       }
 
       // Duplikat-Prüfung: Existiert bereits ein Hot Lead für diesen Original-Lead?
-      const duplicateCheckUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(HOT_LEADS_TABLE)}?filterByFormula=FIND("${originalLeadId}",ARRAYJOIN({Immobilienmakler_Leads}))&maxRecords=1`
+      const duplicateCheckUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}?filterByFormula=FIND("${originalLeadId}",ARRAYJOIN({Immobilienmakler_Leads}))&maxRecords=1`
       const duplicateCheckResponse = await fetch(duplicateCheckUrl, {
         headers: airtableHeaders
       })
