@@ -107,10 +107,14 @@ exports.handler = async (event) => {
         }
       }
 
-      console.log('Creating System Message:', { empfaengerId, typ, titel })
+      // Message_ID generieren (Timestamp + Random)
+      const messageId = `MSG-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+
+      console.log('Creating System Message:', { messageId, empfaengerId, typ, titel })
 
       // 1. Nachricht in Airtable erstellen
       const fields = {
+        'Message_ID': messageId,
         'Empfänger': [empfaengerId],
         'Typ': typ,
         'Titel': titel,
@@ -237,7 +241,8 @@ exports.handler = async (event) => {
         body: JSON.stringify({
           success: true,
           message: 'Nachricht erstellt',
-          id: createdMessage.id
+          id: createdMessage.id,
+          messageId: messageId
         })
       }
     }
