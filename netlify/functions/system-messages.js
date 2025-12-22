@@ -44,19 +44,15 @@ exports.handler = async (event) => {
         }
       }
 
-      // Filter: Nachrichten für diesen User
-      let filterFormula = `FIND("${userId}", ARRAYJOIN({Empfänger}))`
-      
-      if (unreadOnly === 'true') {
-        filterFormula = `AND(${filterFormula}, NOT({Gelesen}))`
-      }
+      console.log('Loading System Messages for userId:', userId)
 
+      // Alle Messages laden (Filter im Code - robuster bei Linked Records)
       let allRecords = []
       let offset = null
 
       do {
-        let url = `${TABLE_URL}?filterByFormula=${encodeURIComponent(filterFormula)}&sort%5B0%5D%5Bfield%5D=Erstellt_am&sort%5B0%5D%5Bdirection%5D=desc`
-        if (offset) url += `&offset=${offset}`
+        let url = TABLE_URL
+        if (offset) url += `?offset=${offset}`
 
         const response = await fetch(url, { headers: airtableHeaders })
         const data = await response.json()
@@ -67,7 +63,46 @@ exports.handler = async (event) => {
         offset = data.offset
       } while (offset)
 
-      const messages = allRecords.map(record => ({
+      console.log(`${allRecords.length} System Messages total geladen`)
+      
+      // Debug: Zeige alle Empfänger-Felder
+      if (allRecords.length > 0) {
+        console.log('Erstes Record fields:', JSON.stringify(allRecords[0].fields, null, 2))
+        // Zeige alle Feldnamen die mit "Emp" beginnen
+        const empFields = Object.keys(allRecords[0].fields).filter(k => k.toLowerCase().startsWith('emp'))
+        console.log('Empfänger-ähnliche Felder:', empFields)
+      }
+
+      // Im Code filtern: Empfänger könnte verschiedene Namen haben
+      const userMessages = allRecords.filter(record => {
+        // Suche nach Empfänger-Feld (verschiedene Schreibweisen)
+        let empfaenger = null
+        for (const key of Object.keys(record.fields)) {
+          if (key.toLowerCase().includes('empf') || key.toLowerCase().includes('recipient')) {
+            empfaenger = record.fields[key]
+            break
+          }
+        }
+        
+        if (!empfaenger) {
+          console.log('Kein Empfänger-Feld gefunden in:', Object.keys(record.fields))
+          return false
+        }
+        
+        const empfaengerIds = Array.isArray(empfaenger) ? empfaenger : [empfaenger]
+        const isMatch = empfaengerIds.includes(userId)
+        console.log('Checking record:', record.id, 'Empfänger:', empfaengerIds, 'userId:', userId, 'match:', isMatch)
+        return isMatch
+      })
+
+      console.log(`${userMessages.length} Messages für User ${userId}`)
+
+      // Optional: Nur ungelesene
+      const filteredMessages = unreadOnly === 'true' 
+        ? userMessages.filter(record => !record.fields.Gelesen)
+        : userMessages
+
+      const messages = filteredMessages.map(record => ({
         id: record.id,
         messageId: record.fields.Message_ID,
         typ: record.fields.Typ,
@@ -75,8 +110,11 @@ exports.handler = async (event) => {
         nachricht: record.fields.Nachricht,
         hotLeadId: record.fields.Hot_Lead?.[0] || null,
         gelesen: record.fields.Gelesen || false,
-        erstelltAm: record.fields.Erstellt_am
+        erstelltAm: record.fields.Erstellt_am || record.fields['Erstellt am'] || record.fields.Created || new Date().toISOString()
       }))
+      
+      // Nach Datum sortieren (neueste zuerst)
+      messages.sort((a, b) => new Date(b.erstelltAm) - new Date(a.erstelltAm))
 
       return {
         statusCode: 200,
