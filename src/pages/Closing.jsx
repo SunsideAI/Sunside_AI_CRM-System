@@ -556,7 +556,13 @@ function Closing() {
           const userName = user?.vor_nachname || user?.name || 'Closer'
           const statusText = editData.status === 'Abgeschlossen' 
             ? 'Deal abgeschlossen ✅' 
-            : 'Lead verloren ❌'
+            : editData.status === 'Verloren'
+              ? 'Lead verloren ❌'
+              : editData.status === 'Termin abgesagt'
+                ? 'Termin abgesagt ❌'
+                : editData.status === 'Termin verschoben'
+                  ? 'Termin verschoben 🔄'
+                  : `Status: ${editData.status}`
           
           try {
             await fetch('/.netlify/functions/leads', {
@@ -566,7 +572,10 @@ function Closing() {
                 leadId: selectedLead.originalLeadId,
                 updates: {},
                 historyEntry: {
-                  action: editData.status === 'Abgeschlossen' ? 'abgeschlossen' : 'verloren',
+                  action: editData.status === 'Abgeschlossen' ? 'abgeschlossen' : 
+                          editData.status === 'Verloren' ? 'verloren' :
+                          editData.status === 'Termin abgesagt' ? 'termin_abgesagt' :
+                          editData.status === 'Termin verschoben' ? 'termin_verschoben' : 'status_update',
                   details: statusText,
                   userName: userName
                 }
@@ -574,6 +583,63 @@ function Closing() {
             })
           } catch (kommentarErr) {
             console.warn('Kommentar-Update fehlgeschlagen:', kommentarErr)
+          }
+        }
+
+        // System Message senden bei bestimmten Status-Änderungen
+        const setterId = selectedLead.setterId
+        if (setterId) {
+          try {
+            let messageData = null
+            const unternehmen = selectedLead.unternehmen || 'Lead'
+            const terminDatum = selectedLead.terminDatum 
+              ? new Date(selectedLead.terminDatum).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+              : ''
+            
+            if (editData.status === 'Termin abgesagt') {
+              messageData = {
+                empfaengerId: setterId,
+                typ: 'Termin abgesagt',
+                titel: `Termin abgesagt: ${unternehmen}`,
+                nachricht: `Der Termin mit ${unternehmen}${terminDatum ? ` am ${terminDatum}` : ''} wurde abgesagt.`,
+                hotLeadId: selectedLead.id
+              }
+            } else if (editData.status === 'Termin verschoben') {
+              messageData = {
+                empfaengerId: setterId,
+                typ: 'Termin verschoben',
+                titel: `Termin verschoben: ${unternehmen}`,
+                nachricht: `Der Termin mit ${unternehmen}${terminDatum ? ` (ursprünglich ${terminDatum})` : ''} wurde verschoben. Ein neuer Termin wird vereinbart.`,
+                hotLeadId: selectedLead.id
+              }
+            } else if (editData.status === 'Abgeschlossen') {
+              messageData = {
+                empfaengerId: setterId,
+                typ: 'Lead gewonnen',
+                titel: `🎉 Deal gewonnen: ${unternehmen}`,
+                nachricht: `Herzlichen Glückwunsch! Dein Lead "${unternehmen}" wurde erfolgreich abgeschlossen!`,
+                hotLeadId: selectedLead.id
+              }
+            } else if (editData.status === 'Verloren') {
+              messageData = {
+                empfaengerId: setterId,
+                typ: 'Lead verloren',
+                titel: `Lead verloren: ${unternehmen}`,
+                nachricht: `Der Lead "${unternehmen}" konnte leider nicht abgeschlossen werden.`,
+                hotLeadId: selectedLead.id
+              }
+            }
+            
+            if (messageData) {
+              await fetch('/.netlify/functions/system-messages', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(messageData)
+              })
+              console.log('System Message gesendet für:', editData.status)
+            }
+          } catch (msgErr) {
+            console.warn('System Message konnte nicht gesendet werden:', msgErr)
           }
         }
 
