@@ -224,7 +224,9 @@ exports.handler = async (event) => {
           kundeSeit: record.fields['Kunde seit'] || record.fields.Kunde_seit || '',
           // Verknüpfungen
           originalLeadId: record.fields.Immobilienmakler_Leads?.[0] || null,
-          // Setter/Closer: Record-IDs zu Namen auflösen
+          // Setter/Closer: Record-IDs UND Namen
+          setterId: record.fields.Setter?.[0] || null,
+          closerId: record.fields.Closer?.[0] || null,
           setterName: resolveUserName(record.fields.Setter, userNames),
           closerName: resolveUserName(record.fields.Closer, userNames)
         }
