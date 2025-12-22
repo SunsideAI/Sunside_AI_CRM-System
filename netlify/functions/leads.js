@@ -101,7 +101,7 @@ export async function handler(event) {
 
       // Wiedervorlage-Filter: Nur Leads mit Wiedervorlage-Datum
       if (wiedervorlage === 'true') {
-        filters.push(`NOT({Wiedervorlage_Datum} = '')`)
+        filters.push(`{Wiedervorlage_Datum}`)
       }
 
       // Suchfilter (Unternehmensname oder Stadt)
@@ -141,6 +141,7 @@ export async function handler(event) {
         'Kommentar',
         'Ansprechpartner_Vorname',
         'Ansprechpartner_Nachname',
+        'Wiedervorlage_Datum',
         // Website-Statistiken
         'Absprungrate',
         'Monatliche_Besuche',
@@ -294,8 +295,16 @@ export async function handler(event) {
         fieldsToUpdate['Ansprechpartner_Nachname'] = updates.ansprechpartnerNachname || null
       }
       if (updates.wiedervorlageDatum !== undefined) {
-        // ISO-Datum für Airtable DateTime Feld
-        fieldsToUpdate['Wiedervorlage_Datum'] = updates.wiedervorlageDatum || null
+        // datetime-local liefert "2024-12-22T14:30", Airtable braucht ISO mit Timezone
+        if (updates.wiedervorlageDatum) {
+          // Lokale Zeit zu UTC konvertieren
+          const localDate = new Date(updates.wiedervorlageDatum)
+          const isoDate = localDate.toISOString()
+          console.log('Wiedervorlage Datum:', { input: updates.wiedervorlageDatum, output: isoDate })
+          fieldsToUpdate['Wiedervorlage_Datum'] = isoDate
+        } else {
+          fieldsToUpdate['Wiedervorlage_Datum'] = null
+        }
       }
 
       // Automatisch Datum setzen wenn kontaktiert
