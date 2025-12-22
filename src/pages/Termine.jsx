@@ -73,10 +73,14 @@ function Termine() {
           wiedervorlageParams.set('userRole', 'Admin')
         }
         
+        console.log('Wiedervorlagen laden mit params:', wiedervorlageParams.toString())
         const wvResponse = await fetch(`/.netlify/functions/leads?${wiedervorlageParams}`)
         if (wvResponse.ok) {
           const wvData = await wvResponse.json()
           wiedervorlagen = wvData.leads || []
+          console.log('Wiedervorlagen geladen:', wiedervorlagen.length, wiedervorlagen)
+        } else {
+          console.error('Wiedervorlagen Response nicht OK:', wvResponse.status)
         }
       } catch (wvErr) {
         console.warn('Wiedervorlagen laden fehlgeschlagen:', wvErr)
