@@ -295,12 +295,16 @@ export async function handler(event) {
         fieldsToUpdate['Ansprechpartner_Nachname'] = updates.ansprechpartnerNachname || null
       }
       if (updates.wiedervorlageDatum !== undefined) {
-        // datetime-local liefert "2024-12-22T14:30", Airtable braucht ISO mit Timezone
+        // datetime-local liefert "2024-12-22T14:30"
+        // Direkt als lokale Zeit an Airtable senden (ohne UTC-Konvertierung)
         if (updates.wiedervorlageDatum) {
-          // Lokale Zeit zu UTC konvertieren
-          const localDate = new Date(updates.wiedervorlageDatum)
-          const isoDate = localDate.toISOString()
-          console.log('Wiedervorlage Datum:', { input: updates.wiedervorlageDatum, output: isoDate })
+          // Format: "2024-12-22T11:00" -> "2024-12-22T11:00:00.000Z" 
+          // Wir fügen :00.000Z hinzu damit Airtable es akzeptiert, aber die Zeit bleibt wie eingegeben
+          const inputDate = updates.wiedervorlageDatum
+          const isoDate = inputDate.includes(':') && inputDate.length === 16 
+            ? `${inputDate}:00.000Z`  // "2024-12-22T11:00" -> "2024-12-22T11:00:00.000Z"
+            : `${inputDate}:00:00.000Z` // Falls nur Stunde
+          console.log('Wiedervorlage Datum:', { input: inputDate, output: isoDate })
           fieldsToUpdate['Wiedervorlage_Datum'] = isoDate
         } else {
           fieldsToUpdate['Wiedervorlage_Datum'] = null
