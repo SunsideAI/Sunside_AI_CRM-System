@@ -1073,7 +1073,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
             <KPICard title="Einwahlen" value={stats.summary?.einwahlen || 0} icon={Phone} color="purple" />
             <KPICard title="Erreicht" value={stats.summary?.erreicht || 0} icon={Users} color="blue" subtitle={formatPercent(stats.summary?.erreichQuote || 0)} />
             <KPICard title="Beratungsgespräch" value={stats.summary?.beratungsgespraech || 0} icon={Calendar} color="green" subtitle={formatPercent(stats.summary?.beratungsgespraechQuote || 0)} />
-            <KPICard title="Unterlagen" value={stats.summary?.unterlagen || 0} icon={Target} color="yellow" subtitle={formatPercent(stats.summary?.unterlagenQuote || 0)} />
+            <KPICard title="Unterlage/WV" value={stats.summary?.unterlagen || 0} icon={Target} color="yellow" subtitle={formatPercent(stats.summary?.unterlagenQuote || 0)} />
             <KPICard title="Kein Interesse" value={stats.summary?.keinInteresse || 0} icon={XCircle} color="red" subtitle={formatPercent(stats.summary?.keinInteresseQuote || 0)} />
           </div>
 
@@ -1089,7 +1089,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                       { name: 'Einwahlen', value: stats.summary?.einwahlen || 0 },
                       { name: 'Erreicht', value: stats.summary?.erreicht || 0 },
                       { name: 'Beratungsgespräch', value: stats.summary?.beratungsgespraech || 0 },
-                      { name: 'Unterlagen', value: stats.summary?.unterlagen || 0 }
+                      { name: 'Unterlage/WV', value: stats.summary?.unterlagen || 0 }
                     ]}
                     layout="vertical"
                   >
@@ -1124,7 +1124,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                     <Pie
                       data={[
                         { name: 'Beratungsgespräch', value: stats.summary?.beratungsgespraech || 0 },
-                        { name: 'Unterlagen', value: stats.summary?.unterlagen || 0 },
+                        { name: 'Unterlage/WV', value: stats.summary?.unterlagen || 0 },
                         { name: 'Kein Interesse', value: stats.summary?.keinInteresse || 0 }
                       ].filter(d => d.value > 0)}
                       cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
@@ -1203,7 +1203,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                         formatter={(value, name) => {
                           const labels = {
                             beratungsgespraech: 'Beratungsgespräch',
-                            unterlagen: 'Unterlagen',
+                            unterlagen: 'Unterlage/WV',
                             keinInteresse: 'Kein Interesse'
                           }
                           return [value, labels[name] || name]
@@ -1213,7 +1213,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                         formatter={(value) => {
                           const labels = {
                             beratungsgespraech: 'Beratungsgespräch',
-                            unterlagen: 'Unterlagen',
+                            unterlagen: 'Unterlage/WV',
                             keinInteresse: 'Kein Interesse'
                           }
                           return labels[value] || value
