@@ -122,11 +122,11 @@ function Termine() {
         .map(lead => ({
           id: `wiedervorlage-${lead.id}`,
           leadId: lead.id,
-          title: lead.unternehmen || 'Wiedervorlage',
+          title: lead.unternehmensname || 'Wiedervorlage',
           start: lead.wiedervorlageDatum,
           end: new Date(new Date(lead.wiedervorlageDatum).getTime() + 15 * 60000).toISOString(), // +15 Min
           source: 'wiedervorlage',
-          unternehmen: lead.unternehmen,
+          unternehmen: lead.unternehmensname,
           ansprechpartner: `${lead.ansprechpartnerVorname || ''} ${lead.ansprechpartnerNachname || ''}`.trim(),
           email: lead.email,
           telefon: lead.telefon,
