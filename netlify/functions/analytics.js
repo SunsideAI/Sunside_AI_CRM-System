@@ -516,7 +516,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     // Ergebnis kategorisieren
     const istNichtErreicht = ergebnis.includes('nicht erreicht')
     const istBeratungsgespraech = ergebnis.includes('beratungsgespräch') || ergebnis.includes('beratungsgespraech') || ergebnis.includes('termin')
-    const istUnterlagen = ergebnis.includes('unterlage')
+    const istUnterlagen = ergebnis.includes('unterlage') || ergebnis.includes('wiedervorlage')
     const istKeinInteresse = ergebnis.includes('kein interesse') || ergebnis.includes('absage')
 
     if (istNichtErreicht) {
