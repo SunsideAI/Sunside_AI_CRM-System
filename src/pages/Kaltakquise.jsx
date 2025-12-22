@@ -34,7 +34,8 @@ const ERGEBNIS_OPTIONEN = [
   { value: 'Nicht erreicht', label: 'Nicht erreicht', color: 'yellow' },
   { value: 'Kein Interesse', label: 'Kein Interesse', color: 'red' },
   { value: 'Beratungsgespräch', label: 'Beratungsgespräch', color: 'green' },
-  { value: 'Unterlage bereitstellen', label: 'Unterlage bereitstellen', color: 'blue' }
+  { value: 'Unterlage bereitstellen', label: 'Unterlage bereitstellen', color: 'blue' },
+  { value: 'Wiedervorlage', label: 'Wiedervorlage', color: 'orange' }
 ]
 
 function getErgebnisColor(ergebnis) {
@@ -81,7 +82,8 @@ function Kaltakquise() {
     ansprechpartnerVorname: '',
     ansprechpartnerNachname: '',
     neuerKommentar: '', // Für neuen manuellen Kommentar
-    ansprechpartnerValidation: false // Für Validierung beim Button-Klick
+    ansprechpartnerValidation: false, // Für Validierung beim Button-Klick
+    wiedervorlageDatum: '' // Datum für Wiedervorlage
   })
   
   // Auto-Save State
@@ -249,7 +251,8 @@ function Kaltakquise() {
       ansprechpartnerVorname: lead.ansprechpartnerVorname || '',
       ansprechpartnerNachname: lead.ansprechpartnerNachname || '',
       neuerKommentar: '',
-      ansprechpartnerValidation: false
+      ansprechpartnerValidation: false,
+      wiedervorlageDatum: lead.wiedervorlageDatum || ''
     })
     setEditMode(false)
     setShowTerminPicker(false)
@@ -315,6 +318,13 @@ function Kaltakquise() {
   // Lead speichern
   const saveLead = async () => {
     if (!selectedLead) return
+    
+    // Validierung: Wiedervorlage braucht Datum
+    if (editForm.ergebnis === 'Wiedervorlage' && !editForm.wiedervorlageDatum) {
+      alert('Bitte gib ein Datum für die Wiedervorlage an.')
+      return
+    }
+    
     setSaving(true)
 
     try {
@@ -348,13 +358,26 @@ function Kaltakquise() {
           userName: user?.name || 'Unbekannt'
         })
       }
+      
+      // Wiedervorlage geändert?
+      if (editForm.ergebnis === 'Wiedervorlage' && editForm.wiedervorlageDatum !== selectedLead.wiedervorlageDatum) {
+        const datumFormatiert = editForm.wiedervorlageDatum 
+          ? new Date(editForm.wiedervorlageDatum).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+          : 'Entfernt'
+        historyEntries.push({
+          action: 'wiedervorlage',
+          details: `Wiedervorlage: ${datumFormatiert}`,
+          userName: user?.name || 'Unbekannt'
+        })
+      }
 
       // Updates vorbereiten (ohne kommentar - wird über historyEntry gehandhabt)
       const updates = {
         kontaktiert: editForm.kontaktiert,
         ergebnis: editForm.ergebnis,
         ansprechpartnerVorname: editForm.ansprechpartnerVorname,
-        ansprechpartnerNachname: editForm.ansprechpartnerNachname
+        ansprechpartnerNachname: editForm.ansprechpartnerNachname,
+        wiedervorlageDatum: editForm.ergebnis === 'Wiedervorlage' ? editForm.wiedervorlageDatum : ''
       }
 
       // Wenn keine History-Einträge, normale Speicherung
@@ -689,9 +712,16 @@ function Kaltakquise() {
                     {/* Ergebnis */}
                     <td className="px-4 py-3">
                       {lead.ergebnis ? (
-                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getErgebnisColor(lead.ergebnis)}`}>
-                          {lead.ergebnis}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getErgebnisColor(lead.ergebnis)}`}>
+                            {lead.ergebnis}
+                          </span>
+                          {lead.ergebnis === 'Wiedervorlage' && lead.wiedervorlageDatum && (
+                            <span className="text-xs text-orange-600 flex items-center gap-1">
+                              🔔 {new Date(lead.wiedervorlageDatum).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <span className="text-gray-400 text-sm">—</span>
                       )}
@@ -932,7 +962,9 @@ function Kaltakquise() {
                             ...prev, 
                             ergebnis: neuesErgebnis,
                             // Automatisch als kontaktiert markieren wenn Ergebnis gesetzt
-                            kontaktiert: neuesErgebnis ? true : prev.kontaktiert
+                            kontaktiert: neuesErgebnis ? true : prev.kontaktiert,
+                            // Wiedervorlage-Datum zurücksetzen wenn anderes Ergebnis gewählt
+                            wiedervorlageDatum: neuesErgebnis === 'Wiedervorlage' ? prev.wiedervorlageDatum : ''
                           }))
                         }}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
@@ -942,6 +974,25 @@ function Kaltakquise() {
                         ))}
                       </select>
                     </div>
+
+                    {/* Wiedervorlage-Datum - nur wenn Ergebnis "Wiedervorlage" */}
+                    {editForm.ergebnis === 'Wiedervorlage' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Wiedervorlage am <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="datetime-local"
+                          value={editForm.wiedervorlageDatum || ''}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, wiedervorlageDatum: e.target.value }))}
+                          min={new Date().toISOString().slice(0, 16)}
+                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                          Der Lead wird im Kalender angezeigt und erinnert dich an den Anruf.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Ansprechpartner - PFLICHTFELD (vor den Buttons!) */}
                     <div>
