@@ -293,7 +293,7 @@ function Layout({ children }) {
                 id: `wiedervorlage-reminder-${lead.id}`,
                 type: isUrgent ? 'urgent' : 'reminder',
                 title: `${isUrgent ? '🔴' : '📞'} Wiedervorlage in ${minutesUntil} Min`,
-                message: lead.unternehmen || 'Rückruf',
+                message: lead.unternehmensname || 'Rückruf',
                 time: new Date().toISOString(),
                 unread: true,
                 link: '/kaltakquise',
