@@ -997,7 +997,7 @@ function Kaltakquise() {
                 {editMode ? (
                   // Bearbeitungsmodus
                   <div className="space-y-4">
-                    {/* Ergebnis - setzt automatisch kontaktiert: true */}
+                    {/* Ergebnis - setzt automatisch kontaktiert: true (außer bei Ungültiger Lead) */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Ergebnis</label>
                       <select
@@ -1007,8 +1007,8 @@ function Kaltakquise() {
                           setEditForm(prev => ({ 
                             ...prev, 
                             ergebnis: neuesErgebnis,
-                            // Automatisch als kontaktiert markieren wenn Ergebnis gesetzt
-                            kontaktiert: neuesErgebnis ? true : prev.kontaktiert,
+                            // Automatisch als kontaktiert markieren wenn Ergebnis gesetzt (NICHT bei Ungültiger Lead)
+                            kontaktiert: (neuesErgebnis && neuesErgebnis !== 'Ungültiger Lead') ? true : prev.kontaktiert,
                             // Wiedervorlage-Datum zurücksetzen wenn anderes Ergebnis gewählt
                             wiedervorlageDatum: neuesErgebnis === 'Wiedervorlage' ? prev.wiedervorlageDatum : ''
                           }))
