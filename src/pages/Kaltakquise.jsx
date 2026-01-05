@@ -36,7 +36,8 @@ const ERGEBNIS_OPTIONEN = [
   { value: 'Kein Interesse', label: 'Kein Interesse', color: 'red' },
   { value: 'Beratungsgespräch', label: 'Beratungsgespräch', color: 'green' },
   { value: 'Unterlage bereitstellen', label: 'Unterlage bereitstellen', color: 'blue' },
-  { value: 'Wiedervorlage', label: 'Wiedervorlage', color: 'orange' }
+  { value: 'Wiedervorlage', label: 'Wiedervorlage', color: 'orange' },
+  { value: 'Ungültiger Lead', label: 'Ungültiger Lead', color: 'slate' }
 ]
 
 function getErgebnisColor(ergebnis) {
@@ -47,7 +48,8 @@ function getErgebnisColor(ergebnis) {
     red: 'bg-red-100 text-red-700',
     blue: 'bg-blue-100 text-blue-700',
     green: 'bg-green-100 text-green-700',
-    orange: 'bg-orange-100 text-orange-700'
+    orange: 'bg-orange-100 text-orange-700',
+    slate: 'bg-slate-200 text-slate-700'
   }
   return colors[option?.color || 'gray']
 }
