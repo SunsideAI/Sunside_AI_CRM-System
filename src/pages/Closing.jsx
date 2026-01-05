@@ -1453,77 +1453,106 @@ function Closing() {
                     )}
                   </div>
 
-                  {/* Kontaktdaten Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Ansprechpartner */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-3">Ansprechpartner</h4>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2 text-gray-900">
-                          <Users className="w-4 h-4 text-gray-400" />
-                          <span>{safeString(selectedLead.ansprechpartnerVorname)} {safeString(selectedLead.ansprechpartnerNachname)}</span>
-                        </div>
-                        {safeString(selectedLead.email) && (
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-gray-400" />
-                            <a href={`mailto:${safeString(selectedLead.email)}`} className="text-purple-600 hover:underline">
-                              {safeString(selectedLead.email)}
-                            </a>
-                          </div>
-                        )}
-                        {safeString(selectedLead.telefon) && (
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <a href={`tel:${safeString(selectedLead.telefon)}`} className="text-purple-600 hover:underline">
-                              {safeString(selectedLead.telefon)}
-                            </a>
-                          </div>
-                        )}
+                  {/* Kontaktdaten - gleicher Stil wie Kaltakquise */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Telefon */}
+                    {safeString(selectedLead.telefon) ? (
+                      <a 
+                        href={`tel:${safeString(selectedLead.telefon)}`}
+                        className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <Phone className="w-5 h-5 text-purple-600 mr-3" />
+                        <span className="text-gray-900">{safeString(selectedLead.telefon)}</span>
+                      </a>
+                    ) : (
+                      <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
+                        <Phone className="w-5 h-5 mr-3" />
+                        <span>Keine Telefonnummer</span>
                       </div>
-                    </div>
+                    )}
 
-                    {/* Standort & Web */}
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-3">Standort & Web</h4>
-                      <div className="space-y-2">
-                        {(safeString(selectedLead.ort) || safeString(selectedLead.bundesland)) && (
-                          <div className="flex items-center gap-2 text-gray-900">
-                            <MapPin className="w-4 h-4 text-gray-400" />
-                            <span>{[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ')}</span>
-                          </div>
-                        )}
-                        {safeString(selectedLead.website) && (
-                          <div className="flex items-center gap-2">
-                            <Globe className="w-4 h-4 text-gray-400" />
-                            <a 
-                              href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-purple-600 hover:underline truncate"
-                            >
-                              {safeString(selectedLead.website)}
-                            </a>
-                          </div>
-                        )}
+                    {/* E-Mail */}
+                    {safeString(selectedLead.email) ? (
+                      <a 
+                        href={`mailto:${safeString(selectedLead.email)}`}
+                        className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <Mail className="w-5 h-5 text-purple-600 mr-3" />
+                        <span className="text-gray-900 truncate">{safeString(selectedLead.email)}</span>
+                      </a>
+                    ) : (
+                      <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
+                        <Mail className="w-5 h-5 mr-3" />
+                        <span>Keine E-Mail</span>
                       </div>
+                    )}
+
+                    {/* Website */}
+                    {safeString(selectedLead.website) ? (
+                      <a 
+                        href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <Globe className="w-5 h-5 text-purple-600 mr-3" />
+                        <span className="text-gray-900 truncate">{safeString(selectedLead.website)}</span>
+                      </a>
+                    ) : (
+                      <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
+                        <Globe className="w-5 h-5 mr-3" />
+                        <span>Keine Website</span>
+                      </div>
+                    )}
+
+                    {/* Standort */}
+                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                      <MapPin className="w-5 h-5 text-purple-600 mr-3" />
+                      <span className="text-gray-900">
+                        {[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ') || 'Kein Standort'}
+                      </span>
                     </div>
                   </div>
 
-                  {/* Termin & Zuständig */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-3">Termin</h4>
-                      <div className="flex items-center gap-2 text-gray-900">
-                        <Calendar className="w-4 h-4 text-gray-400" />
-                        <span>{formatDate(selectedLead.terminDatum)}</span>
+                  {/* Ansprechpartner & Zuständig */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {/* Ansprechpartner */}
+                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                      <Users className="w-5 h-5 text-purple-600 mr-3" />
+                      <div>
+                        <span className="text-xs text-gray-400">Ansprechpartner</span>
+                        <p className="text-gray-900">
+                          {safeString(selectedLead.ansprechpartnerVorname) || safeString(selectedLead.ansprechpartnerNachname) 
+                            ? `${safeString(selectedLead.ansprechpartnerVorname)} ${safeString(selectedLead.ansprechpartnerNachname)}`.trim()
+                            : 'Nicht angegeben'}
+                        </p>
                       </div>
                     </div>
 
-                    <div>
-                      <h4 className="text-sm font-medium text-gray-500 mb-3">Zuständig</h4>
-                      <div className="space-y-1 text-sm">
-                        <p><span className="text-gray-500">Coldcaller:</span> <span className="text-gray-900">{safeString(selectedLead.setterName) || '-'}</span></p>
-                        <p><span className="text-gray-500">Closer:</span> <span className="text-gray-900">{safeString(selectedLead.closerName) || '-'}</span></p>
+                    {/* Termin */}
+                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                      <Calendar className="w-5 h-5 text-purple-600 mr-3" />
+                      <div>
+                        <span className="text-xs text-gray-400">Termin</span>
+                        <p className="text-gray-900">{formatDate(selectedLead.terminDatum)}</p>
+                      </div>
+                    </div>
+
+                    {/* Coldcaller */}
+                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                      <UserIcon className="w-5 h-5 text-purple-600 mr-3" />
+                      <div>
+                        <span className="text-xs text-gray-400">Coldcaller</span>
+                        <p className="text-gray-900">{safeString(selectedLead.setterName) || '-'}</p>
+                      </div>
+                    </div>
+
+                    {/* Closer */}
+                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                      <Target className="w-5 h-5 text-purple-600 mr-3" />
+                      <div>
+                        <span className="text-xs text-gray-400">Closer</span>
+                        <p className="text-gray-900">{safeString(selectedLead.closerName) || '-'}</p>
                       </div>
                     </div>
                   </div>
