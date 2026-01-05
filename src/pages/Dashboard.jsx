@@ -26,7 +26,8 @@ import {
   Globe,
   MapPin,
   Building2,
-  FileText
+  FileText,
+  AlertTriangle
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
@@ -977,7 +978,8 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     beratungsgespraech: '#10B981', // Grün
     unterlagen: '#F59E0B',    // Gelb
     keinInteresse: '#EF4444', // Rot
-    nichtErreicht: '#6B7280'  // Grau
+    nichtErreicht: '#6B7280', // Grau
+    ungueltigerLead: '#64748B' // Slate
   }
 
   if (loading && !refreshing) {
@@ -1069,12 +1071,13 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
       {stats && (
         <>
           {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <KPICard title="Einwahlen" value={stats.summary?.einwahlen || 0} icon={Phone} color="purple" />
             <KPICard title="Erreicht" value={stats.summary?.erreicht || 0} icon={Users} color="blue" subtitle={formatPercent(stats.summary?.erreichQuote || 0)} />
             <KPICard title="Beratungsgespräch" value={stats.summary?.beratungsgespraech || 0} icon={Calendar} color="green" subtitle={formatPercent(stats.summary?.beratungsgespraechQuote || 0)} />
             <KPICard title="Unterlage/WV" value={stats.summary?.unterlagen || 0} icon={Target} color="yellow" subtitle={formatPercent(stats.summary?.unterlagenQuote || 0)} />
             <KPICard title="Kein Interesse" value={stats.summary?.keinInteresse || 0} icon={XCircle} color="red" subtitle={formatPercent(stats.summary?.keinInteresseQuote || 0)} />
+            <KPICard title="Ungültiger Lead" value={stats.summary?.ungueltigerLead || 0} icon={AlertTriangle} color="gray" subtitle={formatPercent(stats.summary?.ungueltigerLeadQuote || 0)} />
           </div>
 
           {/* Charts Row 1 */}
@@ -1083,25 +1086,27 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Ergebnisse in Zahlen</h3>
               {(stats.summary?.einwahlen || 0) > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
+                <ResponsiveContainer width="100%" height={280}>
                   <BarChart 
                     data={[
                       { name: 'Einwahlen', value: stats.summary?.einwahlen || 0 },
                       { name: 'Erreicht', value: stats.summary?.erreicht || 0 },
                       { name: 'Beratungsgespräch', value: stats.summary?.beratungsgespraech || 0 },
-                      { name: 'Unterlage/WV', value: stats.summary?.unterlagen || 0 }
+                      { name: 'Unterlage/WV', value: stats.summary?.unterlagen || 0 },
+                      { name: 'Ungültiger Lead', value: stats.summary?.ungueltigerLead || 0 }
                     ]}
                     layout="vertical"
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                     <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={100} />
+                    <YAxis dataKey="name" type="category" width={110} />
                     <Tooltip />
                     <Bar dataKey="value" radius={[0, 4, 4, 0]}>
                       <Cell fill="#7C3AED" />
                       <Cell fill="#6366F1" />
                       <Cell fill="#10B981" />
                       <Cell fill="#F59E0B" />
+                      <Cell fill="#64748B" />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -1118,14 +1123,15 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
             {/* Ergebnis Verteilung Pie */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
               <h3 className="text-sm font-medium text-gray-700 mb-4">Prozentuale Ergebnisse</h3>
-              {((stats.summary?.beratungsgespraech || 0) + (stats.summary?.unterlagen || 0) + (stats.summary?.keinInteresse || 0)) > 0 ? (
-                <ResponsiveContainer width="100%" height={250}>
+              {((stats.summary?.beratungsgespraech || 0) + (stats.summary?.unterlagen || 0) + (stats.summary?.keinInteresse || 0) + (stats.summary?.ungueltigerLead || 0)) > 0 ? (
+                <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
                     <Pie
                       data={[
                         { name: 'Beratungsgespräch', value: stats.summary?.beratungsgespraech || 0 },
                         { name: 'Unterlage/WV', value: stats.summary?.unterlagen || 0 },
-                        { name: 'Kein Interesse', value: stats.summary?.keinInteresse || 0 }
+                        { name: 'Kein Interesse', value: stats.summary?.keinInteresse || 0 },
+                        { name: 'Ungültiger Lead', value: stats.summary?.ungueltigerLead || 0 }
                       ].filter(d => d.value > 0)}
                       cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
@@ -1133,6 +1139,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                       <Cell fill={RESULT_COLORS.beratungsgespraech} />
                       <Cell fill={RESULT_COLORS.unterlagen} />
                       <Cell fill={RESULT_COLORS.keinInteresse} />
+                      <Cell fill={RESULT_COLORS.ungueltigerLead} />
                     </Pie>
                     <Tooltip />
                   </PieChart>
@@ -1204,7 +1211,8 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                           const labels = {
                             beratungsgespraech: 'Beratungsgespräch',
                             unterlagen: 'Unterlage/WV',
-                            keinInteresse: 'Kein Interesse'
+                            keinInteresse: 'Kein Interesse',
+                            ungueltigerLead: 'Ungültiger Lead'
                           }
                           return [value, labels[name] || name]
                         }}
@@ -1214,7 +1222,8 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                           const labels = {
                             beratungsgespraech: 'Beratungsgespräch',
                             unterlagen: 'Unterlage/WV',
-                            keinInteresse: 'Kein Interesse'
+                            keinInteresse: 'Kein Interesse',
+                            ungueltigerLead: 'Ungültiger Lead'
                           }
                           return labels[value] || value
                         }}
@@ -1222,6 +1231,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                       <Bar dataKey="beratungsgespraech" stackId="a" fill={RESULT_COLORS.beratungsgespraech} name="beratungsgespraech" />
                       <Bar dataKey="unterlagen" stackId="a" fill={RESULT_COLORS.unterlagen} name="unterlagen" />
                       <Bar dataKey="keinInteresse" stackId="a" fill={RESULT_COLORS.keinInteresse} name="keinInteresse" />
+                      <Bar dataKey="ungueltigerLead" stackId="a" fill={RESULT_COLORS.ungueltigerLead} name="ungueltigerLead" />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
