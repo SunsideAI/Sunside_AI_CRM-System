@@ -12,6 +12,7 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   Loader2,
   RefreshCw,
   Phone,
@@ -29,7 +30,8 @@ import {
   CheckCircle,
   AlertCircle,
   Paperclip,
-  CalendarPlus
+  CalendarPlus,
+  BarChart3
 } from 'lucide-react'
 
 // Paket-Optionen für Angebot
@@ -119,6 +121,9 @@ function Closing() {
   
   // Neu-Terminieren State (innerhalb des Modals)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
+  
+  // Website-Statistiken einklappbar (für Status != Lead)
+  const [showWebsiteStats, setShowWebsiteStats] = useState(false)
 
   const LEADS_PER_PAGE = 10
 
@@ -524,6 +529,7 @@ function Closing() {
     setAngebotSuccess(false)
     setShowEmailComposer(false)
     setShowTerminPicker(false)
+    setShowWebsiteStats(false)
   }
 
   const handleEditChange = (field, value) => {
@@ -1522,38 +1528,140 @@ function Closing() {
                     </div>
                   </div>
 
-                  {/* Deal-Werte - nur Anzeige (Änderungen über "Angebot versenden") */}
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-3">Deal-Details</h4>
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="grid grid-cols-3 gap-4 text-center">
-                        <div>
-                          <span className="block text-sm text-gray-500">Setup</span>
-                          <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</span>
+                  {/* Website-Statistiken (bei Status "Lead") ODER Deal-Details (bei anderen Status) */}
+                  {selectedLead.status === 'Lead' ? (
+                    /* Website-Statistiken - Hauptanzeige bei Status Lead */
+                    <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                        <BarChart3 className="w-4 h-4 mr-2 text-purple-600" />
+                        Website-Statistiken
+                      </h4>
+                      <div className="grid grid-cols-4 gap-4">
+                        <div className="bg-white p-3 rounded-lg shadow-sm">
+                          <p className="text-xs text-gray-500">Besucher/Monat</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {selectedLead.monatlicheBesuche 
+                              ? selectedLead.monatlicheBesuche.toLocaleString('de-DE')
+                              : '-'}
+                          </p>
                         </div>
-                        <div>
-                          <span className="block text-sm text-gray-500">Retainer</span>
-                          <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/Mon</span>
+                        <div className="bg-white p-3 rounded-lg shadow-sm">
+                          <p className="text-xs text-gray-500">Absprungrate</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {selectedLead.absprungrate !== null && selectedLead.absprungrate !== undefined
+                              ? `${Math.round(selectedLead.absprungrate * 100)}%`
+                              : '-'}
+                          </p>
                         </div>
-                        <div>
-                          <span className="block text-sm text-gray-500">Laufzeit</span>
-                          <span className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || 12} Monate</span>
+                        <div className="bg-white p-3 rounded-lg shadow-sm">
+                          <p className="text-xs text-gray-500">Leads/Monat</p>
+                          <p className="text-lg font-semibold text-gray-900">
+                            {selectedLead.anzahlLeads !== null && selectedLead.anzahlLeads !== undefined
+                              ? selectedLead.anzahlLeads
+                              : '-'}
+                          </p>
                         </div>
-                      </div>
-                      
-                      {/* Gesamtwert */}
-                      <div className="mt-4 pt-4 border-t border-gray-200 text-center">
-                        <span className="text-sm text-gray-500">Gesamtwert: </span>
-                        <span className="text-xl font-bold text-green-600">
-                          {formatMoney(
-                            (selectedLead.setup || 0) + 
-                            (selectedLead.retainer || 0) * 
-                            (selectedLead.laufzeit || 12)
-                          )}
-                        </span>
+                        <div className="bg-white p-3 rounded-lg shadow-sm">
+                          <p className="text-xs text-gray-500">Mehrwert</p>
+                          <p className="text-lg font-semibold text-green-600">
+                            {selectedLead.mehrwert 
+                              ? `${selectedLead.mehrwert.toLocaleString('de-DE')} €`
+                              : '-'}
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    /* Deal-Details und einklappbare Website-Statistiken bei anderen Status */
+                    <>
+                      {/* Deal-Werte - nur Anzeige (Änderungen über "Angebot versenden") */}
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-500 mb-3">Deal-Details</h4>
+                        <div className="bg-gray-50 rounded-lg p-4">
+                          <div className="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                              <span className="block text-sm text-gray-500">Setup</span>
+                              <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm text-gray-500">Retainer</span>
+                              <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/Mon</span>
+                            </div>
+                            <div>
+                              <span className="block text-sm text-gray-500">Laufzeit</span>
+                              <span className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || 12} Monate</span>
+                            </div>
+                          </div>
+                          
+                          {/* Gesamtwert */}
+                          <div className="mt-4 pt-4 border-t border-gray-200 text-center">
+                            <span className="text-sm text-gray-500">Gesamtwert: </span>
+                            <span className="text-xl font-bold text-green-600">
+                              {formatMoney(
+                                (selectedLead.setup || 0) + 
+                                (selectedLead.retainer || 0) * 
+                                (selectedLead.laufzeit || 12)
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Website-Statistiken - Einklappbar */}
+                      <div className="border border-gray-200 rounded-lg overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setShowWebsiteStats(!showWebsiteStats)}
+                          className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
+                        >
+                          <span className="flex items-center text-sm font-medium text-gray-700">
+                            <BarChart3 className="w-4 h-4 mr-2 text-purple-600" />
+                            Website-Statistiken
+                          </span>
+                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showWebsiteStats ? 'rotate-180' : ''}`} />
+                        </button>
+                        
+                        {showWebsiteStats && (
+                          <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 border-t border-gray-200">
+                            <div className="grid grid-cols-4 gap-4">
+                              <div className="bg-white p-3 rounded-lg shadow-sm">
+                                <p className="text-xs text-gray-500">Besucher/Monat</p>
+                                <p className="text-lg font-semibold text-gray-900">
+                                  {selectedLead.monatlicheBesuche 
+                                    ? selectedLead.monatlicheBesuche.toLocaleString('de-DE')
+                                    : '-'}
+                                </p>
+                              </div>
+                              <div className="bg-white p-3 rounded-lg shadow-sm">
+                                <p className="text-xs text-gray-500">Absprungrate</p>
+                                <p className="text-lg font-semibold text-gray-900">
+                                  {selectedLead.absprungrate !== null && selectedLead.absprungrate !== undefined
+                                    ? `${Math.round(selectedLead.absprungrate * 100)}%`
+                                    : '-'}
+                                </p>
+                              </div>
+                              <div className="bg-white p-3 rounded-lg shadow-sm">
+                                <p className="text-xs text-gray-500">Leads/Monat</p>
+                                <p className="text-lg font-semibold text-gray-900">
+                                  {selectedLead.anzahlLeads !== null && selectedLead.anzahlLeads !== undefined
+                                    ? selectedLead.anzahlLeads
+                                    : '-'}
+                                </p>
+                              </div>
+                              <div className="bg-white p-3 rounded-lg shadow-sm">
+                                <p className="text-xs text-gray-500">Mehrwert</p>
+                                <p className="text-lg font-semibold text-green-600">
+                                  {selectedLead.mehrwert 
+                                    ? `${selectedLead.mehrwert.toLocaleString('de-DE')} €`
+                                    : '-'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
 
                   {/* Notizen - nur Anzeige (Kommentar ist Lookup aus Immobilienmakler_Leads) */}
                   <div>
