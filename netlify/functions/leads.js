@@ -55,13 +55,14 @@ export async function handler(event) {
       const params = event.queryStringParameters || {}
       const {
         userName,      // Name des Users (Vor_Nachname) für Link-Feld Filter
-        userRole,      // 'Admin', 'Setter', 'Closer'
+        userRole,      // 'Admin', 'Coldcaller', 'Closer'
         view,          // 'all' oder 'own' (für Admins)
         search,        // Suchbegriff
         contacted,     // 'true' oder 'false'
         result,        // Ergebnis-Filter
         vertriebler,   // Filter nach Vertriebler (Name)
-        offset         // Pagination offset
+        offset,        // Pagination offset
+        wiedervorlage  // 'true' = nur Leads mit Wiedervorlage-Datum
       } = params
 
       // User-Map laden für Namen-Auflösung
@@ -96,6 +97,11 @@ export async function handler(event) {
       // Ergebnis-Filter
       if (result && result !== 'all') {
         filters.push(`{Ergebnis} = '${result}'`)
+      }
+
+      // Wiedervorlage-Filter: Nur Leads mit Wiedervorlage-Datum
+      if (wiedervorlage === 'true') {
+        filters.push(`{Wiedervorlage_Datum}`)
       }
 
       // Suchfilter (Unternehmensname oder Stadt)
@@ -244,9 +250,10 @@ export async function handler(event) {
   // PATCH - Lead aktualisieren
   if (event.httpMethod === 'PATCH') {
     try {
-      const { leadId, updates, historyEntry } = JSON.parse(event.body)
-      
-      console.log('PATCH Lead - Input:', { leadId, updates, historyEntry })
+      const body = JSON.parse(event.body)
+      const leadId = body.leadId || body.id  // Beide Varianten akzeptieren
+      const updates = body.updates || {}
+      const historyEntry = body.historyEntry
 
       if (!leadId) {
         return {
@@ -287,38 +294,15 @@ export async function handler(event) {
       if (updates.ansprechpartnerNachname !== undefined) {
         fieldsToUpdate['Ansprechpartner_Nachname'] = updates.ansprechpartnerNachname || null
       }
-      
-      // Stammdaten-Updates
-      if (updates.telefon !== undefined) {
-        fieldsToUpdate['Telefonnummer'] = updates.telefon || null
-      }
-      if (updates.email !== undefined) {
-        fieldsToUpdate['Mail'] = updates.email || null
-      }
-      if (updates.website !== undefined) {
-        fieldsToUpdate['Website'] = updates.website || null
-      }
-      
-      // Wiedervorlage-Datum
       if (updates.wiedervorlageDatum !== undefined) {
-        // datetime-local liefert "2024-12-22T11:55" (lokale Zeit des Users)
-        // Airtable speichert UTC und zeigt dann in lokaler Zeit an (+1h in DE)
-        // Lösung: 1 Stunde abziehen beim Speichern
+        // datetime-local liefert "2024-12-22T14:30"
+        // Airtable speichert als UTC und zeigt dann +1h an
+        // Deshalb 1 Stunde abziehen beim Speichern
         if (updates.wiedervorlageDatum) {
-          const [datePart, timePart] = updates.wiedervorlageDatum.split('T')
-          const [hours, minutes] = timePart.split(':').map(Number)
-          
-          let newHours = hours - 1
-          let newDate = datePart
-          
-          if (newHours < 0) {
-            newHours = 23
-            const d = new Date(datePart + 'T00:00:00Z')
-            d.setUTCDate(d.getUTCDate() - 1)
-            newDate = d.toISOString().split('T')[0]
-          }
-          
-          const isoDate = `${newDate}T${String(newHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00.000Z`
+          const inputDate = new Date(updates.wiedervorlageDatum)
+          // 1 Stunde abziehen
+          inputDate.setHours(inputDate.getHours() - 1)
+          const isoDate = inputDate.toISOString()
           console.log('Wiedervorlage Datum:', { input: updates.wiedervorlageDatum, output: isoDate })
           fieldsToUpdate['Wiedervorlage_Datum'] = isoDate
         } else {
@@ -347,6 +331,9 @@ export async function handler(event) {
         const icons = {
           'email': '📧',
           'termin': '📅',
+          'angebot': '💰',
+          'abgeschlossen': '🎉',
+          'verloren': '❌',
           'kontaktiert': '✅',
           'nicht_kontaktiert': '↩️',
           'ergebnis': '📋',
@@ -368,8 +355,6 @@ export async function handler(event) {
       }
 
       const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}/${leadId}`
-
-      console.log('PATCH Lead - fieldsToUpdate:', JSON.stringify(fieldsToUpdate, null, 2))
 
       const response = await fetch(url, {
         method: 'PATCH',
