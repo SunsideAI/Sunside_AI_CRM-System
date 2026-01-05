@@ -18,6 +18,7 @@ import {
   MessageSquare,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   X,
   Loader2,
   RefreshCw,
@@ -75,6 +76,7 @@ function Kaltakquise() {
   const [saving, setSaving] = useState(false)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
+  const [showKontaktdaten, setShowKontaktdaten] = useState(false) // Einklappbar
   const [editForm, setEditForm] = useState({
     kontaktiert: false,
     ergebnis: '',
@@ -267,6 +269,7 @@ function Kaltakquise() {
     setEditMode(false)
     setShowTerminPicker(false)
     setShowEmailComposer(false)
+    setShowKontaktdaten(false) // Eingeklappt starten
   }
 
   // Auto-Save für Ansprechpartner-Felder (mit Debounce)
@@ -1043,43 +1046,51 @@ function Kaltakquise() {
                       </div>
                     </div>
 
-                    {/* Kontaktdaten bearbeiten */}
+                    {/* Kontaktdaten bearbeiten - Einklappbar */}
                     <div className="border-t border-gray-200 pt-4">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Kontaktdaten
-                      </label>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-gray-400" />
-                          <input
-                            type="tel"
-                            value={editForm.telefon}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, telefon: e.target.value }))}
-                            placeholder="Telefonnummer"
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none text-sm"
-                          />
+                      <button
+                        type="button"
+                        onClick={() => setShowKontaktdaten(!showKontaktdaten)}
+                        className="w-full flex items-center justify-between text-sm font-medium text-gray-700 hover:text-gray-900"
+                      >
+                        <span>Kontaktdaten bearbeiten</span>
+                        <ChevronDown className={`w-4 h-4 transition-transform ${showKontaktdaten ? 'rotate-180' : ''}`} />
+                      </button>
+                      
+                      {showKontaktdaten && (
+                        <div className="mt-3 space-y-3">
+                          <div className="flex items-center gap-2">
+                            <Phone className="w-4 h-4 text-gray-400" />
+                            <input
+                              type="tel"
+                              value={editForm.telefon}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, telefon: e.target.value }))}
+                              placeholder="Telefonnummer"
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none text-sm"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Mail className="w-4 h-4 text-gray-400" />
+                            <input
+                              type="email"
+                              value={editForm.email}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                              placeholder="E-Mail"
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none text-sm"
+                            />
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Globe className="w-4 h-4 text-gray-400" />
+                            <input
+                              type="url"
+                              value={editForm.website}
+                              onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
+                              placeholder="Website"
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none text-sm"
+                            />
+                          </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <Mail className="w-4 h-4 text-gray-400" />
-                          <input
-                            type="email"
-                            value={editForm.email}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                            placeholder="E-Mail"
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none text-sm"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-gray-400" />
-                          <input
-                            type="url"
-                            value={editForm.website}
-                            onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
-                            placeholder="Website"
-                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none text-sm"
-                          />
-                        </div>
-                      </div>
+                      )}
                     </div>
                       
                     {/* Termin buchen Button bei Beratungsgespräch */}
