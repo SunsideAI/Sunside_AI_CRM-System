@@ -1603,35 +1603,34 @@ function Closing() {
                   ) : (
                     /* Deal-Details und einklappbare Website-Statistiken bei anderen Status */
                     <>
-                      {/* Deal-Werte - nur Anzeige (Änderungen über "Angebot versenden") */}
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-500 mb-3">Deal-Details</h4>
-                        <div className="bg-gray-50 rounded-lg p-4">
-                          <div className="grid grid-cols-3 gap-4 text-center">
-                            <div>
-                              <span className="block text-sm text-gray-500">Setup</span>
-                              <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</span>
-                            </div>
-                            <div>
-                              <span className="block text-sm text-gray-500">Retainer</span>
-                              <span className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/Mon</span>
-                            </div>
-                            <div>
-                              <span className="block text-sm text-gray-500">Laufzeit</span>
-                              <span className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || 12} Monate</span>
-                            </div>
+                      {/* Deal-Werte - gleicher Stil wie Website-Statistiken */}
+                      <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
+                        <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                          <Euro className="w-4 h-4 mr-2 text-green-600" />
+                          Deal-Details
+                        </h4>
+                        <div className="grid grid-cols-4 gap-4">
+                          <div className="bg-white p-3 rounded-lg shadow-sm">
+                            <p className="text-xs text-gray-500">Setup</p>
+                            <p className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</p>
                           </div>
-                          
-                          {/* Gesamtwert */}
-                          <div className="mt-4 pt-4 border-t border-gray-200 text-center">
-                            <span className="text-sm text-gray-500">Gesamtwert: </span>
-                            <span className="text-xl font-bold text-green-600">
+                          <div className="bg-white p-3 rounded-lg shadow-sm">
+                            <p className="text-xs text-gray-500">Retainer</p>
+                            <p className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/Mon</p>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg shadow-sm">
+                            <p className="text-xs text-gray-500">Laufzeit</p>
+                            <p className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || 12} Mon</p>
+                          </div>
+                          <div className="bg-white p-3 rounded-lg shadow-sm">
+                            <p className="text-xs text-gray-500">Gesamtwert</p>
+                            <p className="text-lg font-semibold text-green-600">
                               {formatMoney(
                                 (selectedLead.setup || 0) + 
                                 (selectedLead.retainer || 0) * 
                                 (selectedLead.laufzeit || 12)
                               )}
-                            </span>
+                            </p>
                           </div>
                         </div>
                       </div>
