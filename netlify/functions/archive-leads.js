@@ -94,17 +94,27 @@ exports.handler = async (event) => {
     console.log(`${alleUserLeads.length} Leads insgesamt zugewiesen an ${vertrieblerName}`)
 
     // 4. Aufteilen in kontaktierte und nicht-kontaktierte
+    // WICHTIG: "Ungültiger Lead" wird komplett ausgeschlossen - diese sollen nie wieder vergeben werden
+    const ungueltigeLeads = alleUserLeads.filter(lead => {
+      const ergebnis = (lead.fields.Ergebnis || '').toLowerCase()
+      return ergebnis.includes('ungültiger lead') || ergebnis.includes('ungultiger lead')
+    })
+
     const kontaktierteLeads = alleUserLeads.filter(lead => {
       const kontaktiert = lead.fields['Bereits_kontaktiert'] || lead.fields.Bereits_kontaktiert
-      return kontaktiert === 'X' || kontaktiert === 'x'
+      const ergebnis = (lead.fields.Ergebnis || '').toLowerCase()
+      const istUngueltig = ergebnis.includes('ungültiger lead') || ergebnis.includes('ungultiger lead')
+      return (kontaktiert === 'X' || kontaktiert === 'x') && !istUngueltig
     })
     
     const nichtKontaktierteLeads = alleUserLeads.filter(lead => {
       const kontaktiert = lead.fields['Bereits_kontaktiert'] || lead.fields.Bereits_kontaktiert
-      return kontaktiert !== 'X' && kontaktiert !== 'x'
+      const ergebnis = (lead.fields.Ergebnis || '').toLowerCase()
+      const istUngueltig = ergebnis.includes('ungültiger lead') || ergebnis.includes('ungultiger lead')
+      return kontaktiert !== 'X' && kontaktiert !== 'x' && !istUngueltig
     })
 
-    console.log(`${kontaktierteLeads.length} bearbeitete Leads, ${nichtKontaktierteLeads.length} nicht-kontaktierte Leads`)
+    console.log(`${kontaktierteLeads.length} bearbeitete Leads, ${nichtKontaktierteLeads.length} nicht-kontaktierte Leads, ${ungueltigeLeads.length} ungültige Leads (werden übersprungen)`)
 
     // 5. Kontaktierte Leads filtern: Nur die OHNE "Beratungsgespräch" archivieren
     // Leads mit Beratungsgespräch sind bereits in Hot_Leads und bleiben unberührt
@@ -235,6 +245,7 @@ exports.handler = async (event) => {
         gefunden: alleUserLeads.length,
         kontaktiert: kontaktierteLeads.length,
         nichtKontaktiert: nichtKontaktierteLeads.length,
+        ungueltigeLeads: ungueltigeLeads.length,
         beratungsgespraecheUebersprungen: kontaktierteLeads.length - leadsZuArchivieren.length,
         archiviert: archiviertCount,
         zurueckgesetzt: zurueckgesetztCount,
