@@ -245,6 +245,8 @@ export async function handler(event) {
   if (event.httpMethod === 'PATCH') {
     try {
       const { leadId, updates, historyEntry } = JSON.parse(event.body)
+      
+      console.log('PATCH Lead - Input:', { leadId, updates, historyEntry })
 
       if (!leadId) {
         return {
@@ -366,6 +368,8 @@ export async function handler(event) {
       }
 
       const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}/${leadId}`
+
+      console.log('PATCH Lead - fieldsToUpdate:', JSON.stringify(fieldsToUpdate, null, 2))
 
       const response = await fetch(url, {
         method: 'PATCH',
