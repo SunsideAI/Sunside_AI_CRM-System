@@ -307,6 +307,16 @@ export async function handler(event) {
       if (updates.kategorie !== undefined) {
         fieldsToUpdate['Kategorie'] = updates.kategorie || null
       }
+      // Stammdaten (Kontaktdaten)
+      if (updates.telefon !== undefined) {
+        fieldsToUpdate['Telefonnummer'] = updates.telefon || null
+      }
+      if (updates.email !== undefined) {
+        fieldsToUpdate['Mail'] = updates.email || null
+      }
+      if (updates.website !== undefined) {
+        fieldsToUpdate['Website'] = updates.website || null
+      }
       if (updates.wiedervorlageDatum !== undefined) {
         // datetime-local liefert "2024-12-22T14:30"
         // Airtable speichert als UTC und zeigt dann +1h an
@@ -352,7 +362,8 @@ export async function handler(event) {
           'ergebnis': '📋',
           'ansprechpartner': '👤',
           'kommentar': '💬',
-          'wiedervorlage': '🔔'
+          'wiedervorlage': '🔔',
+          'kontaktdaten': '✏️'
         }
         const icon = icons[historyEntry.action] || '📋'
         
