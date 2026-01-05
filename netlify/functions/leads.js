@@ -294,6 +294,9 @@ export async function handler(event) {
       if (updates.ansprechpartnerNachname !== undefined) {
         fieldsToUpdate['Ansprechpartner_Nachname'] = updates.ansprechpartnerNachname || null
       }
+      if (updates.kategorie !== undefined) {
+        fieldsToUpdate['Kategorie'] = updates.kategorie || null
+      }
       if (updates.wiedervorlageDatum !== undefined) {
         // datetime-local liefert "2024-12-22T14:30"
         // Airtable speichert als UTC und zeigt dann +1h an
