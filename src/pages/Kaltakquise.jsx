@@ -397,6 +397,26 @@ function Kaltakquise() {
         })
       }
 
+      // Kontaktdaten geändert? (automatischer Kommentar)
+      const kontaktdatenAenderungen = []
+      if (editForm.telefon !== (selectedLead.telefon || '')) {
+        kontaktdatenAenderungen.push('Telefonnummer')
+      }
+      if (editForm.email !== (selectedLead.email || '')) {
+        kontaktdatenAenderungen.push('E-Mail')
+      }
+      if (editForm.website !== (selectedLead.website || '')) {
+        kontaktdatenAenderungen.push('Website')
+      }
+      
+      if (kontaktdatenAenderungen.length > 0) {
+        historyEntries.push({
+          action: 'kontaktdaten',
+          details: `${kontaktdatenAenderungen.join(' und ')} geändert`,
+          userName: user?.name || 'Unbekannt'
+        })
+      }
+
       // Updates vorbereiten (ohne kommentar - wird über historyEntry gehandhabt)
       const updates = {
         kontaktiert: editForm.kontaktiert,
