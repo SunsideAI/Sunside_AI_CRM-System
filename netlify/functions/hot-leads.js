@@ -219,6 +219,8 @@ exports.handler = async (event) => {
           laufzeit: record.fields.Laufzeit || 0,
           monatlicheBesuche: record.fields.Monatliche_Besuche || 0,
           mehrwert: record.fields.Mehrwert || 0,
+          absprungrate: record.fields.Absprungrate || null,
+          anzahlLeads: record.fields.Anzahl_Leads || null,
           produktDienstleistung: record.fields.Produkt_Dienstleistung || [],
           kommentar: getLookupValue(record.fields.Kommentar),  // Lookup aus Immobilienmakler_Leads
           kundeSeit: record.fields['Kunde seit'] || record.fields.Kunde_seit || '',
