@@ -18,7 +18,6 @@ import {
   MessageSquare,
   ChevronLeft,
   ChevronRight,
-  ChevronDown,
   X,
   Loader2,
   RefreshCw,
@@ -89,7 +88,6 @@ function Kaltakquise() {
   const [saving, setSaving] = useState(false)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
-  const [showKontaktdaten, setShowKontaktdaten] = useState(false) // Einklappbar
   const [editForm, setEditForm] = useState({
     kontaktiert: false,
     ergebnis: '',
@@ -926,7 +924,19 @@ function Kaltakquise() {
                 <>
               {/* Kontaktdaten */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                {selectedLead.telefon && (
+                {/* Telefon */}
+                {editMode ? (
+                  <div className="flex items-center p-3 bg-white border-2 border-sunside-primary/30 rounded-lg">
+                    <Phone className="w-5 h-5 text-sunside-primary mr-3" />
+                    <input
+                      type="tel"
+                      value={editForm.telefon}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, telefon: e.target.value }))}
+                      placeholder="Telefonnummer eingeben..."
+                      className="flex-1 bg-transparent outline-none text-gray-900"
+                    />
+                  </div>
+                ) : selectedLead.telefon ? (
                   <a 
                     href={`tel:${selectedLead.telefon}`}
                     className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -934,8 +944,26 @@ function Kaltakquise() {
                     <Phone className="w-5 h-5 text-sunside-primary mr-3" />
                     <span className="text-gray-900">{selectedLead.telefon}</span>
                   </a>
+                ) : (
+                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
+                    <Phone className="w-5 h-5 mr-3" />
+                    <span>Keine Telefonnummer</span>
+                  </div>
                 )}
-                {selectedLead.email && (
+
+                {/* E-Mail */}
+                {editMode ? (
+                  <div className="flex items-center p-3 bg-white border-2 border-sunside-primary/30 rounded-lg">
+                    <Mail className="w-5 h-5 text-sunside-primary mr-3" />
+                    <input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                      placeholder="E-Mail eingeben..."
+                      className="flex-1 bg-transparent outline-none text-gray-900"
+                    />
+                  </div>
+                ) : selectedLead.email ? (
                   <a 
                     href={`mailto:${selectedLead.email}`}
                     className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -943,8 +971,26 @@ function Kaltakquise() {
                     <Mail className="w-5 h-5 text-sunside-primary mr-3" />
                     <span className="text-gray-900 truncate">{selectedLead.email}</span>
                   </a>
+                ) : (
+                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
+                    <Mail className="w-5 h-5 mr-3" />
+                    <span>Keine E-Mail</span>
+                  </div>
                 )}
-                {selectedLead.website && (
+
+                {/* Website */}
+                {editMode ? (
+                  <div className="flex items-center p-3 bg-white border-2 border-sunside-primary/30 rounded-lg">
+                    <Globe className="w-5 h-5 text-sunside-primary mr-3" />
+                    <input
+                      type="url"
+                      value={editForm.website}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
+                      placeholder="Website eingeben..."
+                      className="flex-1 bg-transparent outline-none text-gray-900"
+                    />
+                  </div>
+                ) : selectedLead.website ? (
                   <a 
                     href={selectedLead.website.startsWith('http') ? selectedLead.website : `https://${selectedLead.website}`}
                     target="_blank"
@@ -954,7 +1000,14 @@ function Kaltakquise() {
                     <Globe className="w-5 h-5 text-sunside-primary mr-3" />
                     <span className="text-gray-900 truncate">{selectedLead.website}</span>
                   </a>
+                ) : (
+                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
+                    <Globe className="w-5 h-5 mr-3" />
+                    <span>Keine Website</span>
+                  </div>
                 )}
+
+                {/* Standort - nicht editierbar */}
                 <div className="flex items-center p-3 bg-gray-50 rounded-lg">
                   {selectedLead.land && (
                     <span className="text-xl mr-2" title={selectedLead.land}>{getLandFlag(selectedLead.land)}</span>
@@ -1109,53 +1162,6 @@ function Kaltakquise() {
                           }`}
                         />
                       </div>
-                    </div>
-
-                    {/* Kontaktdaten bearbeiten - Einklappbar */}
-                    <div className="border-t border-gray-200 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => setShowKontaktdaten(!showKontaktdaten)}
-                        className="w-full flex items-center justify-between text-sm font-medium text-gray-700 hover:text-gray-900"
-                      >
-                        <span>Kontaktdaten bearbeiten</span>
-                        <ChevronDown className={`w-4 h-4 transition-transform ${showKontaktdaten ? 'rotate-180' : ''}`} />
-                      </button>
-                      
-                      {showKontaktdaten && (
-                        <div className="mt-3 space-y-3">
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <input
-                              type="tel"
-                              value={editForm.telefon}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, telefon: e.target.value }))}
-                              placeholder="Telefonnummer"
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none text-sm"
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Mail className="w-4 h-4 text-gray-400" />
-                            <input
-                              type="email"
-                              value={editForm.email}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                              placeholder="E-Mail"
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none text-sm"
-                            />
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Globe className="w-4 h-4 text-gray-400" />
-                            <input
-                              type="url"
-                              value={editForm.website}
-                              onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
-                              placeholder="Website"
-                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none text-sm"
-                            />
-                          </div>
-                        </div>
-                      )}
                     </div>
                       
                     {/* Termin buchen Button bei Beratungsgespräch */}
