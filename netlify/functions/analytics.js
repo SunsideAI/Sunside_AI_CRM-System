@@ -474,6 +474,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   let unterlagen = 0
   let keinInteresse = 0
   let nichtErreicht = 0
+  let ungueltigerLead = 0
   const zeitverlaufMap = {}
   const perUserMap = {}
 
@@ -518,9 +519,13 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     const istBeratungsgespraech = ergebnis.includes('beratungsgespräch') || ergebnis.includes('beratungsgespraech') || ergebnis.includes('termin')
     const istUnterlagen = ergebnis.includes('unterlage') || ergebnis.includes('wiedervorlage')
     const istKeinInteresse = ergebnis.includes('kein interesse') || ergebnis.includes('absage')
+    const istUngueltigerLead = ergebnis.includes('ungültiger lead') || ergebnis.includes('ungultiger lead') || ergebnis.includes('invalid')
 
     if (istNichtErreicht) {
       nichtErreicht++
+    } else if (istUngueltigerLead) {
+      ungueltigerLead++
+      erreicht++ // Zählt als erreicht, da kontaktiert wurde
     } else {
       erreicht++
       
@@ -564,13 +569,17 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
           beratungsgespraech: 0,
           unterlagen: 0,
           keinInteresse: 0,
-          nichtErreicht: 0
+          nichtErreicht: 0,
+          ungueltigerLead: 0
         }
       }
       perUserMap[oderId].einwahlen++
       
       if (istNichtErreicht) {
         perUserMap[oderId].nichtErreicht++
+      } else if (istUngueltigerLead) {
+        perUserMap[oderId].ungueltigerLead++
+        perUserMap[oderId].erreicht++
       } else {
         perUserMap[oderId].erreicht++
         if (istBeratungsgespraech) {
@@ -589,6 +598,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   const beratungsgespraechQuote = erreicht > 0 ? (beratungsgespraech / erreicht) * 100 : 0
   const unterlagenQuote = erreicht > 0 ? (unterlagen / erreicht) * 100 : 0
   const keinInteresseQuote = erreicht > 0 ? (keinInteresse / erreicht) * 100 : 0
+  const ungueltigerLeadQuote = erreicht > 0 ? (ungueltigerLead / erreicht) * 100 : 0
 
   // Zeitverlauf formatieren - mit Zeitraum-Parametern
   const zeitverlauf = formatZeitverlauf(zeitverlaufMap, startDate, endDate)
@@ -611,10 +621,12 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       unterlagen,
       keinInteresse,
       nichtErreicht,
+      ungueltigerLead,
       erreichQuote,
       beratungsgespraechQuote,
       unterlagenQuote,
-      keinInteresseQuote
+      keinInteresseQuote,
+      ungueltigerLeadQuote
     },
     zeitverlauf,
     perUser
