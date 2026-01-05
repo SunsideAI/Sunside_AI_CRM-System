@@ -42,7 +42,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
   const [ansprechpartnerVorname, setAnsprechpartnerVorname] = useState(lead?.ansprechpartnerVorname || '')
   const [ansprechpartnerNachname, setAnsprechpartnerNachname] = useState(lead?.ansprechpartnerNachname || '')
   const [unternehmensname, setUnternehmensname] = useState(lead?.unternehmensname || lead?.unternehmen || '')
-  const [taetigkeit, setTaetigkeit] = useState('Makler')
+  const [taetigkeit, setTaetigkeit] = useState('Immobilienmakler')
   const [problemstellung, setProblemstellung] = useState('')
 
   // Prüfen ob User selbst Closer sein kann
@@ -336,7 +336,8 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 kontaktiert: true,
                 datum: toLocalDateString(new Date()),
                 ansprechpartnerVorname: ansprechpartnerVorname,
-                ansprechpartnerNachname: ansprechpartnerNachname
+                ansprechpartnerNachname: ansprechpartnerNachname,
+                kategorie: taetigkeit  // Immobilienmakler oder Sachverständiger
               },
               historyEntry: {
                 action: 'termin',
@@ -689,14 +690,14 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
             <label className="block text-xs text-gray-500 mb-1">Tätigkeit</label>
             <div className="flex gap-2">
               <button
-                onClick={() => setTaetigkeit('Makler')}
+                onClick={() => setTaetigkeit('Immobilienmakler')}
                 className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                  taetigkeit === 'Makler'
+                  taetigkeit === 'Immobilienmakler'
                     ? 'bg-purple-600 text-white'
                     : 'bg-gray-100 hover:bg-gray-200'
                 }`}
               >
-                Makler
+                Immobilienmakler
               </button>
               <button
                 onClick={() => setTaetigkeit('Sachverständiger')}
