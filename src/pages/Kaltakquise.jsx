@@ -54,6 +54,16 @@ function getErgebnisColor(ergebnis) {
   return colors[option?.color || 'gray']
 }
 
+// Länderflagge als Emoji
+function getLandFlag(land) {
+  const flags = {
+    'Deutschland': '🇩🇪',
+    'Österreich': '🇦🇹',
+    'Schweiz': '🇨🇭'
+  }
+  return flags[land] || ''
+}
+
 function Kaltakquise() {
   const { user, isAdmin } = useAuth()
   
@@ -67,6 +77,7 @@ function Kaltakquise() {
   const [filterContacted, setFilterContacted] = useState('all') // 'all', 'true', 'false'
   const [filterResult, setFilterResult] = useState('all')
   const [filterVertriebler, setFilterVertriebler] = useState('all') // NEU: Vertriebler-Filter
+  const [filterLand, setFilterLand] = useState('all') // Land-Filter: 'all', 'Deutschland', 'Österreich', 'Schweiz'
   const [viewMode, setViewMode] = useState('own') // 'all' oder 'own' (für Admins)
   const [offset, setOffset] = useState(null)
   const [hasMore, setHasMore] = useState(false)
@@ -123,6 +134,7 @@ function Kaltakquise() {
       if (filterContacted !== 'all') params.append('contacted', filterContacted)
       if (filterResult !== 'all') params.append('result', filterResult)
       if (filterVertriebler !== 'all') params.append('vertriebler', filterVertriebler)
+      if (filterLand !== 'all') params.append('land', filterLand)
       if (newOffset) params.append('offset', newOffset)
 
       const response = await fetch(`/.netlify/functions/leads?${params.toString()}`)
@@ -150,12 +162,12 @@ function Kaltakquise() {
     } finally {
       setLoading(false)
     }
-  }, [user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, filterVertriebler, offset])
+  }, [user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, offset])
 
   // Initial laden
   useEffect(() => {
     loadLeads()
-  }, [viewMode, search, filterContacted, filterResult, filterVertriebler])
+  }, [viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand])
 
   // Offene Lead-Anfrage laden
   useEffect(() => {
@@ -596,6 +608,18 @@ function Kaltakquise() {
             ))}
           </select>
 
+          {/* Filter: Land */}
+          <select
+            value={filterLand}
+            onChange={(e) => { setFilterLand(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
+            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white"
+          >
+            <option value="all">🌍 Alle Länder</option>
+            <option value="Deutschland">🇩🇪 Deutschland</option>
+            <option value="Österreich">🇦🇹 Österreich</option>
+            <option value="Schweiz">🇨🇭 Schweiz</option>
+          </select>
+
           {/* Filter: Vertriebler (nur für Admins bei "Alle Leads") */}
           {isAdmin() && viewMode === 'all' && (
             <select
@@ -704,6 +728,9 @@ function Kaltakquise() {
                     {/* Standort */}
                     <td className="px-4 py-3 hidden md:table-cell">
                       <div className="flex items-center text-gray-600">
+                        {lead.land && (
+                          <span className="mr-1.5 text-base" title={lead.land}>{getLandFlag(lead.land)}</span>
+                        )}
                         <MapPin className="w-4 h-4 mr-1.5 text-gray-400" />
                         {lead.stadt}
                       </div>
@@ -929,6 +956,9 @@ function Kaltakquise() {
                   </a>
                 )}
                 <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                  {selectedLead.land && (
+                    <span className="text-xl mr-2" title={selectedLead.land}>{getLandFlag(selectedLead.land)}</span>
+                  )}
                   <MapPin className="w-5 h-5 text-sunside-primary mr-3" />
                   <span className="text-gray-900">{selectedLead.stadt}</span>
                 </div>
