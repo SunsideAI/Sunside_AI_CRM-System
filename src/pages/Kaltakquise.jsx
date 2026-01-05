@@ -83,7 +83,12 @@ function Kaltakquise() {
     ansprechpartnerNachname: '',
     neuerKommentar: '', // Für neuen manuellen Kommentar
     ansprechpartnerValidation: false, // Für Validierung beim Button-Klick
-    wiedervorlageDatum: '' // Datum für Wiedervorlage
+    // Stammdaten (editierbar)
+    telefon: '',
+    email: '',
+    website: '',
+    // Wiedervorlage
+    wiedervorlageDatum: ''
   })
   
   // Auto-Save State
@@ -106,7 +111,7 @@ function Kaltakquise() {
     try {
       const params = new URLSearchParams()
       params.append('userName', user?.vor_nachname || '')
-      params.append('userRole', isAdmin() ? 'Admin' : 'Coldcaller')
+      params.append('userRole', isAdmin() ? 'Admin' : 'Setter')
       params.append('view', viewMode)
       params.append('limit', '50')
       
@@ -252,6 +257,11 @@ function Kaltakquise() {
       ansprechpartnerNachname: lead.ansprechpartnerNachname || '',
       neuerKommentar: '',
       ansprechpartnerValidation: false,
+      // Stammdaten
+      telefon: lead.telefon || '',
+      email: lead.email || '',
+      website: lead.website || '',
+      // Wiedervorlage
       wiedervorlageDatum: lead.wiedervorlageDatum || ''
     })
     setEditMode(false)
@@ -319,7 +329,7 @@ function Kaltakquise() {
   const saveLead = async () => {
     if (!selectedLead) return
     
-    // Validierung: Wiedervorlage braucht Datum
+    // Validierung: Wiedervorlage benötigt ein Datum
     if (editForm.ergebnis === 'Wiedervorlage' && !editForm.wiedervorlageDatum) {
       alert('Bitte gib ein Datum für die Wiedervorlage an.')
       return
@@ -341,6 +351,19 @@ function Kaltakquise() {
         })
       }
       
+      // Wiedervorlage gesetzt?
+      if (editForm.ergebnis === 'Wiedervorlage' && editForm.wiedervorlageDatum) {
+        const wvDate = new Date(editForm.wiedervorlageDatum)
+        const wvFormatted = wvDate.toLocaleDateString('de-DE', { 
+          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+        })
+        historyEntries.push({
+          action: 'wiedervorlage',
+          details: `Wiedervorlage: ${wvFormatted}`,
+          userName: user?.name || 'Unbekannt'
+        })
+      }
+      
       // Kontaktiert geändert?
       if (editForm.kontaktiert !== selectedLead.kontaktiert) {
         historyEntries.push({
@@ -358,18 +381,6 @@ function Kaltakquise() {
           userName: user?.name || 'Unbekannt'
         })
       }
-      
-      // Wiedervorlage geändert?
-      if (editForm.ergebnis === 'Wiedervorlage' && editForm.wiedervorlageDatum !== selectedLead.wiedervorlageDatum) {
-        const datumFormatiert = editForm.wiedervorlageDatum 
-          ? new Date(editForm.wiedervorlageDatum).toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-          : 'Entfernt'
-        historyEntries.push({
-          action: 'wiedervorlage',
-          details: `Wiedervorlage: ${datumFormatiert}`,
-          userName: user?.name || 'Unbekannt'
-        })
-      }
 
       // Updates vorbereiten (ohne kommentar - wird über historyEntry gehandhabt)
       const updates = {
@@ -377,6 +388,11 @@ function Kaltakquise() {
         ergebnis: editForm.ergebnis,
         ansprechpartnerVorname: editForm.ansprechpartnerVorname,
         ansprechpartnerNachname: editForm.ansprechpartnerNachname,
+        // Stammdaten
+        telefon: editForm.telefon,
+        email: editForm.email,
+        website: editForm.website,
+        // Wiedervorlage (nur wenn Ergebnis Wiedervorlage, sonst löschen)
         wiedervorlageDatum: editForm.ergebnis === 'Wiedervorlage' ? editForm.wiedervorlageDatum : ''
       }
 
@@ -712,16 +728,9 @@ function Kaltakquise() {
                     {/* Ergebnis */}
                     <td className="px-4 py-3">
                       {lead.ergebnis ? (
-                        <div className="flex flex-col gap-1">
-                          <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getErgebnisColor(lead.ergebnis)}`}>
-                            {lead.ergebnis}
-                          </span>
-                          {lead.ergebnis === 'Wiedervorlage' && lead.wiedervorlageDatum && (
-                            <span className="text-xs text-orange-600 flex items-center gap-1">
-                              🔔 {new Date(lead.wiedervorlageDatum).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          )}
-                        </div>
+                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getErgebnisColor(lead.ergebnis)}`}>
+                          {lead.ergebnis}
+                        </span>
                       ) : (
                         <span className="text-gray-400 text-sm">—</span>
                       )}
@@ -840,7 +849,6 @@ function Kaltakquise() {
                   lead={selectedLead}
                   user={user}
                   inline={true}
-                  kategorie="Kaltakquise"
                   onClose={() => setShowEmailComposer(false)}
                   onSent={(info) => {
                     console.log('E-Mail gesendet:', info)
@@ -973,26 +981,24 @@ function Kaltakquise() {
                           <option key={option.value} value={option.value}>{option.label}</option>
                         ))}
                       </select>
+                      
+                      {/* Wiedervorlage DateTime-Picker */}
+                      {editForm.ergebnis === 'Wiedervorlage' && (
+                        <div className="mt-3">
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Wiedervorlage am <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="datetime-local"
+                            value={editForm.wiedervorlageDatum || ''}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, wiedervorlageDatum: e.target.value }))}
+                            min={new Date().toISOString().slice(0, 16)}
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Wann soll der Lead erneut kontaktiert werden?</p>
+                        </div>
+                      )}
                     </div>
-
-                    {/* Wiedervorlage-Datum - nur wenn Ergebnis "Wiedervorlage" */}
-                    {editForm.ergebnis === 'Wiedervorlage' && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Wiedervorlage am <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="datetime-local"
-                          value={editForm.wiedervorlageDatum || ''}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, wiedervorlageDatum: e.target.value }))}
-                          min={new Date().toISOString().slice(0, 16)}
-                          className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
-                        />
-                        <p className="mt-1 text-xs text-gray-500">
-                          Der Lead wird im Kalender angezeigt und erinnert dich an den Anruf.
-                        </p>
-                      </div>
-                    )}
 
                     {/* Ansprechpartner - PFLICHTFELD (vor den Buttons!) */}
                     <div>
@@ -1036,9 +1042,48 @@ function Kaltakquise() {
                         />
                       </div>
                     </div>
+
+                    {/* Kontaktdaten bearbeiten */}
+                    <div className="border-t border-gray-200 pt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Kontaktdaten
+                      </label>
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Phone className="w-4 h-4 text-gray-400" />
+                          <input
+                            type="tel"
+                            value={editForm.telefon}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, telefon: e.target.value }))}
+                            placeholder="Telefonnummer"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none text-sm"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-4 h-4 text-gray-400" />
+                          <input
+                            type="email"
+                            value={editForm.email}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                            placeholder="E-Mail"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none text-sm"
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Globe className="w-4 h-4 text-gray-400" />
+                          <input
+                            type="url"
+                            value={editForm.website}
+                            onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
+                            placeholder="Website"
+                            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
                       
-                    {/* Termin buchen Button bei Beratungsgespräch - nur wenn noch kein Termin gebucht */}
-                    {editForm.ergebnis === 'Beratungsgespräch' && selectedLead.ergebnis !== 'Beratungsgespräch' && (
+                    {/* Termin buchen Button bei Beratungsgespräch */}
+                    {editForm.ergebnis === 'Beratungsgespräch' && (
                       <button
                         onClick={() => {
                           if (!editForm.ansprechpartnerVorname || !editForm.ansprechpartnerNachname) {
@@ -1051,16 +1096,8 @@ function Kaltakquise() {
                         className="w-full flex items-center justify-center px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                       >
                         <Calendar className="w-4 h-4 mr-2" />
-                        Beratungsgespräch buchen
+                        Termin mit Closer buchen
                       </button>
-                    )}
-                    
-                    {/* Hinweis wenn bereits Termin gebucht */}
-                    {selectedLead.ergebnis === 'Beratungsgespräch' && (
-                      <div className="w-full flex items-center justify-center px-4 py-2.5 bg-green-100 text-green-700 rounded-lg">
-                        <Calendar className="w-4 h-4 mr-2" />
-                        Beratungsgespräch bereits gebucht
-                      </div>
                     )}
                     
                     {/* Unterlagen senden Button */}
