@@ -445,7 +445,8 @@ async function assignLeadsToUser(userId, anzahl, baseId, airtableHeaders) {
   // Nur Leads wo:
   // 1. User_Datenbank leer ist (nicht zugewiesen)
   // 2. Bereits_kontaktiert NICHT 'X' ist (nicht kontaktiert)
-  const filterFormula = `AND({User_Datenbank}=BLANK(), OR({Bereits_kontaktiert}=BLANK(), {Bereits_kontaktiert}=''))`
+  // 3. Ergebnis ist NICHT 'Ungültiger Lead' (diese sollen nie wieder vergeben werden)
+  const filterFormula = `AND({User_Datenbank}=BLANK(), OR({Bereits_kontaktiert}=BLANK(), {Bereits_kontaktiert}=''), {Ergebnis}!='Ungültiger Lead')`
   
   let url = `${LEADS_URL}?filterByFormula=${encodeURIComponent(filterFormula)}&maxRecords=${anzahl}`
   
