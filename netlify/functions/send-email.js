@@ -207,6 +207,189 @@ exports.handler = async (event) => {
     }
 
     // ==========================================
+    // CLOSER BENACHRICHTIGEN BEI FREIGABE
+    // ==========================================
+    if (body.action === 'notify-closers-release') {
+      const { termin } = body
+      
+      if (!termin) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'termin ist erforderlich' })
+        }
+      }
+
+      if (!RESEND_API_KEY || !AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'API Keys nicht konfiguriert' })
+        }
+      }
+
+      try {
+        // Alle Closer aus Airtable laden
+        const usersUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('User_Datenbank')}?fields[]=E-Mail_Geschäftlich&fields[]=Vor_Nachname&fields[]=Rolle`
+        const usersResponse = await fetch(usersUrl, {
+          headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
+        })
+        const usersData = await usersResponse.json()
+
+        // Closer filtern (Rolle enthält "Closer" oder "Admin" oder "Coldcaller + Closer")
+        const closerEmails = usersData.records
+          ?.filter(record => {
+            const rollen = record.fields.Rolle || []
+            return rollen.some(r => 
+              r.toLowerCase().includes('closer') || 
+              r.toLowerCase() === 'admin'
+            )
+          })
+          .map(record => record.fields['E-Mail_Geschäftlich'])
+          .filter(email => email && email.includes('@')) || []
+
+        if (closerEmails.length === 0) {
+          console.log('Keine Closer gefunden für Freigabe-Benachrichtigung')
+          return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({ success: true, message: 'Keine Closer gefunden' })
+          }
+        }
+
+        // Email an alle Closer senden
+        const emailHtml = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: Arial, Helvetica, sans-serif; font-size: 14px; line-height: 1.5; color: #333333; margin: 0; padding: 20px; background-color: #f5f5f5;">
+  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+    
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); padding: 30px; text-align: center;">
+      <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 600;">
+        🔄 Termin wieder verfügbar
+      </h1>
+      <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 14px;">
+        Ein Closer hat einen Termin an den Pool freigegeben
+      </p>
+    </div>
+    
+    <!-- Content -->
+    <div style="padding: 30px;">
+      <p style="margin: 0 0 20px 0; color: #555555;">
+        Hallo zusammen,<br><br>
+        <strong>${termin.releasedBy}</strong> hat ein Beratungsgespräch wieder an den Pool freigegeben. Der Termin ist jetzt für alle Closer verfügbar.
+      </p>
+      
+      ${termin.releaseReason && termin.releaseReason !== 'Keine Angabe' ? `
+      <!-- Grund Box -->
+      <div style="background-color: #FEF3C7; border-left: 4px solid #F59E0B; padding: 15px; margin: 0 0 20px 0; border-radius: 0 8px 8px 0;">
+        <p style="margin: 0; color: #92400E; font-size: 14px;">
+          <strong>Grund:</strong> ${termin.releaseReason}
+        </p>
+      </div>
+      ` : ''}
+      
+      <!-- Termin-Details Box -->
+      <div style="background-color: #F3F4F6; border-radius: 8px; padding: 20px; margin: 20px 0;">
+        <h3 style="margin: 0 0 15px 0; color: #EA580C; font-size: 16px;">Termin-Details</h3>
+        
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #666666; width: 140px;">📆 Datum:</td>
+            <td style="padding: 8px 0; color: #333333; font-weight: 600;">${termin.datum}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666666;">🎥 Art:</td>
+            <td style="padding: 8px 0; color: #333333; font-weight: 600;">${termin.art}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666666;">🏢 Unternehmen:</td>
+            <td style="padding: 8px 0; color: #333333; font-weight: 600;">${termin.unternehmen}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #666666;">👤 Ansprechpartner:</td>
+            <td style="padding: 8px 0; color: #333333; font-weight: 600;">${termin.ansprechpartner}</td>
+          </tr>
+        </table>
+      </div>
+      
+      <!-- CTA Button -->
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="https://crmsunsideai.netlify.app/closing" 
+           style="display: inline-block; background: linear-gradient(135deg, #F97316 0%, #EA580C 100%); color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 16px;">
+          Jetzt im CRM übernehmen →
+        </a>
+      </div>
+      
+      <p style="margin: 20px 0 0 0; color: #555555; font-size: 13px; text-align: center;">
+        ⚡ Wer zuerst kommt, mahlt zuerst!
+      </p>
+    </div>
+    
+    <!-- Footer -->
+    <div style="background-color: #F9FAFB; padding: 20px; text-align: center; border-top: 1px solid #E5E7EB;">
+      <img src="https://onecdn.io/media/8c3e476c-82b3-4db6-8cbe-85b46cd452d0/full" 
+           alt="Sunside AI" width="120" style="margin-bottom: 10px;">
+      <p style="margin: 0; color: #888888; font-size: 12px;">
+        Diese E-Mail wurde automatisch vom Sunside AI CRM versendet.
+      </p>
+    </div>
+    
+  </div>
+</body>
+</html>`
+
+        const emailResponse = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            from: 'Sunside AI CRM <team@sunsideai.de>',
+            to: closerEmails,
+            subject: `🔄 Termin freigegeben: ${termin.unternehmen}`,
+            html: emailHtml
+          })
+        })
+
+        const emailResult = await emailResponse.json()
+
+        if (!emailResponse.ok) {
+          console.error('Freigabe-Benachrichtigung fehlgeschlagen:', emailResult)
+          return {
+            statusCode: 500,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Email-Versand fehlgeschlagen', details: emailResult })
+          }
+        }
+
+        console.log(`Freigabe-Benachrichtigung an ${closerEmails.length} Empfänger gesendet`)
+        
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ 
+            success: true, 
+            message: `Freigabe-Benachrichtigung an ${closerEmails.length} Closer gesendet`,
+            recipients: closerEmails
+          })
+        }
+      } catch (notifyError) {
+        console.error('Notify-Closers-Release Fehler:', notifyError)
+        return {
+          statusCode: 500,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Interner Fehler', details: notifyError.message })
+        }
+      }
+    }
+
+    // ==========================================
     // STANDARD EMAIL SENDEN
     // ==========================================
     const {
