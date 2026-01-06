@@ -929,9 +929,9 @@ function Kaltakquise() {
       {/* Lead Detail Modal - Portal rendert direkt in body */}
       {selectedLead && createPortal(
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
               <div>
                 <h2 className="text-xl font-semibold text-gray-900">{selectedLead.unternehmensname}</h2>
                 <p className="text-sm text-gray-500">{selectedLead.kategorie}</p>
@@ -945,7 +945,7 @@ function Kaltakquise() {
             </div>
 
             {/* Modal Content */}
-            <div className="px-6 py-4 overflow-y-auto max-h-[calc(90vh-200px)]">
+            <div className="px-6 py-4 overflow-y-auto flex-1">
               {showTerminPicker ? (
                 // Termin-Picker anzeigen
                 <TerminPicker
@@ -1384,7 +1384,7 @@ function Kaltakquise() {
 
             {/* Modal Footer - nur zeigen wenn weder TerminPicker noch EmailComposer */}
             {!showTerminPicker && !showEmailComposer && (
-            <div className="border-t border-gray-200 bg-gray-50">
+            <div className="border-t border-gray-200 bg-gray-50 flex-shrink-0 rounded-b-2xl">
                 {kommentarOnlyMode ? (
                   /* Kommentar-Only Modus für gesperrte Leads */
                   <div className="px-6 py-4 space-y-3">
