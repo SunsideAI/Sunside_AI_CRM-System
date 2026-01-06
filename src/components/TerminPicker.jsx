@@ -110,14 +110,10 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
     setError('') // Error zurücksetzen bei neuem Laden
     
     try {
-      // Start: gewähltes Datum, End: gewähltes Datum + 1 Tag
-      const startDate = new Date(selectedDate)
-      startDate.setHours(0, 0, 0, 0)
-      const endDate = new Date(selectedDate)
-      endDate.setHours(23, 59, 59, 999)
-      
+      // Datum als reinen String senden (YYYY-MM-DD) - Backend wendet deutsche Zeitzone an
+      // So ist es unabhängig von der Browser-Zeitzone des Vertrieblers
       const response = await fetch(
-        `/.netlify/functions/calendar?action=calendly-slots&eventTypeUri=${encodeURIComponent(eventType.uri)}&startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+        `/.netlify/functions/calendar?action=calendly-slots&eventTypeUri=${encodeURIComponent(eventType.uri)}&dateString=${selectedDate}`
       )
       const data = await response.json()
       
@@ -125,15 +121,20 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
         // Erfolgreiche Antwort - auch wenn keine Slots verfügbar sind
         const availableSlots = data.slots || []
         
-        // Nur zukünftige Slots filtern
+        // Nur zukünftige Slots filtern (Vergleich in UTC)
         const now = new Date()
         const futureSlots = availableSlots
           .filter(slot => new Date(slot.start) > now)
           .map(slot => {
+            // Zeiten immer in deutscher Zeitzone anzeigen
             const startTime = new Date(slot.start)
             return {
               start: slot.start,
-              startTime: startTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }),
+              startTime: startTime.toLocaleTimeString('de-DE', { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                timeZone: 'Europe/Berlin'  // Immer deutsche Zeit anzeigen
+              }),
               inviteesRemaining: slot.inviteesRemaining
             }
           })
@@ -257,7 +258,8 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
               month: '2-digit',
               year: 'numeric',
               hour: '2-digit',
-              minute: '2-digit'
+              minute: '2-digit',
+              timeZone: 'Europe/Berlin'  // Immer deutsche Zeit
             })
             const terminTyp = selectedType === 'video' ? 'Video' : 'Telefonisch'
             const terminDetails = `Neuer Termin gebucht (nach Absage): ${terminDatum} Uhr (${terminTyp}) - ${problemstellung}`
@@ -314,14 +316,15 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
 
         // Original-Lead aktualisieren
         try {
-          // Formatierter Termin-Text
+          // Formatierter Termin-Text - immer deutsche Zeit
           const terminDatum = new Date(selectedSlot.start).toLocaleDateString('de-DE', {
             weekday: 'long',
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
+            timeZone: 'Europe/Berlin'  // Immer deutsche Zeit
           })
           const terminTyp = selectedType === 'video' ? 'Video' : 'Telefonisch'
           const terminDetails = `Termin gebucht: ${terminDatum} Uhr (${terminTyp}) - ${problemstellung}`
@@ -366,7 +369,8 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                   month: '2-digit', 
                   year: 'numeric',
                   hour: '2-digit',
-                  minute: '2-digit'
+                  minute: '2-digit',
+                  timeZone: 'Europe/Berlin'  // Immer deutsche Zeit
                 }),
                 art: selectedType === 'video' ? 'Video (Google Meet)' : 'Telefonisch',
                 unternehmen: unternehmensname,
@@ -739,7 +743,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
       {selectedSlot && (
         <div className="border-t pt-4 space-y-3">
           <p className="text-sm text-gray-600 text-center">
-            Termin: <strong>{new Date(selectedSlot.start).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit' })}</strong> um <strong>{selectedSlot.startTime} Uhr</strong>
+            Termin: <strong>{new Date(selectedSlot.start).toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', timeZone: 'Europe/Berlin' })}</strong> um <strong>{selectedSlot.startTime} Uhr</strong>
             {selectedType === 'video' ? ' (Video)' : ' (Telefon)'}
           </p>
           
