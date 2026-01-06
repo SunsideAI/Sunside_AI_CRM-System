@@ -334,7 +334,9 @@ export async function handler(event) {
       }
 
       // Automatisch Datum setzen wenn kontaktiert
-      if (updates.kontaktiert === true && !updates.datum) {
+      // ABER: Nur wenn echte Updates vorhanden sind (nicht bei reinen Kommentar-Updates)
+      const hasRealUpdates = Object.keys(updates).length > 0
+      if (hasRealUpdates && updates.kontaktiert === true && !updates.datum) {
         fieldsToUpdate['Datum'] = new Date().toISOString().split('T')[0]
       }
 
