@@ -7,6 +7,7 @@ import {
   Calendar, 
   Users,
   User as UserIcon,
+  UserMinus,
   Target,
   Search,
   X,
@@ -121,6 +122,11 @@ function Closing() {
   
   // Neu-Terminieren State (innerhalb des Modals)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
+  
+  // Freigabe an Pool State
+  const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
+  const [releaseReason, setReleaseReason] = useState('')
+  const [releasing, setReleasing] = useState(false)
   
   // Website-Statistiken einklappbar (für Status != Lead)
   const [showWebsiteStats, setShowWebsiteStats] = useState(false)
@@ -420,6 +426,84 @@ function Closing() {
     }
   }
 
+  // Lead an Pool freigeben
+  const releaseLead = async () => {
+    if (!selectedLead) return
+    
+    const userName = user?.vor_nachname || user?.name || 'Closer'
+    
+    try {
+      setReleasing(true)
+      
+      // 1. Hot Lead updaten - closerName entfernen
+      const response = await fetch('/.netlify/functions/hot-leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hotLeadId: selectedLead.id,
+          updates: {
+            closerName: ''  // Leer = Pool
+          }
+        })
+      })
+      
+      const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Fehler beim Freigeben')
+      }
+      
+      // 2. E-Mail an alle Closer senden
+      try {
+        await fetch('/.netlify/functions/send-email', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'notify-closers-release',
+            termin: {
+              datum: selectedLead.terminDatum ? new Date(selectedLead.terminDatum).toLocaleDateString('de-DE', { 
+                weekday: 'long', 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+              }) : 'Nicht festgelegt',
+              art: selectedLead.terminart || 'Unbekannt',
+              unternehmen: selectedLead.unternehmen,
+              ansprechpartner: selectedLead.ansprechpartner,
+              releasedBy: userName,
+              releaseReason: releaseReason || 'Keine Angabe'
+            }
+          })
+        })
+      } catch (emailErr) {
+        console.error('Closer-Benachrichtigung fehlgeschlagen:', emailErr)
+        // Kein harter Fehler - Lead wurde trotzdem freigegeben
+      }
+      
+      // 3. UI aktualisieren
+      showToast('success', `${selectedLead.unternehmen} wurde an den Pool freigegeben`)
+      setShowReleaseConfirm(false)
+      setReleaseReason('')
+      setSelectedLead(null)
+      
+      // 4. Pool-Anzahl aktualisieren
+      loadPoolCount()
+      
+      // 5. Leads neu laden
+      if (viewMode === 'own') {
+        loadLeads()
+      }
+      
+    } catch (err) {
+      console.error('Lead freigeben fehlgeschlagen:', err)
+      showToast('error', 'Fehler: ' + err.message)
+    } finally {
+      setReleasing(false)
+    }
+  }
+
   const handleRefresh = async () => {
     setRefreshing(true)
     if (viewMode === 'pool') {
@@ -530,6 +614,8 @@ function Closing() {
     setShowEmailComposer(false)
     setShowTerminPicker(false)
     setShowWebsiteStats(false)
+    setShowReleaseConfirm(false)
+    setReleaseReason('')
   }
 
   const handleEditChange = (field, value) => {
@@ -1776,6 +1862,17 @@ function Closing() {
                   >
                     Schließen
                   </button>
+                  {/* Freigabe-Button - nur wenn Lead einem Closer zugewiesen ist */}
+                  {selectedLead.closerName && (
+                    <button
+                      type="button"
+                      onClick={() => setShowReleaseConfirm(true)}
+                      className="flex items-center px-4 py-2 text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors"
+                    >
+                      <UserMinus className="w-4 h-4 mr-2" />
+                      An Pool freigeben
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => setEditMode(true)}
@@ -1786,6 +1883,64 @@ function Closing() {
                   </button>
                 </>
               )}
+              </div>
+            )}
+
+            {/* Freigabe-Bestätigung Modal */}
+            {showReleaseConfirm && (
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 rounded-2xl">
+                <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                      <UserMinus className="w-5 h-5 text-orange-600" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">Lead freigeben?</h3>
+                      <p className="text-sm text-gray-500">{selectedLead.unternehmen}</p>
+                    </div>
+                  </div>
+                  
+                  <p className="text-gray-600 mb-4">
+                    Der Lead wird wieder für alle Closer im Pool verfügbar. Alle Closer werden per E-Mail benachrichtigt.
+                  </p>
+                  
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Grund (optional)
+                    </label>
+                    <textarea
+                      value={releaseReason}
+                      onChange={(e) => setReleaseReason(e.target.value)}
+                      rows={2}
+                      placeholder="z.B. Urlaub, Krankheit, Kapazität..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none resize-none"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { setShowReleaseConfirm(false); setReleaseReason(''); }}
+                      disabled={releasing}
+                      className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                      Abbrechen
+                    </button>
+                    <button
+                      onClick={releaseLead}
+                      disabled={releasing}
+                      className="flex-1 flex items-center justify-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                    >
+                      {releasing ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <>
+                          <UserMinus className="w-4 h-4 mr-2" />
+                          Freigeben
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
