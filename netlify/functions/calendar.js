@@ -143,8 +143,10 @@ exports.handler = async (event) => {
       // ----------------------------------------
       if (action === 'calendly-slots') {
         const eventTypeUri = params.eventTypeUri
-        const startDate = params.startDate
-        const endDate = params.endDate
+        const dateString = params.dateString  // Format: YYYY-MM-DD (reiner String, keine Zeitzone)
+        // Fallback für alte Anfragen mit startDate/endDate
+        const startDateParam = params.startDate
+        const endDateParam = params.endDate
 
         if (!eventTypeUri) {
           return {
@@ -155,9 +157,44 @@ exports.handler = async (event) => {
         }
 
         try {
-          const now = new Date()
-          const start = startDate ? new Date(startDate) : now
-          const end = endDate ? new Date(endDate) : new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+          let start, end
+          
+          if (dateString) {
+            // NEU: Datum als String empfangen, deutsche Zeitzone anwenden
+            // So ist es unabhängig von der Browser-Zeitzone des Vertrieblers
+            // Format: "2025-01-15" → "2025-01-15T00:00:00+01:00" (deutsche Zeit)
+            
+            // Deutsche Zeitzone: Im Winter UTC+1, im Sommer UTC+2
+            // Wir nutzen eine einfache Berechnung für CET/CEST
+            const [year, month, day] = dateString.split('-').map(Number)
+            
+            // Prüfen ob Sommerzeit (vereinfacht: letzter Sonntag März bis letzter Sonntag Oktober)
+            const testDate = new Date(year, month - 1, day)
+            const isSummerTime = (() => {
+              // Letzter Sonntag im März
+              const marchLast = new Date(year, 2, 31)
+              while (marchLast.getDay() !== 0) marchLast.setDate(marchLast.getDate() - 1)
+              // Letzter Sonntag im Oktober
+              const octoberLast = new Date(year, 9, 31)
+              while (octoberLast.getDay() !== 0) octoberLast.setDate(octoberLast.getDate() - 1)
+              
+              return testDate >= marchLast && testDate < octoberLast
+            })()
+            
+            const offsetHours = isSummerTime ? 2 : 1  // CEST = +2, CET = +1
+            
+            // Start: 00:00 deutsche Zeit → UTC
+            start = new Date(Date.UTC(year, month - 1, day, 0 - offsetHours, 0, 0))
+            // Ende: 23:59 deutsche Zeit → UTC
+            end = new Date(Date.UTC(year, month - 1, day, 23 - offsetHours, 59, 59))
+            
+            console.log(`Slots für ${dateString} (DE): ${start.toISOString()} - ${end.toISOString()}`)
+          } else {
+            // Fallback: alte Logik mit startDate/endDate Parametern
+            const now = new Date()
+            start = startDateParam ? new Date(startDateParam) : now
+            end = endDateParam ? new Date(endDateParam) : new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000)
+          }
 
           const slotsUrl = new URL('https://api.calendly.com/event_type_available_times')
           slotsUrl.searchParams.append('event_type', eventTypeUri)
@@ -186,6 +223,7 @@ exports.handler = async (event) => {
             body: JSON.stringify({
               success: true,
               eventTypeUri,
+              dateString: dateString || null,
               startDate: start.toISOString(),
               endDate: end.toISOString(),
               slots
