@@ -25,7 +25,8 @@ import {
   User as UserIcon,
   Send,
   Plus,
-  AlertCircle
+  AlertCircle,
+  Lock
 } from 'lucide-react'
 
 // Ergebnis-Optionen (aus Airtable)
@@ -85,6 +86,7 @@ function Kaltakquise() {
   // Modal State
   const [selectedLead, setSelectedLead] = useState(null)
   const [editMode, setEditMode] = useState(false)
+  const [kommentarOnlyMode, setKommentarOnlyMode] = useState(false) // Soft Lock: Nur Kommentare für Beratungsgespräch
   const [saving, setSaving] = useState(false)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
@@ -505,6 +507,56 @@ function Kaltakquise() {
     }
   }
 
+  // Soft Lock: Nur Kommentar speichern (für Beratungsgespräch-Leads)
+  const saveKommentarOnly = async () => {
+    if (!selectedLead || !editForm.neuerKommentar?.trim()) {
+      setKommentarOnlyMode(false)
+      return
+    }
+    
+    setSaving(true)
+    
+    try {
+      const response = await fetch('/.netlify/functions/leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: selectedLead.id,
+          historyEntry: {
+            action: 'kommentar',
+            details: editForm.neuerKommentar.trim(),
+            userName: user?.name || 'Unbekannt'
+          }
+        })
+      })
+      
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Fehler beim Speichern')
+      }
+      
+      const data = await response.json()
+      const updatedKommentar = data.lead?.kommentar || selectedLead.kommentar
+      
+      // Lead in Liste aktualisieren
+      setLeads(prev => prev.map(lead => 
+        lead.id === selectedLead.id 
+          ? { ...lead, kommentar: updatedKommentar }
+          : lead
+      ))
+      
+      // Modal aktualisieren
+      setSelectedLead(prev => ({ ...prev, kommentar: updatedKommentar }))
+      setEditForm(prev => ({ ...prev, neuerKommentar: '', kommentar: updatedKommentar }))
+      setKommentarOnlyMode(false)
+      
+    } catch (err) {
+      alert(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // Prüfen ob "Unterlagen senden" Button angezeigt werden soll
   const showUnterlagenButton = (lead) => {
     if (!lead?.ergebnis) return false
@@ -885,7 +937,7 @@ function Kaltakquise() {
                 <p className="text-sm text-gray-500">{selectedLead.kategorie}</p>
               </div>
               <button
-                onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); }}
+                onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
                 className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
               >
                 <X className="w-5 h-5 text-gray-500" />
@@ -942,6 +994,17 @@ function Kaltakquise() {
                 />
               ) : (
                 <>
+              {/* Soft Lock Banner für Beratungsgespräch */}
+              {selectedLead.ergebnis === 'Beratungsgespräch' && !kommentarOnlyMode && (
+                <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center gap-3">
+                  <Lock className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium text-purple-800">Dieser Lead ist im Closing-Prozess</p>
+                    <p className="text-xs text-purple-600">Änderungen nur noch über die Closing-Seite. Du kannst weiterhin Kommentare hinzufügen.</p>
+                  </div>
+                </div>
+              )}
+              
               {/* Kontaktdaten */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {/* Telefon */}
@@ -1321,41 +1384,89 @@ function Kaltakquise() {
 
             {/* Modal Footer - nur zeigen wenn weder TerminPicker noch EmailComposer */}
             {!showTerminPicker && !showEmailComposer && (
-            <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">
-                {editMode ? (
-                  <>
-                    <button
-                      onClick={() => setEditMode(false)}
-                      className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-                    >
-                      Abbrechen
-                    </button>
-                    <button
-                      onClick={saveLead}
-                      disabled={saving}
-                      className="flex items-center px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
-                    >
-                      {saving ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      ) : null}
-                      Speichern
-                    </button>
-                  </>
+            <div className="border-t border-gray-200 bg-gray-50">
+                {kommentarOnlyMode ? (
+                  /* Kommentar-Only Modus für gesperrte Leads */
+                  <div className="px-6 py-4 space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Kommentar hinzufügen</label>
+                      <textarea
+                        value={editForm.neuerKommentar}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, neuerKommentar: e.target.value }))}
+                        rows={3}
+                        autoFocus
+                        placeholder="Notiz hinzufügen..."
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                      />
+                    </div>
+                    <div className="flex items-center justify-end gap-3">
+                      <button
+                        onClick={() => { setKommentarOnlyMode(false); setEditForm(prev => ({ ...prev, neuerKommentar: '' })); }}
+                        className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                      >
+                        Abbrechen
+                      </button>
+                      <button
+                        onClick={saveKommentarOnly}
+                        disabled={saving || !editForm.neuerKommentar?.trim()}
+                        className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                      >
+                        {saving ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : null}
+                        Kommentar speichern
+                      </button>
+                    </div>
+                  </div>
                 ) : (
-                  <>
-                    <button
-                      onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); }}
-                      className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-                    >
-                      Schließen
-                    </button>
-                    <button
-                      onClick={() => setEditMode(true)}
-                      className="px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors"
-                    >
-                      Bearbeiten
-                    </button>
-                  </>
+                  <div className="flex items-center justify-end gap-3 px-6 py-4">
+                    {editMode ? (
+                      <>
+                        <button
+                          onClick={() => setEditMode(false)}
+                          className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                          Abbrechen
+                        </button>
+                        <button
+                          onClick={saveLead}
+                          disabled={saving}
+                          className="flex items-center px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                        >
+                          {saving ? (
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                          ) : null}
+                          Speichern
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
+                          className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                        >
+                          Schließen
+                        </button>
+                        {/* Soft Lock: Bei Beratungsgespräch nur Kommentar-Button, sonst Bearbeiten */}
+                        {selectedLead.ergebnis === 'Beratungsgespräch' ? (
+                          <button
+                            onClick={() => setKommentarOnlyMode(true)}
+                            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                          >
+                            <MessageSquare className="w-4 h-4 mr-2" />
+                            Kommentar hinzufügen
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => setEditMode(true)}
+                            className="px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors"
+                          >
+                            Bearbeiten
+                          </button>
+                        )}
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
             )}
