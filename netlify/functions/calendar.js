@@ -359,13 +359,47 @@ exports.handler = async (event) => {
             }
           }
 
+          // Meeting-Link extrahieren (für Video-Termine)
+          let meetingLink = null
+          
+          // Versuche den Link aus der Event-Location zu bekommen
+          if (data.resource?.event) {
+            try {
+              // Event-Details abrufen für den Meeting-Link
+              const eventResponse = await fetch(data.resource.event, {
+                headers: calendlyHeaders
+              })
+              const eventData = await eventResponse.json()
+              console.log('Event Details:', JSON.stringify(eventData, null, 2))
+              
+              // Location kann den Google Meet Link enthalten
+              const location = eventData.resource?.location
+              if (location) {
+                // Google Meet Link extrahieren
+                if (location.type === 'google_conference' || location.type === 'custom') {
+                  meetingLink = location.join_url || location.location
+                } else if (typeof location === 'string' && location.includes('meet.google.com')) {
+                  meetingLink = location
+                }
+              }
+              
+              // Fallback: Manchmal ist der Link in den Event-Details
+              if (!meetingLink && eventData.resource?.conferencing) {
+                meetingLink = eventData.resource.conferencing.join_url
+              }
+            } catch (eventErr) {
+              console.error('Event-Details abrufen fehlgeschlagen:', eventErr)
+            }
+          }
+
           return {
             statusCode: 200,
             headers: corsHeaders,
             body: JSON.stringify({
               success: true,
               message: 'Calendly Termin erstellt!',
-              event: data
+              event: data,
+              meetingLink: meetingLink  // Link für Video-Termine
             })
           }
 
