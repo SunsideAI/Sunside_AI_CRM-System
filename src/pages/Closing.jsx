@@ -1624,29 +1624,6 @@ function Closing() {
                       </div>
                     </div>
 
-                    {/* Video-Link (wenn Video-Termin mit Link) */}
-                    {selectedLead.terminart === 'Video' && selectedLead.meetingLink && (
-                      <a
-                        href={selectedLead.meetingLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors group"
-                      >
-                        <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3 group-hover:bg-blue-600 transition-colors">
-                          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
-                          </svg>
-                        </div>
-                        <div className="flex-1">
-                          <span className="text-sm font-medium text-blue-700">Video-Meeting beitreten</span>
-                          <p className="text-xs text-blue-500 truncate max-w-[200px]">{selectedLead.meetingLink}</p>
-                        </div>
-                        <svg className="w-5 h-5 text-blue-400 group-hover:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
-                      </a>
-                    )}
-
                     {/* Coldcaller */}
                     <div className="flex items-center p-3 bg-gray-50 rounded-lg">
                       <UserIcon className="w-5 h-5 text-purple-600 mr-3" />
@@ -1664,6 +1641,29 @@ function Closing() {
                         <p className="text-gray-900">{safeString(selectedLead.closerName) || '-'}</p>
                       </div>
                     </div>
+
+                    {/* Video-Link (wenn Video-Termin mit Link) - ganz unten */}
+                    {selectedLead.terminart === 'Video' && selectedLead.meetingLink && (
+                      <a
+                        href={selectedLead.meetingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors group col-span-2"
+                      >
+                        <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3 group-hover:bg-blue-600 transition-colors">
+                          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
+                          </svg>
+                        </div>
+                        <div className="flex-1">
+                          <span className="text-sm font-medium text-blue-700">Video-Meeting beitreten</span>
+                          <p className="text-xs text-blue-500 truncate max-w-[300px]">{selectedLead.meetingLink}</p>
+                        </div>
+                        <svg className="w-5 h-5 text-blue-400 group-hover:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                        </svg>
+                      </a>
+                    )}
                   </div>
 
                   {/* Website-Statistiken (bei Status "Lead") ODER Deal-Details (bei anderen Status) */}
