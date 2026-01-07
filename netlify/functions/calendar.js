@@ -316,7 +316,7 @@ exports.handler = async (event) => {
             }
           }
 
-          // Buchungs-Request
+          // Buchungs-Request - Location je nach Terminart
           const requestBody = {
             event_type: eventTypeUri,
             start_time: startTime,
@@ -329,11 +329,16 @@ exports.handler = async (event) => {
               text_reminder_number: formattedPhone
             },
             questions_and_answers: questionsAndAnswers,
-            location: {
+            event_guests: leadInfo?.closerEmail ? [leadInfo.closerEmail] : []
+          }
+
+          // Location nur bei Telefon-Terminen setzen
+          // Bei Video-Terminen: Calendly nutzt die Event Type Konfiguration (Google Meet)
+          if (leadInfo?.terminart !== 'video') {
+            requestBody.location = {
               kind: 'outbound_call',
               location: formattedPhone
-            },
-            event_guests: leadInfo?.closerEmail ? [leadInfo.closerEmail] : []
+            }
           }
 
           console.log('Calendly Request:', JSON.stringify(requestBody, null, 2))
