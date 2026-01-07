@@ -608,7 +608,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
             <p className="font-semibold text-xs">Sunside AI GbR</p>
             <p className="text-xs text-gray-600">
               Schiefer Berg 3 | 38124 Braunschweig | Deutschland<br />
-              E-Mail: contact@sunsideai.de | Tel: +49 176 56039050<br />
+              E-Mail: {user?.email_geschaeftlich || user?.email || 'contact@sunsideai.de'} | Tel: {user?.telefon || '+49 176 56039050'}<br />
               <span className="text-purple-600">www.sunsideai.de</span> | 
               <span className="text-purple-600 ml-1">Jetzt Termin buchen</span>
             </p>
