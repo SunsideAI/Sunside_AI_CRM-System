@@ -332,9 +332,14 @@ exports.handler = async (event) => {
             event_guests: leadInfo?.closerEmail ? [leadInfo.closerEmail] : []
           }
 
-          // Location nur bei Telefon-Terminen setzen
-          // Bei Video-Terminen: Calendly nutzt die Event Type Konfiguration (Google Meet)
-          if (leadInfo?.terminart !== 'video') {
+          // Location je nach Terminart setzen
+          if (leadInfo?.terminart === 'video') {
+            // Video-Termin: Google Meet
+            requestBody.location = {
+              kind: 'google_conference'
+            }
+          } else {
+            // Telefon-Termin: Outbound Call
             requestBody.location = {
               kind: 'outbound_call',
               location: formattedPhone
