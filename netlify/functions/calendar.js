@@ -362,35 +362,59 @@ exports.handler = async (event) => {
           // Meeting-Link extrahieren (für Video-Termine)
           let meetingLink = null
           
-          // Versuche den Link aus der Event-Location zu bekommen
-          if (data.resource?.event) {
+          // 1. Zuerst in der direkten Buchungs-Response schauen
+          if (data.resource?.location) {
+            const loc = data.resource.location
+            console.log('Direct location from booking:', JSON.stringify(loc, null, 2))
+            if (loc.join_url) {
+              meetingLink = loc.join_url
+            } else if (loc.location && loc.location.includes('meet.google.com')) {
+              meetingLink = loc.location
+            }
+          }
+          
+          // 2. Falls nicht gefunden, Event-Details abrufen
+          if (!meetingLink && data.resource?.event) {
             try {
               // Event-Details abrufen für den Meeting-Link
               const eventResponse = await fetch(data.resource.event, {
                 headers: calendlyHeaders
               })
               const eventData = await eventResponse.json()
-              console.log('Event Details:', JSON.stringify(eventData, null, 2))
+              console.log('Event Details for meeting link:', JSON.stringify(eventData, null, 2))
               
               // Location kann den Google Meet Link enthalten
               const location = eventData.resource?.location
               if (location) {
-                // Google Meet Link extrahieren
-                if (location.type === 'google_conference' || location.type === 'custom') {
-                  meetingLink = location.join_url || location.location
+                console.log('Event location:', JSON.stringify(location, null, 2))
+                // Google Meet Link extrahieren - verschiedene Formate
+                if (location.join_url) {
+                  meetingLink = location.join_url
+                } else if (location.type === 'google_conference' && location.location) {
+                  meetingLink = location.location
+                } else if (location.type === 'custom' && location.location?.includes('meet.google.com')) {
+                  meetingLink = location.location
                 } else if (typeof location === 'string' && location.includes('meet.google.com')) {
                   meetingLink = location
                 }
               }
               
-              // Fallback: Manchmal ist der Link in den Event-Details
+              // Fallback: conferencing Objekt
               if (!meetingLink && eventData.resource?.conferencing) {
+                console.log('Conferencing:', JSON.stringify(eventData.resource.conferencing, null, 2))
                 meetingLink = eventData.resource.conferencing.join_url
+              }
+              
+              // Fallback: In den Event-Membern nach dem Link suchen
+              if (!meetingLink && eventData.resource?.event_memberships) {
+                console.log('Event memberships:', JSON.stringify(eventData.resource.event_memberships, null, 2))
               }
             } catch (eventErr) {
               console.error('Event-Details abrufen fehlgeschlagen:', eventErr)
             }
           }
+          
+          console.log('Final meetingLink:', meetingLink)
 
           return {
             statusCode: 200,
