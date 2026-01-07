@@ -336,6 +336,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
           const terminTyp = selectedType === 'video' ? 'Video' : 'Telefonisch'
           const terminDetails = `Termin gebucht: ${terminDatum} Uhr (${terminTyp}) - ${problemstellung}`
           
+          // 1. Erst "Als kontaktiert markiert" + Ergebnis setzen
           await fetch('/.netlify/functions/leads', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -349,6 +350,20 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 ansprechpartnerNachname: ansprechpartnerNachname,
                 kategorie: taetigkeit  // Immobilienmakler oder Sachverständiger
               },
+              historyEntry: {
+                action: 'kontaktiert',
+                details: 'Als kontaktiert markiert',
+                userName: user?.vor_nachname || 'System'
+              }
+            })
+          })
+          
+          // 2. Dann Termin-Details als separater History-Eintrag
+          await fetch('/.netlify/functions/leads', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: lead.id,
               historyEntry: {
                 action: 'termin',
                 details: terminDetails,
