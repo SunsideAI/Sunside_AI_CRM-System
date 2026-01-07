@@ -132,6 +132,19 @@ exports.handler = async (event) => {
         </table>
       </div>
       
+      ${termin.meetingLink && termin.art?.includes('Video') ? `
+      <!-- Video-Link Box -->
+      <div style="background-color: #DBEAFE; border-radius: 8px; padding: 15px; margin: 0 0 20px 0; text-align: center;">
+        <p style="margin: 0 0 10px 0; color: #1E40AF; font-size: 14px; font-weight: 600;">
+          📹 Video-Einwahllink
+        </p>
+        <a href="${termin.meetingLink}" 
+           style="color: #2563EB; text-decoration: underline; font-size: 13px; word-break: break-all;">
+          ${termin.meetingLink}
+        </a>
+      </div>
+      ` : ''}
+      
       <!-- CTA Button -->
       <div style="text-align: center; margin: 30px 0;">
         <a href="https://crmsunsideai.netlify.app/closing" 
