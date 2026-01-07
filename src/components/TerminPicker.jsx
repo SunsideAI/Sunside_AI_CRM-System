@@ -34,6 +34,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
   // Status
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [bookedMeetingLink, setBookedMeetingLink] = useState(null)  // Video-Link nach Buchung
   const [validationErrors, setValidationErrors] = useState({})
   
   // Kontaktdaten
@@ -226,6 +227,10 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
         throw new Error(calendlyData.error || calendlyData.details || 'Calendly Buchung fehlgeschlagen')
       }
 
+      // Meeting-Link für Video-Termine extrahieren
+      const meetingLink = calendlyData.meetingLink || null
+      console.log('Meeting-Link:', meetingLink)
+
       // Hot Lead in Airtable erstellen oder aktualisieren
       if (isReschedule && hotLeadId) {
         // Bestehenden Hot Lead aktualisieren (Neu-Terminierung)
@@ -238,7 +243,8 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
               updates: {
                 terminDatum: selectedSlot.start,
                 status: 'Lead', // Status zurücksetzen
-                terminart: selectedType === 'video' ? 'Video' : 'Telefonisch'
+                terminart: selectedType === 'video' ? 'Video' : 'Telefonisch',
+                meetingLink: meetingLink  // Video-Link speichern
               }
             })
           })
@@ -294,7 +300,8 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
               terminDatum: selectedSlot.start,
               terminart: selectedType === 'video' ? 'Video' : 'Telefonisch',
               quelle: 'Cold Calling',
-              infosErstgespraech: problemstellung
+              infosErstgespraech: problemstellung,
+              meetingLink: meetingLink  // Video-Link speichern
             })
           })
           
@@ -375,7 +382,8 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 art: selectedType === 'video' ? 'Video (Google Meet)' : 'Telefonisch',
                 unternehmen: unternehmensname,
                 ansprechpartner: ansprechpartnerName,
-                setter: user?.vor_nachname
+                setter: user?.vor_nachname,
+                meetingLink: meetingLink  // Video-Link für Closer
               }
             })
           })
@@ -385,18 +393,24 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
         }
       }
 
+      // Meeting-Link speichern für Anzeige
+      if (meetingLink && selectedType === 'video') {
+        setBookedMeetingLink(meetingLink)
+      }
+      
       setSuccess(true)
       
-      // Auto-close nach 1.5s
+      // Auto-close nach 3s (länger wenn Video-Link vorhanden, damit User ihn kopieren kann)
       setTimeout(() => {
         if (onTerminBooked) {
           onTerminBooked({
             slot: selectedSlot,
             type: selectedType,
-            assignedToPool: assignToPool
+            assignedToPool: assignToPool,
+            meetingLink: meetingLink
           })
         }
-      }, 1500)
+      }, meetingLink ? 5000 : 1500)
 
     } catch (err) {
       console.error('Buchungsfehler:', err)
@@ -467,7 +481,44 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
           <Check className="w-8 h-8 text-green-600" />
         </div>
         <h3 className="text-xl font-semibold text-gray-900 mb-2">Termin gebucht!</h3>
-        <p className="text-gray-500">Der Termin wurde erfolgreich in Calendly erstellt.</p>
+        <p className="text-gray-500 mb-4">Der Termin wurde erfolgreich in Calendly erstellt.</p>
+        
+        {/* Video-Link anzeigen wenn vorhanden */}
+        {bookedMeetingLink && (
+          <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm font-medium text-blue-800 mb-2">
+              📹 Video-Einwahllink:
+            </p>
+            <div className="flex items-center gap-2 justify-center">
+              <a 
+                href={bookedMeetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline text-sm break-all"
+              >
+                {bookedMeetingLink}
+              </a>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(bookedMeetingLink)
+                  // Kurzes visuelles Feedback
+                  const btn = document.activeElement
+                  if (btn) {
+                    btn.textContent = '✓'
+                    setTimeout(() => { btn.textContent = '📋' }, 1000)
+                  }
+                }}
+                className="p-1.5 text-blue-600 hover:bg-blue-100 rounded transition-colors"
+                title="Link kopieren"
+              >
+                📋
+              </button>
+            </div>
+            <p className="text-xs text-blue-600 mt-2">
+              Link wird automatisch in der Closing-Seite gespeichert
+            </p>
+          </div>
+        )}
       </div>
     )
   }
