@@ -367,7 +367,21 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
             body: JSON.stringify(requestBody)
           })
           
-          // 2. Dann Termin-Details als separater History-Eintrag
+          // 2. Ergebnis-Eintrag
+          await fetch('/.netlify/functions/leads', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id: lead.id,
+              historyEntry: {
+                action: 'ergebnis',
+                details: 'Ergebnis: Beratungsgespräch',
+                userName: user?.vor_nachname || 'System'
+              }
+            })
+          })
+          
+          // 3. Dann Termin-Details als separater History-Eintrag
           await fetch('/.netlify/functions/leads', {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
