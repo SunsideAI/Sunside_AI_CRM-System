@@ -211,6 +211,7 @@ exports.handler = async (event) => {
           website: getLookupValue(record.fields.Website),
           terminDatum: record.fields.Termin_Beratungsgespräch || record.fields['Termin_Beratungsgespräch'] || '',
           terminart: record.fields.Terminart || '',  // Video oder Telefonisch
+          meetingLink: record.fields.Meeting_Link || '',  // Google Meet Link
           status: record.fields.Status || 'Lead',
           quelle: record.fields.Quelle || '',
           prioritaet: record.fields.Priorität || record.fields.Prioritaet || '',
@@ -488,7 +489,8 @@ exports.handler = async (event) => {
         terminDatum,        // Termin-Zeitpunkt
         terminart,          // 'Video' oder 'Telefonisch'
         quelle,             // z.B. "Cold Calling"
-        infosErstgespraech  // Notizen vom Setter (Problemstellung etc.)
+        infosErstgespraech, // Notizen vom Setter (Problemstellung etc.)
+        meetingLink         // Google Meet Link für Video-Termine
       } = body
 
       console.log('Hot Lead POST - Input:', { 
@@ -499,7 +501,8 @@ exports.handler = async (event) => {
         closerId,
         terminDatum,
         terminart,
-        infosErstgespraech
+        infosErstgespraech,
+        meetingLink
       })
 
       // Validierung
@@ -586,6 +589,11 @@ exports.handler = async (event) => {
       // Terminart (Video oder Telefonisch)
       if (terminart) {
         fields['Terminart'] = terminart
+      }
+
+      // Meeting-Link für Video-Termine
+      if (meetingLink) {
+        fields['Meeting_Link'] = meetingLink
       }
 
       // Infos Erstgespräch wird im Original-Lead Kommentar-Feld gespeichert (nicht hier)
@@ -698,7 +706,8 @@ exports.handler = async (event) => {
         'Priorität',
         'Closer',  // Falls Closer gewechselt werden soll
         'Termin_Beratungsgespräch',  // Für Neu-Terminierung
-        'Terminart'  // Video oder Telefonisch
+        'Terminart',  // Video oder Telefonisch
+        'Meeting_Link'  // Google Meet Link
       ]
 
       const fields = {}
@@ -716,7 +725,8 @@ exports.handler = async (event) => {
           'closerId': 'Closer',
           'closerName': 'Closer',
           'terminDatum': 'Termin_Beratungsgespräch',
-          'terminart': 'Terminart'
+          'terminart': 'Terminart',
+          'meetingLink': 'Meeting_Link'
         }
 
         const airtableField = fieldMap[key] || key
