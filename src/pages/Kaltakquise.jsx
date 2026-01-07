@@ -90,6 +90,7 @@ function Kaltakquise() {
   const [saving, setSaving] = useState(false)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
+  const [showKontaktdaten, setShowKontaktdaten] = useState(false) // Kontaktdaten-Sektion ein/ausklappen
   const [editForm, setEditForm] = useState({
     kontaktiert: false,
     ergebnis: '',
