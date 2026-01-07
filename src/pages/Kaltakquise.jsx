@@ -359,6 +359,15 @@ function Kaltakquise() {
       // History-Einträge sammeln
       const historyEntries = []
       
+      // Kontaktiert geändert? (kommt zuerst in der Historie)
+      if (editForm.kontaktiert !== selectedLead.kontaktiert) {
+        historyEntries.push({
+          action: editForm.kontaktiert ? 'kontaktiert' : 'nicht_kontaktiert',
+          details: editForm.kontaktiert ? 'Als kontaktiert markiert' : 'Als nicht kontaktiert zurückgesetzt',
+          userName: user?.name || 'Unbekannt'
+        })
+      }
+      
       // Ergebnis geändert?
       if (editForm.ergebnis !== selectedLead.ergebnis) {
         const ergebnisText = editForm.ergebnis || 'Kein Ergebnis'
@@ -378,15 +387,6 @@ function Kaltakquise() {
         historyEntries.push({
           action: 'wiedervorlage',
           details: `Wiedervorlage: ${wvFormatted}`,
-          userName: user?.name || 'Unbekannt'
-        })
-      }
-      
-      // Kontaktiert geändert?
-      if (editForm.kontaktiert !== selectedLead.kontaktiert) {
-        historyEntries.push({
-          action: editForm.kontaktiert ? 'kontaktiert' : 'nicht_kontaktiert',
-          details: editForm.kontaktiert ? 'Als kontaktiert markiert' : 'Als nicht kontaktiert zurückgesetzt',
           userName: user?.name || 'Unbekannt'
         })
       }
@@ -972,17 +972,47 @@ function Kaltakquise() {
                     
                     // Status auf "Unterlage bereitstellen" setzen NACH erfolgreichem Versand
                     try {
+                      // Prüfen ob Lead bereits kontaktiert war
+                      const warBereitsKontaktiert = selectedLead.kontaktiert === true
+                      
+                      // 1. Updates + ggf. "Als kontaktiert markiert" History-Eintrag
+                      const requestBody = {
+                        leadId: selectedLead.id,
+                        updates: {
+                          ergebnis: 'Unterlage bereitstellen',
+                          kontaktiert: true
+                        }
+                      }
+                      
+                      // Nur History-Eintrag wenn noch nicht kontaktiert
+                      if (!warBereitsKontaktiert) {
+                        requestBody.historyEntry = {
+                          action: 'kontaktiert',
+                          details: 'Als kontaktiert markiert',
+                          userName: user?.name || 'System'
+                        }
+                      }
+                      
+                      await fetch('/.netlify/functions/leads', {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestBody)
+                      })
+                      
+                      // 2. Dann Ergebnis-Eintrag
                       await fetch('/.netlify/functions/leads', {
                         method: 'PATCH',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                           leadId: selectedLead.id,
-                          updates: {
-                            ergebnis: 'Unterlage bereitstellen',
-                            kontaktiert: true
+                          historyEntry: {
+                            action: 'ergebnis',
+                            details: 'Ergebnis: Unterlage bereitstellen',
+                            userName: user?.name || 'System'
                           }
                         })
                       })
+                      
                       console.log('Status auf Unterlage bereitstellen gesetzt')
                     } catch (err) {
                       console.error('Fehler beim Status-Update:', err)
