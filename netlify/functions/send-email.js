@@ -444,6 +444,9 @@ exports.handler = async (event) => {
     const fromName = senderName || 'Sunside AI'
     const from = `${fromName} <${fromEmail}>`
 
+    // BCC: Sender bekommt Kopie der E-Mail ins eigene Postfach
+    const bccEmail = replyTo || senderEmail || fromEmail
+
     // Attachments von URLs laden und zu Base64 konvertieren
     const processedAttachments = await processAttachments(attachments)
 
@@ -451,6 +454,7 @@ exports.handler = async (event) => {
     const emailPayload = {
       from: from,
       to: [to],
+      bcc: [bccEmail],  // Sender als BCC für Kopie im eigenen Postfach
       reply_to: replyTo || fromEmail,
       subject: subject,
       text: content,
