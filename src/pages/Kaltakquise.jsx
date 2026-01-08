@@ -26,7 +26,8 @@ import {
   Send,
   Plus,
   AlertCircle,
-  Lock
+  Lock,
+  Flame
 } from 'lucide-react'
 
 // Ergebnis-Optionen (aus Airtable)
@@ -78,10 +79,16 @@ function Kaltakquise() {
   const [filterResult, setFilterResult] = useState('all')
   const [filterVertriebler, setFilterVertriebler] = useState('all') // NEU: Vertriebler-Filter
   const [filterLand, setFilterLand] = useState('all') // Land-Filter: 'all', 'Deutschland', 'Österreich', 'Schweiz'
-  const [viewMode, setViewMode] = useState('own') // 'all' oder 'own' (für Admins)
+  const [viewMode, setViewMode] = useState('own') // 'all', 'own', oder 'ebook' (für E-Book Pool)
   const [offset, setOffset] = useState(null)
   const [hasMore, setHasMore] = useState(false)
   const [pageHistory, setPageHistory] = useState([])
+  
+  // E-Book Pool State
+  const [ebookLeads, setEbookLeads] = useState([])
+  const [ebookLoading, setEbookLoading] = useState(false)
+  const [ebookCount, setEbookCount] = useState(0)
+  const [claimingLead, setClaimingLead] = useState(null) // ID des Leads der gerade übernommen wird
   
   // Modal State
   const [selectedLead, setSelectedLead] = useState(null)
@@ -167,8 +174,86 @@ function Kaltakquise() {
 
   // Initial laden
   useEffect(() => {
-    loadLeads()
+    if (viewMode !== 'ebook') {
+      loadLeads()
+    }
   }, [viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand])
+
+  // E-Book Pool laden
+  const loadEbookLeads = useCallback(async () => {
+    setEbookLoading(true)
+    try {
+      const response = await fetch('/.netlify/functions/ebook-leads')
+      if (!response.ok) throw new Error('Fehler beim Laden der E-Book Leads')
+      const data = await response.json()
+      setEbookLeads(data.leads || [])
+      setEbookCount(data.count || 0)
+    } catch (err) {
+      console.error('E-Book Leads Fehler:', err)
+      setEbookLeads([])
+    } finally {
+      setEbookLoading(false)
+    }
+  }, [])
+
+  // E-Book Pool Count initial laden (für Badge)
+  useEffect(() => {
+    const loadEbookCount = async () => {
+      try {
+        const response = await fetch('/.netlify/functions/ebook-leads')
+        if (response.ok) {
+          const data = await response.json()
+          setEbookCount(data.count || 0)
+        }
+      } catch (err) {
+        console.error('E-Book Count Fehler:', err)
+      }
+    }
+    loadEbookCount()
+  }, [])
+
+  // E-Book Leads laden wenn Tab gewechselt wird
+  useEffect(() => {
+    if (viewMode === 'ebook') {
+      loadEbookLeads()
+    }
+  }, [viewMode, loadEbookLeads])
+
+  // E-Book Lead übernehmen
+  const claimEbookLead = async (lead) => {
+    if (!user?.vor_nachname) return
+    
+    setClaimingLead(lead.id)
+    try {
+      const response = await fetch('/.netlify/functions/ebook-leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: lead.id,
+          vertrieblerName: user.vor_nachname
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Fehler beim Übernehmen des Leads')
+      }
+
+      // Lead aus Pool entfernen und Count aktualisieren
+      setEbookLeads(prev => prev.filter(l => l.id !== lead.id))
+      setEbookCount(prev => Math.max(0, prev - 1))
+
+      // Zu "Meine Leads" wechseln und neu laden
+      setViewMode('own')
+      setLeads([])
+      loadLeads()
+      
+    } catch (err) {
+      console.error('Claim Error:', err)
+      setError(err.message)
+    } finally {
+      setClaimingLead(null)
+    }
+  }
 
   // Offene Lead-Anfrage laden
   useEffect(() => {
@@ -594,6 +679,17 @@ function Kaltakquise() {
             </button>
           )}
 
+          {/* Nicht-Admin: Toggle zu Meine Leads wenn in E-Book View */}
+          {!isAdmin() && viewMode === 'ebook' && (
+            <button
+              onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setLeads([]); }}
+              className="flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+            >
+              <UserIcon className="w-4 h-4 mr-1.5" />
+              Meine Leads
+            </button>
+          )}
+
           {/* Admin: Toggle zwischen allen und eigenen Leads */}
           {isAdmin() && (
             <div className="flex items-center bg-gray-100 rounded-lg p-1">
@@ -621,6 +717,26 @@ function Kaltakquise() {
               </button>
             </div>
           )}
+
+          {/* E-Book Pool Tab - für alle sichtbar */}
+          <button
+            onClick={() => { setViewMode('ebook'); setOffset(null); setPageHistory([]); }}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors relative ${
+              viewMode === 'ebook'
+                ? 'bg-amber-500 text-white shadow-sm'
+                : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
+            }`}
+          >
+            <Flame className="w-4 h-4" />
+            E-Book Pool
+            {ebookCount > 0 && (
+              <span className={`absolute -top-2 -right-2 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center ${
+                viewMode === 'ebook' ? 'bg-white text-amber-600' : 'bg-amber-500 text-white'
+              }`}>
+                {ebookCount}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
@@ -641,7 +757,8 @@ function Kaltakquise() {
         </div>
       )}
 
-      {/* Filter Bar */}
+      {/* Filter Bar - nur bei normalen Leads (nicht E-Book Pool) */}
+      {viewMode !== 'ebook' && (
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Suche */}
@@ -715,6 +832,7 @@ function Kaltakquise() {
           </button>
         </div>
       </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -723,7 +841,8 @@ function Kaltakquise() {
         </div>
       )}
 
-      {/* Tabelle */}
+      {/* Normale Leads Tabelle - nur wenn nicht E-Book Pool */}
+      {viewMode !== 'ebook' && (
       <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
@@ -926,6 +1045,135 @@ function Kaltakquise() {
           </div>
         )}
       </div>
+      )}
+
+      {/* E-Book Pool View */}
+      {viewMode === 'ebook' && (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          {/* Header */}
+          <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center">
+                  <Flame className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">E-Book Pool</h2>
+                  <p className="text-sm text-gray-600">
+                    {ebookCount} warme Leads warten auf dich
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={loadEbookLeads}
+                disabled={ebookLoading}
+                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 text-gray-600 ${ebookLoading ? 'animate-spin' : ''}`} />
+                Aktualisieren
+              </button>
+            </div>
+          </div>
+
+          {/* E-Book Leads Liste */}
+          {ebookLoading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="w-10 h-10 animate-spin text-amber-500 mb-4" />
+              <p className="text-gray-500">E-Book Leads werden geladen...</p>
+            </div>
+          ) : ebookLeads.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                <Flame className="w-8 h-8 text-gray-300" />
+              </div>
+              <p className="text-gray-500 font-medium">Keine E-Book Leads im Pool</p>
+              <p className="text-sm text-gray-400 mt-1">Neue Leads erscheinen hier automatisch</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100">
+              {ebookLeads.map((lead) => (
+                <div 
+                  key={lead.id}
+                  className="px-6 py-4 hover:bg-amber-50/50 transition-colors"
+                >
+                  <div className="flex items-center justify-between">
+                    {/* Lead Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-semibold text-gray-900 truncate">
+                          {lead.unternehmensname || 'Unbekanntes Unternehmen'}
+                        </h3>
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                          {lead.kategorie || 'Immobilienmakler'}
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                        {/* Ansprechpartner */}
+                        {(lead.ansprechpartnerVorname || lead.ansprechpartnerNachname) && (
+                          <div className="flex items-center gap-1.5">
+                            <UserIcon className="w-4 h-4 text-gray-400" />
+                            <span>{lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}</span>
+                          </div>
+                        )}
+                        
+                        {/* E-Mail */}
+                        {lead.email && (
+                          <div className="flex items-center gap-1.5">
+                            <Mail className="w-4 h-4 text-gray-400" />
+                            <span className="truncate max-w-[200px]">{lead.email}</span>
+                          </div>
+                        )}
+                        
+                        {/* Telefon */}
+                        {lead.telefon && (
+                          <div className="flex items-center gap-1.5">
+                            <Phone className="w-4 h-4 text-gray-400" />
+                            <span>{lead.telefon}</span>
+                          </div>
+                        )}
+                        
+                        {/* Ort */}
+                        {lead.ort && (
+                          <div className="flex items-center gap-1.5">
+                            <MapPin className="w-4 h-4 text-gray-400" />
+                            <span>{lead.ort}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Übernehmen Button */}
+                    <div className="ml-4 flex-shrink-0">
+                      <button
+                        onClick={() => claimEbookLead(lead)}
+                        disabled={claimingLead === lead.id}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
+                          claimingLead === lead.id
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-amber-500 text-white hover:bg-amber-600 hover:shadow-md'
+                        }`}
+                      >
+                        {claimingLead === lead.id ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            Wird übernommen...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 className="w-4 h-4" />
+                            Übernehmen
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Lead Detail Modal - Portal rendert direkt in body */}
       {selectedLead && createPortal(
