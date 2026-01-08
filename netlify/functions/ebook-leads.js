@@ -232,13 +232,28 @@ exports.handler = async (event) => {
       }
       
       console.log('Parsed body keys:', Object.keys(parsedBody))
-      console.log('Parsed body:', JSON.stringify(parsedBody))
       
       // Extrahiere die Felder - probiere verschiedene Strukturen
       let vorname, nachname, email, telefon, unternehmen, kategorie
       
+      // Möglichkeit 0: Zapier sendet mit leerem Key {"": "{ json }"}
+      if (parsedBody[''] && typeof parsedBody[''] === 'string') {
+        console.log('Format: Empty key with JSON string')
+        try {
+          const dataObj = JSON.parse(parsedBody[''])
+          console.log('Parsed from empty key:', JSON.stringify(dataObj))
+          vorname = dataObj.vorname
+          nachname = dataObj.nachname
+          email = dataObj.email
+          telefon = dataObj.telefon
+          unternehmen = dataObj.unternehmen
+          kategorie = dataObj.kategorie
+        } catch (e) {
+          console.log('Could not parse empty key value:', e.message)
+        }
+      }
       // Möglichkeit 1: Direkte Felder im Body (email direkt vorhanden)
-      if (parsedBody.email) {
+      else if (parsedBody.email) {
         console.log('Format: Direct fields')
         vorname = parsedBody.vorname
         nachname = parsedBody.nachname
@@ -259,17 +274,11 @@ exports.handler = async (event) => {
       }
       // Möglichkeit 3: data ist ein JSON-String
       else if (parsedBody.data && typeof parsedBody.data === 'string') {
-        console.log('Format: data is string, length:', parsedBody.data.length)
-        console.log('Data string preview:', parsedBody.data.substring(0, 200))
-        
-        // Versuche JSON zu parsen
+        console.log('Format: data is string')
         let dataStr = parsedBody.data.trim()
-        
-        // Falls es mit { anfängt, ist es JSON
         if (dataStr.startsWith('{')) {
           try {
             const dataObj = JSON.parse(dataStr)
-            console.log('Parsed data object:', JSON.stringify(dataObj))
             vorname = dataObj.vorname
             nachname = dataObj.nachname
             email = dataObj.email
@@ -282,23 +291,11 @@ exports.handler = async (event) => {
         }
       }
       
-      // Möglichkeit 4: Felder sind direkt im Body aber mit anderen Namen
-      if (!email) {
-        console.log('Trying alternative field names...')
-        email = parsedBody.Email || parsedBody.EMAIL || parsedBody.e_mail || parsedBody['e-mail']
-        vorname = parsedBody.Vorname || parsedBody.VORNAME || parsedBody.first_name || parsedBody.firstName
-        nachname = parsedBody.Nachname || parsedBody.NACHNAME || parsedBody.last_name || parsedBody.lastName
-        telefon = parsedBody.Telefon || parsedBody.TELEFON || parsedBody.phone || parsedBody.Phone
-        unternehmen = parsedBody.Unternehmen || parsedBody.UNTERNEHMEN || parsedBody.company || parsedBody.Company
-        kategorie = parsedBody.Kategorie || parsedBody.KATEGORIE || parsedBody.category
-      }
-      
       console.log('Final extracted fields:', { vorname, nachname, email, telefon, unternehmen, kategorie })
 
       // Validierung
       if (!email) {
         console.log('ERROR: No email found!')
-        console.log('Full parsedBody for debugging:', JSON.stringify(parsedBody, null, 2))
         return {
           statusCode: 400,
           headers: corsHeaders,
@@ -306,8 +303,8 @@ exports.handler = async (event) => {
             error: 'E-Mail ist erforderlich',
             debug: {
               receivedKeys: Object.keys(parsedBody),
-              hasData: !!parsedBody.data,
-              dataType: typeof parsedBody.data
+              hasEmptyKey: !!parsedBody[''],
+              hasData: !!parsedBody.data
             }
           })
         }
