@@ -79,6 +79,7 @@ function Kaltakquise() {
   const [filterResult, setFilterResult] = useState('all')
   const [filterVertriebler, setFilterVertriebler] = useState('all') // NEU: Vertriebler-Filter
   const [filterLand, setFilterLand] = useState('all') // Land-Filter: 'all', 'Deutschland', 'Österreich', 'Schweiz'
+  const [filterQuelle, setFilterQuelle] = useState('all') // Quelle-Filter: 'all', 'E-Book', 'Kaltakquise', etc.
   const [viewMode, setViewMode] = useState('own') // 'all', 'own', oder 'ebook' (für E-Book Pool)
   const [offset, setOffset] = useState(null)
   const [hasMore, setHasMore] = useState(false)
@@ -143,6 +144,7 @@ function Kaltakquise() {
       if (filterResult !== 'all') params.append('result', filterResult)
       if (filterVertriebler !== 'all') params.append('vertriebler', filterVertriebler)
       if (filterLand !== 'all') params.append('land', filterLand)
+      if (filterQuelle !== 'all') params.append('quelle', filterQuelle)
       if (newOffset) params.append('offset', newOffset)
 
       const response = await fetch(`/.netlify/functions/leads?${params.toString()}`)
@@ -170,14 +172,14 @@ function Kaltakquise() {
     } finally {
       setLoading(false)
     }
-  }, [user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, offset])
+  }, [user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle, offset])
 
   // Initial laden
   useEffect(() => {
     if (viewMode !== 'ebook') {
       loadLeads()
     }
-  }, [viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand])
+  }, [viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle])
 
   // E-Book Pool laden
   const loadEbookLeads = useCallback(async () => {
@@ -655,16 +657,20 @@ function Kaltakquise() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Kaltakquise</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            {viewMode === 'ebook' ? 'E-Book Pool' : 'Kaltakquise'}
+          </h1>
           <p className="mt-1 text-gray-500">
-            {leads.length} Leads geladen
-            {isAdmin() && viewMode === 'all' && ' (alle Leads)'}
+            {viewMode === 'ebook' 
+              ? 'Warme Leads aus dem E-Book Funnel - noch kein Vertriebler zugewiesen'
+              : `${leads.length} Leads geladen${isAdmin() && viewMode === 'all' ? ' (alle Leads)' : ''}`
+            }
           </p>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Leads anfordern Button (für alle außer Admins optional) */}
-          {!isAdmin() && (
+          {/* Leads anfordern Button (für alle außer Admins optional) - nicht im E-Book Pool */}
+          {!isAdmin() && viewMode !== 'ebook' && (
             <button
               onClick={() => setShowAnfrageModal(true)}
               disabled={offeneAnfrage !== null}
@@ -679,31 +685,41 @@ function Kaltakquise() {
             </button>
           )}
 
-          {/* Nicht-Admin: Toggle zu Meine Leads wenn in E-Book View */}
-          {!isAdmin() && viewMode === 'ebook' && (
+          {/* Tab-Navigation - für alle User */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            {/* Meine Leads */}
             <button
-              onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setLeads([]); }}
-              className="flex items-center px-3 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
+              onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setFilterVertriebler('all'); setLeads([]); }}
+              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'own' 
+                  ? 'bg-white text-sunside-primary shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
             >
               <UserIcon className="w-4 h-4 mr-1.5" />
               Meine Leads
             </button>
-          )}
 
-          {/* Admin: Toggle zwischen allen und eigenen Leads */}
-          {isAdmin() && (
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setFilterVertriebler('all'); setLeads([]); }}
-                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'own' 
-                    ? 'bg-white text-sunside-primary shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                <UserIcon className="w-4 h-4 mr-1.5" />
-                Meine Leads
-              </button>
+            {/* Pool Tab */}
+            <button
+              onClick={() => { setViewMode('ebook'); setOffset(null); setPageHistory([]); }}
+              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                viewMode === 'ebook' 
+                  ? 'bg-white text-amber-600 shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Flame className="w-4 h-4 mr-1.5" />
+              Pool
+              {ebookCount > 0 && (
+                <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded-full">
+                  {ebookCount}
+                </span>
+              )}
+            </button>
+
+            {/* Alle Leads - nur für Admins */}
+            {isAdmin() && (
               <button
                 onClick={() => { setViewMode('all'); setOffset(null); setPageHistory([]); setLeads([]); }}
                 className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
@@ -713,30 +729,10 @@ function Kaltakquise() {
                 }`}
               >
                 <Users className="w-4 h-4 mr-1.5" />
-                Alle Leads
+                Alle
               </button>
-            </div>
-          )}
-
-          {/* E-Book Pool Tab - für alle sichtbar */}
-          <button
-            onClick={() => { setViewMode('ebook'); setOffset(null); setPageHistory([]); }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors relative ${
-              viewMode === 'ebook'
-                ? 'bg-amber-500 text-white shadow-sm'
-                : 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-            }`}
-          >
-            <Flame className="w-4 h-4" />
-            E-Book Pool
-            {ebookCount > 0 && (
-              <span className={`absolute -top-2 -right-2 w-5 h-5 rounded-full text-xs font-bold flex items-center justify-center ${
-                viewMode === 'ebook' ? 'bg-white text-amber-600' : 'bg-amber-500 text-white'
-              }`}>
-                {ebookCount}
-              </span>
             )}
-          </button>
+          </div>
         </div>
       </div>
 
@@ -806,6 +802,20 @@ function Kaltakquise() {
             <option value="Deutschland">🇩🇪 Deutschland</option>
             <option value="Österreich">🇦🇹 Österreich</option>
             <option value="Schweiz">🇨🇭 Schweiz</option>
+          </select>
+
+          {/* Filter: Quelle */}
+          <select
+            value={filterQuelle}
+            onChange={(e) => { setFilterQuelle(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
+            className="px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white"
+          >
+            <option value="all">📋 Alle Quellen</option>
+            <option value="E-Book">📚 E-Book</option>
+            <option value="Kaltakquise">📞 Kaltakquise</option>
+            <option value="Empfehlung">🤝 Empfehlung</option>
+            <option value="Website">🌐 Website</option>
+            <option value="Sonstige">📌 Sonstige</option>
           </select>
 
           {/* Filter: Vertriebler (nur für Admins bei "Alle Leads") */}
@@ -1049,130 +1059,112 @@ function Kaltakquise() {
 
       {/* E-Book Pool View */}
       {viewMode === 'ebook' && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          {/* Header */}
-          <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-amber-500 flex items-center justify-center">
-                  <Flame className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900">E-Book Pool</h2>
-                  <p className="text-sm text-gray-600">
-                    {ebookCount} warme Leads warten auf dich
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={loadEbookLeads}
-                disabled={ebookLoading}
-                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                <RefreshCw className={`w-4 h-4 text-gray-600 ${ebookLoading ? 'animate-spin' : ''}`} />
-                Aktualisieren
-              </button>
-            </div>
+        <>
+          {/* Pool Refresh Button */}
+          <div className="flex justify-end">
+            <button
+              onClick={loadEbookLeads}
+              disabled={ebookLoading}
+              className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 text-gray-600 ${ebookLoading ? 'animate-spin' : ''}`} />
+              Aktualisieren
+            </button>
           </div>
 
-          {/* E-Book Leads Liste */}
-          {ebookLoading ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <Loader2 className="w-10 h-10 animate-spin text-amber-500 mb-4" />
-              <p className="text-gray-500">E-Book Leads werden geladen...</p>
-            </div>
-          ) : ebookLeads.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                <Flame className="w-8 h-8 text-gray-300" />
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            {ebookLoading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-amber-600" />
+                <span className="ml-3 text-gray-600">Pool wird geladen...</span>
               </div>
-              <p className="text-gray-500 font-medium">Keine E-Book Leads im Pool</p>
-              <p className="text-sm text-gray-400 mt-1">Neue Leads erscheinen hier automatisch</p>
-            </div>
-          ) : (
-            <div className="divide-y divide-gray-100">
-              {ebookLeads.map((lead) => (
-                <div 
-                  key={lead.id}
-                  className="px-6 py-4 hover:bg-amber-50/50 transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    {/* Lead Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="font-semibold text-gray-900 truncate">
-                          {lead.unternehmensname || 'Unbekanntes Unternehmen'}
-                        </h3>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                          {lead.kategorie || 'Immobilienmakler'}
-                        </span>
-                      </div>
-                      
-                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-                        {/* Ansprechpartner */}
-                        {(lead.ansprechpartnerVorname || lead.ansprechpartnerNachname) && (
-                          <div className="flex items-center gap-1.5">
-                            <UserIcon className="w-4 h-4 text-gray-400" />
-                            <span>{lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}</span>
-                          </div>
-                        )}
+            ) : ebookLeads.length === 0 ? (
+              <div className="p-12 text-center">
+                <Flame className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500 text-lg">Keine E-Book Leads im Pool</p>
+                <p className="text-gray-400 mt-1">Neue Leads erscheinen hier automatisch</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {ebookLeads.map((lead) => (
+                  <div 
+                    key={lead.id}
+                    className="p-5 hover:bg-gray-50 transition-colors"
+                  >
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      {/* Lead-Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-2">
+                          <h3 className="font-semibold text-gray-900 truncate">
+                            {lead.unternehmensname || 'Unbekanntes Unternehmen'}
+                          </h3>
+                          <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700">
+                            📚 E-Book
+                          </span>
+                          {lead.kategorie && (
+                            <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">
+                              {lead.kategorie}
+                            </span>
+                          )}
+                        </div>
                         
-                        {/* E-Mail */}
-                        {lead.email && (
-                          <div className="flex items-center gap-1.5">
-                            <Mail className="w-4 h-4 text-gray-400" />
-                            <span className="truncate max-w-[200px]">{lead.email}</span>
-                          </div>
-                        )}
-                        
-                        {/* Telefon */}
-                        {lead.telefon && (
-                          <div className="flex items-center gap-1.5">
-                            <Phone className="w-4 h-4 text-gray-400" />
-                            <span>{lead.telefon}</span>
-                          </div>
-                        )}
-                        
-                        {/* Ort */}
-                        {lead.ort && (
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="w-4 h-4 text-gray-400" />
-                            <span>{lead.ort}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+                          {(lead.ansprechpartnerVorname || lead.ansprechpartnerNachname) && (
+                            <span className="flex items-center gap-1">
+                              <UserIcon className="w-3.5 h-3.5" />
+                              {lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}
+                            </span>
+                          )}
+                          {lead.ort && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="w-3.5 h-3.5" />
+                              {lead.ort}
+                            </span>
+                          )}
+                          {lead.email && (
+                            <span className="flex items-center gap-1">
+                              <Mail className="w-3.5 h-3.5" />
+                              {lead.email}
+                            </span>
+                          )}
+                          {lead.telefon && (
+                            <span className="flex items-center gap-1">
+                              <Phone className="w-3.5 h-3.5" />
+                              {lead.telefon}
+                            </span>
+                          )}
+                        </div>
 
-                    {/* Übernehmen Button */}
-                    <div className="ml-4 flex-shrink-0">
+                        {/* Datum */}
+                        {lead.datum && (
+                          <p className="mt-2 text-sm text-gray-400">
+                            Eingegangen am {new Date(lead.datum).toLocaleDateString('de-DE')}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Übernehmen Button */}
                       <button
                         onClick={() => claimEbookLead(lead)}
                         disabled={claimingLead === lead.id}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all ${
-                          claimingLead === lead.id
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                            : 'bg-amber-500 text-white hover:bg-amber-600 hover:shadow-md'
-                        }`}
+                        className="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
                       >
                         {claimingLead === lead.id ? (
-                          <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Wird übernommen...
-                          </>
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
                           <>
-                            <CheckCircle2 className="w-4 h-4" />
+                            <CheckCircle2 className="w-4 h-4 mr-2" />
                             Übernehmen
                           </>
                         )}
                       </button>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {/* Lead Detail Modal - Portal rendert direkt in body */}
