@@ -848,7 +848,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
                 {/* Notizen */}
                 {selectedLead.kommentar ? (
-                  <div className="bg-amber-50 rounded-lg p-4 border border-amber-100">
+                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
                     <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
                   </div>
                 ) : (
