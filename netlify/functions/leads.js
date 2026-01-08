@@ -62,6 +62,7 @@ export async function handler(event) {
         result,        // Ergebnis-Filter
         vertriebler,   // Filter nach Vertriebler (Name)
         land,          // Land-Filter: 'Deutschland', 'Österreich', 'Schweiz'
+        quelle,        // Quelle-Filter: 'E-Book', 'Kaltakquise', etc.
         offset,        // Pagination offset
         wiedervorlage  // 'true' = nur Leads mit Wiedervorlage-Datum
       } = params
@@ -103,6 +104,11 @@ export async function handler(event) {
       // Land-Filter
       if (land && land !== 'all') {
         filters.push(`{Land} = '${land}'`)
+      }
+
+      // Quelle-Filter
+      if (quelle && quelle !== 'all') {
+        filters.push(`{Quelle} = '${quelle}'`)
       }
 
       // Wiedervorlage-Filter: Nur Leads mit Wiedervorlage-Datum
@@ -149,6 +155,7 @@ export async function handler(event) {
         'Ansprechpartner_Vorname',
         'Ansprechpartner_Nachname',
         'Wiedervorlage_Datum',
+        'Quelle',
         // Website-Statistiken
         'Absprungrate',
         'Monatliche_Besuche',
@@ -221,6 +228,7 @@ export async function handler(event) {
           ansprechpartnerVorname: record.fields.Ansprechpartner_Vorname || '',
           ansprechpartnerNachname: record.fields.Ansprechpartner_Nachname || '',
           wiedervorlageDatum: record.fields.Wiedervorlage_Datum || '',
+          quelle: record.fields.Quelle || '',
           // Website-Statistiken
           absprungrate: record.fields.Absprungrate || null,
           monatlicheBesuche: record.fields.Monatliche_Besuche || null,
