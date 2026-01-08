@@ -223,8 +223,28 @@ exports.handler = async (event) => {
     try {
       const rawBody = JSON.parse(event.body)
       
-      // Unterstütze sowohl direktes Format als auch Zapier's "data" wrapper
-      const body = rawBody.data || rawBody
+      console.log('Raw Body received:', JSON.stringify(rawBody))
+      
+      // Unterstütze verschiedene Formate:
+      // 1. Direktes Format: { vorname, email, ... }
+      // 2. Zapier data wrapper (object): { data: { vorname, email, ... } }
+      // 3. Zapier data wrapper (string): { data: "{ \"vorname\": ... }" }
+      let body = rawBody
+      
+      if (rawBody.data) {
+        if (typeof rawBody.data === 'string') {
+          // data ist ein String - parsen
+          try {
+            body = JSON.parse(rawBody.data)
+          } catch (e) {
+            console.log('Could not parse data string, using raw')
+            body = rawBody
+          }
+        } else {
+          // data ist ein Objekt
+          body = rawBody.data
+        }
+      }
       
       const { 
         vorname, 
@@ -235,7 +255,7 @@ exports.handler = async (event) => {
         kategorie  // "Makler" oder "Sachverständiger"
       } = body
 
-      console.log('Neuer E-Book Lead:', { vorname, nachname, email, unternehmen })
+      console.log('Parsed E-Book Lead:', { vorname, nachname, email, unternehmen })
 
       // Validierung
       if (!email) {
