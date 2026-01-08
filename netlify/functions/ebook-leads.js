@@ -224,20 +224,20 @@ exports.handler = async (event) => {
       console.log('=== INCOMING WEBHOOK ===')
       console.log('Raw event.body:', event.body)
       
-      let parsedBody
+      let parsedBody = {}
       try {
         parsedBody = JSON.parse(event.body)
       } catch (e) {
-        console.log('Body is not JSON, trying as-is')
-        parsedBody = {}
+        console.log('Body is not JSON')
       }
       
+      console.log('Parsed body keys:', Object.keys(parsedBody))
       console.log('Parsed body:', JSON.stringify(parsedBody))
       
       // Extrahiere die Felder - probiere verschiedene Strukturen
       let vorname, nachname, email, telefon, unternehmen, kategorie
       
-      // Möglichkeit 1: Direkte Felder im Body
+      // Möglichkeit 1: Direkte Felder im Body (email direkt vorhanden)
       if (parsedBody.email) {
         console.log('Format: Direct fields')
         vorname = parsedBody.vorname
@@ -247,9 +247,9 @@ exports.handler = async (event) => {
         unternehmen = parsedBody.unternehmen
         kategorie = parsedBody.kategorie
       }
-      // Möglichkeit 2: data ist ein Objekt
+      // Möglichkeit 2: data ist ein Objekt mit email
       else if (parsedBody.data && typeof parsedBody.data === 'object' && parsedBody.data.email) {
-        console.log('Format: data object')
+        console.log('Format: data is object with email')
         vorname = parsedBody.data.vorname
         nachname = parsedBody.data.nachname
         email = parsedBody.data.email
@@ -259,28 +259,57 @@ exports.handler = async (event) => {
       }
       // Möglichkeit 3: data ist ein JSON-String
       else if (parsedBody.data && typeof parsedBody.data === 'string') {
-        console.log('Format: data string, parsing...')
-        try {
-          const dataObj = JSON.parse(parsedBody.data)
-          vorname = dataObj.vorname
-          nachname = dataObj.nachname
-          email = dataObj.email
-          telefon = dataObj.telefon
-          unternehmen = dataObj.unternehmen
-          kategorie = dataObj.kategorie
-        } catch (e) {
-          console.log('Could not parse data string:', e.message)
+        console.log('Format: data is string, length:', parsedBody.data.length)
+        console.log('Data string preview:', parsedBody.data.substring(0, 200))
+        
+        // Versuche JSON zu parsen
+        let dataStr = parsedBody.data.trim()
+        
+        // Falls es mit { anfängt, ist es JSON
+        if (dataStr.startsWith('{')) {
+          try {
+            const dataObj = JSON.parse(dataStr)
+            console.log('Parsed data object:', JSON.stringify(dataObj))
+            vorname = dataObj.vorname
+            nachname = dataObj.nachname
+            email = dataObj.email
+            telefon = dataObj.telefon
+            unternehmen = dataObj.unternehmen
+            kategorie = dataObj.kategorie
+          } catch (e) {
+            console.log('Could not parse data as JSON:', e.message)
+          }
         }
       }
       
-      console.log('Extracted fields:', { vorname, nachname, email, telefon, unternehmen, kategorie })
+      // Möglichkeit 4: Felder sind direkt im Body aber mit anderen Namen
+      if (!email) {
+        console.log('Trying alternative field names...')
+        email = parsedBody.Email || parsedBody.EMAIL || parsedBody.e_mail || parsedBody['e-mail']
+        vorname = parsedBody.Vorname || parsedBody.VORNAME || parsedBody.first_name || parsedBody.firstName
+        nachname = parsedBody.Nachname || parsedBody.NACHNAME || parsedBody.last_name || parsedBody.lastName
+        telefon = parsedBody.Telefon || parsedBody.TELEFON || parsedBody.phone || parsedBody.Phone
+        unternehmen = parsedBody.Unternehmen || parsedBody.UNTERNEHMEN || parsedBody.company || parsedBody.Company
+        kategorie = parsedBody.Kategorie || parsedBody.KATEGORIE || parsedBody.category
+      }
+      
+      console.log('Final extracted fields:', { vorname, nachname, email, telefon, unternehmen, kategorie })
 
       // Validierung
       if (!email) {
+        console.log('ERROR: No email found!')
+        console.log('Full parsedBody for debugging:', JSON.stringify(parsedBody, null, 2))
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'E-Mail ist erforderlich' })
+          body: JSON.stringify({ 
+            error: 'E-Mail ist erforderlich',
+            debug: {
+              receivedKeys: Object.keys(parsedBody),
+              hasData: !!parsedBody.data,
+              dataType: typeof parsedBody.data
+            }
+          })
         }
       }
 
