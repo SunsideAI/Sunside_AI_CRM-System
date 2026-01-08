@@ -221,7 +221,11 @@ exports.handler = async (event) => {
   // ==========================================
   if (event.httpMethod === 'POST') {
     try {
-      const body = JSON.parse(event.body)
+      const rawBody = JSON.parse(event.body)
+      
+      // Unterstütze sowohl direktes Format als auch Zapier's "data" wrapper
+      const body = rawBody.data || rawBody
+      
       const { 
         vorname, 
         nachname, 
