@@ -221,41 +221,59 @@ exports.handler = async (event) => {
   // ==========================================
   if (event.httpMethod === 'POST') {
     try {
-      const rawBody = JSON.parse(event.body)
+      console.log('=== INCOMING WEBHOOK ===')
+      console.log('Raw event.body:', event.body)
       
-      console.log('Raw Body received:', JSON.stringify(rawBody))
+      let parsedBody
+      try {
+        parsedBody = JSON.parse(event.body)
+      } catch (e) {
+        console.log('Body is not JSON, trying as-is')
+        parsedBody = {}
+      }
       
-      // Unterstütze verschiedene Formate:
-      // 1. Direktes Format: { vorname, email, ... }
-      // 2. Zapier data wrapper (object): { data: { vorname, email, ... } }
-      // 3. Zapier data wrapper (string): { data: "{ \"vorname\": ... }" }
-      let body = rawBody
+      console.log('Parsed body:', JSON.stringify(parsedBody))
       
-      if (rawBody.data) {
-        if (typeof rawBody.data === 'string') {
-          // data ist ein String - parsen
-          try {
-            body = JSON.parse(rawBody.data)
-          } catch (e) {
-            console.log('Could not parse data string, using raw')
-            body = rawBody
-          }
-        } else {
-          // data ist ein Objekt
-          body = rawBody.data
+      // Extrahiere die Felder - probiere verschiedene Strukturen
+      let vorname, nachname, email, telefon, unternehmen, kategorie
+      
+      // Möglichkeit 1: Direkte Felder im Body
+      if (parsedBody.email) {
+        console.log('Format: Direct fields')
+        vorname = parsedBody.vorname
+        nachname = parsedBody.nachname
+        email = parsedBody.email
+        telefon = parsedBody.telefon
+        unternehmen = parsedBody.unternehmen
+        kategorie = parsedBody.kategorie
+      }
+      // Möglichkeit 2: data ist ein Objekt
+      else if (parsedBody.data && typeof parsedBody.data === 'object' && parsedBody.data.email) {
+        console.log('Format: data object')
+        vorname = parsedBody.data.vorname
+        nachname = parsedBody.data.nachname
+        email = parsedBody.data.email
+        telefon = parsedBody.data.telefon
+        unternehmen = parsedBody.data.unternehmen
+        kategorie = parsedBody.data.kategorie
+      }
+      // Möglichkeit 3: data ist ein JSON-String
+      else if (parsedBody.data && typeof parsedBody.data === 'string') {
+        console.log('Format: data string, parsing...')
+        try {
+          const dataObj = JSON.parse(parsedBody.data)
+          vorname = dataObj.vorname
+          nachname = dataObj.nachname
+          email = dataObj.email
+          telefon = dataObj.telefon
+          unternehmen = dataObj.unternehmen
+          kategorie = dataObj.kategorie
+        } catch (e) {
+          console.log('Could not parse data string:', e.message)
         }
       }
       
-      const { 
-        vorname, 
-        nachname, 
-        email, 
-        telefon, 
-        unternehmen, 
-        kategorie  // "Makler" oder "Sachverständiger"
-      } = body
-
-      console.log('Parsed E-Book Lead:', { vorname, nachname, email, unternehmen })
+      console.log('Extracted fields:', { vorname, nachname, email, telefon, unternehmen, kategorie })
 
       // Validierung
       if (!email) {
