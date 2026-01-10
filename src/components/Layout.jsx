@@ -17,6 +17,7 @@ import {
   CheckCheck
 } from 'lucide-react'
 import { useState, useEffect, useRef, useCallback } from 'react'
+import Clippy from './Clippy'
 
 function Layout({ children }) {
   const { user, logout, isColdcaller, isCloser, isAdmin } = useAuth()
@@ -729,6 +730,9 @@ function Layout({ children }) {
           </div>
         </div>
       )}
+
+      {/* Clippy - Der hilfreiche Assistent 📎 */}
+      <Clippy />
     </div>
   )
 }
