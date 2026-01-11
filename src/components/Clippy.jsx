@@ -272,8 +272,8 @@ export default function Clippy() {
         onClick={newTipp}
         title="Klick für neuen Tipp!"
       >
-        <div className="relative">
-          <svg width="90" height="115" viewBox="0 0 90 115" className="drop-shadow-lg">
+        <div className="relative overflow-visible">
+          <svg width="100" height="115" viewBox="0 0 105 115" className="drop-shadow-lg overflow-visible">
             <defs>
               <linearGradient id="clipGrad" x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor="#A3A3A3" />
