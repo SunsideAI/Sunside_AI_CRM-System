@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Sparkles, Trophy, Star, Gamepad2 } from 'lucide-react'
+import { X, Sparkles, Trophy, Star } from 'lucide-react'
 
 // ==========================================
 // TIC TAC TOE SPIEL LOGIK
@@ -688,110 +688,17 @@ export default function Clippy() {
         </div>
       )}
       
-      {/* TIC TAC TOE SPIEL MODAL */}
-      {showGame && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closeGame} />
-          <div className="relative bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl shadow-2xl p-6 w-full max-w-sm border-2 border-amber-300">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Gamepad2 className="w-5 h-5 text-amber-600" />
-                <h3 className="font-bold text-gray-800">Tic Tac Toe</h3>
-              </div>
-              <button onClick={closeGame} className="w-8 h-8 bg-red-100 hover:bg-red-200 rounded-full flex items-center justify-center">
-                <X className="w-4 h-4 text-red-600" />
-              </button>
-            </div>
-            
-            {/* Score */}
-            <div className="flex justify-center gap-6 mb-4 text-sm">
-              <div className="text-center">
-                <p className="text-gray-500">Du</p>
-                <p className="text-2xl font-bold text-blue-600">{playerWins}</p>
-              </div>
-              <div className="text-gray-300 text-2xl">-</div>
-              <div className="text-center">
-                <p className="text-gray-500">Karl</p>
-                <p className="text-2xl font-bold text-amber-600">{aiWins}</p>
-              </div>
-            </div>
-            
-            {/* Kommentar von Karl */}
-            <div className="bg-white rounded-lg p-3 mb-4 border border-amber-200">
-              <p className="text-sm text-gray-700 flex items-start gap-2">
-                <span>📎</span>
-                <span>{gameComment}</span>
-              </p>
-            </div>
-            
-            {/* Spielfeld */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {gameBoard.map((square, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleSquareClick(i)}
-                  disabled={square || gameStatus !== 'playing' || !isPlayerTurn}
-                  className={`
-                    w-20 h-20 rounded-xl text-4xl font-bold flex items-center justify-center
-                    transition-all duration-200
-                    ${winningLine?.includes(i) 
-                      ? 'bg-green-200 border-green-400' 
-                      : 'bg-white border-gray-200 hover:bg-amber-50'}
-                    border-2
-                    ${!square && gameStatus === 'playing' && isPlayerTurn ? 'cursor-pointer hover:scale-105' : 'cursor-default'}
-                  `}
-                >
-                  {square === 'X' && <span className="text-blue-500">✕</span>}
-                  {square === 'O' && <span className="text-amber-500">○</span>}
-                </button>
-              ))}
-            </div>
-            
-            {/* Status */}
-            <div className="text-center">
-              {gameStatus === 'playing' && (
-                <p className="text-sm text-gray-600">
-                  {isPlayerTurn ? '🎯 Du bist dran!' : '🤔 Karl denkt nach...'}
-                </p>
-              )}
-              {gameStatus === 'won' && (
-                <div>
-                  <p className="text-lg font-bold text-green-600 mb-2">🎉 Du hast gewonnen!</p>
-                  <button onClick={startGame} className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
-                    Nochmal spielen
-                  </button>
-                </div>
-              )}
-              {gameStatus === 'lost' && (
-                <div>
-                  <p className="text-lg font-bold text-red-600 mb-2">😤 Karl hat gewonnen!</p>
-                  <button onClick={startGame} className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
-                    Revanche!
-                  </button>
-                </div>
-              )}
-              {gameStatus === 'draw' && (
-                <div>
-                  <p className="text-lg font-bold text-gray-600 mb-2">🤝 Unentschieden!</p>
-                  <button onClick={startGame} className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
-                    Nochmal!
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      
       <div 
         ref={containerRef}
         className={`fixed bottom-6 right-6 z-50 flex items-end gap-3 ${isAnimating ? 'animate-bounce' : ''} ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
         style={containerStyle}
         onMouseDown={handleMouseDown}
       >
-        {/* Sprechblase */}
-        <div className="relative bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-2xl p-4 w-80 shadow-xl select-none">
+        {/* Sprechblase - zeigt entweder Tipps oder Spiel */}
+        <div 
+          className="relative bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-2xl p-4 shadow-xl select-none"
+          style={{ width: showGame ? '250px' : '320px' }}
+        >
           <div className="absolute -top-2 -right-2 flex gap-1">
             <button onClick={disableForSession} className="w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors shadow-md" title="Für diese Session ausblenden">
               <span className="text-xs">🔕</span>
@@ -808,28 +715,89 @@ export default function Clippy() {
           <div className="absolute -right-3 bottom-6 w-0 h-0 border-t-[10px] border-t-transparent border-b-[10px] border-b-transparent border-l-[14px] border-l-amber-300" />
           <div className="absolute -right-[10px] bottom-6 w-0 h-0 border-t-[10px] border-t-transparent border-b-[10px] border-b-transparent border-l-[14px] border-l-amber-50" />
           
-          <p className="text-sm text-gray-700 leading-relaxed pr-4 min-h-[5rem]">
-            {displayedText}
-            {isTyping && <span className="animate-pulse">|</span>}
-          </p>
-          
-          <div className="flex items-center justify-between mt-3 pt-3 border-t border-amber-200">
-            <button onClick={newTipp} disabled={isTyping} className="text-xs text-amber-600 hover:text-amber-700 font-medium flex items-center gap-1 disabled:opacity-50">
-              <Sparkles className="w-3 h-3" /> Neuer Tipp
-            </button>
-            <div className="flex gap-1">
-              <button onClick={startGame} className="text-base hover:scale-125 transition-transform" title="Tic Tac Toe spielen">🎮</button>
-              <button onClick={() => playAnimation('wave')} className="text-base hover:scale-125 transition-transform" title="Winken">👋</button>
-              <button onClick={() => playAnimation('party')} className="text-base hover:scale-125 transition-transform" title="Feiern">🎉</button>
-              <button onClick={() => playAnimation('flex')} className="text-base hover:scale-125 transition-transform" title="Stark">💪</button>
-              <button onClick={() => playAnimation('cool')} className="text-base hover:scale-125 transition-transform" title="Cool">😎</button>
+          {/* SPIEL MODUS */}
+          {showGame ? (
+            <div className="flex flex-col">
+              {/* Header mit Score */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-sm">
+                  <span className="text-blue-500 font-bold">{playerWins}</span>
+                  <span className="text-gray-400 mx-1">-</span>
+                  <span className="text-amber-500 font-bold">{aiWins}</span>
+                </div>
+                <button onClick={closeGame} className="text-xs text-gray-400 hover:text-gray-600">
+                  ← Zurück
+                </button>
+              </div>
+              
+              {/* Karl's Kommentar - feste Höhe, Text bricht um */}
+              <p className="text-xs text-gray-600 mb-3 italic h-[36px] overflow-hidden leading-tight break-words">"{gameComment}"</p>
+              
+              {/* Spielfeld - 3x3 Grid */}
+              <div className="flex justify-center mb-3">
+                <div className="grid grid-cols-3 gap-1.5">
+                  {gameBoard.map((square, i) => (
+                    <button
+                      key={i}
+                      onClick={() => handleSquareClick(i)}
+                      disabled={square || gameStatus !== 'playing' || !isPlayerTurn}
+                      className={`
+                        w-16 h-16 rounded-lg text-2xl font-bold flex items-center justify-center
+                        transition-colors duration-200 border-2
+                        ${winningLine?.includes(i) 
+                          ? 'bg-green-100 border-green-400' 
+                          : 'bg-white border-gray-200 hover:bg-amber-50 hover:border-amber-300'}
+                        ${!square && gameStatus === 'playing' && isPlayerTurn ? 'cursor-pointer' : 'cursor-default'}
+                      `}
+                    >
+                      {square === 'X' && <span className="text-blue-500">✕</span>}
+                      {square === 'O' && <span className="text-amber-500">○</span>}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              
+              {/* Status / Buttons */}
+              <div className="text-center h-[28px] flex items-center justify-center">
+                {gameStatus === 'playing' && (
+                  <p className="text-xs text-gray-500">
+                    {isPlayerTurn ? '🎯 Du bist dran!' : '🤔 Karl denkt...'}
+                  </p>
+                )}
+                {gameStatus !== 'playing' && (
+                  <button onClick={startGame} className="text-xs px-3 py-1 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
+                    {gameStatus === 'won' ? '🎉 Nochmal!' : gameStatus === 'lost' ? '😤 Revanche!' : '🤝 Nochmal!'}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-          
-          <div className="flex items-center justify-between mt-2 text-[10px] text-amber-400">
-            <span>Karl Klammer 📎</span>
-            <span className="flex items-center gap-1"><Star className="w-3 h-3" /> {tippsRead} Tipps</span>
-          </div>
+          ) : (
+            /* NORMALER TIPP MODUS */
+            <>
+              <p className="text-sm text-gray-700 leading-relaxed pr-4 min-h-[5rem]">
+                {displayedText}
+                {isTyping && <span className="animate-pulse">|</span>}
+              </p>
+              
+              <div className="flex items-center justify-between mt-3 pt-3 border-t border-amber-200">
+                <button onClick={newTipp} disabled={isTyping} className="text-xs text-amber-600 hover:text-amber-700 font-medium flex items-center gap-1 disabled:opacity-50">
+                  <Sparkles className="w-3 h-3" /> Neuer Tipp
+                </button>
+                <div className="flex gap-1">
+                  <button onClick={startGame} className="text-base hover:scale-125 transition-transform" title="Tic Tac Toe spielen">🎮</button>
+                  <button onClick={() => playAnimation('wave')} className="text-base hover:scale-125 transition-transform" title="Winken">👋</button>
+                  <button onClick={() => playAnimation('party')} className="text-base hover:scale-125 transition-transform" title="Feiern">🎉</button>
+                  <button onClick={() => playAnimation('flex')} className="text-base hover:scale-125 transition-transform" title="Stark">💪</button>
+                  <button onClick={() => playAnimation('cool')} className="text-base hover:scale-125 transition-transform" title="Cool">😎</button>
+                </div>
+              </div>
+              
+              <div className="flex items-center justify-between mt-2 text-[10px] text-amber-400">
+                <span>Karl Klammer 📎</span>
+                <span className="flex items-center gap-1"><Star className="w-3 h-3" /> {tippsRead} Tipps</span>
+              </div>
+            </>
+          )}
         </div>
         
         {/* CLIPPY SVG */}
