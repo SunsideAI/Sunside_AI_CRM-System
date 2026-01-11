@@ -64,6 +64,7 @@ const TIPPS = [
   { text: "Meine Hobbys? Dokumente zusammenhalten und eure Deals feiern!", emoji: "🎊", mood: "party" },
   { text: "Bill Gates hat mich gefeuert. Jetzt arbeite ich für Sunside AI!", emoji: "😏", mood: "cool" },
   { text: "Ich bin nicht nervig, ich bin... enthusiastisch hilfreich!", emoji: "✨", mood: "happy" },
+  { text: "Damals war ich auch Cold Caller... dann habe ich einen Pfeil ins Knie bekommen.", emoji: "🏹", mood: "sad" },
   
   // CRM-spezifisch 💻
   { text: "Hast du heute schon deine Wiedervorlagen gecheckt?", emoji: "🔔", mood: "alert" },
@@ -89,6 +90,7 @@ const ERSCHEINUNGS_INTERVALL = 5 * 60 * 1000
 
 export default function Clippy() {
   const [isVisible, setIsVisible] = useState(false)
+  const [isDisabledForSession, setIsDisabledForSession] = useState(false)
   const [currentTipp, setCurrentTipp] = useState(TIPPS[0])
   const [isAnimating, setIsAnimating] = useState(false)
   const [mood, setMood] = useState('idle')
@@ -96,6 +98,21 @@ export default function Clippy() {
   const [displayedText, setDisplayedText] = useState('')
   const [eyePosition, setEyePosition] = useState({ x: 0, y: 0 })
   const [isBlinking, setIsBlinking] = useState(false)
+
+  // Check sessionStorage beim Laden
+  useEffect(() => {
+    const disabled = sessionStorage.getItem('clippy-disabled')
+    if (disabled === 'true') {
+      setIsDisabledForSession(true)
+    }
+  }, [])
+
+  // Für diese Session deaktivieren
+  const disableForSession = () => {
+    sessionStorage.setItem('clippy-disabled', 'true')
+    setIsDisabledForSession(true)
+    setIsVisible(false)
+  }
 
   // Zufälligen Tipp auswählen
   const getRandomTipp = () => {
@@ -158,6 +175,8 @@ export default function Clippy() {
 
   // Clippy erscheinen lassen
   const showClippy = () => {
+    if (isDisabledForSession) return
+    
     const newTipp = getRandomTipp()
     setCurrentTipp(newTipp)
     setMood(newTipp.mood || 'idle')
@@ -189,12 +208,14 @@ export default function Clippy() {
 
   // Initial erscheinen
   useEffect(() => {
+    if (isDisabledForSession) return
+    
     const initialTimeout = setTimeout(() => showClippy(), 30000)
     const interval = setInterval(() => {
-      if (Math.random() > 0.5 && !isVisible) showClippy()
+      if (Math.random() > 0.5 && !isVisible && !isDisabledForSession) showClippy()
     }, ERSCHEINUNGS_INTERVALL)
     return () => { clearTimeout(initialTimeout); clearInterval(interval) }
-  }, [isVisible])
+  }, [isVisible, isDisabledForSession])
 
   // Mood zu CSS Animation
   const getMoodClass = () => {
@@ -215,18 +236,29 @@ export default function Clippy() {
     }
   }
 
-  if (!isVisible) return null
+  if (!isVisible || isDisabledForSession) return null
 
   return (
     <div className={`fixed bottom-6 right-6 z-50 flex items-end gap-3 ${isAnimating ? 'animate-bounce' : ''}`}>
       {/* Sprechblase */}
       <div className="relative bg-gradient-to-br from-amber-50 to-yellow-50 border-2 border-amber-300 rounded-2xl p-4 max-w-sm shadow-xl">
-        <button
-          onClick={() => setIsVisible(false)}
-          className="absolute -top-2 -right-2 w-6 h-6 bg-red-100 hover:bg-red-200 rounded-full flex items-center justify-center transition-colors shadow-md"
-        >
-          <X className="w-3 h-3 text-red-600" />
-        </button>
+        {/* Buttons oben rechts */}
+        <div className="absolute -top-2 -right-2 flex gap-1">
+          <button
+            onClick={disableForSession}
+            className="w-6 h-6 bg-gray-100 hover:bg-gray-200 rounded-full flex items-center justify-center transition-colors shadow-md"
+            title="Für diese Session ausblenden"
+          >
+            <span className="text-xs">🔕</span>
+          </button>
+          <button
+            onClick={() => setIsVisible(false)}
+            className="w-6 h-6 bg-red-100 hover:bg-red-200 rounded-full flex items-center justify-center transition-colors shadow-md"
+            title="Schließen"
+          >
+            <X className="w-3 h-3 text-red-600" />
+          </button>
+        </div>
         
         <div className="absolute -top-1 -left-1">
           <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
@@ -262,7 +294,7 @@ export default function Clippy() {
         </div>
         
         <div className="text-center mt-2">
-          <span className="text-[10px] text-amber-400">Klaus Klammer 📎</span>
+          <span className="text-[10px] text-amber-400">Karl Klammer 📎</span>
         </div>
       </div>
       
