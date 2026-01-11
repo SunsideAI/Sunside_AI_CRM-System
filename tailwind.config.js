@@ -19,6 +19,7 @@ export default {
       animation: {
         'wiggle': 'wiggle 0.5s ease-in-out infinite',
         'float': 'float 3s ease-in-out infinite',
+        'shake': 'shake 0.5s ease-in-out infinite',
       },
       keyframes: {
         wiggle: {
@@ -28,6 +29,11 @@ export default {
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-10px)' },
+        },
+        shake: {
+          '0%, 100%': { transform: 'translateX(0)' },
+          '25%': { transform: 'translateX(-4px)' },
+          '75%': { transform: 'translateX(4px)' },
         }
       }
     },
