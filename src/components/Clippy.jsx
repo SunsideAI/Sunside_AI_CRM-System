@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { X, Sparkles } from 'lucide-react'
 
 // Motivationstipps für Vertriebler
@@ -44,7 +44,6 @@ export default function Clippy() {
   const [animation, setAnimation] = useState('idle')
   const [isTyping, setIsTyping] = useState(false)
   const [displayedText, setDisplayedText] = useState('')
-  const hideTimeoutRef = useRef(null)
 
   // Zufälligen Tipp auswählen
   const getRandomTipp = () => {
@@ -83,11 +82,6 @@ export default function Clippy() {
 
   // Clippy erscheinen lassen
   const showClippy = () => {
-    // Clear existing timeout
-    if (hideTimeoutRef.current) {
-      clearTimeout(hideTimeoutRef.current)
-    }
-    
     const newTipp = getRandomTipp()
     setCurrentTipp(newTipp)
     setAnimation(getRandomAnimation())
@@ -99,11 +93,6 @@ export default function Clippy() {
       setIsAnimating(false)
       setAnimation('idle')
     }, 1500)
-    
-    // Nach 20 Sekunden automatisch ausblenden
-    hideTimeoutRef.current = setTimeout(() => {
-      setIsVisible(false)
-    }, 20000)
   }
 
   // Neuer Tipp
@@ -134,9 +123,6 @@ export default function Clippy() {
     return () => {
       clearTimeout(initialTimeout)
       clearInterval(interval)
-      if (hideTimeoutRef.current) {
-        clearTimeout(hideTimeoutRef.current)
-      }
     }
   }, [])
 
