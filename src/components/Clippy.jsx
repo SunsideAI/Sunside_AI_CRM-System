@@ -262,7 +262,7 @@ export default function Clippy() {
         </div>
         
         <div className="text-center mt-2">
-          <span className="text-[10px] text-amber-400">Karl Klammer 📎</span>
+          <span className="text-[10px] text-amber-400">Klaus Klammer 📎</span>
         </div>
       </div>
       
