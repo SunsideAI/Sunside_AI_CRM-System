@@ -1,5 +1,94 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { X, Sparkles, Trophy, Star } from 'lucide-react'
+import { X, Sparkles, Trophy, Star, Gamepad2 } from 'lucide-react'
+
+// ==========================================
+// TIC TAC TOE SPIEL LOGIK
+// ==========================================
+
+const checkWinner = (squares) => {
+  const lines = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8], // Reihen
+    [0, 3, 6], [1, 4, 7], [2, 5, 8], // Spalten
+    [0, 4, 8], [2, 4, 6] // Diagonalen
+  ]
+  for (let [a, b, c] of lines) {
+    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
+      return { winner: squares[a], line: [a, b, c] }
+    }
+  }
+  return null
+}
+
+const getAIMove = (squares, difficulty = 'medium') => {
+  const emptySquares = squares.map((s, i) => s === null ? i : null).filter(i => i !== null)
+  if (emptySquares.length === 0) return null
+  
+  // Easy: Zufälliger Zug
+  if (difficulty === 'easy') {
+    return emptySquares[Math.floor(Math.random() * emptySquares.length)]
+  }
+  
+  // Medium/Hard: Versuche zu gewinnen oder zu blocken
+  for (let i of emptySquares) {
+    const test = [...squares]
+    test[i] = 'O'
+    if (checkWinner(test)?.winner === 'O') return i // Gewinnzug
+  }
+  
+  for (let i of emptySquares) {
+    const test = [...squares]
+    test[i] = 'X'
+    if (checkWinner(test)?.winner === 'X') return i // Block Spieler
+  }
+  
+  // Mitte bevorzugen
+  if (squares[4] === null) return 4
+  
+  // Ecken bevorzugen
+  const corners = [0, 2, 6, 8].filter(i => squares[i] === null)
+  if (corners.length > 0) return corners[Math.floor(Math.random() * corners.length)]
+  
+  // Sonst zufällig
+  return emptySquares[Math.floor(Math.random() * emptySquares.length)]
+}
+
+// Spiel-Kommentare von Karl Klammer
+const GAME_COMMENTS = {
+  start: [
+    "Lass uns spielen! Ich warne dich, ich bin gut!",
+    "Tic Tac Toe? Ich hab das Spiel erfunden! ...Nicht wirklich.",
+    "Du fängst an! Ich bin ein faires Handtuch... ähh, Büroklammer.",
+  ],
+  playerMove: [
+    "Interessanter Zug...",
+    "Hmm, nicht schlecht!",
+    "Oh, DEN hab ich nicht kommen sehen!",
+    "Klassiker!",
+  ],
+  aiMove: [
+    "Ha! Nimm DAS!",
+    "Schachmatt! ...Warte, falsches Spiel.",
+    "Strategisch brillant, wenn ich das so sagen darf.",
+    "Mein IQ ist über 9000!",
+  ],
+  playerWin: [
+    "WAS?! Unmöglich! Du hast geschummelt!",
+    "Okay okay, du hast gewonnen. Anfängerglück!",
+    "Ich hab dich gewinnen lassen. Aus Mitleid.",
+    "Rematch! REMATCH! 😤",
+  ],
+  aiWin: [
+    "HAHA! Wer ist jetzt der Boss?! 🏆",
+    "Tja, gegen eine Büroklammer verlieren ist kein Schande... doch, ist es.",
+    "GG EZ! 😎",
+    "Ich akzeptiere meine Trophäe jetzt.",
+  ],
+  draw: [
+    "Unentschieden! Du bist fast so gut wie ich!",
+    "Patt! Wie beim Schach, nur einfacher.",
+    "Niemand gewinnt? Langweilig! Nochmal!",
+  ],
+}
 
 // ==========================================
 // SPRÜCHE - Normal, Memes & Zeitbasiert
@@ -181,6 +270,14 @@ export default function Clippy() {
   const [showAchievement, setShowAchievement] = useState(null)
   const [konamiIndex, setKonamiIndex] = useState(0)
   const [costume, setCostume] = useState('normal')
+  const [showGame, setShowGame] = useState(false)
+  const [gameBoard, setGameBoard] = useState(Array(9).fill(null))
+  const [isPlayerTurn, setIsPlayerTurn] = useState(true)
+  const [gameStatus, setGameStatus] = useState('playing') // playing, won, lost, draw
+  const [gameComment, setGameComment] = useState('')
+  const [winningLine, setWinningLine] = useState(null)
+  const [playerWins, setPlayerWins] = useState(0)
+  const [aiWins, setAiWins] = useState(0)
   
   const containerRef = useRef(null)
   const konamiCode = ['ArrowUp', 'ArrowUp', 'ArrowDown', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'ArrowLeft', 'ArrowRight', 'KeyB', 'KeyA']
@@ -192,8 +289,12 @@ export default function Clippy() {
     
     const clicks = parseInt(localStorage.getItem('clippy-clicks') || '0')
     const tipps = parseInt(localStorage.getItem('clippy-tipps') || '0')
+    const pWins = parseInt(localStorage.getItem('clippy-player-wins') || '0')
+    const aWins = parseInt(localStorage.getItem('clippy-ai-wins') || '0')
     setClickCount(clicks)
     setTippsRead(tipps)
+    setPlayerWins(pWins)
+    setAiWins(aWins)
   }, [])
 
   const disableForSession = () => {
@@ -480,6 +581,95 @@ export default function Clippy() {
     }
   }
 
+  // ==========================================
+  // TIC TAC TOE SPIEL FUNKTIONEN
+  // ==========================================
+  
+  const getRandomComment = (type) => {
+    const comments = GAME_COMMENTS[type]
+    return comments[Math.floor(Math.random() * comments.length)]
+  }
+
+  const startGame = () => {
+    setShowGame(true)
+    setGameBoard(Array(9).fill(null))
+    setIsPlayerTurn(true)
+    setGameStatus('playing')
+    setWinningLine(null)
+    setGameComment(getRandomComment('start'))
+    setMood('excited')
+  }
+
+  const handleSquareClick = (index) => {
+    if (gameBoard[index] || gameStatus !== 'playing' || !isPlayerTurn) return
+    
+    const newBoard = [...gameBoard]
+    newBoard[index] = 'X'
+    setGameBoard(newBoard)
+    setGameComment(getRandomComment('playerMove'))
+    
+    const result = checkWinner(newBoard)
+    if (result) {
+      setWinningLine(result.line)
+      setGameStatus('won')
+      setGameComment(getRandomComment('playerWin'))
+      setMood('sad')
+      setPlayerWins(prev => {
+        const newVal = prev + 1
+        localStorage.setItem('clippy-player-wins', newVal.toString())
+        return newVal
+      })
+      return
+    }
+    
+    if (newBoard.every(s => s !== null)) {
+      setGameStatus('draw')
+      setGameComment(getRandomComment('draw'))
+      setMood('shrug')
+      return
+    }
+    
+    setIsPlayerTurn(false)
+    
+    // AI Zug nach kurzer Verzögerung
+    setTimeout(() => {
+      const aiMove = getAIMove(newBoard, 'medium')
+      if (aiMove !== null) {
+        newBoard[aiMove] = 'O'
+        setGameBoard([...newBoard])
+        setGameComment(getRandomComment('aiMove'))
+        setMood('cool')
+        
+        const aiResult = checkWinner(newBoard)
+        if (aiResult) {
+          setWinningLine(aiResult.line)
+          setGameStatus('lost')
+          setGameComment(getRandomComment('aiWin'))
+          setMood('party')
+          setAiWins(prev => {
+            const newVal = prev + 1
+            localStorage.setItem('clippy-ai-wins', newVal.toString())
+            return newVal
+          })
+          return
+        }
+        
+        if (newBoard.every(s => s !== null)) {
+          setGameStatus('draw')
+          setGameComment(getRandomComment('draw'))
+          setMood('shrug')
+          return
+        }
+      }
+      setIsPlayerTurn(true)
+    }, 600)
+  }
+
+  const closeGame = () => {
+    setShowGame(false)
+    setMood('idle')
+  }
+
   if (!isVisible || isDisabledForSession) return null
 
   const containerStyle = position.x || position.y 
@@ -494,6 +684,102 @@ export default function Clippy() {
           <div className="bg-gradient-to-r from-yellow-400 to-amber-500 text-white px-6 py-3 rounded-xl shadow-2xl flex items-center gap-3">
             <Trophy className="w-6 h-6" />
             <span className="font-bold">{showAchievement.text}</span>
+          </div>
+        </div>
+      )}
+      
+      {/* TIC TAC TOE SPIEL MODAL */}
+      {showGame && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closeGame} />
+          <div className="relative bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl shadow-2xl p-6 w-full max-w-sm border-2 border-amber-300">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Gamepad2 className="w-5 h-5 text-amber-600" />
+                <h3 className="font-bold text-gray-800">Tic Tac Toe</h3>
+              </div>
+              <button onClick={closeGame} className="w-8 h-8 bg-red-100 hover:bg-red-200 rounded-full flex items-center justify-center">
+                <X className="w-4 h-4 text-red-600" />
+              </button>
+            </div>
+            
+            {/* Score */}
+            <div className="flex justify-center gap-6 mb-4 text-sm">
+              <div className="text-center">
+                <p className="text-gray-500">Du</p>
+                <p className="text-2xl font-bold text-blue-600">{playerWins}</p>
+              </div>
+              <div className="text-gray-300 text-2xl">-</div>
+              <div className="text-center">
+                <p className="text-gray-500">Karl</p>
+                <p className="text-2xl font-bold text-amber-600">{aiWins}</p>
+              </div>
+            </div>
+            
+            {/* Kommentar von Karl */}
+            <div className="bg-white rounded-lg p-3 mb-4 border border-amber-200">
+              <p className="text-sm text-gray-700 flex items-start gap-2">
+                <span>📎</span>
+                <span>{gameComment}</span>
+              </p>
+            </div>
+            
+            {/* Spielfeld */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              {gameBoard.map((square, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSquareClick(i)}
+                  disabled={square || gameStatus !== 'playing' || !isPlayerTurn}
+                  className={`
+                    w-20 h-20 rounded-xl text-4xl font-bold flex items-center justify-center
+                    transition-all duration-200
+                    ${winningLine?.includes(i) 
+                      ? 'bg-green-200 border-green-400' 
+                      : 'bg-white border-gray-200 hover:bg-amber-50'}
+                    border-2
+                    ${!square && gameStatus === 'playing' && isPlayerTurn ? 'cursor-pointer hover:scale-105' : 'cursor-default'}
+                  `}
+                >
+                  {square === 'X' && <span className="text-blue-500">✕</span>}
+                  {square === 'O' && <span className="text-amber-500">○</span>}
+                </button>
+              ))}
+            </div>
+            
+            {/* Status */}
+            <div className="text-center">
+              {gameStatus === 'playing' && (
+                <p className="text-sm text-gray-600">
+                  {isPlayerTurn ? '🎯 Du bist dran!' : '🤔 Karl denkt nach...'}
+                </p>
+              )}
+              {gameStatus === 'won' && (
+                <div>
+                  <p className="text-lg font-bold text-green-600 mb-2">🎉 Du hast gewonnen!</p>
+                  <button onClick={startGame} className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
+                    Nochmal spielen
+                  </button>
+                </div>
+              )}
+              {gameStatus === 'lost' && (
+                <div>
+                  <p className="text-lg font-bold text-red-600 mb-2">😤 Karl hat gewonnen!</p>
+                  <button onClick={startGame} className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
+                    Revanche!
+                  </button>
+                </div>
+              )}
+              {gameStatus === 'draw' && (
+                <div>
+                  <p className="text-lg font-bold text-gray-600 mb-2">🤝 Unentschieden!</p>
+                  <button onClick={startGame} className="px-4 py-2 bg-amber-500 text-white rounded-lg hover:bg-amber-600 transition-colors">
+                    Nochmal!
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -532,6 +818,7 @@ export default function Clippy() {
               <Sparkles className="w-3 h-3" /> Neuer Tipp
             </button>
             <div className="flex gap-1">
+              <button onClick={startGame} className="text-base hover:scale-125 transition-transform" title="Tic Tac Toe spielen">🎮</button>
               <button onClick={() => playAnimation('wave')} className="text-base hover:scale-125 transition-transform" title="Winken">👋</button>
               <button onClick={() => playAnimation('party')} className="text-base hover:scale-125 transition-transform" title="Feiern">🎉</button>
               <button onClick={() => playAnimation('flex')} className="text-base hover:scale-125 transition-transform" title="Stark">💪</button>
@@ -540,7 +827,7 @@ export default function Clippy() {
           </div>
           
           <div className="flex items-center justify-between mt-2 text-[10px] text-amber-400">
-            <span>Klaus Klammer 📎</span>
+            <span>Karl Klammer 📎</span>
             <span className="flex items-center gap-1"><Star className="w-3 h-3" /> {tippsRead} Tipps</span>
           </div>
         </div>
