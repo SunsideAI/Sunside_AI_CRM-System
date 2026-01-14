@@ -599,7 +599,8 @@ function Closing() {
       setup: lead.setup || 0,
       retainer: lead.retainer || 0,
       laufzeit: lead.laufzeit || 6,
-      kommentar: lead.kommentar || ''
+      kommentar: lead.kommentar || '',
+      neuerKommentar: ''  // Für neuen manuellen Kommentar
     })
     setEditMode(false)
   }
@@ -625,11 +626,11 @@ function Closing() {
   const handleSave = async () => {
     if (!selectedLead) return
     
-    // Status ist optional - Notizen können auch ohne Status-Änderung gespeichert werden
+    // Status ist optional - Kommentare können auch ohne Status-Änderung gespeichert werden
     const hasStatusChange = editData.status && editData.status !== selectedLead.status
-    const hasKommentarChange = editData.kommentar !== selectedLead.kommentar
+    const hasNeuerKommentar = editData.neuerKommentar && editData.neuerKommentar.trim()
 
-    if (!hasStatusChange && !hasKommentarChange) {
+    if (!hasStatusChange && !hasNeuerKommentar) {
       setEditMode(false)
       return // Nichts zu speichern
     }
@@ -659,22 +660,32 @@ function Closing() {
       }
 
       // Kommentar im Original-Lead (Immobilienmakler_Leads) updaten
-      if (selectedLead.originalLeadId && (hasKommentarChange || hasStatusChange)) {
+      let updatedKommentar = selectedLead.kommentar
+      
+      if (selectedLead.originalLeadId && (hasNeuerKommentar || hasStatusChange)) {
         const userName = user?.vor_nachname || user?.name || 'Closer'
         
         try {
-          // Notizen direkt im Lead updaten
-          if (hasKommentarChange) {
-            await fetch('/.netlify/functions/leads', {
+          // Neuer Kommentar als History-Eintrag hinzufügen
+          if (hasNeuerKommentar) {
+            const kommentarResponse = await fetch('/.netlify/functions/leads', {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 leadId: selectedLead.originalLeadId,
-                updates: {
-                  kommentar: editData.kommentar
+                updates: {},
+                historyEntry: {
+                  action: 'kommentar',
+                  details: editData.neuerKommentar.trim(),
+                  userName: userName
                 }
               })
             })
+            
+            if (kommentarResponse.ok) {
+              const kommentarData = await kommentarResponse.json()
+              updatedKommentar = kommentarData.lead?.kommentar || updatedKommentar
+            }
           }
           
           // History-Eintrag für Status-Änderung
@@ -689,7 +700,7 @@ function Closing() {
                     ? 'Termin verschoben 🔄'
                     : `Status: ${editData.status}`
             
-            await fetch('/.netlify/functions/leads', {
+            const statusResponse = await fetch('/.netlify/functions/leads', {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -705,6 +716,11 @@ function Closing() {
                 }
               })
             })
+            
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json()
+              updatedKommentar = statusData.lead?.kommentar || updatedKommentar
+            }
           }
         } catch (kommentarErr) {
           console.warn('Kommentar-Update fehlgeschlagen:', kommentarErr)
@@ -773,16 +789,22 @@ function Closing() {
       // Lokale Liste aktualisieren
       setLeads(prev => prev.map(l => 
         l.id === selectedLead.id 
-          ? { ...l, status: hasStatusChange ? editData.status : l.status, kommentar: editData.kommentar }
+          ? { ...l, status: hasStatusChange ? editData.status : l.status, kommentar: updatedKommentar }
           : l
       ))
       setSelectedLead(prev => ({ 
         ...prev, 
         status: hasStatusChange ? editData.status : prev.status,
-        kommentar: editData.kommentar
+        kommentar: updatedKommentar
       }))
+      setEditData(prev => ({ ...prev, neuerKommentar: '', kommentar: updatedKommentar }))
       setEditMode(false)
       showToast('success', 'Änderungen gespeichert')
+      
+      // Bei Status-Änderung Modal schließen (wie vorher)
+      if (hasStatusChange) {
+        closeModal()
+      }
     } catch (err) {
       console.error('Speichern fehlgeschlagen:', err)
       showToast('error', 'Fehler beim Speichern')
@@ -1480,15 +1502,24 @@ function Closing() {
                   </button>
 
                   {/* Header */}
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="p-3 bg-orange-100 rounded-xl">
-                      <CalendarPlus className="w-6 h-6 text-orange-600" />
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-semibold text-gray-900">Neuen Termin buchen</h3>
-                      <p className="text-sm text-gray-500">{selectedLead.unternehmen}</p>
-                    </div>
-                  </div>
+                  {(() => {
+                    const terminDate = new Date(selectedLead.terminDatum)
+                    const isInPast = terminDate < new Date()
+                    const isAbgesagt = selectedLead.status === 'Termin abgesagt'
+                    const headerText = isInPast || isAbgesagt ? 'Neuen Termin buchen' : 'Termin verschieben'
+                    
+                    return (
+                      <div className="flex items-center gap-3 mb-6">
+                        <div className="p-3 bg-orange-100 rounded-xl">
+                          <CalendarPlus className="w-6 h-6 text-orange-600" />
+                        </div>
+                        <div>
+                          <h3 className="text-xl font-semibold text-gray-900">{headerText}</h3>
+                          <p className="text-sm text-gray-500">{selectedLead.unternehmen}</p>
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   {/* TerminPicker */}
                   <TerminPicker
@@ -1521,17 +1552,24 @@ function Closing() {
                   {/* Action Buttons - Angebot & Unterlagen versenden */}
                   {!editMode && (
                     <div className="space-y-3">
-                      {/* Termin verschieben Button - für alle Leads mit Termin */}
-                      {selectedLead.terminDatum && selectedLead.status !== 'Abgeschlossen' && selectedLead.status !== 'Verloren' && (
-                        <button
-                          type="button"
-                          onClick={() => setShowTerminPicker(true)}
-                          className="w-full flex items-center justify-center px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
-                        >
-                          <CalendarPlus className="w-5 h-5 mr-2" />
-                          {selectedLead.status === 'Termin abgesagt' ? 'Neuen Termin buchen' : 'Termin verschieben'}
-                        </button>
-                      )}
+                      {/* Termin verschieben/neu buchen Button - für alle Leads mit Termin */}
+                      {selectedLead.terminDatum && selectedLead.status !== 'Abgeschlossen' && selectedLead.status !== 'Verloren' && (() => {
+                        const terminDate = new Date(selectedLead.terminDatum)
+                        const now = new Date()
+                        const isInPast = terminDate < now
+                        const isAbgesagt = selectedLead.status === 'Termin abgesagt'
+                        
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => setShowTerminPicker(true)}
+                            className="w-full flex items-center justify-center px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                          >
+                            <CalendarPlus className="w-5 h-5 mr-2" />
+                            {isInPast || isAbgesagt ? 'Neuen Termin buchen' : 'Termin verschieben'}
+                          </button>
+                        )
+                      })()}
                       
                       <div className="grid grid-cols-2 gap-3">
                         <button
@@ -1841,27 +1879,31 @@ function Closing() {
                     </>
                   )}
 
-                  {/* Notizen - bearbeitbar im Edit-Mode */}
+                  {/* Notizen / History - immer read-only */}
                   <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-3">Notizen</h4>
-                    {editMode ? (
+                    <h4 className="text-sm font-medium text-gray-500 mb-3">Notizen & Verlauf</h4>
+                    <div className="bg-gray-50 rounded-lg p-4 max-h-[200px] overflow-y-auto">
+                      {selectedLead.kommentar ? (
+                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">Keine Notizen vorhanden</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Neuer Kommentar hinzufügen - nur im Edit-Mode */}
+                  {editMode && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Neuer Kommentar hinzufügen</label>
                       <textarea
-                        value={editData.kommentar || ''}
-                        onChange={(e) => handleEditChange('kommentar', e.target.value)}
-                        rows={5}
-                        placeholder="Notizen zum Lead hinzufügen..."
+                        value={editData.neuerKommentar || ''}
+                        onChange={(e) => handleEditChange('neuerKommentar', e.target.value)}
+                        rows={3}
+                        placeholder="Notiz hinzufügen..."
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
                       />
-                    ) : (
-                      <div className="bg-gray-50 rounded-lg p-4 min-h-[100px]">
-                        {selectedLead.kommentar ? (
-                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
-                        ) : (
-                          <p className="text-sm text-gray-400 italic">Keine Notizen vorhanden</p>
-                        )}
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
