@@ -2059,36 +2059,38 @@ function Closing() {
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="text-sm font-medium text-gray-500">Dokumente</h4>
-                      <div>
-                        <input
-                          ref={fileInputRef}
-                          type="file"
-                          onChange={handleFileUpload}
-                          accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
-                          className="hidden"
-                          id="file-upload"
-                        />
-                        <label
-                          htmlFor="file-upload"
-                          className={`flex items-center px-3 py-1.5 text-sm rounded-lg cursor-pointer transition-colors ${
-                            uploading 
-                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                              : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
-                          }`}
-                        >
-                          {uploading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                              Wird hochgeladen...
-                            </>
-                          ) : (
-                            <>
-                              <Upload className="w-4 h-4 mr-1.5" />
-                              Datei hochladen
-                            </>
-                          )}
-                        </label>
-                      </div>
+                      {editMode && (
+                        <div>
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            onChange={handleFileUpload}
+                            accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                            className="hidden"
+                            id="file-upload"
+                          />
+                          <label
+                            htmlFor="file-upload"
+                            className={`flex items-center px-3 py-1.5 text-sm rounded-lg cursor-pointer transition-colors ${
+                              uploading 
+                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                                : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                            }`}
+                          >
+                            {uploading ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                                Wird hochgeladen...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="w-4 h-4 mr-1.5" />
+                                Datei hochladen
+                              </>
+                            )}
+                          </label>
+                        </div>
+                      )}
                     </div>
                     
                     {uploadError && (
@@ -2137,13 +2139,15 @@ function Closing() {
                               >
                                 <Download className="w-4 h-4" />
                               </a>
-                              <button
-                                onClick={() => handleDeleteAttachment(attachment)}
-                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
-                                title="Löschen"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {editMode && (
+                                <button
+                                  onClick={() => handleDeleteAttachment(attachment)}
+                                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Löschen"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           </div>
                         ))}
@@ -2152,7 +2156,9 @@ function Closing() {
                       <div className="p-4 bg-gray-50 rounded-lg text-center">
                         <File className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                         <p className="text-sm text-gray-400">Keine Dokumente vorhanden</p>
-                        <p className="text-xs text-gray-400 mt-1">PDF, PNG, JPG, DOC, DOCX (max. 10 MB)</p>
+                        {editMode && (
+                          <p className="text-xs text-gray-400 mt-1">PDF, PNG, JPG, DOC, DOCX (max. 10 MB)</p>
+                        )}
                       </div>
                     )}
                   </div>
