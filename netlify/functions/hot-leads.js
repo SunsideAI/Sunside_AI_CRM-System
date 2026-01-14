@@ -225,6 +225,14 @@ exports.handler = async (event) => {
           produktDienstleistung: record.fields.Produkt_Dienstleistung || [],
           kommentar: getLookupValue(record.fields.Kommentar),  // Lookup aus Immobilienmakler_Leads
           kundeSeit: record.fields['Kunde seit'] || record.fields.Kunde_seit || '',
+          // Attachments (PDFs, Dokumente)
+          attachments: (record.fields.Attachments || []).map(att => ({
+            id: att.id,
+            url: att.url,
+            filename: att.filename,
+            size: att.size,
+            type: att.type
+          })),
           // Verknüpfungen
           originalLeadId: record.fields.Immobilienmakler_Leads?.[0] || null,
           // Setter/Closer: Record-IDs UND Namen
@@ -707,7 +715,8 @@ exports.handler = async (event) => {
         'Closer',  // Falls Closer gewechselt werden soll
         'Termin_Beratungsgespräch',  // Für Neu-Terminierung
         'Terminart',  // Video oder Telefonisch
-        'Meeting_Link'  // Google Meet Link
+        'Meeting_Link',  // Google Meet Link
+        'Attachments'  // Dokumente (PDFs, etc.)
       ]
 
       const fields = {}
@@ -726,14 +735,19 @@ exports.handler = async (event) => {
           'closerName': 'Closer',
           'terminDatum': 'Termin_Beratungsgespräch',
           'terminart': 'Terminart',
-          'meetingLink': 'Meeting_Link'
+          'meetingLink': 'Meeting_Link',
+          'attachments': 'Attachments'
         }
 
         const airtableField = fieldMap[key] || key
 
         if (allowedFields.includes(airtableField)) {
+          // Attachments brauchen Array mit url-Objekten für Airtable
+          if (airtableField === 'Attachments' && Array.isArray(value)) {
+            fields[airtableField] = value.map(att => ({ url: att.url }))
+          }
           // Closer braucht Array-Format für Link
-          if (airtableField === 'Closer' && value) {
+          else if (airtableField === 'Closer' && value) {
             // Wenn closerName gegeben, zu ID auflösen
             if (key === 'closerName') {
               const closerRecordId = nameToId[value.toLowerCase()]
