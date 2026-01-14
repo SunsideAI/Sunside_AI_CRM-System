@@ -623,40 +623,72 @@ function Closing() {
   }
 
   const handleSave = async () => {
-    if (!selectedLead || !editData.status) return
+    if (!selectedLead) return
+    
+    // Status ist optional - Notizen können auch ohne Status-Änderung gespeichert werden
+    const hasStatusChange = editData.status && editData.status !== selectedLead.status
+    const hasKommentarChange = editData.kommentar !== selectedLead.kommentar
+
+    if (!hasStatusChange && !hasKommentarChange) {
+      setEditMode(false)
+      return // Nichts zu speichern
+    }
 
     try {
       setSaving(true)
 
-      // Nur Status kann bearbeitet werden (Setup/Retainer/Laufzeit nur über "Angebot versenden")
-      const response = await fetch('/.netlify/functions/hot-leads', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          hotLeadId: selectedLead.id,
-          updates: {
-            status: editData.status
-          }
+      // Hot Lead Status updaten (nur wenn Status geändert wurde)
+      if (hasStatusChange) {
+        const response = await fetch('/.netlify/functions/hot-leads', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            hotLeadId: selectedLead.id,
+            updates: {
+              status: editData.status
+            }
+          })
         })
-      })
 
-      const data = await response.json()
+        const data = await response.json()
 
-      if (response.ok) {
-        // Kommentar im Original-Lead (Immobilienmakler_Leads) updaten
-        if (selectedLead.originalLeadId) {
-          const userName = user?.vor_nachname || user?.name || 'Closer'
-          const statusText = editData.status === 'Abgeschlossen' 
-            ? 'Deal abgeschlossen ✅' 
-            : editData.status === 'Verloren'
-              ? 'Lead verloren ❌'
-              : editData.status === 'Termin abgesagt'
-                ? 'Termin abgesagt ❌'
-                : editData.status === 'Termin verschoben'
-                  ? 'Termin verschoben 🔄'
-                  : `Status: ${editData.status}`
+        if (!response.ok) {
+          showToast('error', 'Fehler beim Speichern: ' + (data.error || 'Unbekannt'))
+          return
+        }
+      }
+
+      // Kommentar im Original-Lead (Immobilienmakler_Leads) updaten
+      if (selectedLead.originalLeadId && (hasKommentarChange || hasStatusChange)) {
+        const userName = user?.vor_nachname || user?.name || 'Closer'
+        
+        try {
+          // Notizen direkt im Lead updaten
+          if (hasKommentarChange) {
+            await fetch('/.netlify/functions/leads', {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                leadId: selectedLead.originalLeadId,
+                updates: {
+                  kommentar: editData.kommentar
+                }
+              })
+            })
+          }
           
-          try {
+          // History-Eintrag für Status-Änderung
+          if (hasStatusChange) {
+            const statusText = editData.status === 'Abgeschlossen' 
+              ? 'Deal abgeschlossen ✅' 
+              : editData.status === 'Verloren'
+                ? 'Lead verloren ❌'
+                : editData.status === 'Termin abgesagt'
+                  ? 'Termin abgesagt ❌'
+                  : editData.status === 'Termin verschoben'
+                    ? 'Termin verschoben 🔄'
+                    : `Status: ${editData.status}`
+            
             await fetch('/.netlify/functions/leads', {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
@@ -673,12 +705,14 @@ function Closing() {
                 }
               })
             })
-          } catch (kommentarErr) {
-            console.warn('Kommentar-Update fehlgeschlagen:', kommentarErr)
           }
+        } catch (kommentarErr) {
+          console.warn('Kommentar-Update fehlgeschlagen:', kommentarErr)
         }
+      }
 
-        // System Message senden bei bestimmten Status-Änderungen
+      // System Message senden bei bestimmten Status-Änderungen
+      if (hasStatusChange) {
         const setterId = selectedLead.setterId
         if (setterId) {
           try {
@@ -734,19 +768,21 @@ function Closing() {
             console.warn('System Message konnte nicht gesendet werden:', msgErr)
           }
         }
-
-        // Lokale Liste aktualisieren
-        setLeads(prev => prev.map(l => 
-          l.id === selectedLead.id 
-            ? { ...l, status: editData.status }
-            : l
-        ))
-        setSelectedLead(prev => ({ ...prev, status: editData.status }))
-        setEditMode(false)
-        closeModal() // Modal schließen nach erfolgreichem Speichern
-      } else {
-        showToast('error', 'Fehler beim Speichern: ' + (data.error || 'Unbekannt'))
       }
+
+      // Lokale Liste aktualisieren
+      setLeads(prev => prev.map(l => 
+        l.id === selectedLead.id 
+          ? { ...l, status: hasStatusChange ? editData.status : l.status, kommentar: editData.kommentar }
+          : l
+      ))
+      setSelectedLead(prev => ({ 
+        ...prev, 
+        status: hasStatusChange ? editData.status : prev.status,
+        kommentar: editData.kommentar
+      }))
+      setEditMode(false)
+      showToast('success', 'Änderungen gespeichert')
     } catch (err) {
       console.error('Speichern fehlgeschlagen:', err)
       showToast('error', 'Fehler beim Speichern')
@@ -1485,15 +1521,15 @@ function Closing() {
                   {/* Action Buttons - Angebot & Unterlagen versenden */}
                   {!editMode && (
                     <div className="space-y-3">
-                      {/* Neu terminieren Button - nur bei abgesagten Terminen */}
-                      {selectedLead.status === 'Termin abgesagt' && (
+                      {/* Termin verschieben Button - für alle Leads mit Termin */}
+                      {selectedLead.terminDatum && selectedLead.status !== 'Abgeschlossen' && selectedLead.status !== 'Verloren' && (
                         <button
                           type="button"
                           onClick={() => setShowTerminPicker(true)}
                           className="w-full flex items-center justify-center px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
                         >
                           <CalendarPlus className="w-5 h-5 mr-2" />
-                          Neuen Termin buchen
+                          {selectedLead.status === 'Termin abgesagt' ? 'Neuen Termin buchen' : 'Termin verschieben'}
                         </button>
                       )}
                       
@@ -1527,8 +1563,13 @@ function Closing() {
                         onChange={(e) => handleEditChange('status', e.target.value)}
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
                       >
-                        {/* Leere Option als Default */}
-                        <option value="">Status wählen...</option>
+                        {/* Aktuellen Status als Default */}
+                        <option value="">Status beibehalten ({selectedLead.status})</option>
+                        <option value="Lead">Lead</option>
+                        <option value="Angebot">Angebot</option>
+                        <option value="Angebot versendet">Angebot versendet</option>
+                        <option value="Termin verschoben">Termin verschoben</option>
+                        <option value="Termin abgesagt">Termin abgesagt</option>
                         <option value="Abgeschlossen">Abgeschlossen</option>
                         <option value="Verloren">Verloren</option>
                       </select>
@@ -1800,16 +1841,26 @@ function Closing() {
                     </>
                   )}
 
-                  {/* Notizen - nur Anzeige (Kommentar ist Lookup aus Immobilienmakler_Leads) */}
+                  {/* Notizen - bearbeitbar im Edit-Mode */}
                   <div>
                     <h4 className="text-sm font-medium text-gray-500 mb-3">Notizen</h4>
-                    <div className="bg-gray-50 rounded-lg p-4 min-h-[100px]">
-                      {selectedLead.kommentar ? (
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
-                      ) : (
-                        <p className="text-sm text-gray-400 italic">Keine Notizen vorhanden</p>
-                      )}
-                    </div>
+                    {editMode ? (
+                      <textarea
+                        value={editData.kommentar || ''}
+                        onChange={(e) => handleEditChange('kommentar', e.target.value)}
+                        rows={5}
+                        placeholder="Notizen zum Lead hinzufügen..."
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                      />
+                    ) : (
+                      <div className="bg-gray-50 rounded-lg p-4 min-h-[100px]">
+                        {selectedLead.kommentar ? (
+                          <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
+                        ) : (
+                          <p className="text-sm text-gray-400 italic">Keine Notizen vorhanden</p>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1864,7 +1915,7 @@ function Closing() {
                   <button
                     type="button"
                     onClick={handleSave}
-                    disabled={saving || !editData.status}
+                    disabled={saving}
                     className="flex items-center px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {saving ? (
