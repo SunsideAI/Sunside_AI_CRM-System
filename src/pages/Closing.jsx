@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import EmailComposer from '../components/EmailComposer'
@@ -32,7 +32,11 @@ import {
   AlertCircle,
   Paperclip,
   CalendarPlus,
-  BarChart3
+  BarChart3,
+  Upload,
+  Download,
+  Trash2,
+  File
 } from 'lucide-react'
 
 // Paket-Optionen für Angebot
@@ -130,6 +134,11 @@ function Closing() {
   
   // Website-Statistiken einklappbar (für Status != Lead)
   const [showWebsiteStats, setShowWebsiteStats] = useState(false)
+  
+  // Datei-Upload State
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const fileInputRef = useRef(null)
 
   const LEADS_PER_PAGE = 10
 
@@ -137,6 +146,147 @@ function Closing() {
   const showToast = (type, message) => {
     setToast({ type, message })
     setTimeout(() => setToast(null), 4000)
+  }
+
+  // Datei-Upload Handler
+  const handleFileUpload = async (e) => {
+    const files = e.target.files
+    if (!files || files.length === 0 || !selectedLead) return
+
+    setUploading(true)
+    setUploadError('')
+
+    try {
+      const file = files[0]
+      
+      // Nur PDFs und gängige Dokumente erlauben
+      const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+      if (!allowedTypes.includes(file.type) && !file.name.match(/\.(pdf|png|jpg|jpeg|doc|docx)$/i)) {
+        throw new Error('Nur PDF, PNG, JPG, DOC und DOCX Dateien erlaubt')
+      }
+
+      // Max 10MB
+      if (file.size > 10 * 1024 * 1024) {
+        throw new Error('Datei zu groß (max. 10 MB)')
+      }
+
+      // Zu Base64 konvertieren
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader()
+        reader.onload = () => resolve(reader.result)
+        reader.onerror = reject
+        reader.readAsDataURL(file)
+      })
+
+      // Upload zu Cloudinary
+      const uploadResponse = await fetch('/.netlify/functions/upload-file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          file: base64,
+          filename: file.name
+        })
+      })
+
+      const uploadData = await uploadResponse.json()
+
+      if (!uploadResponse.ok) {
+        throw new Error(uploadData.error || 'Upload fehlgeschlagen')
+      }
+
+      // Neue Attachment-Liste erstellen
+      const newAttachment = {
+        id: uploadData.file.id,
+        url: uploadData.file.url,
+        filename: uploadData.file.filename,
+        size: uploadData.file.size,
+        type: uploadData.file.type
+      }
+
+      const updatedAttachments = [...(selectedLead.attachments || []), newAttachment]
+
+      // In Airtable speichern
+      const saveResponse = await fetch('/.netlify/functions/hot-leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hotLeadId: selectedLead.id,
+          updates: {
+            attachments: updatedAttachments
+          }
+        })
+      })
+
+      if (!saveResponse.ok) {
+        throw new Error('Speichern in Airtable fehlgeschlagen')
+      }
+
+      // Lokalen State aktualisieren
+      setSelectedLead(prev => ({ ...prev, attachments: updatedAttachments }))
+      setLeads(prev => prev.map(l => 
+        l.id === selectedLead.id ? { ...l, attachments: updatedAttachments } : l
+      ))
+
+      showToast('success', `${file.name} wurde hochgeladen`)
+
+    } catch (err) {
+      console.error('Upload Error:', err)
+      setUploadError(err.message)
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  // Datei löschen
+  const handleDeleteAttachment = async (attachment) => {
+    if (!selectedLead) return
+
+    try {
+      // Aus Cloudinary löschen (optional)
+      if (attachment.id && attachment.url?.includes('cloudinary')) {
+        await fetch(`/.netlify/functions/upload-file?public_id=${encodeURIComponent(attachment.id)}`, {
+          method: 'DELETE'
+        })
+      }
+
+      // Aus der Liste entfernen
+      const updatedAttachments = (selectedLead.attachments || []).filter(att => att.url !== attachment.url)
+
+      // In Airtable speichern
+      await fetch('/.netlify/functions/hot-leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hotLeadId: selectedLead.id,
+          updates: {
+            attachments: updatedAttachments
+          }
+        })
+      })
+
+      // Lokalen State aktualisieren
+      setSelectedLead(prev => ({ ...prev, attachments: updatedAttachments }))
+      setLeads(prev => prev.map(l => 
+        l.id === selectedLead.id ? { ...l, attachments: updatedAttachments } : l
+      ))
+
+      showToast('success', 'Datei gelöscht')
+
+    } catch (err) {
+      console.error('Delete Error:', err)
+      showToast('error', 'Löschen fehlgeschlagen')
+    }
+  }
+
+  // Dateigröße formatieren
+  const formatFileSize = (bytes) => {
+    if (!bytes) return ''
+    if (bytes < 1024) return bytes + ' B'
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
   // Retainer aus Setup berechnen (Setup / 2.75, abgerundet auf gerade Beträge, max 10% nach unten)
@@ -1904,6 +2054,108 @@ function Closing() {
                       />
                     </div>
                   )}
+
+                  {/* Dokumente / Attachments */}
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-sm font-medium text-gray-500">Dokumente</h4>
+                      <div>
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          onChange={handleFileUpload}
+                          accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                          className="hidden"
+                          id="file-upload"
+                        />
+                        <label
+                          htmlFor="file-upload"
+                          className={`flex items-center px-3 py-1.5 text-sm rounded-lg cursor-pointer transition-colors ${
+                            uploading 
+                              ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
+                              : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
+                          }`}
+                        >
+                          {uploading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
+                              Wird hochgeladen...
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-4 h-4 mr-1.5" />
+                              Datei hochladen
+                            </>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                    
+                    {uploadError && (
+                      <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center">
+                        <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                        {uploadError}
+                        <button onClick={() => setUploadError('')} className="ml-auto">
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    )}
+
+                    {selectedLead.attachments && selectedLead.attachments.length > 0 ? (
+                      <div className="space-y-2">
+                        {selectedLead.attachments.map((attachment, index) => (
+                          <div 
+                            key={attachment.id || index}
+                            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg group hover:bg-gray-100 transition-colors"
+                          >
+                            <div className="flex items-center min-w-0 flex-1">
+                              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                {attachment.filename?.toLowerCase().endsWith('.pdf') ? (
+                                  <FileText className="w-5 h-5 text-purple-600" />
+                                ) : attachment.type?.startsWith('image') || attachment.filename?.match(/\.(png|jpg|jpeg)$/i) ? (
+                                  <File className="w-5 h-5 text-blue-600" />
+                                ) : (
+                                  <File className="w-5 h-5 text-gray-600" />
+                                )}
+                              </div>
+                              <div className="ml-3 min-w-0">
+                                <p className="text-sm font-medium text-gray-900 truncate">
+                                  {attachment.filename || 'Dokument'}
+                                </p>
+                                {attachment.size && (
+                                  <p className="text-xs text-gray-500">{formatFileSize(attachment.size)}</p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 ml-3">
+                              <a
+                                href={attachment.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                                title="Herunterladen"
+                              >
+                                <Download className="w-4 h-4" />
+                              </a>
+                              <button
+                                onClick={() => handleDeleteAttachment(attachment)}
+                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100"
+                                title="Löschen"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-4 bg-gray-50 rounded-lg text-center">
+                        <File className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                        <p className="text-sm text-gray-400">Keine Dokumente vorhanden</p>
+                        <p className="text-xs text-gray-400 mt-1">PDF, PNG, JPG, DOC, DOCX (max. 10 MB)</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
