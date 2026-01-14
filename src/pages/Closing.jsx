@@ -2057,41 +2057,17 @@ function Closing() {
 
                   {/* Dokumente / Attachments */}
                   <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-medium text-gray-500">Dokumente</h4>
-                      {editMode && (
-                        <div>
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            onChange={handleFileUpload}
-                            accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
-                            className="hidden"
-                            id="file-upload"
-                          />
-                          <label
-                            htmlFor="file-upload"
-                            className={`flex items-center px-3 py-1.5 text-sm rounded-lg cursor-pointer transition-colors ${
-                              uploading 
-                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed' 
-                                : 'bg-purple-50 text-purple-600 hover:bg-purple-100'
-                            }`}
-                          >
-                            {uploading ? (
-                              <>
-                                <Loader2 className="w-4 h-4 mr-1.5 animate-spin" />
-                                Wird hochgeladen...
-                              </>
-                            ) : (
-                              <>
-                                <Upload className="w-4 h-4 mr-1.5" />
-                                Datei hochladen
-                              </>
-                            )}
-                          </label>
-                        </div>
-                      )}
-                    </div>
+                    <h4 className="text-sm font-medium text-gray-500 mb-3">Dokumente</h4>
+                    
+                    {/* Hidden File Input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      onChange={handleFileUpload}
+                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                      className="hidden"
+                      id="file-upload"
+                    />
                     
                     {uploadError && (
                       <div className="mb-3 p-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm flex items-center">
@@ -2151,15 +2127,58 @@ function Closing() {
                             </div>
                           </div>
                         ))}
-                      </div>
-                    ) : (
-                      <div className="p-4 bg-gray-50 rounded-lg text-center">
-                        <File className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                        <p className="text-sm text-gray-400">Keine Dokumente vorhanden</p>
+                        
+                        {/* Weitere Datei hinzufügen - nur im Edit-Mode */}
                         {editMode && (
-                          <p className="text-xs text-gray-400 mt-1">PDF, PNG, JPG, DOC, DOCX (max. 10 MB)</p>
+                          <label
+                            htmlFor="file-upload"
+                            className={`flex items-center justify-center p-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
+                              uploading 
+                                ? 'border-gray-200 bg-gray-50 cursor-not-allowed' 
+                                : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                            }`}
+                          >
+                            {uploading ? (
+                              <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                            ) : (
+                              <>
+                                <Upload className="w-4 h-4 text-gray-400 mr-2" />
+                                <span className="text-sm text-gray-500">Weitere Datei hinzufügen</span>
+                              </>
+                            )}
+                          </label>
                         )}
                       </div>
+                    ) : (
+                      /* Leerer Zustand - klickbar im Edit-Mode */
+                      editMode ? (
+                        <label
+                          htmlFor="file-upload"
+                          className={`block p-6 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
+                            uploading 
+                              ? 'border-gray-200 bg-gray-50 cursor-not-allowed' 
+                              : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                          }`}
+                        >
+                          {uploading ? (
+                            <>
+                              <Loader2 className="w-8 h-8 text-purple-400 mx-auto mb-2 animate-spin" />
+                              <p className="text-sm text-gray-500">Wird hochgeladen...</p>
+                            </>
+                          ) : (
+                            <>
+                              <Upload className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                              <p className="text-sm text-gray-500">Klicken zum Hochladen</p>
+                              <p className="text-xs text-gray-400 mt-1">PDF, PNG, JPG, DOC, DOCX (max. 10 MB)</p>
+                            </>
+                          )}
+                        </label>
+                      ) : (
+                        <div className="p-4 bg-gray-50 rounded-lg text-center">
+                          <File className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                          <p className="text-sm text-gray-400">Keine Dokumente vorhanden</p>
+                        </div>
+                      )
                     )}
                   </div>
                 </div>
