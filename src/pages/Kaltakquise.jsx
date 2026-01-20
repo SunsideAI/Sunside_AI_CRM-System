@@ -434,6 +434,12 @@ function Kaltakquise() {
   const saveLead = async () => {
     if (!selectedLead) return
     
+    // Validierung: Beratungsgespräch erfordert Termin-Buchung
+    if (editForm.ergebnis === 'Beratungsgespräch') {
+      alert('Bitte buche zuerst einen Termin über den "Termin mit Closer buchen" Button.')
+      return
+    }
+    
     // Validierung: Wiedervorlage benötigt ein Datum
     if (editForm.ergebnis === 'Wiedervorlage' && !editForm.wiedervorlageDatum) {
       alert('Bitte gib ein Datum für die Wiedervorlage an.')
@@ -1713,7 +1719,16 @@ function Kaltakquise() {
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-end gap-3 px-6 py-4">
+                  <div className="flex flex-col gap-3 px-6 py-4">
+                    {/* Warnung bei Beratungsgespräch ohne Termin */}
+                    {editMode && editForm.ergebnis === 'Beratungsgespräch' && (
+                      <div className="flex items-center p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
+                        <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
+                        <span>Bitte buche zuerst einen Termin über den Button "Termin mit Closer buchen".</span>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center justify-end gap-3">
                     {editMode ? (
                       <>
                         <button
@@ -1724,8 +1739,8 @@ function Kaltakquise() {
                         </button>
                         <button
                           onClick={saveLead}
-                          disabled={saving}
-                          className="flex items-center px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                          disabled={saving || editForm.ergebnis === 'Beratungsgespräch'}
+                          className="flex items-center px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {saving ? (
                             <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -1760,6 +1775,7 @@ function Kaltakquise() {
                         )}
                       </>
                     )}
+                  </div>
                   </div>
                 )}
               </div>
