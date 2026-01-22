@@ -1,10 +1,8 @@
 // Analytics API für Setting und Closing Performance
 import { fetchWithRetry } from './utils/airtable.js'
 
-// Cache für User-Namen (Record-ID -> Name)
-let userNameCache = null
-let userNameCacheTime = 0
-const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
+// WICHTIG: KEIN Module-Level Cache - funktioniert nicht zuverlässig in Serverless!
+// Jeder Request lädt die User-Namen frisch (zuverlässiger, etwas langsamer)
 
 // Helper: API-Headers dynamisch erstellen (vermeidet Probleme mit undefined env vars)
 function getAirtableHeaders() {
@@ -19,12 +17,11 @@ function getAirtableBaseId() {
   return process.env.AIRTABLE_BASE_ID
 }
 
+/**
+ * Lädt User-Namen aus der Datenbank (FRISCH bei jedem Request)
+ * Keine Module-Level-Cache wegen Cold Start Problematik in Serverless
+ */
 async function loadUserNames() {
-  // Cache prüfen
-  if (userNameCache && (Date.now() - userNameCacheTime) < CACHE_DURATION) {
-    return userNameCache
-  }
-
   const AIRTABLE_BASE_ID = getAirtableBaseId()
   const headers = getAirtableHeaders()
 
@@ -57,11 +54,7 @@ async function loadUserNames() {
       offset = data.offset
     } while (offset)
 
-    // Cache aktualisieren
-    userNameCache = nameMap
-    userNameCacheTime = Date.now()
-
-    console.log('Analytics: User-Namen geladen:', Object.keys(nameMap).length, 'User')
+    console.log('Analytics: User-Namen frisch geladen:', Object.keys(nameMap).length, 'User')
     return nameMap
   } catch (err) {
     console.error('Fehler beim Laden der User-Namen:', err)

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { 
   Phone, 
@@ -39,7 +39,7 @@ import {
 // CACHE HELPERS
 // ==========================================
 const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
-const CACHE_VERSION = 'v4' // Increment to force cache refresh
+const CACHE_VERSION = 'v5' // Increment to force cache refresh
 
 function getCache(key) {
   try {
@@ -204,27 +204,33 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     const today = new Date().toISOString().split('T')[0]
     const cacheKey = `dashboard_uebersicht_${CACHE_VERSION}_${today}`
     const cached = getCache(cacheKey)
-    
-    if (cached && !forceRefresh) {
+
+    // Beim initialen Laden immer frische Daten holen (nicht aus Cache)
+    // Cache nur nutzen wenn manuell aktualisiert wird und Daten vorhanden
+    if (cached && !forceRefresh && !initialLoading) {
       updateDataFromResult(cached)
-      setInitialLoading(false)
       return
     }
 
     setLoading(true)
-    if (!cached) setInitialLoading(true)
 
     try {
       const params = new URLSearchParams()
       params.append('userName', user?.vor_nachname || '')
       params.append('userRole', isAdmin() ? 'Admin' : isColdcaller() ? 'Coldcaller' : 'Closer')
 
+      console.log('Dashboard: Lade Daten mit Params:', params.toString())
+
       const response = await fetch(`/.netlify/functions/dashboard?${params.toString()}`)
       const result = await response.json()
+
+      console.log('Dashboard: Antwort erhalten:', { ok: response.ok, gesamt: result?.gesamt, vertriebler: result?.vertriebler?.length })
 
       if (response.ok) {
         setCache(cacheKey, result)
         updateDataFromResult(result)
+      } else {
+        console.error('Dashboard: Fehler in Antwort:', result)
       }
     } catch (err) {
       console.error('Dashboard load error:', err)
@@ -975,7 +981,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   const [refreshing, setRefreshing] = useState(false)
 
   // Request-ID um Race Conditions zu verhindern
-  const requestIdRef = React.useRef(0)
+  const requestIdRef = useRef(0)
 
   // Cache Key - enthält heutiges Datum für tägliche Invalidierung + Version
   const getCacheKey = () => {
@@ -1072,7 +1078,9 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     const cacheKey = getCacheKey()
     const cached = getCache(cacheKey)
 
-    if (cached && !forceRefresh) {
+    // Cache nur nutzen wenn nicht initial und nicht force
+    // Bei initialem Laden (loading=true, stats=null) immer frisch laden
+    if (cached && !forceRefresh && stats !== null) {
       setStats(cached)
       if (cached.perUser) {
         setVertriebler(cached.perUser)
@@ -1084,6 +1092,8 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     try {
       setLoading(true)
       setError(null)
+
+      console.log('Kaltakquise: Lade frische Daten...')
 
       const { startDate, endDate } = getDateRange()
       const userEmail = user?.email_geschaeftlich || user?.email
@@ -1110,6 +1120,11 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
       if (res.ok) {
         const data = await res.json()
+        console.log('Kaltakquise: Daten erhalten:', {
+          einwahlen: data?.summary?.einwahlen,
+          perUser: data?.perUser?.length,
+          firstUserName: data?.perUser?.[0]?.name
+        })
         setCache(cacheKey, data)
         setStats(data)
         // Vertriebler-Liste NUR updaten wenn "Alle" ausgewählt ist
@@ -1118,6 +1133,8 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           setVertriebler(data.perUser)
         }
       } else {
+        const errorData = await res.json().catch(() => ({}))
+        console.error('Kaltakquise: Fehler-Antwort:', errorData)
         throw new Error('Fehler beim Laden')
       }
     } catch (err) {
