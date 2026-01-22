@@ -1,25 +1,4 @@
 // Dashboard Analytics API - Statistiken für das Dashboard
-
-// Rate-Limit Handler: Retry bei 429 Errors
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
-
-async function fetchWithRetry(url, options = {}, maxRetries = 3) {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    const response = await fetch(url, options)
-
-    if (response.status === 429) {
-      const retryAfter = response.headers.get('Retry-After')
-      const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt) * 1000
-      console.log(`Rate limit hit, waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}`)
-      await sleep(delay)
-      continue
-    }
-
-    return response
-  }
-  throw new Error('Max retries exceeded for rate limit')
-}
-
 export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -55,7 +34,7 @@ export async function handler(event) {
 
     // User-Map laden
     const usersUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USERS_TABLE)}?fields[]=Vor_Nachname&fields[]=Rolle`
-    const usersResponse = await fetchWithRetry(usersUrl, {
+    const usersResponse = await fetch(usersUrl, {
       headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
     })
     const usersData = await usersResponse.json()
@@ -80,10 +59,10 @@ export async function handler(event) {
         url += `&offset=${offset}`
       }
 
-      const response = await fetchWithRetry(url, {
+      const response = await fetch(url, {
         headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
       })
-
+      
       if (!response.ok) {
         throw new Error('Fehler beim Laden der Leads')
       }
