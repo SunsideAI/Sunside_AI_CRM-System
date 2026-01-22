@@ -446,30 +446,36 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     offset = data.offset
   } while (offset)
 
-  // === 2. Archiv-Leads laden ===
+  // === 2. Archiv-Leads laden (mit besserer Fehlerbehandlung) ===
   let archivRecords = []
   offset = null
+  let archivLoadSuccess = true
 
-  do {
-    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${archivTableId}`)
-    if (offset) {
-      url.searchParams.append('offset', offset)
-    }
+  try {
+    do {
+      const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${archivTableId}`)
+      if (offset) {
+        url.searchParams.append('offset', offset)
+      }
 
-    const response = await fetchWithRetry(url.toString(), { headers })
-    const data = await response.json()
+      const response = await fetchWithRetry(url.toString(), { headers })
+      const data = await response.json()
 
-    if (data.error) {
-      console.error('Archiv-Fehler:', data.error.message)
-      // Archiv-Fehler ignorieren, weiter mit aktiven Leads
-      break
-    }
+      if (data.error) {
+        console.error('Archiv-Fehler:', data.error.message)
+        archivLoadSuccess = false
+        break
+      }
 
-    archivRecords = archivRecords.concat(data.records || [])
-    offset = data.offset
-  } while (offset)
+      archivRecords = archivRecords.concat(data.records || [])
+      offset = data.offset
+    } while (offset)
+  } catch (archivError) {
+    console.error('Archiv-Exception:', archivError.message)
+    archivLoadSuccess = false
+  }
 
-  console.log(`Analytics: ${activeRecords.length} aktive Leads, ${archivRecords.length} Archiv-Einträge`)
+  console.log(`Analytics: ${activeRecords.length} aktive Leads, ${archivRecords.length} Archiv-Einträge (success: ${archivLoadSuccess})`)
 
   // === 3. Daten normalisieren und kombinieren ===
   // Helper: kontaktiert kann "X", true, oder checkbox sein

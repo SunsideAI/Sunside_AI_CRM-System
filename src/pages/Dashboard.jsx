@@ -39,7 +39,7 @@ import {
 // CACHE HELPERS
 // ==========================================
 const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
-const CACHE_VERSION = 'v3' // Increment to force cache refresh
+const CACHE_VERSION = 'v4' // Increment to force cache refresh
 
 function getCache(key) {
   try {
@@ -974,6 +974,9 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   const [vertriebler, setVertriebler] = useState([]) // NEU: Liste aller Vertriebler
   const [refreshing, setRefreshing] = useState(false)
 
+  // Request-ID um Race Conditions zu verhindern
+  const requestIdRef = React.useRef(0)
+
   // Cache Key - enthält heutiges Datum für tägliche Invalidierung + Version
   const getCacheKey = () => {
     const userPart = isAdmin() ? `admin_${selectedUser}` : (user?.vor_nachname || 'user')
@@ -1063,6 +1066,9 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   }
 
   const loadStats = async (forceRefresh = false) => {
+    // Neue Request-ID generieren - ältere Requests werden ignoriert
+    const currentRequestId = ++requestIdRef.current
+
     const cacheKey = getCacheKey()
     const cached = getCache(cacheKey)
 
@@ -1095,6 +1101,13 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
       })
 
       const res = await fetch(`/.netlify/functions/analytics?${params}`)
+
+      // Prüfen ob dieser Request noch aktuell ist (Race Condition verhindern)
+      if (currentRequestId !== requestIdRef.current) {
+        console.log('Kaltakquise: Request abgebrochen (neuerer Request läuft)')
+        return
+      }
+
       if (res.ok) {
         const data = await res.json()
         setCache(cacheKey, data)
@@ -1108,11 +1121,17 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         throw new Error('Fehler beim Laden')
       }
     } catch (err) {
-      console.error('Kaltakquise Analytics Error:', err)
-      setError('Fehler beim Laden der Analytics')
+      // Nur Fehler setzen wenn dieser Request noch aktuell ist
+      if (currentRequestId === requestIdRef.current) {
+        console.error('Kaltakquise Analytics Error:', err)
+        setError('Fehler beim Laden der Analytics')
+      }
     } finally {
-      setLoading(false)
-      setRefreshing(false)
+      // Nur Loading zurücksetzen wenn dieser Request noch aktuell ist
+      if (currentRequestId === requestIdRef.current) {
+        setLoading(false)
+        setRefreshing(false)
+      }
     }
   }
 
