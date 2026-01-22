@@ -1,4 +1,6 @@
 // Dashboard Analytics API - Statistiken für das Dashboard
+import { fetchWithRetry } from './utils/airtable.js'
+
 export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -34,7 +36,7 @@ export async function handler(event) {
 
     // User-Map laden
     const usersUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USERS_TABLE)}?fields[]=Vor_Nachname&fields[]=Rolle`
-    const usersResponse = await fetch(usersUrl, {
+    const usersResponse = await fetchWithRetry(usersUrl, {
       headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
     })
     const usersData = await usersResponse.json()
@@ -59,7 +61,7 @@ export async function handler(event) {
         url += `&offset=${offset}`
       }
 
-      const response = await fetch(url, {
+      const response = await fetchWithRetry(url, {
         headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
       })
       

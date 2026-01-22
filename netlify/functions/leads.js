@@ -1,4 +1,6 @@
 // Leads API - Laden und Aktualisieren von Leads
+import { fetchWithRetry } from './utils/airtable.js'
+
 export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -28,7 +30,7 @@ export async function handler(event) {
   async function loadUserMap() {
     try {
       const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USERS_TABLE)}?fields[]=Vor_Nachname`
-      const response = await fetch(url, {
+      const response = await fetchWithRetry(url, {
         headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
       })
       if (!response.ok) {
@@ -171,7 +173,7 @@ export async function handler(event) {
 
       const fullUrl = `${url}?${queryParams.toString()}`
       
-      const response = await fetch(fullUrl, {
+      const response = await fetchWithRetry(fullUrl, {
         headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
       })
 
@@ -282,7 +284,7 @@ export async function handler(event) {
       // Erst aktuellen Lead laden (für History)
       let currentKommentar = ''
       if (historyEntry) {
-        const getResponse = await fetch(
+        const getResponse = await fetchWithRetry(
           `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}/${leadId}`,
           { headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` } }
         )
@@ -392,7 +394,7 @@ export async function handler(event) {
 
       console.log('PATCH Lead - Fields to update:', JSON.stringify(fieldsToUpdate, null, 2))
 
-      const response = await fetch(url, {
+      const response = await fetchWithRetry(url, {
         method: 'PATCH',
         headers: {
           'Authorization': `Bearer ${AIRTABLE_API_KEY}`,

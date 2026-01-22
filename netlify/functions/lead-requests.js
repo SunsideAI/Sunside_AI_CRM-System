@@ -3,6 +3,8 @@
 // POST: Neue Anfrage erstellen
 // PATCH: Anfrage bearbeiten (genehmigen/ablehnen)
 
+import { fetchWithRetry } from './utils/airtable.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -22,7 +24,7 @@ function generateAnfrageId() {
   return `ANF-${year}${month}${day}-${hours}${mins}${secs}-${ms}`
 }
 
-exports.handler = async (event) => {
+export async function handler(event) {
   // CORS Preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' }
@@ -59,7 +61,7 @@ exports.handler = async (event) => {
         url += `&filterByFormula=${encodeURIComponent(`{Status}="${status}"`)}`
       }
 
-      const response = await fetch(url, { headers: airtableHeaders })
+      const response = await fetchWithRetry(url, { headers: airtableHeaders })
       
       if (!response.ok) {
         const error = await response.json()
@@ -76,7 +78,7 @@ exports.handler = async (event) => {
         const userId = record.fields.User?.[0]
         if (userId) {
           try {
-            const userRes = await fetch(`${USER_URL}/${userId}`, { headers: airtableHeaders })
+            const userRes = await fetchWithRetry(`${USER_URL}/${userId}`, { headers: airtableHeaders })
             if (userRes.ok) {
               const userData = await userRes.json()
               userName = userData.fields?.Vor_Nachname || 'Unbekannt'
@@ -89,7 +91,7 @@ exports.handler = async (event) => {
         const bearbeitetVonId = record.fields.Bearbeitet_von?.[0]
         if (bearbeitetVonId) {
           try {
-            const adminRes = await fetch(`${USER_URL}/${bearbeitetVonId}`, { headers: airtableHeaders })
+            const adminRes = await fetchWithRetry(`${USER_URL}/${bearbeitetVonId}`, { headers: airtableHeaders })
             if (adminRes.ok) {
               const adminData = await adminRes.json()
               bearbeitetVonName = adminData.fields?.Vor_Nachname || ''
@@ -145,7 +147,7 @@ exports.handler = async (event) => {
       // Prüfen ob bereits eine offene Anfrage existiert
       const checkFormula = `AND(FIND("${userId}", ARRAYJOIN({User})), {Status}="Offen")`
       const checkUrl = `${TABLE_URL}?filterByFormula=${encodeURIComponent(checkFormula)}`
-      const checkResponse = await fetch(checkUrl, { headers: airtableHeaders })
+      const checkResponse = await fetchWithRetry(checkUrl, { headers: airtableHeaders })
       const checkData = await checkResponse.json()
 
       if (checkData.records && checkData.records.length > 0) {
@@ -160,7 +162,7 @@ exports.handler = async (event) => {
       const anfrageId = generateAnfrageId()
       const now = new Date().toISOString()
 
-      const response = await fetch(TABLE_URL, {
+      const response = await fetchWithRetry(TABLE_URL, {
         method: 'POST',
         headers: airtableHeaders,
         body: JSON.stringify({
@@ -235,7 +237,7 @@ exports.handler = async (event) => {
         fields['Admin_Kommentar'] = adminKommentar
       }
 
-      const response = await fetch(`${TABLE_URL}/${anfrageId}`, {
+      const response = await fetchWithRetry(`${TABLE_URL}/${anfrageId}`, {
         method: 'PATCH',
         headers: airtableHeaders,
         body: JSON.stringify({ fields })
@@ -324,7 +326,7 @@ exports.handler = async (event) => {
 async function sendAdminNotification(userId, anzahl, nachricht, anfrageId, userUrl, airtableHeaders) {
   // Admins aus User_Datenbank laden - NUR geschäftliche E-Mail
   const adminFilter = `FIND("Admin", ARRAYJOIN({Rolle}, ","))`
-  const adminResponse = await fetch(
+  const adminResponse = await fetchWithRetry(
     `${userUrl}?filterByFormula=${encodeURIComponent(adminFilter)}&fields[]=E-Mail_Geschäftlich&fields[]=Vor_Nachname`,
     { headers: airtableHeaders }
   )
@@ -344,7 +346,7 @@ async function sendAdminNotification(userId, anzahl, nachricht, anfrageId, userU
   }
 
   // User-Name laden
-  const userResponse = await fetch(`${userUrl}/${userId}`, { headers: airtableHeaders })
+  const userResponse = await fetchWithRetry(`${userUrl}/${userId}`, { headers: airtableHeaders })
   const userData = await userResponse.json()
   const userName = userData.fields?.Vor_Nachname || 'Unbekannt'
 
@@ -450,7 +452,7 @@ async function assignLeadsToUser(userId, anzahl, baseId, airtableHeaders) {
   
   let url = `${LEADS_URL}?filterByFormula=${encodeURIComponent(filterFormula)}&maxRecords=${anzahl}`
   
-  const response = await fetch(url, { headers: airtableHeaders })
+  const response = await fetchWithRetry(url, { headers: airtableHeaders })
   
   if (!response.ok) {
     const error = await response.json()
@@ -482,7 +484,7 @@ async function assignLeadsToUser(userId, anzahl, baseId, airtableHeaders) {
       }
     }))
     
-    const updateResponse = await fetch(LEADS_URL, {
+    const updateResponse = await fetchWithRetry(LEADS_URL, {
       method: 'PATCH',
       headers: airtableHeaders,
       body: JSON.stringify({ records })
@@ -502,7 +504,7 @@ async function assignLeadsToUser(userId, anzahl, baseId, airtableHeaders) {
 // E-Mail an den Anfragenden senden
 async function sendUserNotification(userId, status, genehmigteAnzahl, angefragt, adminKommentar, zugewieseneLeads, userUrl, airtableHeaders) {
   // User-Daten laden
-  const userResponse = await fetch(`${userUrl}/${userId}`, { headers: airtableHeaders })
+  const userResponse = await fetchWithRetry(`${userUrl}/${userId}`, { headers: airtableHeaders })
   
   if (!userResponse.ok) {
     throw new Error('Konnte User-Daten nicht laden')
