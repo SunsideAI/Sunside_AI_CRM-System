@@ -115,30 +115,36 @@ export async function handler(event) {
     
     const startOfMonth = new Date(heute.getFullYear(), heute.getMonth(), 1)
 
-    // Stats für aktuellen User
+    // Stats für aktuellen User / Admin
     let userHeute = 0
     let userWoche = 0
+    let globalHeute = 0  // Für Admins: alle Kontakte heute
+
+    // Helper: Flexiblere Kontaktiert-Prüfung (wie in analytics.js)
+    const isKontaktiert = (val) => val === true || val === 'X' || val === 'x' || val === 1
 
     // Leads durchgehen
     allLeads.forEach(record => {
-      const kontaktiert = record.fields['Bereits_kontaktiert'] === 'X'
+      const kontaktiertVal = record.fields['Bereits_kontaktiert'] || record.fields['Bereits kontaktiert'] || record.fields.Bereits_kontaktiert
+      const kontaktiert = isKontaktiert(kontaktiertVal)
       const ergebnis = record.fields.Ergebnis || ''
       const userIds = record.fields.User_Datenbank || []
       const datum = record.fields.Datum ? new Date(record.fields.Datum) : null
 
       // Prüfen ob Lead diesem User zugewiesen ist
-      const userNames = userIds.map(id => userMap[id]?.name || '')
-      const isUserLead = userName && userNames.includes(userName)
+      const resolvedUserNames = userIds.map(id => userMap[id]?.name || '')
+      const isUserLead = userName && resolvedUserNames.includes(userName)
 
       // Kontaktiert zählen
       if (kontaktiert) {
         stats.kontaktiert++
-        
+
         // Diese Woche / Monat (global)
         if (datum) {
           if (datum >= startOfWeek) stats.dieseWoche++
           if (datum >= startOfMonth) stats.diesenMonat++
-          
+          if (datum >= startOfToday) globalHeute++  // Global für Admin
+
           // User-spezifisch
           if (isUserLead) {
             if (datum >= startOfToday) userHeute++
@@ -178,6 +184,9 @@ export async function handler(event) {
       ? ((stats.ergebnisse['Beratungsgespräch'] / stats.kontaktiert) * 100).toFixed(1)
       : 0
 
+    // Für Admins: globale Stats, für User: eigene Stats
+    const isAdminRole = userRole === 'Admin'
+
     return {
       statusCode: 200,
       headers,
@@ -187,8 +196,9 @@ export async function handler(event) {
         nichtKontaktiert: stats.nichtKontaktiert,
         dieseWoche: stats.dieseWoche,
         diesenMonat: stats.diesenMonat,
-        heute: userHeute,
+        heute: isAdminRole ? globalHeute : userHeute,  // Admin sieht alle, User nur eigene
         termineWoche: userWoche,
+        globalHeute: globalHeute,  // Immer verfügbar für Debugging
         ergebnisse: stats.ergebnisse,
         vertriebler: vertrieblerArray,
         conversionRate: parseFloat(conversionRate)

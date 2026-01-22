@@ -39,6 +39,7 @@ import {
 // CACHE HELPERS
 // ==========================================
 const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
+const CACHE_VERSION = 'v2' // Increment to force cache refresh
 
 function getCache(key) {
   try {
@@ -166,9 +167,9 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
   }, [])
 
   const loadData = async (forceRefresh = false) => {
-    // Cache Key mit heutigem Datum für tägliche Invalidierung
+    // Cache Key mit heutigem Datum für tägliche Invalidierung + Version
     const today = new Date().toISOString().split('T')[0]
-    const cacheKey = `dashboard_uebersicht_${today}`
+    const cacheKey = `dashboard_uebersicht_${CACHE_VERSION}_${today}`
     const cached = getCache(cacheKey)
     
     if (cached && !forceRefresh) {
@@ -201,10 +202,20 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
   }
 
   const updateDataFromResult = (result) => {
-    const userStats = result.vertriebler?.find(v => v.name === user?.vor_nachname)
-    
+    // Für Admins: Summe aller Vertriebler, für User: nur eigene
+    let zugewiesenLeads = 0
+
+    if (isAdmin()) {
+      // Admin sieht Summe aller zugewiesenen Leads
+      zugewiesenLeads = result.vertriebler?.reduce((sum, v) => sum + (v.gesamt || 0), 0) || result.gesamt || 0
+    } else {
+      // User sieht nur eigene
+      const userStats = result.vertriebler?.find(v => v.name === user?.vor_nachname)
+      zugewiesenLeads = userStats?.gesamt || 0
+    }
+
     setData({
-      zugewiesenLeads: userStats?.gesamt || 0,
+      zugewiesenLeads: zugewiesenLeads,
       callsHeute: result.heute || 0,
       termineWoche: result.termineWoche || 0,
       abschluesseMonat: 0
@@ -887,11 +898,11 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   const [vertriebler, setVertriebler] = useState([]) // NEU: Liste aller Vertriebler
   const [refreshing, setRefreshing] = useState(false)
 
-  // Cache Key - enthält heutiges Datum für tägliche Invalidierung
+  // Cache Key - enthält heutiges Datum für tägliche Invalidierung + Version
   const getCacheKey = () => {
     const userPart = isAdmin() ? `admin_${selectedUser}` : (user?.vor_nachname || 'user')
     const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-    return `dashboard_kaltakquise_${dateRange}_${userPart}_${today}`
+    return `dashboard_kaltakquise_${CACHE_VERSION}_${dateRange}_${userPart}_${today}`
   }
 
   useEffect(() => {
@@ -1363,7 +1374,7 @@ function ClosingAnalytics({ user, isAdmin }) {
   const getCacheKey = () => {
     const userPart = isAdmin() ? 'admin' : (user?.email_geschaeftlich || user?.email || 'user')
     const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-    return `dashboard_closing_${dateRange}_${userPart}_${today}`
+    return `dashboard_closing_${CACHE_VERSION}_${dateRange}_${userPart}_${today}`
   }
 
   useEffect(() => {

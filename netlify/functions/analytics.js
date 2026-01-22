@@ -409,6 +409,10 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   const leadsTableName = 'Immobilienmakler_Leads'
   const archivTableId = 'tbluaHfCySe8cSgSY' // Immobilienmakler_Leads_Archiv
 
+  // WICHTIG: User-Namen ZUERST laden (einmal, gecached) - für alle späteren Auflösungen
+  const userNamesMap = await loadUserNames()
+  console.log('getSettingStats - User-Namen geladen:', Object.keys(userNamesMap).length)
+
   // User Record ID holen wenn nicht Admin
   let userRecordId = null
   if (!isAdmin && userName) {
@@ -590,32 +594,36 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       zeitverlaufMap[monthKey].count++
     }
 
-    // Per User Stats (für Admins)
+    // Per User Stats (für Admins) - DIREKT mit Namen als Key
     if (isAdmin && zugewiesenAn && zugewiesenAn.length > 0) {
       const oderId = Array.isArray(zugewiesenAn) ? zugewiesenAn[0] : zugewiesenAn
-      if (!perUserMap[oderId]) {
-        perUserMap[oderId] = { 
+      // Namen direkt aus dem Cache holen
+      const oderName = userNamesMap[oderId] || `User ${String(oderId).substring(0, 6)}`
+
+      if (!perUserMap[oderName]) {
+        perUserMap[oderName] = {
           id: oderId,
-          einwahlen: 0, 
-          erreicht: 0, 
+          name: oderName,
+          einwahlen: 0,
+          erreicht: 0,
           beratungsgespraech: 0,
           unterlagen: 0,
           keinInteresse: 0,
           nichtErreicht: 0
         }
       }
-      perUserMap[oderId].einwahlen++
-      
+      perUserMap[oderName].einwahlen++
+
       if (istNichtErreicht) {
-        perUserMap[oderId].nichtErreicht++
+        perUserMap[oderName].nichtErreicht++
       } else {
-        perUserMap[oderId].erreicht++
+        perUserMap[oderName].erreicht++
         if (istBeratungsgespraech) {
-          perUserMap[oderId].beratungsgespraech++
+          perUserMap[oderName].beratungsgespraech++
         } else if (istUnterlagen) {
-          perUserMap[oderId].unterlagen++
+          perUserMap[oderName].unterlagen++
         } else if (istKeinInteresse) {
-          perUserMap[oderId].keinInteresse++
+          perUserMap[oderName].keinInteresse++
         }
       }
     }
@@ -630,14 +638,11 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   // Zeitverlauf formatieren - mit Zeitraum-Parametern
   const zeitverlauf = formatZeitverlauf(zeitverlaufMap, startDate, endDate)
 
-  // Per User: Namen aus User-Tabelle holen (für Admin)
+  // Per User: Direkt aus perUserMap (Namen sind bereits aufgelöst)
   let perUser = []
   if (isAdmin && Object.keys(perUserMap).length > 0) {
-    const userNames = await getUserNames(Object.keys(perUserMap))
-    perUser = Object.values(perUserMap).map(stats => ({
-      ...stats,
-      name: userNames[stats.id] || `User ${String(stats.id).substring(0, 6)}`
-    })).sort((a, b) => b.einwahlen - a.einwahlen)
+    perUser = Object.values(perUserMap).sort((a, b) => b.einwahlen - a.einwahlen)
+    console.log('getSettingStats - perUser:', perUser.length, 'Vertriebler')
   }
 
   return {
