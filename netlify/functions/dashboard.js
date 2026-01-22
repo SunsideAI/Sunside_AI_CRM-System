@@ -187,6 +187,19 @@ export async function handler(event) {
     // Für Admins: globale Stats, für User: eigene Stats
     const isAdminRole = userRole === 'Admin'
 
+    // Beratungsgespräche diese Woche (global)
+    const termineWocheGlobal = stats.ergebnisse['Beratungsgespräch'] || 0
+
+    console.log('Dashboard Stats:', {
+      gesamt: stats.gesamt,
+      kontaktiert: stats.kontaktiert,
+      globalHeute,
+      userHeute,
+      termineWocheGlobal,
+      vertrieblerCount: vertrieblerArray.length,
+      isAdminRole
+    })
+
     return {
       statusCode: 200,
       headers,
@@ -197,8 +210,9 @@ export async function handler(event) {
         dieseWoche: stats.dieseWoche,
         diesenMonat: stats.diesenMonat,
         heute: isAdminRole ? globalHeute : userHeute,  // Admin sieht alle, User nur eigene
-        termineWoche: userWoche,
-        globalHeute: globalHeute,  // Immer verfügbar für Debugging
+        termineWoche: isAdminRole ? termineWocheGlobal : userWoche,  // Admin sieht alle Termine
+        globalHeute: globalHeute,  // Immer verfügbar
+        termineWocheGlobal: termineWocheGlobal,  // Alle Beratungsgespräche
         ergebnisse: stats.ergebnisse,
         vertriebler: vertrieblerArray,
         conversionRate: parseFloat(conversionRate)

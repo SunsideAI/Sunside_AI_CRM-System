@@ -39,7 +39,7 @@ import {
 // CACHE HELPERS
 // ==========================================
 const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
-const CACHE_VERSION = 'v2' // Increment to force cache refresh
+const CACHE_VERSION = 'v3' // Increment to force cache refresh
 
 function getCache(key) {
   try {
@@ -161,10 +161,43 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     termineWoche: 0,
     abschluesseMonat: 0
   })
+  const [hotLeadsCount, setHotLeadsCount] = useState({ total: 0, offen: 0, angebot: 0, gewonnen: 0 })
 
   useEffect(() => {
     loadData()
+    // Für Closer/Admin: Auch Hot-Leads-Daten laden
+    if (isCloser() || isAdmin()) {
+      loadHotLeadsStats()
+    }
   }, [])
+
+  // Hot-Leads-Stats für Closer/Admins laden
+  const loadHotLeadsStats = async () => {
+    try {
+      const params = new URLSearchParams()
+      if (!isAdmin()) {
+        params.append('userName', user?.vor_nachname || '')
+      }
+      const response = await fetch(`/.netlify/functions/hot-leads?${params.toString()}`)
+      const result = await response.json()
+
+      if (response.ok && result.leads) {
+        const leads = result.leads
+        const offen = leads.filter(l => l.status?.toLowerCase() === 'lead').length
+        const angebot = leads.filter(l => l.status?.toLowerCase().includes('angebot')).length
+        const gewonnen = leads.filter(l => l.status?.toLowerCase().includes('abgeschlossen')).length
+
+        setHotLeadsCount({
+          total: leads.length,
+          offen,
+          angebot,
+          gewonnen
+        })
+      }
+    } catch (err) {
+      console.error('Hot-Leads Stats Error:', err)
+    }
+  }
 
   const loadData = async (forceRefresh = false) => {
     // Cache Key mit heutigem Datum für tägliche Invalidierung + Version
@@ -202,53 +235,96 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
   }
 
   const updateDataFromResult = (result) => {
-    // Für Admins: Summe aller Vertriebler, für User: nur eigene
+    // Für Admins: Globale Stats, für User: eigene Stats
     let zugewiesenLeads = 0
+    let callsHeute = 0
+    let termineWoche = 0
 
     if (isAdmin()) {
-      // Admin sieht Summe aller zugewiesenen Leads
-      zugewiesenLeads = result.vertriebler?.reduce((sum, v) => sum + (v.gesamt || 0), 0) || result.gesamt || 0
+      // Admin sieht globale Statistiken
+      // Zugewiesene Leads = Summe aller Vertriebler ODER Gesamtzahl
+      const vertrieblerSum = result.vertriebler?.reduce((sum, v) => sum + (v.gesamt || 0), 0) || 0
+      zugewiesenLeads = vertrieblerSum > 0 ? vertrieblerSum : (result.gesamt || 0)
+
+      // Calls heute = Globale Kontakte heute
+      callsHeute = result.heute || result.globalHeute || 0
+
+      // Termine diese Woche = Alle Beratungsgespräche diese Woche
+      termineWoche = result.vertriebler?.reduce((sum, v) => sum + (v.beratungsgespraech || 0), 0) || result.termineWoche || 0
     } else {
-      // User sieht nur eigene
+      // User sieht nur eigene Stats
       const userStats = result.vertriebler?.find(v => v.name === user?.vor_nachname)
       zugewiesenLeads = userStats?.gesamt || 0
+      callsHeute = result.heute || 0
+      termineWoche = result.termineWoche || 0
     }
 
+    console.log('Dashboard updateDataFromResult:', {
+      isAdmin: isAdmin(),
+      zugewiesenLeads,
+      callsHeute,
+      termineWoche,
+      resultGesamt: result.gesamt,
+      resultHeute: result.heute,
+      vertriebler: result.vertriebler?.length
+    })
+
     setData({
-      zugewiesenLeads: zugewiesenLeads,
-      callsHeute: result.heute || 0,
-      termineWoche: result.termineWoche || 0,
+      zugewiesenLeads,
+      callsHeute,
+      termineWoche,
       abschluesseMonat: 0
     })
   }
 
+  // Dynamische Stats basierend auf Rolle
   const stats = [
+    // Für Coldcaller: Zugewiesene Leads aus Kaltakquise
     {
       name: 'Zugewiesene Leads',
       value: initialLoading ? '...' : data.zugewiesenLeads.toLocaleString('de-DE'),
       icon: Users,
       color: 'bg-blue-500',
-      show: isColdcaller() || isAdmin()
+      show: isColdcaller() && !isCloser() && !isAdmin()
     },
+    // Für Closer/Admin: Hot-Leads im Closing
+    {
+      name: 'Leads im Closing',
+      value: initialLoading ? '...' : hotLeadsCount.total.toLocaleString('de-DE'),
+      icon: Target,
+      color: 'bg-blue-500',
+      show: isCloser() || isAdmin()
+    },
+    // Für Coldcaller: Calls heute
     {
       name: 'Calls heute',
       value: initialLoading ? '...' : data.callsHeute.toLocaleString('de-DE'),
       icon: Phone,
       color: 'bg-green-500',
-      show: isColdcaller() || isAdmin()
+      show: isColdcaller() && !isCloser() && !isAdmin()
     },
+    // Für Closer/Admin: Offene Leads
     {
-      name: 'Termine diese Woche',
-      value: initialLoading ? '...' : data.termineWoche.toLocaleString('de-DE'),
-      icon: Calendar,
+      name: 'Offene Leads',
+      value: initialLoading ? '...' : hotLeadsCount.offen.toLocaleString('de-DE'),
+      icon: Clock,
+      color: 'bg-yellow-500',
+      show: isCloser() || isAdmin()
+    },
+    // Für Closer/Admin: Angebote
+    {
+      name: 'Angebote offen',
+      value: initialLoading ? '...' : hotLeadsCount.angebot.toLocaleString('de-DE'),
+      icon: FileText,
       color: 'bg-purple-500',
-      show: true
+      show: isCloser() || isAdmin()
     },
+    // Für alle: Abschlüsse/Gewonnen
     {
-      name: 'Abschlüsse Monat',
-      value: initialLoading ? '...' : data.abschluesseMonat.toLocaleString('de-DE'),
+      name: 'Gewonnen',
+      value: initialLoading ? '...' : hotLeadsCount.gewonnen.toLocaleString('de-DE'),
       icon: TrendingUp,
-      color: 'bg-orange-500',
+      color: 'bg-green-500',
       show: isCloser() || isAdmin()
     }
   ].filter(stat => stat.show)
