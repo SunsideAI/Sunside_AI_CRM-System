@@ -39,7 +39,7 @@ import {
 // CACHE HELPERS
 // ==========================================
 const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
-const CACHE_VERSION = 'v5' // Increment to force cache refresh
+const CACHE_VERSION = 'v6' // Increment to force cache refresh
 
 function getCache(key) {
   try {
@@ -153,8 +153,7 @@ function Dashboard() {
 // ÜBERSICHT CONTENT
 // ==========================================
 function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
-  const [loading, setLoading] = useState(false)
-  const [initialLoading, setInitialLoading] = useState(true)
+  const [loading, setLoading] = useState(true) // Start with loading=true
   const [data, setData] = useState({
     zugewiesenLeads: 0,
     callsHeute: 0,
@@ -162,9 +161,11 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     abschluesseMonat: 0
   })
   const [hotLeadsCount, setHotLeadsCount] = useState({ total: 0, offen: 0, angebot: 0, gewonnen: 0 })
+  const [dataLoaded, setDataLoaded] = useState(false) // Track if initial load completed
 
   useEffect(() => {
-    loadData()
+    // Immer frische Daten beim Mount laden
+    loadData(true) // Force refresh on mount
     // Für Closer/Admin: Auch Hot-Leads-Daten laden
     if (isCloser() || isAdmin()) {
       loadHotLeadsStats()
@@ -205,9 +206,12 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     const cacheKey = `dashboard_uebersicht_${CACHE_VERSION}_${today}`
     const cached = getCache(cacheKey)
 
-    // Beim initialen Laden immer frische Daten holen (nicht aus Cache)
-    // Cache nur nutzen wenn manuell aktualisiert wird und Daten vorhanden
-    if (cached && !forceRefresh && !initialLoading) {
+    // Cache nur nutzen wenn:
+    // 1. Daten bereits einmal geladen wurden (dataLoaded = true)
+    // 2. Kein Force Refresh
+    // 3. Cache existiert
+    if (cached && !forceRefresh && dataLoaded) {
+      console.log('Dashboard: Nutze Cache')
       updateDataFromResult(cached)
       return
     }
@@ -219,24 +223,29 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       params.append('userName', user?.vor_nachname || '')
       params.append('userRole', isAdmin() ? 'Admin' : isColdcaller() ? 'Coldcaller' : 'Closer')
 
-      console.log('Dashboard: Lade Daten mit Params:', params.toString())
+      console.log('Dashboard: Lade frische Daten...', params.toString())
 
       const response = await fetch(`/.netlify/functions/dashboard?${params.toString()}`)
       const result = await response.json()
 
-      console.log('Dashboard: Antwort erhalten:', { ok: response.ok, gesamt: result?.gesamt, vertriebler: result?.vertriebler?.length })
+      console.log('Dashboard: Antwort:', {
+        ok: response.ok,
+        gesamt: result?.gesamt,
+        heute: result?.heute,
+        vertriebler: result?.vertriebler?.length
+      })
 
       if (response.ok) {
         setCache(cacheKey, result)
         updateDataFromResult(result)
+        setDataLoaded(true) // Mark as loaded
       } else {
-        console.error('Dashboard: Fehler in Antwort:', result)
+        console.error('Dashboard: API Fehler:', result)
       }
     } catch (err) {
       console.error('Dashboard load error:', err)
     } finally {
       setLoading(false)
-      setInitialLoading(false)
     }
   }
 
@@ -288,7 +297,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     // Für Coldcaller: Zugewiesene Leads aus Kaltakquise
     {
       name: 'Zugewiesene Leads',
-      value: initialLoading ? '...' : data.zugewiesenLeads.toLocaleString('de-DE'),
+      value: loading ? '...' : data.zugewiesenLeads.toLocaleString('de-DE'),
       icon: Users,
       color: 'bg-blue-500',
       show: isColdcaller() && !isCloser() && !isAdmin()
@@ -296,7 +305,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     // Für Closer/Admin: Hot-Leads im Closing
     {
       name: 'Leads im Closing',
-      value: initialLoading ? '...' : hotLeadsCount.total.toLocaleString('de-DE'),
+      value: loading ? '...' : hotLeadsCount.total.toLocaleString('de-DE'),
       icon: Target,
       color: 'bg-blue-500',
       show: isCloser() || isAdmin()
@@ -304,7 +313,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     // Für Coldcaller: Calls heute
     {
       name: 'Calls heute',
-      value: initialLoading ? '...' : data.callsHeute.toLocaleString('de-DE'),
+      value: loading ? '...' : data.callsHeute.toLocaleString('de-DE'),
       icon: Phone,
       color: 'bg-green-500',
       show: isColdcaller() && !isCloser() && !isAdmin()
@@ -312,7 +321,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     // Für Closer/Admin: Offene Leads
     {
       name: 'Offene Leads',
-      value: initialLoading ? '...' : hotLeadsCount.offen.toLocaleString('de-DE'),
+      value: loading ? '...' : hotLeadsCount.offen.toLocaleString('de-DE'),
       icon: Clock,
       color: 'bg-yellow-500',
       show: isCloser() || isAdmin()
@@ -320,7 +329,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     // Für Closer/Admin: Angebote
     {
       name: 'Angebote offen',
-      value: initialLoading ? '...' : hotLeadsCount.angebot.toLocaleString('de-DE'),
+      value: loading ? '...' : hotLeadsCount.angebot.toLocaleString('de-DE'),
       icon: FileText,
       color: 'bg-purple-500',
       show: isCloser() || isAdmin()
@@ -328,7 +337,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     // Für alle: Abschlüsse/Gewonnen
     {
       name: 'Gewonnen',
-      value: initialLoading ? '...' : hotLeadsCount.gewonnen.toLocaleString('de-DE'),
+      value: loading ? '...' : hotLeadsCount.gewonnen.toLocaleString('de-DE'),
       icon: TrendingUp,
       color: 'bg-green-500',
       show: isCloser() || isAdmin()
@@ -384,7 +393,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
               <div>
                 <p className="text-sm text-gray-500">{stat.name}</p>
                 <p className="mt-1 text-3xl font-bold text-gray-900">
-                  {initialLoading ? (
+                  {loading ? (
                     <span className="inline-block w-8 h-8">
                       <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
                     </span>
@@ -979,6 +988,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   const [selectedUser, setSelectedUser] = useState('all') // NEU: Vertriebler-Filter
   const [vertriebler, setVertriebler] = useState([]) // NEU: Liste aller Vertriebler
   const [refreshing, setRefreshing] = useState(false)
+  const [dataLoaded, setDataLoaded] = useState(false) // Track initial load
 
   // Request-ID um Race Conditions zu verhindern
   const requestIdRef = useRef(0)
@@ -991,7 +1001,9 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   }
 
   useEffect(() => {
-    loadStats()
+    // Bei Änderung von dateRange/selectedUser: Daten laden
+    // Erstes Laden: force refresh, danach Cache nutzen wenn vorhanden
+    loadStats(!dataLoaded)
   }, [dateRange, selectedUser])
 
   // Erweiterte Zeitraum-Optionen
@@ -1078,9 +1090,12 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     const cacheKey = getCacheKey()
     const cached = getCache(cacheKey)
 
-    // Cache nur nutzen wenn nicht initial und nicht force
-    // Bei initialem Laden (loading=true, stats=null) immer frisch laden
-    if (cached && !forceRefresh && stats !== null) {
+    // Cache nur nutzen wenn:
+    // 1. Daten bereits einmal geladen wurden
+    // 2. Kein Force Refresh
+    // 3. Cache existiert
+    if (cached && !forceRefresh && dataLoaded) {
+      console.log('Kaltakquise: Nutze Cache')
       setStats(cached)
       if (cached.perUser) {
         setVertriebler(cached.perUser)
@@ -1127,6 +1142,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         })
         setCache(cacheKey, data)
         setStats(data)
+        setDataLoaded(true) // Mark as loaded
         // Vertriebler-Liste NUR updaten wenn "Alle" ausgewählt ist
         // Sonst verlieren wir die vollständige Liste beim Filtern
         if (data.perUser && isAdmin() && selectedUser === 'all') {
