@@ -1,18 +1,23 @@
 // Analytics API für Setting und Closing Performance
 import { fetchWithRetry } from './utils/airtable.js'
 
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
-
-const headers = {
-  'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-  'Content-Type': 'application/json'
-}
-
 // Cache für User-Namen (Record-ID -> Name)
 let userNameCache = null
 let userNameCacheTime = 0
 const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
+
+// Helper: API-Headers dynamisch erstellen (vermeidet Probleme mit undefined env vars)
+function getAirtableHeaders() {
+  const apiKey = process.env.AIRTABLE_API_KEY
+  return {
+    'Authorization': `Bearer ${apiKey}`,
+    'Content-Type': 'application/json'
+  }
+}
+
+function getAirtableBaseId() {
+  return process.env.AIRTABLE_BASE_ID
+}
 
 async function loadUserNames() {
   // Cache prüfen
@@ -20,27 +25,42 @@ async function loadUserNames() {
     return userNameCache
   }
 
-  const USER_TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('User_Datenbank')}`
-  
+  const AIRTABLE_BASE_ID = getAirtableBaseId()
+  const headers = getAirtableHeaders()
+
+  const nameMap = {}
+  let offset = null
+
   try {
-    const response = await fetchWithRetry(`${USER_TABLE_URL}?fields[]=Vor_Nachname`, { headers })
-    
-    if (!response.ok) {
-      console.error('User-Namen laden fehlgeschlagen:', response.status)
-      return {}
-    }
-    
-    const data = await response.json()
-    const nameMap = {}
-    
-    for (const record of data.records) {
-      nameMap[record.id] = record.fields.Vor_Nachname || record.id
-    }
-    
+    // Mit Pagination alle User laden
+    do {
+      let url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('User_Datenbank')}?fields[]=Vor_Nachname&pageSize=100`
+      if (offset) {
+        url += `&offset=${offset}`
+      }
+
+      const response = await fetchWithRetry(url, { headers })
+
+      if (!response.ok) {
+        console.error('User-Namen laden fehlgeschlagen:', response.status)
+        break
+      }
+
+      const data = await response.json()
+
+      if (data.records) {
+        for (const record of data.records) {
+          nameMap[record.id] = record.fields.Vor_Nachname || record.id
+        }
+      }
+
+      offset = data.offset
+    } while (offset)
+
     // Cache aktualisieren
     userNameCache = nameMap
     userNameCacheTime = Date.now()
-    
+
     console.log('Analytics: User-Namen geladen:', Object.keys(nameMap).length, 'User')
     return nameMap
   } catch (err) {
@@ -133,7 +153,10 @@ export async function handler(event) {
 // ==========================================
 async function getUserRecordId(userName) {
   if (!userName) return null
-  
+
+  const AIRTABLE_BASE_ID = getAirtableBaseId()
+  const headers = getAirtableHeaders()
+
   const tableName = 'User_Datenbank'
   const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
   url.searchParams.append('filterByFormula', `{Vor_Nachname} = "${userName}"`)
@@ -152,14 +175,17 @@ async function getUserRecordId(userName) {
 // CLOSING STATS (Hot Leads)
 // ==========================================
 async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDate, startDateStr, endDateStr }) {
+  const AIRTABLE_BASE_ID = getAirtableBaseId()
+  const headers = getAirtableHeaders()
+
   const tableName = 'Immobilienmakler_Hot_Leads'
-  
+
   console.log('getClosingStats - Params:', { isAdmin, userName, startDateStr, endDateStr })
-  
+
   // User-Namen laden für Record-ID -> Name Auflösung
   const userNames = await loadUserNames()
   console.log('User-Namen geladen:', Object.keys(userNames).length)
-  
+
   let allRecords = []
   let offset = null
 
@@ -377,15 +403,18 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
 // SETTING STATS (Kaltakquise Leads)
 // ==========================================
 async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate, startDateStr, endDateStr }) {
+  const AIRTABLE_BASE_ID = getAirtableBaseId()
+  const headers = getAirtableHeaders()
+
   const leadsTableName = 'Immobilienmakler_Leads'
   const archivTableId = 'tbluaHfCySe8cSgSY' // Immobilienmakler_Leads_Archiv
-  
+
   // User Record ID holen wenn nicht Admin
   let userRecordId = null
   if (!isAdmin && userName) {
     userRecordId = await getUserRecordId(userName)
   }
-  
+
   // Admin filtert nach bestimmtem Vertriebler
   let filterUserRecordId = null
   if (isAdmin && filterUserName) {
@@ -634,7 +663,10 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
 // ==========================================
 async function getUserNames(recordIds) {
   if (!recordIds || recordIds.length === 0) return {}
-  
+
+  const AIRTABLE_BASE_ID = getAirtableBaseId()
+  const headers = getAirtableHeaders()
+
   const tableName = 'User_Datenbank'
   const names = {}
 
@@ -648,6 +680,12 @@ async function getUserNames(recordIds) {
     }
 
     const response = await fetchWithRetry(url.toString(), { headers })
+
+    if (!response.ok) {
+      console.error('getUserNames - Fehler:', response.status)
+      break
+    }
+
     const data = await response.json()
 
     if (data.records) {
@@ -656,11 +694,15 @@ async function getUserNames(recordIds) {
     offset = data.offset
   } while (offset)
 
+  console.log('getUserNames - Geladen:', allUsers.length, 'User, gesucht:', recordIds.length, 'IDs')
+
   for (const user of allUsers) {
     if (recordIds.includes(user.id)) {
       names[user.id] = user.fields.Vor_Nachname || user.fields['Vor_Nachname'] || 'Unbekannt'
     }
   }
+
+  console.log('getUserNames - Gefunden:', Object.keys(names).length, 'Namen')
 
   return names
 }

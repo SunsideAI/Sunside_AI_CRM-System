@@ -34,20 +34,34 @@ export async function handler(event) {
     const params = event.queryStringParameters || {}
     const { userName, userRole } = params
 
-    // User-Map laden
-    const usersUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USERS_TABLE)}?fields[]=Vor_Nachname&fields[]=Rolle`
-    const usersResponse = await fetchWithRetry(usersUrl, {
-      headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
-    })
-    const usersData = await usersResponse.json()
-    
+    // User-Map laden (mit Pagination)
     const userMap = {}
-    usersData.records.forEach(record => {
-      userMap[record.id] = {
-        name: record.fields.Vor_Nachname || 'Unbekannt',
-        rolle: record.fields.Rolle || []
+    let usersOffset = null
+
+    do {
+      let usersUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USERS_TABLE)}?fields[]=Vor_Nachname&fields[]=Rolle&pageSize=100`
+      if (usersOffset) {
+        usersUrl += `&offset=${usersOffset}`
       }
-    })
+
+      const usersResponse = await fetchWithRetry(usersUrl, {
+        headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
+      })
+      const usersData = await usersResponse.json()
+
+      if (usersData.records) {
+        usersData.records.forEach(record => {
+          userMap[record.id] = {
+            name: record.fields.Vor_Nachname || 'Unbekannt',
+            rolle: record.fields.Rolle || []
+          }
+        })
+      }
+
+      usersOffset = usersData.offset
+    } while (usersOffset)
+
+    console.log('Dashboard: User-Map geladen mit', Object.keys(userMap).length, 'Usern')
 
     // Alle Leads laden (mit Pagination)
     let allLeads = []
