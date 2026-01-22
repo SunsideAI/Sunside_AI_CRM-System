@@ -14,7 +14,7 @@ Internes CRM-System für das Vertriebsteam von Sunside AI.
 | bcrypt | Passwort-Hashing |
 
 ## 📁 Projektstruktur
-
+-- BRANCH
 ```
 sunside-crm/
 ├── src/
