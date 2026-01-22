@@ -3,6 +3,8 @@
 // POST: Neuen Hot Lead erstellen (bei Termin-Buchung)
 // PATCH: Hot Lead aktualisieren (Status, Deal-Werte)
 
+import { fetchWithRetry } from './utils/airtable.js'
+
 const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
 const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
 const TABLE_NAME = 'Immobilienmakler_Hot_Leads'
@@ -28,7 +30,7 @@ async function loadUserNames(airtableHeaders) {
   const USER_TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USER_TABLE_NAME)}`
   
   try {
-    const response = await fetch(`${USER_TABLE_URL}?fields[]=Vor_Nachname`, {
+    const response = await fetchWithRetry(`${USER_TABLE_URL}?fields[]=Vor_Nachname`, {
       headers: airtableHeaders
     })
     
@@ -73,7 +75,7 @@ function resolveUserName(field, userNames) {
   return ''
 }
 
-exports.handler = async (event) => {
+export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' }
   }
@@ -165,7 +167,7 @@ exports.handler = async (event) => {
 
         console.log('Hot Leads GET - Airtable URL:', url.substring(0, 200) + '...')
 
-        const response = await fetch(url, { headers: airtableHeaders })
+        const response = await fetchWithRetry(url, { headers: airtableHeaders })
         
         if (!response.ok) {
           const error = await response.json()
@@ -310,7 +312,7 @@ exports.handler = async (event) => {
           let url = TABLE_URL
           if (offset) url += `?offset=${offset}`
           
-          const response = await fetch(url, { headers: airtableHeaders })
+          const response = await fetchWithRetry(url, { headers: airtableHeaders })
           const data = await response.json()
           
           if (data.records) {
@@ -357,7 +359,7 @@ exports.handler = async (event) => {
             }
           }))
           
-          const updateResponse = await fetch(TABLE_URL, {
+          const updateResponse = await fetchWithRetry(TABLE_URL, {
             method: 'PATCH',
             headers: airtableHeaders,
             body: JSON.stringify({ records: updateRecords })
@@ -385,7 +387,7 @@ exports.handler = async (event) => {
           try {
             // Aktive Closer aus User_Datenbank laden
             const userTableUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('User_Datenbank')}`
-            const usersResponse = await fetch(userTableUrl, { headers: airtableHeaders })
+            const usersResponse = await fetchWithRetry(userTableUrl, { headers: airtableHeaders })
             const usersData = await usersResponse.json()
             
             const activeClosers = (usersData.records || []).filter(user => {
@@ -543,7 +545,7 @@ exports.handler = async (event) => {
 
       // Duplikat-Prüfung: Existiert bereits ein Hot Lead für diesen Original-Lead?
       const duplicateCheckUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}?filterByFormula=FIND("${originalLeadId}",ARRAYJOIN({Immobilienmakler_Leads}))&maxRecords=1`
-      const duplicateCheckResponse = await fetch(duplicateCheckUrl, {
+      const duplicateCheckResponse = await fetchWithRetry(duplicateCheckUrl, {
         headers: airtableHeaders
       })
       const duplicateCheckData = await duplicateCheckResponse.json()
@@ -626,7 +628,7 @@ exports.handler = async (event) => {
 
       console.log('Creating Hot Lead with fields:', JSON.stringify(fields, null, 2))
 
-      const response = await fetch(TABLE_URL, {
+      const response = await fetchWithRetry(TABLE_URL, {
         method: 'POST',
         headers: airtableHeaders,
         body: JSON.stringify({ fields })
@@ -644,7 +646,7 @@ exports.handler = async (event) => {
           if (setterRecordId) fields['Setter'] = setterName
           if (closerRecordId) fields['Closer'] = closerName
           
-          const retryResponse = await fetch(TABLE_URL, {
+          const retryResponse = await fetchWithRetry(TABLE_URL, {
             method: 'POST',
             headers: airtableHeaders,
             body: JSON.stringify({ fields })
@@ -777,7 +779,7 @@ exports.handler = async (event) => {
 
       console.log('Updating Hot Lead:', hotLeadId, fields)
 
-      const response = await fetch(`${TABLE_URL}/${hotLeadId}`, {
+      const response = await fetchWithRetry(`${TABLE_URL}/${hotLeadId}`, {
         method: 'PATCH',
         headers: airtableHeaders,
         body: JSON.stringify({ fields })

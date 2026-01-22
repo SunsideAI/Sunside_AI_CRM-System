@@ -3,6 +3,8 @@
 // POST: Neue Nachricht erstellen (+ Email senden)
 // PATCH: Nachricht als gelesen markieren
 
+import { fetchWithRetry } from './utils/airtable.js'
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -17,7 +19,7 @@ const TABLE_NAME = 'System_Messages'
 const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}`
 const USER_TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('User_Datenbank')}`
 
-exports.handler = async (event) => {
+export async function handler(event) {
   // CORS Preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' }
@@ -54,7 +56,7 @@ exports.handler = async (event) => {
         let url = TABLE_URL
         if (offset) url += `?offset=${offset}`
 
-        const response = await fetch(url, { headers: airtableHeaders })
+        const response = await fetchWithRetry(url, { headers: airtableHeaders })
         const data = await response.json()
 
         if (data.records) {
@@ -164,7 +166,7 @@ exports.handler = async (event) => {
         fields['Hot_Lead'] = [hotLeadId]
       }
 
-      const createResponse = await fetch(TABLE_URL, {
+      const createResponse = await fetchWithRetry(TABLE_URL, {
         method: 'POST',
         headers: airtableHeaders,
         body: JSON.stringify({ fields })
@@ -183,7 +185,7 @@ exports.handler = async (event) => {
       if (sendEmail && RESEND_API_KEY) {
         try {
           // User-Email laden
-          const userResponse = await fetch(`${USER_TABLE_URL}/${empfaengerId}`, { headers: airtableHeaders })
+          const userResponse = await fetchWithRetry(`${USER_TABLE_URL}/${empfaengerId}`, { headers: airtableHeaders })
           if (userResponse.ok) {
             const userData = await userResponse.json()
             const userEmail = userData.fields?.Mail
@@ -296,7 +298,7 @@ exports.handler = async (event) => {
         // Alle Nachrichten für User als gelesen markieren
         let filterFormula = `AND(FIND("${userId}", ARRAYJOIN({Empfänger})), NOT({Gelesen}))`
         
-        const response = await fetch(`${TABLE_URL}?filterByFormula=${encodeURIComponent(filterFormula)}`, {
+        const response = await fetchWithRetry(`${TABLE_URL}?filterByFormula=${encodeURIComponent(filterFormula)}`, {
           headers: airtableHeaders
         })
         const data = await response.json()
@@ -305,7 +307,7 @@ exports.handler = async (event) => {
         const records = data.records || []
         for (let i = 0; i < records.length; i += 10) {
           const batch = records.slice(i, i + 10)
-          await fetch(TABLE_URL, {
+          await fetchWithRetry(TABLE_URL, {
             method: 'PATCH',
             headers: airtableHeaders,
             body: JSON.stringify({
@@ -332,7 +334,7 @@ exports.handler = async (event) => {
         }
       }
 
-      const updateResponse = await fetch(`${TABLE_URL}/${messageId}`, {
+      const updateResponse = await fetchWithRetry(`${TABLE_URL}/${messageId}`, {
         method: 'PATCH',
         headers: airtableHeaders,
         body: JSON.stringify({ fields: { 'Gelesen': true } })
