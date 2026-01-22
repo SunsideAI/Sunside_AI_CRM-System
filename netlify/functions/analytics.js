@@ -418,12 +418,14 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     filterUserRecordId = await getUserRecordId(filterUserName)
   }
 
-  // === 1. Aktive Leads laden ===
+  // === 1. Aktive Leads laden (mit vollständiger Pagination) ===
   let activeRecords = []
   let offset = null
+  let pageCount = 0
 
   do {
     const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(leadsTableName)}`)
+    url.searchParams.append('pageSize', '100') // Explizit setzen
     if (offset) {
       url.searchParams.append('offset', offset)
     }
@@ -432,40 +434,69 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     const data = await response.json()
 
     if (data.error) {
-      throw new Error(data.error.message)
+      throw new Error(`Aktive Leads Fehler: ${data.error.message}`)
     }
 
-    activeRecords = activeRecords.concat(data.records || [])
+    const newRecords = data.records || []
+    activeRecords = activeRecords.concat(newRecords)
     offset = data.offset
+    pageCount++
+
+    console.log(`Analytics: Aktive Leads Seite ${pageCount} geladen: ${newRecords.length} Records (Gesamt: ${activeRecords.length})`)
   } while (offset)
 
-  // === 2. Archiv-Leads laden (mit besserer Fehlerbehandlung) ===
+  console.log(`Analytics: Aktive Leads vollständig geladen: ${activeRecords.length} Records in ${pageCount} Seiten`)
+
+  // === 2. Archiv-Leads laden (mit Retry bei Fehler) ===
   let archivRecords = []
-  offset = null
-  let archivLoadSuccess = true
+  let archivLoadSuccess = false
+  const MAX_ARCHIVE_RETRIES = 2
 
-  try {
-    do {
-      const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${archivTableId}`)
-      if (offset) {
-        url.searchParams.append('offset', offset)
+  for (let attempt = 0; attempt <= MAX_ARCHIVE_RETRIES; attempt++) {
+    archivRecords = [] // Bei jedem Versuch zurücksetzen!
+    offset = null
+    let failed = false
+
+    try {
+      do {
+        const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${archivTableId}`)
+        if (offset) {
+          url.searchParams.append('offset', offset)
+        }
+
+        const response = await fetchWithRetry(url.toString(), { headers })
+        const data = await response.json()
+
+        if (data.error) {
+          console.error(`Archiv-Fehler (Versuch ${attempt + 1}):`, data.error.message)
+          failed = true
+          break
+        }
+
+        archivRecords = archivRecords.concat(data.records || [])
+        offset = data.offset
+      } while (offset)
+
+      if (!failed) {
+        archivLoadSuccess = true
+        console.log(`Analytics: Archiv erfolgreich geladen nach Versuch ${attempt + 1}: ${archivRecords.length} Einträge`)
+        break // Erfolgreich - Schleife verlassen
       }
+    } catch (archivError) {
+      console.error(`Archiv-Exception (Versuch ${attempt + 1}):`, archivError.message)
+      failed = true
+    }
 
-      const response = await fetchWithRetry(url.toString(), { headers })
-      const data = await response.json()
+    if (failed && attempt < MAX_ARCHIVE_RETRIES) {
+      console.log(`Archiv: Warte 1s vor Retry...`)
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    }
+  }
 
-      if (data.error) {
-        console.error('Archiv-Fehler:', data.error.message)
-        archivLoadSuccess = false
-        break
-      }
-
-      archivRecords = archivRecords.concat(data.records || [])
-      offset = data.offset
-    } while (offset)
-  } catch (archivError) {
-    console.error('Archiv-Exception:', archivError.message)
-    archivLoadSuccess = false
+  // WICHTIG: Bei Fehler leeres Archiv verwenden (konsistent!)
+  if (!archivLoadSuccess) {
+    console.warn('Analytics: Archiv konnte nicht geladen werden - verwende nur aktive Leads!')
+    archivRecords = []
   }
 
   console.log(`Analytics: ${activeRecords.length} aktive Leads, ${archivRecords.length} Archiv-Einträge (success: ${archivLoadSuccess})`)
@@ -641,8 +672,26 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   let perUser = []
   if (isAdmin && Object.keys(perUserMap).length > 0) {
     perUser = Object.values(perUserMap).sort((a, b) => b.einwahlen - a.einwahlen)
-    console.log('getSettingStats - perUser:', perUser.length, 'Vertriebler')
   }
+
+  // WICHTIG: Finale Zusammenfassung loggen für Debugging
+  console.log('=== getSettingStats FINAL ===', {
+    zeitraum: { startDateStr, endDateStr },
+    datenquellen: {
+      aktiveLeads: activeRecords.length,
+      archivLeads: archivRecords.length,
+      archivErfolgreich: archivLoadSuccess
+    },
+    ergebnis: {
+      einwahlen,
+      erreicht,
+      beratungsgespraech,
+      unterlagen,
+      keinInteresse,
+      nichtErreicht
+    },
+    perUserCount: perUser.length
+  })
 
   return {
     summary: {
@@ -658,7 +707,14 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       keinInteresseQuote
     },
     zeitverlauf,
-    perUser
+    perUser,
+    // Debug-Info mitsenden (für Debugging)
+    _debug: {
+      activeLeadsCount: activeRecords.length,
+      archivLeadsCount: archivRecords.length,
+      archivSuccess: archivLoadSuccess,
+      timestamp: new Date().toISOString()
+    }
   }
 }
 
