@@ -491,9 +491,15 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     // Wenn ein Zeitfilter aktiv ist, müssen Records ein Datum haben
     if (startDateStr || endDateStr) {
       if (!datumRaw) continue // Kein Datum = überspringen bei aktivem Zeitfilter
-      
+
       // Datum auf YYYY-MM-DD normalisieren falls ISO-Format
       const datum = datumRaw.split('T')[0]
+
+      // Debug: Erste 3 Records mit Datum loggen
+      if (einwahlen < 3) {
+        console.log('Datum-Check:', { datumRaw, datum, startDateStr, endDateStr, include: !(datum < startDateStr || datum > endDateStr) })
+      }
+
       if (startDateStr && datum < startDateStr) continue
       if (endDateStr && datum > endDateStr) continue
     }

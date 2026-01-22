@@ -935,15 +935,15 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         }
       case '7days':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 7)
+        startDate.setDate(startDate.getDate() - 6) // Letzte 7 Tage inkl. heute
         break
       case '14days':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 14)
+        startDate.setDate(startDate.getDate() - 13) // Letzte 14 Tage inkl. heute
         break
       case '30days':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 30)
+        startDate.setDate(startDate.getDate() - 29) // Letzte 30 Tage inkl. heute
         break
       case 'thisMonth':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -1373,15 +1373,15 @@ function ClosingAnalytics({ user, isAdmin }) {
     switch (dateRange) {
       case '7days':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 7)
+        startDate.setDate(startDate.getDate() - 6) // Letzte 7 Tage inkl. heute
         break
       case '14days':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 14)
+        startDate.setDate(startDate.getDate() - 13) // Letzte 14 Tage inkl. heute
         break
       case '30days':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 30)
+        startDate.setDate(startDate.getDate() - 29) // Letzte 30 Tage inkl. heute
         break
       case 'thisMonth':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1)
