@@ -1,5 +1,24 @@
 // Dashboard Analytics API - Statistiken für das Dashboard
-import { fetchWithRetry } from './utils/airtable.js'
+
+// Rate-Limit Handler: Retry bei 429 Errors
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, options)
+
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('Retry-After')
+      const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt) * 1000
+      console.log(`Rate limit hit, waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}`)
+      await sleep(delay)
+      continue
+    }
+
+    return response
+  }
+  throw new Error('Max retries exceeded for rate limit')
+}
 
 export async function handler(event) {
   const headers = {
@@ -34,34 +53,20 @@ export async function handler(event) {
     const params = event.queryStringParameters || {}
     const { userName, userRole } = params
 
-    // User-Map laden (mit Pagination)
+    // User-Map laden
+    const usersUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USERS_TABLE)}?fields[]=Vor_Nachname&fields[]=Rolle`
+    const usersResponse = await fetchWithRetry(usersUrl, {
+      headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
+    })
+    const usersData = await usersResponse.json()
+    
     const userMap = {}
-    let usersOffset = null
-
-    do {
-      let usersUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USERS_TABLE)}?fields[]=Vor_Nachname&fields[]=Rolle&pageSize=100`
-      if (usersOffset) {
-        usersUrl += `&offset=${usersOffset}`
+    usersData.records.forEach(record => {
+      userMap[record.id] = {
+        name: record.fields.Vor_Nachname || 'Unbekannt',
+        rolle: record.fields.Rolle || []
       }
-
-      const usersResponse = await fetchWithRetry(usersUrl, {
-        headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
-      })
-      const usersData = await usersResponse.json()
-
-      if (usersData.records) {
-        usersData.records.forEach(record => {
-          userMap[record.id] = {
-            name: record.fields.Vor_Nachname || 'Unbekannt',
-            rolle: record.fields.Rolle || []
-          }
-        })
-      }
-
-      usersOffset = usersData.offset
-    } while (usersOffset)
-
-    console.log('Dashboard: User-Map geladen mit', Object.keys(userMap).length, 'Usern')
+    })
 
     // Alle Leads laden (mit Pagination)
     let allLeads = []
@@ -78,7 +83,7 @@ export async function handler(event) {
       const response = await fetchWithRetry(url, {
         headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
       })
-      
+
       if (!response.ok) {
         throw new Error('Fehler beim Laden der Leads')
       }
@@ -115,36 +120,30 @@ export async function handler(event) {
     
     const startOfMonth = new Date(heute.getFullYear(), heute.getMonth(), 1)
 
-    // Stats für aktuellen User / Admin
+    // Stats für aktuellen User
     let userHeute = 0
     let userWoche = 0
-    let globalHeute = 0  // Für Admins: alle Kontakte heute
-
-    // Helper: Flexiblere Kontaktiert-Prüfung (wie in analytics.js)
-    const isKontaktiert = (val) => val === true || val === 'X' || val === 'x' || val === 1
 
     // Leads durchgehen
     allLeads.forEach(record => {
-      const kontaktiertVal = record.fields['Bereits_kontaktiert'] || record.fields['Bereits kontaktiert'] || record.fields.Bereits_kontaktiert
-      const kontaktiert = isKontaktiert(kontaktiertVal)
+      const kontaktiert = record.fields['Bereits_kontaktiert'] === 'X'
       const ergebnis = record.fields.Ergebnis || ''
       const userIds = record.fields.User_Datenbank || []
       const datum = record.fields.Datum ? new Date(record.fields.Datum) : null
 
       // Prüfen ob Lead diesem User zugewiesen ist
-      const resolvedUserNames = userIds.map(id => userMap[id]?.name || '')
-      const isUserLead = userName && resolvedUserNames.includes(userName)
+      const userNames = userIds.map(id => userMap[id]?.name || '')
+      const isUserLead = userName && userNames.includes(userName)
 
       // Kontaktiert zählen
       if (kontaktiert) {
         stats.kontaktiert++
-
+        
         // Diese Woche / Monat (global)
         if (datum) {
           if (datum >= startOfWeek) stats.dieseWoche++
           if (datum >= startOfMonth) stats.diesenMonat++
-          if (datum >= startOfToday) globalHeute++  // Global für Admin
-
+          
           // User-spezifisch
           if (isUserLead) {
             if (datum >= startOfToday) userHeute++
@@ -184,22 +183,6 @@ export async function handler(event) {
       ? ((stats.ergebnisse['Beratungsgespräch'] / stats.kontaktiert) * 100).toFixed(1)
       : 0
 
-    // Für Admins: globale Stats, für User: eigene Stats
-    const isAdminRole = userRole === 'Admin'
-
-    // Beratungsgespräche diese Woche (global)
-    const termineWocheGlobal = stats.ergebnisse['Beratungsgespräch'] || 0
-
-    console.log('Dashboard Stats:', {
-      gesamt: stats.gesamt,
-      kontaktiert: stats.kontaktiert,
-      globalHeute,
-      userHeute,
-      termineWocheGlobal,
-      vertrieblerCount: vertrieblerArray.length,
-      isAdminRole
-    })
-
     return {
       statusCode: 200,
       headers,
@@ -209,10 +192,8 @@ export async function handler(event) {
         nichtKontaktiert: stats.nichtKontaktiert,
         dieseWoche: stats.dieseWoche,
         diesenMonat: stats.diesenMonat,
-        heute: isAdminRole ? globalHeute : userHeute,  // Admin sieht alle, User nur eigene
-        termineWoche: isAdminRole ? termineWocheGlobal : userWoche,  // Admin sieht alle Termine
-        globalHeute: globalHeute,  // Immer verfügbar
-        termineWocheGlobal: termineWocheGlobal,  // Alle Beratungsgespräche
+        heute: userHeute,
+        termineWoche: userWoche,
         ergebnisse: stats.ergebnisse,
         vertriebler: vertrieblerArray,
         conversionRate: parseFloat(conversionRate)

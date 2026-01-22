@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { 
   Phone, 
@@ -39,7 +39,6 @@ import {
 // CACHE HELPERS
 // ==========================================
 const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
-const CACHE_VERSION = 'v6' // Increment to force cache refresh
 
 function getCache(key) {
   try {
@@ -153,193 +152,90 @@ function Dashboard() {
 // ÜBERSICHT CONTENT
 // ==========================================
 function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
-  const [loading, setLoading] = useState(true) // Start with loading=true
+  const [loading, setLoading] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
   const [data, setData] = useState({
     zugewiesenLeads: 0,
     callsHeute: 0,
     termineWoche: 0,
     abschluesseMonat: 0
   })
-  const [hotLeadsCount, setHotLeadsCount] = useState({ total: 0, offen: 0, angebot: 0, gewonnen: 0 })
-  const [dataLoaded, setDataLoaded] = useState(false) // Track if initial load completed
 
   useEffect(() => {
-    // Immer frische Daten beim Mount laden
-    loadData(true) // Force refresh on mount
-    // Für Closer/Admin: Auch Hot-Leads-Daten laden
-    if (isCloser() || isAdmin()) {
-      loadHotLeadsStats()
-    }
+    loadData()
   }, [])
 
-  // Hot-Leads-Stats für Closer/Admins laden
-  const loadHotLeadsStats = async () => {
-    try {
-      const params = new URLSearchParams()
-      if (!isAdmin()) {
-        params.append('userName', user?.vor_nachname || '')
-      }
-      const response = await fetch(`/.netlify/functions/hot-leads?${params.toString()}`)
-      const result = await response.json()
-
-      if (response.ok && result.leads) {
-        const leads = result.leads
-        const offen = leads.filter(l => l.status?.toLowerCase() === 'lead').length
-        const angebot = leads.filter(l => l.status?.toLowerCase().includes('angebot')).length
-        const gewonnen = leads.filter(l => l.status?.toLowerCase().includes('abgeschlossen')).length
-
-        setHotLeadsCount({
-          total: leads.length,
-          offen,
-          angebot,
-          gewonnen
-        })
-      }
-    } catch (err) {
-      console.error('Hot-Leads Stats Error:', err)
-    }
-  }
-
   const loadData = async (forceRefresh = false) => {
-    // Cache Key mit heutigem Datum für tägliche Invalidierung + Version
-    const today = new Date().toISOString().split('T')[0]
-    const cacheKey = `dashboard_uebersicht_${CACHE_VERSION}_${today}`
+    const cacheKey = 'dashboard_uebersicht'
     const cached = getCache(cacheKey)
-
-    // Cache nur nutzen wenn:
-    // 1. Daten bereits einmal geladen wurden (dataLoaded = true)
-    // 2. Kein Force Refresh
-    // 3. Cache existiert
-    if (cached && !forceRefresh && dataLoaded) {
-      console.log('Dashboard: Nutze Cache')
+    
+    if (cached && !forceRefresh) {
       updateDataFromResult(cached)
+      setInitialLoading(false)
       return
     }
 
     setLoading(true)
+    if (!cached) setInitialLoading(true)
 
     try {
       const params = new URLSearchParams()
       params.append('userName', user?.vor_nachname || '')
       params.append('userRole', isAdmin() ? 'Admin' : isColdcaller() ? 'Coldcaller' : 'Closer')
 
-      console.log('Dashboard: Lade frische Daten...', params.toString())
-
       const response = await fetch(`/.netlify/functions/dashboard?${params.toString()}`)
       const result = await response.json()
-
-      console.log('Dashboard: Antwort:', {
-        ok: response.ok,
-        gesamt: result?.gesamt,
-        heute: result?.heute,
-        vertriebler: result?.vertriebler?.length
-      })
 
       if (response.ok) {
         setCache(cacheKey, result)
         updateDataFromResult(result)
-        setDataLoaded(true) // Mark as loaded
-      } else {
-        console.error('Dashboard: API Fehler:', result)
       }
     } catch (err) {
       console.error('Dashboard load error:', err)
     } finally {
       setLoading(false)
+      setInitialLoading(false)
     }
   }
 
   const updateDataFromResult = (result) => {
-    // Für Admins: Globale Stats, für User: eigene Stats
-    let zugewiesenLeads = 0
-    let callsHeute = 0
-    let termineWoche = 0
-
-    if (isAdmin()) {
-      // Admin sieht globale Statistiken
-      // Zugewiesene Leads = Summe aller Vertriebler ODER Gesamtzahl
-      const vertrieblerSum = result.vertriebler?.reduce((sum, v) => sum + (v.gesamt || 0), 0) || 0
-      zugewiesenLeads = vertrieblerSum > 0 ? vertrieblerSum : (result.gesamt || 0)
-
-      // Calls heute = Globale Kontakte heute
-      callsHeute = result.heute || result.globalHeute || 0
-
-      // Termine diese Woche = Alle Beratungsgespräche diese Woche
-      termineWoche = result.vertriebler?.reduce((sum, v) => sum + (v.beratungsgespraech || 0), 0) || result.termineWoche || 0
-    } else {
-      // User sieht nur eigene Stats
-      const userStats = result.vertriebler?.find(v => v.name === user?.vor_nachname)
-      zugewiesenLeads = userStats?.gesamt || 0
-      callsHeute = result.heute || 0
-      termineWoche = result.termineWoche || 0
-    }
-
-    console.log('Dashboard updateDataFromResult:', {
-      isAdmin: isAdmin(),
-      zugewiesenLeads,
-      callsHeute,
-      termineWoche,
-      resultGesamt: result.gesamt,
-      resultHeute: result.heute,
-      vertriebler: result.vertriebler?.length
-    })
-
+    const userStats = result.vertriebler?.find(v => v.name === user?.vor_nachname)
+    
     setData({
-      zugewiesenLeads,
-      callsHeute,
-      termineWoche,
+      zugewiesenLeads: userStats?.gesamt || 0,
+      callsHeute: result.heute || 0,
+      termineWoche: result.termineWoche || 0,
       abschluesseMonat: 0
     })
   }
 
-  // Dynamische Stats basierend auf Rolle
   const stats = [
-    // Für Coldcaller: Zugewiesene Leads aus Kaltakquise
     {
       name: 'Zugewiesene Leads',
-      value: loading ? '...' : data.zugewiesenLeads.toLocaleString('de-DE'),
+      value: initialLoading ? '...' : data.zugewiesenLeads.toLocaleString('de-DE'),
       icon: Users,
       color: 'bg-blue-500',
-      show: isColdcaller() && !isCloser() && !isAdmin()
+      show: isColdcaller() || isAdmin()
     },
-    // Für Closer/Admin: Hot-Leads im Closing
-    {
-      name: 'Leads im Closing',
-      value: loading ? '...' : hotLeadsCount.total.toLocaleString('de-DE'),
-      icon: Target,
-      color: 'bg-blue-500',
-      show: isCloser() || isAdmin()
-    },
-    // Für Coldcaller: Calls heute
     {
       name: 'Calls heute',
-      value: loading ? '...' : data.callsHeute.toLocaleString('de-DE'),
+      value: initialLoading ? '...' : data.callsHeute.toLocaleString('de-DE'),
       icon: Phone,
       color: 'bg-green-500',
-      show: isColdcaller() && !isCloser() && !isAdmin()
+      show: isColdcaller() || isAdmin()
     },
-    // Für Closer/Admin: Offene Leads
     {
-      name: 'Offene Leads',
-      value: loading ? '...' : hotLeadsCount.offen.toLocaleString('de-DE'),
-      icon: Clock,
-      color: 'bg-yellow-500',
-      show: isCloser() || isAdmin()
-    },
-    // Für Closer/Admin: Angebote
-    {
-      name: 'Angebote offen',
-      value: loading ? '...' : hotLeadsCount.angebot.toLocaleString('de-DE'),
-      icon: FileText,
+      name: 'Termine diese Woche',
+      value: initialLoading ? '...' : data.termineWoche.toLocaleString('de-DE'),
+      icon: Calendar,
       color: 'bg-purple-500',
-      show: isCloser() || isAdmin()
+      show: true
     },
-    // Für alle: Abschlüsse/Gewonnen
     {
-      name: 'Gewonnen',
-      value: loading ? '...' : hotLeadsCount.gewonnen.toLocaleString('de-DE'),
+      name: 'Abschlüsse Monat',
+      value: initialLoading ? '...' : data.abschluesseMonat.toLocaleString('de-DE'),
       icon: TrendingUp,
-      color: 'bg-green-500',
+      color: 'bg-orange-500',
       show: isCloser() || isAdmin()
     }
   ].filter(stat => stat.show)
@@ -393,7 +289,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
               <div>
                 <p className="text-sm text-gray-500">{stat.name}</p>
                 <p className="mt-1 text-3xl font-bold text-gray-900">
-                  {loading ? (
+                  {initialLoading ? (
                     <span className="inline-block w-8 h-8">
                       <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
                     </span>
@@ -988,22 +884,15 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   const [selectedUser, setSelectedUser] = useState('all') // NEU: Vertriebler-Filter
   const [vertriebler, setVertriebler] = useState([]) // NEU: Liste aller Vertriebler
   const [refreshing, setRefreshing] = useState(false)
-  const [dataLoaded, setDataLoaded] = useState(false) // Track initial load
 
-  // Request-ID um Race Conditions zu verhindern
-  const requestIdRef = useRef(0)
-
-  // Cache Key - enthält heutiges Datum für tägliche Invalidierung + Version
+  // Cache Key
   const getCacheKey = () => {
     const userPart = isAdmin() ? `admin_${selectedUser}` : (user?.vor_nachname || 'user')
-    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-    return `dashboard_kaltakquise_${CACHE_VERSION}_${dateRange}_${userPart}_${today}`
+    return `dashboard_kaltakquise_${dateRange}_${userPart}`
   }
 
   useEffect(() => {
-    // Bei Änderung von dateRange/selectedUser: Daten laden
-    // Erstes Laden: force refresh, danach Cache nutzen wenn vorhanden
-    loadStats(!dataLoaded)
+    loadStats()
   }, [dateRange, selectedUser])
 
   // Erweiterte Zeitraum-Optionen
@@ -1046,15 +935,15 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         }
       case '7days':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 6) // Letzte 7 Tage inkl. heute
+        startDate.setDate(startDate.getDate() - 7)
         break
       case '14days':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 13) // Letzte 14 Tage inkl. heute
+        startDate.setDate(startDate.getDate() - 14)
         break
       case '30days':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 29) // Letzte 30 Tage inkl. heute
+        startDate.setDate(startDate.getDate() - 30)
         break
       case 'thisMonth':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -1084,18 +973,10 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   }
 
   const loadStats = async (forceRefresh = false) => {
-    // Neue Request-ID generieren - ältere Requests werden ignoriert
-    const currentRequestId = ++requestIdRef.current
-
     const cacheKey = getCacheKey()
     const cached = getCache(cacheKey)
 
-    // Cache nur nutzen wenn:
-    // 1. Daten bereits einmal geladen wurden
-    // 2. Kein Force Refresh
-    // 3. Cache existiert
-    if (cached && !forceRefresh && dataLoaded) {
-      console.log('Kaltakquise: Nutze Cache')
+    if (cached && !forceRefresh) {
       setStats(cached)
       if (cached.perUser) {
         setVertriebler(cached.perUser)
@@ -1107,8 +988,6 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     try {
       setLoading(true)
       setError(null)
-
-      console.log('Kaltakquise: Lade frische Daten...')
 
       const { startDate, endDate } = getDateRange()
       const userEmail = user?.email_geschaeftlich || user?.email
@@ -1126,45 +1005,24 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
       })
 
       const res = await fetch(`/.netlify/functions/analytics?${params}`)
-
-      // Prüfen ob dieser Request noch aktuell ist (Race Condition verhindern)
-      if (currentRequestId !== requestIdRef.current) {
-        console.log('Kaltakquise: Request abgebrochen (neuerer Request läuft)')
-        return
-      }
-
       if (res.ok) {
         const data = await res.json()
-        console.log('Kaltakquise: Daten erhalten:', {
-          einwahlen: data?.summary?.einwahlen,
-          perUser: data?.perUser?.length,
-          firstUserName: data?.perUser?.[0]?.name
-        })
         setCache(cacheKey, data)
         setStats(data)
-        setDataLoaded(true) // Mark as loaded
         // Vertriebler-Liste NUR updaten wenn "Alle" ausgewählt ist
         // Sonst verlieren wir die vollständige Liste beim Filtern
         if (data.perUser && isAdmin() && selectedUser === 'all') {
           setVertriebler(data.perUser)
         }
       } else {
-        const errorData = await res.json().catch(() => ({}))
-        console.error('Kaltakquise: Fehler-Antwort:', errorData)
         throw new Error('Fehler beim Laden')
       }
     } catch (err) {
-      // Nur Fehler setzen wenn dieser Request noch aktuell ist
-      if (currentRequestId === requestIdRef.current) {
-        console.error('Kaltakquise Analytics Error:', err)
-        setError('Fehler beim Laden der Analytics')
-      }
+      console.error('Kaltakquise Analytics Error:', err)
+      setError('Fehler beim Laden der Analytics')
     } finally {
-      // Nur Loading zurücksetzen wenn dieser Request noch aktuell ist
-      if (currentRequestId === requestIdRef.current) {
-        setLoading(false)
-        setRefreshing(false)
-      }
+      setLoading(false)
+      setRefreshing(false)
     }
   }
 
@@ -1498,11 +1356,9 @@ function ClosingAnalytics({ user, isAdmin }) {
   const [dateRange, setDateRange] = useState('30days')
   const [refreshing, setRefreshing] = useState(false)
 
-  // Cache Key - enthält heutiges Datum für tägliche Invalidierung
   const getCacheKey = () => {
     const userPart = isAdmin() ? 'admin' : (user?.email_geschaeftlich || user?.email || 'user')
-    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-    return `dashboard_closing_${CACHE_VERSION}_${dateRange}_${userPart}_${today}`
+    return `dashboard_closing_${dateRange}_${userPart}`
   }
 
   useEffect(() => {
@@ -1517,15 +1373,15 @@ function ClosingAnalytics({ user, isAdmin }) {
     switch (dateRange) {
       case '7days':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 6) // Letzte 7 Tage inkl. heute
+        startDate.setDate(startDate.getDate() - 7)
         break
       case '14days':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 13) // Letzte 14 Tage inkl. heute
+        startDate.setDate(startDate.getDate() - 14)
         break
       case '30days':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 29) // Letzte 30 Tage inkl. heute
+        startDate.setDate(startDate.getDate() - 30)
         break
       case 'thisMonth':
         startDate = new Date(now.getFullYear(), now.getMonth(), 1)

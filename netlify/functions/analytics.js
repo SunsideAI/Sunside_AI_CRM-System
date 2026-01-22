@@ -1,60 +1,65 @@
 // Analytics API für Setting und Closing Performance
-import { fetchWithRetry } from './utils/airtable.js'
+const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
+const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
 
-// WICHTIG: KEIN Module-Level Cache - funktioniert nicht zuverlässig in Serverless!
-// Jeder Request lädt die User-Namen frisch (zuverlässiger, etwas langsamer)
+const headers = {
+  'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+  'Content-Type': 'application/json'
+}
 
-// Helper: API-Headers dynamisch erstellen (vermeidet Probleme mit undefined env vars)
-function getAirtableHeaders() {
-  const apiKey = process.env.AIRTABLE_API_KEY
-  return {
-    'Authorization': `Bearer ${apiKey}`,
-    'Content-Type': 'application/json'
+// Rate-Limit Handler: Retry bei 429 Errors
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const response = await fetch(url, options)
+
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('Retry-After')
+      const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt) * 1000
+      console.log(`Rate limit hit, waiting ${delay}ms before retry ${attempt + 1}/${maxRetries}`)
+      await sleep(delay)
+      continue
+    }
+
+    return response
   }
+  throw new Error('Max retries exceeded for rate limit')
 }
 
-function getAirtableBaseId() {
-  return process.env.AIRTABLE_BASE_ID
-}
+// Cache für User-Namen (Record-ID -> Name)
+let userNameCache = null
+let userNameCacheTime = 0
+const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
 
-/**
- * Lädt User-Namen aus der Datenbank (FRISCH bei jedem Request)
- * Keine Module-Level-Cache wegen Cold Start Problematik in Serverless
- */
 async function loadUserNames() {
-  const AIRTABLE_BASE_ID = getAirtableBaseId()
-  const headers = getAirtableHeaders()
+  // Cache prüfen
+  if (userNameCache && (Date.now() - userNameCacheTime) < CACHE_DURATION) {
+    return userNameCache
+  }
 
-  const nameMap = {}
-  let offset = null
-
+  const USER_TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('User_Datenbank')}`
+  
   try {
-    // Mit Pagination alle User laden
-    do {
-      let url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('User_Datenbank')}?fields[]=Vor_Nachname&pageSize=100`
-      if (offset) {
-        url += `&offset=${offset}`
-      }
-
-      const response = await fetchWithRetry(url, { headers })
-
-      if (!response.ok) {
-        console.error('User-Namen laden fehlgeschlagen:', response.status)
-        break
-      }
-
-      const data = await response.json()
-
-      if (data.records) {
-        for (const record of data.records) {
-          nameMap[record.id] = record.fields.Vor_Nachname || record.id
-        }
-      }
-
-      offset = data.offset
-    } while (offset)
-
-    console.log('Analytics: User-Namen frisch geladen:', Object.keys(nameMap).length, 'User')
+    const response = await fetchWithRetry(`${USER_TABLE_URL}?fields[]=Vor_Nachname`, { headers })
+    
+    if (!response.ok) {
+      console.error('User-Namen laden fehlgeschlagen:', response.status)
+      return {}
+    }
+    
+    const data = await response.json()
+    const nameMap = {}
+    
+    for (const record of data.records) {
+      nameMap[record.id] = record.fields.Vor_Nachname || record.id
+    }
+    
+    // Cache aktualisieren
+    userNameCache = nameMap
+    userNameCacheTime = Date.now()
+    
+    console.log('Analytics: User-Namen geladen:', Object.keys(nameMap).length, 'User')
     return nameMap
   } catch (err) {
     console.error('Fehler beim Laden der User-Namen:', err)
@@ -79,7 +84,7 @@ function resolveUserName(field, userNames) {
   return ''
 }
 
-export async function handler(event) {
+exports.handler = async (event) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type',
@@ -146,10 +151,7 @@ export async function handler(event) {
 // ==========================================
 async function getUserRecordId(userName) {
   if (!userName) return null
-
-  const AIRTABLE_BASE_ID = getAirtableBaseId()
-  const headers = getAirtableHeaders()
-
+  
   const tableName = 'User_Datenbank'
   const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
   url.searchParams.append('filterByFormula', `{Vor_Nachname} = "${userName}"`)
@@ -168,17 +170,14 @@ async function getUserRecordId(userName) {
 // CLOSING STATS (Hot Leads)
 // ==========================================
 async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDate, startDateStr, endDateStr }) {
-  const AIRTABLE_BASE_ID = getAirtableBaseId()
-  const headers = getAirtableHeaders()
-
   const tableName = 'Immobilienmakler_Hot_Leads'
-
+  
   console.log('getClosingStats - Params:', { isAdmin, userName, startDateStr, endDateStr })
-
+  
   // User-Namen laden für Record-ID -> Name Auflösung
   const userNames = await loadUserNames()
   console.log('User-Namen geladen:', Object.keys(userNames).length)
-
+  
   let allRecords = []
   let offset = null
 
@@ -396,36 +395,27 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
 // SETTING STATS (Kaltakquise Leads)
 // ==========================================
 async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate, startDateStr, endDateStr }) {
-  const AIRTABLE_BASE_ID = getAirtableBaseId()
-  const headers = getAirtableHeaders()
-
   const leadsTableName = 'Immobilienmakler_Leads'
   const archivTableId = 'tbluaHfCySe8cSgSY' // Immobilienmakler_Leads_Archiv
-
-  // WICHTIG: User-Namen ZUERST laden (einmal, gecached) - für alle späteren Auflösungen
-  const userNamesMap = await loadUserNames()
-  console.log('getSettingStats - User-Namen geladen:', Object.keys(userNamesMap).length)
-
+  
   // User Record ID holen wenn nicht Admin
   let userRecordId = null
   if (!isAdmin && userName) {
     userRecordId = await getUserRecordId(userName)
   }
-
+  
   // Admin filtert nach bestimmtem Vertriebler
   let filterUserRecordId = null
   if (isAdmin && filterUserName) {
     filterUserRecordId = await getUserRecordId(filterUserName)
   }
 
-  // === 1. Aktive Leads laden (mit vollständiger Pagination) ===
+  // === 1. Aktive Leads laden ===
   let activeRecords = []
   let offset = null
-  let pageCount = 0
 
   do {
     const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(leadsTableName)}`)
-    url.searchParams.append('pageSize', '100') // Explizit setzen
     if (offset) {
       url.searchParams.append('offset', offset)
     }
@@ -434,72 +424,37 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     const data = await response.json()
 
     if (data.error) {
-      throw new Error(`Aktive Leads Fehler: ${data.error.message}`)
+      throw new Error(data.error.message)
     }
 
-    const newRecords = data.records || []
-    activeRecords = activeRecords.concat(newRecords)
+    activeRecords = activeRecords.concat(data.records || [])
     offset = data.offset
-    pageCount++
-
-    console.log(`Analytics: Aktive Leads Seite ${pageCount} geladen: ${newRecords.length} Records (Gesamt: ${activeRecords.length})`)
   } while (offset)
 
-  console.log(`Analytics: Aktive Leads vollständig geladen: ${activeRecords.length} Records in ${pageCount} Seiten`)
-
-  // === 2. Archiv-Leads laden (mit Retry bei Fehler) ===
+  // === 2. Archiv-Leads laden ===
   let archivRecords = []
-  let archivLoadSuccess = false
-  const MAX_ARCHIVE_RETRIES = 2
+  offset = null
 
-  for (let attempt = 0; attempt <= MAX_ARCHIVE_RETRIES; attempt++) {
-    archivRecords = [] // Bei jedem Versuch zurücksetzen!
-    offset = null
-    let failed = false
-
-    try {
-      do {
-        const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${archivTableId}`)
-        if (offset) {
-          url.searchParams.append('offset', offset)
-        }
-
-        const response = await fetchWithRetry(url.toString(), { headers })
-        const data = await response.json()
-
-        if (data.error) {
-          console.error(`Archiv-Fehler (Versuch ${attempt + 1}):`, data.error.message)
-          failed = true
-          break
-        }
-
-        archivRecords = archivRecords.concat(data.records || [])
-        offset = data.offset
-      } while (offset)
-
-      if (!failed) {
-        archivLoadSuccess = true
-        console.log(`Analytics: Archiv erfolgreich geladen nach Versuch ${attempt + 1}: ${archivRecords.length} Einträge`)
-        break // Erfolgreich - Schleife verlassen
-      }
-    } catch (archivError) {
-      console.error(`Archiv-Exception (Versuch ${attempt + 1}):`, archivError.message)
-      failed = true
+  do {
+    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${archivTableId}`)
+    if (offset) {
+      url.searchParams.append('offset', offset)
     }
 
-    if (failed && attempt < MAX_ARCHIVE_RETRIES) {
-      console.log(`Archiv: Warte 1s vor Retry...`)
-      await new Promise(resolve => setTimeout(resolve, 1000))
+    const response = await fetchWithRetry(url.toString(), { headers })
+    const data = await response.json()
+
+    if (data.error) {
+      console.error('Archiv-Fehler:', data.error.message)
+      // Archiv-Fehler ignorieren, weiter mit aktiven Leads
+      break
     }
-  }
 
-  // WICHTIG: Bei Fehler leeres Archiv verwenden (konsistent!)
-  if (!archivLoadSuccess) {
-    console.warn('Analytics: Archiv konnte nicht geladen werden - verwende nur aktive Leads!')
-    archivRecords = []
-  }
+    archivRecords = archivRecords.concat(data.records || [])
+    offset = data.offset
+  } while (offset)
 
-  console.log(`Analytics: ${activeRecords.length} aktive Leads, ${archivRecords.length} Archiv-Einträge (success: ${archivLoadSuccess})`)
+  console.log(`Analytics: ${activeRecords.length} aktive Leads, ${archivRecords.length} Archiv-Einträge`)
 
   // === 3. Daten normalisieren und kombinieren ===
   // Helper: kontaktiert kann "X", true, oder checkbox sein
@@ -554,15 +509,9 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     // Wenn ein Zeitfilter aktiv ist, müssen Records ein Datum haben
     if (startDateStr || endDateStr) {
       if (!datumRaw) continue // Kein Datum = überspringen bei aktivem Zeitfilter
-
+      
       // Datum auf YYYY-MM-DD normalisieren falls ISO-Format
       const datum = datumRaw.split('T')[0]
-
-      // Debug: Erste 3 Records mit Datum loggen
-      if (einwahlen < 3) {
-        console.log('Datum-Check:', { datumRaw, datum, startDateStr, endDateStr, include: !(datum < startDateStr || datum > endDateStr) })
-      }
-
       if (startDateStr && datum < startDateStr) continue
       if (endDateStr && datum > endDateStr) continue
     }
@@ -624,36 +573,32 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       zeitverlaufMap[monthKey].count++
     }
 
-    // Per User Stats (für Admins) - DIREKT mit Namen als Key
+    // Per User Stats (für Admins)
     if (isAdmin && zugewiesenAn && zugewiesenAn.length > 0) {
       const oderId = Array.isArray(zugewiesenAn) ? zugewiesenAn[0] : zugewiesenAn
-      // Namen direkt aus dem Cache holen
-      const oderName = userNamesMap[oderId] || `User ${String(oderId).substring(0, 6)}`
-
-      if (!perUserMap[oderName]) {
-        perUserMap[oderName] = {
+      if (!perUserMap[oderId]) {
+        perUserMap[oderId] = { 
           id: oderId,
-          name: oderName,
-          einwahlen: 0,
-          erreicht: 0,
+          einwahlen: 0, 
+          erreicht: 0, 
           beratungsgespraech: 0,
           unterlagen: 0,
           keinInteresse: 0,
           nichtErreicht: 0
         }
       }
-      perUserMap[oderName].einwahlen++
-
+      perUserMap[oderId].einwahlen++
+      
       if (istNichtErreicht) {
-        perUserMap[oderName].nichtErreicht++
+        perUserMap[oderId].nichtErreicht++
       } else {
-        perUserMap[oderName].erreicht++
+        perUserMap[oderId].erreicht++
         if (istBeratungsgespraech) {
-          perUserMap[oderName].beratungsgespraech++
+          perUserMap[oderId].beratungsgespraech++
         } else if (istUnterlagen) {
-          perUserMap[oderName].unterlagen++
+          perUserMap[oderId].unterlagen++
         } else if (istKeinInteresse) {
-          perUserMap[oderName].keinInteresse++
+          perUserMap[oderId].keinInteresse++
         }
       }
     }
@@ -668,30 +613,15 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   // Zeitverlauf formatieren - mit Zeitraum-Parametern
   const zeitverlauf = formatZeitverlauf(zeitverlaufMap, startDate, endDate)
 
-  // Per User: Direkt aus perUserMap (Namen sind bereits aufgelöst)
+  // Per User: Namen aus User-Tabelle holen (für Admin)
   let perUser = []
   if (isAdmin && Object.keys(perUserMap).length > 0) {
-    perUser = Object.values(perUserMap).sort((a, b) => b.einwahlen - a.einwahlen)
+    const userNames = await getUserNames(Object.keys(perUserMap))
+    perUser = Object.values(perUserMap).map(stats => ({
+      ...stats,
+      name: userNames[stats.id] || `User ${String(stats.id).substring(0, 6)}`
+    })).sort((a, b) => b.einwahlen - a.einwahlen)
   }
-
-  // WICHTIG: Finale Zusammenfassung loggen für Debugging
-  console.log('=== getSettingStats FINAL ===', {
-    zeitraum: { startDateStr, endDateStr },
-    datenquellen: {
-      aktiveLeads: activeRecords.length,
-      archivLeads: archivRecords.length,
-      archivErfolgreich: archivLoadSuccess
-    },
-    ergebnis: {
-      einwahlen,
-      erreicht,
-      beratungsgespraech,
-      unterlagen,
-      keinInteresse,
-      nichtErreicht
-    },
-    perUserCount: perUser.length
-  })
 
   return {
     summary: {
@@ -707,14 +637,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       keinInteresseQuote
     },
     zeitverlauf,
-    perUser,
-    // Debug-Info mitsenden (für Debugging)
-    _debug: {
-      activeLeadsCount: activeRecords.length,
-      archivLeadsCount: archivRecords.length,
-      archivSuccess: archivLoadSuccess,
-      timestamp: new Date().toISOString()
-    }
+    perUser
   }
 }
 
@@ -723,10 +646,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
 // ==========================================
 async function getUserNames(recordIds) {
   if (!recordIds || recordIds.length === 0) return {}
-
-  const AIRTABLE_BASE_ID = getAirtableBaseId()
-  const headers = getAirtableHeaders()
-
+  
   const tableName = 'User_Datenbank'
   const names = {}
 
@@ -740,12 +660,6 @@ async function getUserNames(recordIds) {
     }
 
     const response = await fetchWithRetry(url.toString(), { headers })
-
-    if (!response.ok) {
-      console.error('getUserNames - Fehler:', response.status)
-      break
-    }
-
     const data = await response.json()
 
     if (data.records) {
@@ -754,15 +668,11 @@ async function getUserNames(recordIds) {
     offset = data.offset
   } while (offset)
 
-  console.log('getUserNames - Geladen:', allUsers.length, 'User, gesucht:', recordIds.length, 'IDs')
-
   for (const user of allUsers) {
     if (recordIds.includes(user.id)) {
       names[user.id] = user.fields.Vor_Nachname || user.fields['Vor_Nachname'] || 'Unbekannt'
     }
   }
-
-  console.log('getUserNames - Gefunden:', Object.keys(names).length, 'Namen')
 
   return names
 }
