@@ -7,6 +7,32 @@ const headers = {
   'Content-Type': 'application/json'
 }
 
+// === RATE LIMIT SCHUTZ ===
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
+async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options)
+
+      // Bei Rate Limit: warten und erneut versuchen
+      if (response.status === 429) {
+        const retryAfter = response.headers.get('Retry-After')
+        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt) * 1000
+        console.log(`Rate limit (429), warte ${delay}ms... (Versuch ${attempt + 1}/${maxRetries})`)
+        await sleep(delay)
+        continue
+      }
+
+      return response
+    } catch (err) {
+      if (attempt === maxRetries) throw err
+      await sleep(Math.pow(2, attempt) * 1000)
+    }
+  }
+  throw new Error('Max retries exceeded')
+}
+
 // Cache für User-Namen (Record-ID -> Name)
 let userNameCache = null
 let userNameCacheTime = 0
@@ -21,7 +47,7 @@ async function loadUserNames() {
   const USER_TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('User_Datenbank')}`
   
   try {
-    const response = await fetch(`${USER_TABLE_URL}?fields[]=Vor_Nachname`, { headers })
+    const response = await fetchWithRetry(`${USER_TABLE_URL}?fields[]=Vor_Nachname`, { headers })
     
     if (!response.ok) {
       console.error('User-Namen laden fehlgeschlagen:', response.status)
@@ -137,7 +163,7 @@ async function getUserRecordId(userName) {
   url.searchParams.append('filterByFormula', `{Vor_Nachname} = "${userName}"`)
   url.searchParams.append('maxRecords', '1')
 
-  const response = await fetch(url.toString(), { headers })
+  const response = await fetchWithRetry(url.toString(), { headers })
   const data = await response.json()
 
   if (data.records && data.records.length > 0) {
@@ -167,7 +193,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
       url.searchParams.append('offset', offset)
     }
 
-    const response = await fetch(url.toString(), { headers })
+    const response = await fetchWithRetry(url.toString(), { headers })
     const data = await response.json()
 
     if (data.error) {
@@ -400,7 +426,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       url.searchParams.append('offset', offset)
     }
 
-    const response = await fetch(url.toString(), { headers })
+    const response = await fetchWithRetry(url.toString(), { headers })
     const data = await response.json()
 
     if (data.error) {
@@ -421,7 +447,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       url.searchParams.append('offset', offset)
     }
 
-    const response = await fetch(url.toString(), { headers })
+    const response = await fetchWithRetry(url.toString(), { headers })
     const data = await response.json()
 
     if (data.error) {
@@ -639,7 +665,7 @@ async function getUserNames(recordIds) {
       url.searchParams.append('offset', offset)
     }
 
-    const response = await fetch(url.toString(), { headers })
+    const response = await fetchWithRetry(url.toString(), { headers })
     const data = await response.json()
 
     if (data.records) {
