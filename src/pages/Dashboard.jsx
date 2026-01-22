@@ -166,7 +166,9 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
   }, [])
 
   const loadData = async (forceRefresh = false) => {
-    const cacheKey = 'dashboard_uebersicht'
+    // Cache Key mit heutigem Datum für tägliche Invalidierung
+    const today = new Date().toISOString().split('T')[0]
+    const cacheKey = `dashboard_uebersicht_${today}`
     const cached = getCache(cacheKey)
     
     if (cached && !forceRefresh) {
@@ -885,10 +887,11 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   const [vertriebler, setVertriebler] = useState([]) // NEU: Liste aller Vertriebler
   const [refreshing, setRefreshing] = useState(false)
 
-  // Cache Key
+  // Cache Key - enthält heutiges Datum für tägliche Invalidierung
   const getCacheKey = () => {
     const userPart = isAdmin() ? `admin_${selectedUser}` : (user?.vor_nachname || 'user')
-    return `dashboard_kaltakquise_${dateRange}_${userPart}`
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+    return `dashboard_kaltakquise_${dateRange}_${userPart}_${today}`
   }
 
   useEffect(() => {
@@ -1356,9 +1359,11 @@ function ClosingAnalytics({ user, isAdmin }) {
   const [dateRange, setDateRange] = useState('30days')
   const [refreshing, setRefreshing] = useState(false)
 
+  // Cache Key - enthält heutiges Datum für tägliche Invalidierung
   const getCacheKey = () => {
     const userPart = isAdmin() ? 'admin' : (user?.email_geschaeftlich || user?.email || 'user')
-    return `dashboard_closing_${dateRange}_${userPart}`
+    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
+    return `dashboard_closing_${dateRange}_${userPart}_${today}`
   }
 
   useEffect(() => {
