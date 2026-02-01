@@ -329,22 +329,40 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     if (data.length < pageSize) break
   }
 
-  // Lead Assignments laden (kein Default-Limit)
-  const { data: assignments, error: assignError } = await supabase
-    .from('lead_assignments')
-    .select('lead_id, user_id')
-    .range(0, 50000)
+  // Lead Assignments laden MIT PAGINATION (Supabase Default-Limit ist 1000)
+  let allAssignments = []
+  let assignPage = 0
+  const assignPageSize = 1000
+
+  while (true) {
+    const { data: assignData, error: assignError } = await supabase
+      .from('lead_assignments')
+      .select('lead_id, user_id')
+      .range(assignPage * assignPageSize, (assignPage + 1) * assignPageSize - 1)
+
+    if (assignError) {
+      console.error('Assignment Load Error:', assignError)
+      break
+    }
+
+    if (!assignData || assignData.length === 0) break
+
+    allAssignments = allAssignments.concat(assignData)
+    assignPage++
+
+    if (assignData.length < assignPageSize) break
+  }
+
+  console.log(`Analytics: ${allAssignments.length} Lead-Assignments geladen (${assignPage} Seiten)`)
 
   // Assignments zu Map
   const assignmentMap = {}
-  if (assignments) {
-    assignments.forEach(a => {
-      if (!assignmentMap[a.lead_id]) {
-        assignmentMap[a.lead_id] = []
-      }
-      assignmentMap[a.lead_id].push(a.user_id)
-    })
-  }
+  allAssignments.forEach(a => {
+    if (!assignmentMap[a.lead_id]) {
+      assignmentMap[a.lead_id] = []
+    }
+    assignmentMap[a.lead_id].push(a.user_id)
+  })
 
   // Archiv-Leads laden (auch mit Pagination)
   // Hinweis: lead_archive hat KEIN wiedervorlage_datum Feld
@@ -372,7 +390,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
 
   // Debug-Logging
   console.log(`Analytics: ${activeRecords.length} kontaktierte Leads geladen (${page} Seiten), ${archivRecords.length} Archiv-Einträge (${archivPage} Seiten)`)
-  console.log(`Analytics: ${assignments.length} Lead-Assignments geladen, isAdmin=${isAdmin}`)
+  console.log(`Analytics: ${allAssignments.length} Lead-Assignments geladen, isAdmin=${isAdmin}`)
 
   // Helper: Boolean-Wert flexibel prüfen (jeder truthy Wert)
   const isTruthy = (val) => !!val
