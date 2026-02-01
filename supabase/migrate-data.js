@@ -170,7 +170,25 @@ async function migrateUsers() {
 
   const airtableRecords = await fetchAllFromAirtable(AIRTABLE_TABLES.users)
 
-  const supabaseRecords = airtableRecords.map(record => {
+  // Duplikate nach E-Mail filtern (behalte ersten Eintrag)
+  const seenEmails = new Set()
+  const uniqueRecords = []
+  const recordIndexMap = [] // Um Airtable IDs zu mappen
+
+  airtableRecords.forEach((record, originalIndex) => {
+    const email = record.fields['E-Mail'] || `temp_${record.id}@migration.local`
+    if (!seenEmails.has(email.toLowerCase())) {
+      seenEmails.add(email.toLowerCase())
+      uniqueRecords.push(record)
+      recordIndexMap.push(originalIndex)
+    } else {
+      console.log(`   ⚠️  Überspringe Duplikat: ${email}`)
+    }
+  })
+
+  console.log(`   📊 ${airtableRecords.length} Records, ${uniqueRecords.length} unique`)
+
+  const supabaseRecords = uniqueRecords.map(record => {
     const fields = record.fields
     return {
       vorname: fields['Vorname'] || null,
@@ -192,10 +210,24 @@ async function migrateUsers() {
 
   const inserted = await insertToSupabase('users', supabaseRecords)
 
-  // ID Mapping speichern
-  airtableRecords.forEach((airtableRecord, index) => {
+  // ID Mapping speichern - auch für Duplikate
+  const emailToSupabaseId = new Map()
+  uniqueRecords.forEach((record, index) => {
     if (inserted[index]) {
-      idMappings.users.set(airtableRecord.id, inserted[index].id)
+      const email = (record.fields['E-Mail'] || '').toLowerCase()
+      emailToSupabaseId.set(email, inserted[index].id)
+      idMappings.users.set(record.id, inserted[index].id)
+    }
+  })
+
+  // Auch Duplikate auf die gleiche Supabase ID mappen
+  airtableRecords.forEach(record => {
+    if (!idMappings.users.has(record.id)) {
+      const email = (record.fields['E-Mail'] || '').toLowerCase()
+      const supabaseId = emailToSupabaseId.get(email)
+      if (supabaseId) {
+        idMappings.users.set(record.id, supabaseId)
+      }
     }
   })
 
