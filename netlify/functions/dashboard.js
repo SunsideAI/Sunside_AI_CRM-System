@@ -34,6 +34,8 @@ export async function handler(event) {
     const params = event.queryStringParameters || {}
     const { userName, userId, userRole } = params
 
+    console.log('Dashboard API - Params:', { userName, userId, userRole })
+
     // User-Map laden für Namen-Auflösung
     const { data: users, error: usersError } = await supabase
       .from('users')
@@ -52,24 +54,52 @@ export async function handler(event) {
       }
     })
 
-    // Alle Leads laden
-    const { data: leadsData, error: leadsError } = await supabase
-      .from('leads')
-      .select('id, bereits_kontaktiert, ergebnis, datum')
+    // Alle Leads laden (mit Pagination für > 1000 Leads)
+    let leadsData = []
+    let leadsPage = 0
+    const pageSize = 1000
 
-    if (leadsError) {
-      console.error('Leads Error:', leadsError)
-      throw new Error('Fehler beim Laden der Leads')
+    while (true) {
+      const { data, error } = await supabase
+        .from('leads')
+        .select('id, bereits_kontaktiert, ergebnis, datum')
+        .range(leadsPage * pageSize, (leadsPage + 1) * pageSize - 1)
+
+      if (error) {
+        console.error('Leads Error:', error)
+        throw new Error('Fehler beim Laden der Leads')
+      }
+
+      if (!data || data.length === 0) break
+      leadsData = leadsData.concat(data)
+      leadsPage++
+      if (data.length < pageSize) break
     }
 
-    // Lead Assignments laden
-    const { data: assignments, error: assignError } = await supabase
-      .from('lead_assignments')
-      .select('lead_id, user_id')
+    console.log(`Dashboard: ${leadsData.length} Leads geladen (${leadsPage} Seiten)`)
 
-    if (assignError) {
-      console.error('Assignments Error:', assignError)
+    // Lead Assignments laden (mit Pagination)
+    let assignments = []
+    let assignPage = 0
+
+    while (true) {
+      const { data, error } = await supabase
+        .from('lead_assignments')
+        .select('lead_id, user_id')
+        .range(assignPage * pageSize, (assignPage + 1) * pageSize - 1)
+
+      if (error) {
+        console.error('Assignments Error:', error)
+        break
+      }
+
+      if (!data || data.length === 0) break
+      assignments = assignments.concat(data)
+      assignPage++
+      if (data.length < pageSize) break
     }
+
+    console.log(`Dashboard: ${assignments.length} Assignments geladen (${assignPage} Seiten)`)
 
     // Assignments zu Map konvertieren (lead_id -> [user_ids])
     const assignmentMap = {}
@@ -122,7 +152,11 @@ export async function handler(event) {
 
       // Prüfen ob Lead diesem User zugewiesen ist
       const userNames = userIds.map(id => userMap[id]?.name || '')
-      const isUserLead = userName && userNames.includes(userName)
+      // Flexibler Vergleich: lowercase und trimmed
+      const userNameNormalized = (userName || '').toLowerCase().trim()
+      const isUserLead = userName && userNames.some(name =>
+        name.toLowerCase().trim() === userNameNormalized
+      )
 
       // Kontaktiert zählen
       if (kontaktiert) {
@@ -172,6 +206,32 @@ export async function handler(event) {
       ? ((stats.ergebnisse['Beratungsgespräch'] / stats.kontaktiert) * 100).toFixed(1)
       : 0
 
+    // Hot Leads laden für Abschlüsse diesen Monat
+    let abschluesseMonat = 0
+    try {
+      const { data: hotLeadsData } = await supabase
+        .from('hot_leads')
+        .select('id, status, kunde_seit, closer_id')
+        .eq('status', 'Abgeschlossen')
+
+      if (hotLeadsData) {
+        // Filter: Abschlüsse diesen Monat
+        const abschlussLeads = hotLeadsData.filter(hl => {
+          if (!hl.kunde_seit) return false
+          const kundeSeit = new Date(hl.kunde_seit)
+          return kundeSeit >= startOfMonth
+
+          // Optional: User-Filter wenn nicht Admin
+          // if (userName && userRecordId) {
+          //   return hl.closer_id === userRecordId
+          // }
+        })
+        abschluesseMonat = abschlussLeads.length
+      }
+    } catch (hotLeadsError) {
+      console.error('Hot Leads Error (ignored):', hotLeadsError)
+    }
+
     return {
       statusCode: 200,
       headers,
@@ -183,6 +243,7 @@ export async function handler(event) {
         diesenMonat: stats.diesenMonat,
         heute: userHeute,
         termineWoche: userWoche,
+        abschluesseMonat,
         ergebnisse: stats.ergebnisse,
         vertriebler: vertrieblerArray,
         conversionRate: parseFloat(conversionRate)

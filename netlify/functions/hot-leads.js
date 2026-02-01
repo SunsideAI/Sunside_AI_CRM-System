@@ -35,6 +35,15 @@ async function loadUserMap() {
   return userMap
 }
 
+// Helper: Array zu String konvertieren (falls Airtable-Migration Arrays hinterlassen hat)
+function arrayToString(value) {
+  if (!value) return ''
+  if (Array.isArray(value)) {
+    return value.join(' ').trim()
+  }
+  return String(value).trim()
+}
+
 // User ID nach Name finden
 async function getUserIdByName(userName) {
   if (!userName) return null
@@ -137,9 +146,9 @@ export async function handler(event) {
 
         return {
           id: record.id,
-          unternehmen: record.unternehmen || originalLead.unternehmensname || '',
-          ansprechpartnerVorname: record.ansprechpartner_vorname || originalLead.ansprechpartner_vorname || '',
-          ansprechpartnerNachname: record.ansprechpartner_nachname || originalLead.ansprechpartner_nachname || '',
+          unternehmen: arrayToString(record.unternehmen) || arrayToString(originalLead.unternehmensname) || '',
+          ansprechpartnerVorname: arrayToString(record.ansprechpartner_vorname) || arrayToString(originalLead.ansprechpartner_vorname) || '',
+          ansprechpartnerNachname: arrayToString(record.ansprechpartner_nachname) || arrayToString(originalLead.ansprechpartner_nachname) || '',
           kategorie: record.kategorie || originalLead.kategorie || '',
           email: record.mail || originalLead.mail || '',
           telefon: record.telefonnummer || originalLead.telefonnummer || '',

@@ -199,13 +199,15 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
   }
 
   const updateDataFromResult = (result) => {
-    const userStats = result.vertriebler?.find(v => v.name === user?.vor_nachname)
-    
+    const userStats = result.vertriebler?.find(v =>
+      v.name?.toLowerCase().trim() === user?.vor_nachname?.toLowerCase().trim()
+    )
+
     setData({
       zugewiesenLeads: userStats?.gesamt || 0,
       callsHeute: result.heute || 0,
       termineWoche: result.termineWoche || 0,
-      abschluesseMonat: 0
+      abschluesseMonat: result.abschluesseMonat || 0
     })
   }
 
