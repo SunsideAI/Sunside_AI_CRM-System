@@ -289,11 +289,11 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   // User-Map laden
   const userMap = await loadUserMap()
 
-  // Aktive Leads laden (kein Default-Limit von 1000)
+  // Aktive Leads laden - NUR kontaktierte (bereits_kontaktiert = true)
   const { data: activeRecords, error: activeError } = await supabase
     .from('leads')
     .select('id, bereits_kontaktiert, ergebnis, datum')
-    .range(0, 50000)
+    .eq('bereits_kontaktiert', true)
 
   if (activeError) {
     throw new Error(activeError.message)
@@ -321,21 +321,17 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     .from('lead_archive')
     .select('id, bereits_kontaktiert, ergebnis, datum, user_id')
 
-  // Debug: Prüfe wie bereits_kontaktiert gespeichert ist
-  const sample = activeRecords?.slice(0, 3).map(r => ({ id: r.id?.substring(0,8), bk: r.bereits_kontaktiert, type: typeof r.bereits_kontaktiert }))
-  console.log('Sample bereits_kontaktiert:', JSON.stringify(sample))
-
-  const kontaktiertCount = (activeRecords || []).filter(r => r.bereits_kontaktiert).length
-  console.log(`Analytics: ${activeRecords?.length || 0} aktive Leads (${kontaktiertCount} kontaktiert), ${archivRecords?.length || 0} Archiv-Einträge`)
+  // Debug-Logging
+  console.log(`Analytics: ${activeRecords?.length || 0} kontaktierte Leads geladen, ${archivRecords?.length || 0} Archiv-Einträge`)
 
   // Helper: Boolean-Wert flexibel prüfen (jeder truthy Wert)
   const isTruthy = (val) => !!val
 
-  // Daten normalisieren
+  // Daten normalisieren - alle activeRecords sind bereits kontaktiert (durch Filter)
   const normalizedActive = (activeRecords || []).map(record => ({
     source: 'active',
     id: record.id,
-    kontaktiert: isTruthy(record.bereits_kontaktiert),
+    kontaktiert: true,
     ergebnis: record.ergebnis || '',
     datum: record.datum || null,
     zugewiesenAn: assignmentMap[record.id] || []
