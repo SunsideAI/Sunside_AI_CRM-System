@@ -153,30 +153,46 @@ async function migrateUsers() {
   const supabaseRecords = []
   const airtableIds = []
 
+  // E-Mail Duplikat-Prüfung
+  const seenEmails = new Set()
+
   for (const record of airtableRecords) {
     const fields = record.fields
 
-    // vor_nachname ist eine generierte Spalte - wir müssen vorname/nachname setzen
-    let vorname = fields['Vorname'] || ''
-    let nachname = fields['Nachname'] || ''
+    // Feldnamen wie in Airtable (aus v1 Migration)
+    const vorname = fields['Vorname'] || ''
+    const nachname = fields['Name'] || fields['Nachname'] || ''  // 'Name' ist Nachname in Airtable
+    const email = fields['E-Mail'] || fields['Mail'] || `temp_${record.id}@migration.local`
 
-    // Falls nur Vor- & Nachname vorhanden, splitten
-    if (!vorname && !nachname) {
-      const fullName = fields['Vor- & Nachname'] || fields['Name'] || 'Unbekannt'
-      const parts = fullName.trim().split(' ')
-      vorname = parts[0] || ''
-      nachname = parts.slice(1).join(' ') || ''
+    // Duplikat-Check (Airtable erlaubt Duplikate, Supabase nicht)
+    if (seenEmails.has(email.toLowerCase())) {
+      console.log(`   ⚠️ Duplikat übersprungen: ${email} (Airtable ID: ${record.id})`)
+      // Trotzdem zum Mapping hinzufügen (falls später referenziert)
+      continue
     }
+    seenEmails.add(email.toLowerCase())
 
     supabaseRecords.push({
       vorname,
       nachname,
-      email: fields['Mail'] || fields['Email'] || '',
-      rollen: parseRollen(fields['Rollen'] || fields['Rolle']),
-      airtable_id: record.id // Speichere Airtable-ID für Referenz
+      email,
+      email_geschaeftlich: fields['E-Mail_Geschäftlich'] || null,
+      telefon: fields['Telefon'] || null,
+      strasse: fields['Straße'] || null,
+      plz: fields['PLZ'] || null,
+      ort: fields['Ort'] || null,
+      bundesland: fields['Bundesland'] || null,
+      password_hash: fields['Passwort'] || null,
+      rollen: parseRollen(fields['Rolle']),  // 'Rolle' nicht 'Rollen'
+      status: fields['Status'] !== false,
+      onboarding: fields['Onboarding'] === true,
+      google_calendar_id: fields['Google_Calendar_ID'] || null,
+      airtable_id: record.id
     })
     airtableIds.push(record.id)
   }
+
+  console.log(`   📊 ${airtableRecords.length} in Airtable, ${supabaseRecords.length} unique (nach Duplikat-Filter)`)
 
   const results = await insertRecordsWithTracking('users', supabaseRecords, airtableIds)
 
@@ -185,10 +201,35 @@ async function migrateUsers() {
     idMappings.users.set(result.airtableId, result.supabaseId)
   }
 
-  stats.users.inserted = results.length
-  stats.users.failed = airtableRecords.length - results.length
+  // Email-zu-Supabase-ID Map für Duplikat-Handling
+  const emailToSupabaseId = new Map()
+  for (const result of results) {
+    // Finde das entsprechende Airtable Record
+    const airtableRecord = airtableRecords.find(r => r.id === result.airtableId)
+    if (airtableRecord) {
+      const email = (airtableRecord.fields['E-Mail'] || airtableRecord.fields['Mail'] || '').toLowerCase()
+      if (email) {
+        emailToSupabaseId.set(email, result.supabaseId)
+      }
+    }
+  }
 
-  console.log(`   📋 ID Mappings: ${idMappings.users.size} Users`)
+  // Duplikate auf die gleiche Supabase ID mappen
+  for (const record of airtableRecords) {
+    if (!idMappings.users.has(record.id)) {
+      const email = (record.fields['E-Mail'] || record.fields['Mail'] || '').toLowerCase()
+      const supabaseId = emailToSupabaseId.get(email)
+      if (supabaseId) {
+        idMappings.users.set(record.id, supabaseId)
+        console.log(`   🔗 Duplikat gemappt: ${record.id} -> ${supabaseId}`)
+      }
+    }
+  }
+
+  stats.users.inserted = results.length
+  stats.users.failed = airtableRecords.length - idMappings.users.size
+
+  console.log(`   📋 ID Mappings: ${idMappings.users.size} Users (inkl. Duplikate)`)
 }
 
 async function migrateLeads() {
@@ -256,30 +297,47 @@ async function migrateLeads() {
 
 async function migrateLeadAssignments(assignmentData) {
   console.log('\n🔗 MIGRIERE LEAD ASSIGNMENTS...')
+  console.log(`   📊 ${assignmentData.length} Leads mit User-Zuweisungen in Airtable`)
 
   const assignments = []
+  let leadLookupSuccess = 0
+  let leadLookupFail = 0
+  let userLookupSuccess = 0
+  let userLookupFail = 0
 
   for (const data of assignmentData) {
     const supabaseLeadId = idMappings.leads.get(data.airtableLeadId)
 
     if (!supabaseLeadId) {
-      console.warn(`   ⚠️ Lead nicht gefunden: ${data.airtableLeadId}`)
+      leadLookupFail++
+      // Nur erste 5 loggen um Console nicht zu überfluten
+      if (leadLookupFail <= 5) {
+        console.warn(`   ⚠️ Lead nicht gefunden: ${data.airtableLeadId}`)
+      }
       continue
     }
+    leadLookupSuccess++
 
     for (const airtableUserId of data.airtableUserIds) {
       const supabaseUserId = idMappings.users.get(airtableUserId)
 
       if (supabaseUserId) {
+        userLookupSuccess++
         assignments.push({
           lead_id: supabaseLeadId,
           user_id: supabaseUserId
         })
       } else {
-        console.warn(`   ⚠️ User nicht gefunden: ${airtableUserId}`)
+        userLookupFail++
+        if (userLookupFail <= 5) {
+          console.warn(`   ⚠️ User nicht gefunden: ${airtableUserId}`)
+        }
       }
     }
   }
+
+  console.log(`   📊 Lead Lookups: ${leadLookupSuccess} OK, ${leadLookupFail} fehlend`)
+  console.log(`   📊 User Lookups: ${userLookupSuccess} OK, ${userLookupFail} fehlend`)
 
   stats.assignments.total = assignments.length
   console.log(`   📊 ${assignments.length} Assignments zu erstellen`)
@@ -332,6 +390,13 @@ async function migrateHotLeads() {
   const supabaseRecords = []
   const airtableIds = []
 
+  // Lookup-Statistiken
+  let lookupStats = {
+    leadFound: 0, leadMissing: 0,
+    setterFound: 0, setterMissing: 0,
+    closerFound: 0, closerMissing: 0
+  }
+
   for (const record of airtableRecords) {
     const fields = record.fields
 
@@ -340,10 +405,42 @@ async function migrateHotLeads() {
     const setterIds = fields['Setter'] || []
     const closerIds = fields['Closer'] || []
 
+    // Lookups mit Tracking
+    let supabaseLeadId = null
+    let supabaseSetter = null
+    let supabaseCloser = null
+
+    if (originalLeadIds[0]) {
+      supabaseLeadId = idMappings.leads.get(originalLeadIds[0])
+      if (supabaseLeadId) lookupStats.leadFound++
+      else {
+        lookupStats.leadMissing++
+        console.warn(`   ⚠️ Hot Lead: Original-Lead nicht gefunden: ${originalLeadIds[0]}`)
+      }
+    }
+
+    if (setterIds[0]) {
+      supabaseSetter = idMappings.users.get(setterIds[0])
+      if (supabaseSetter) lookupStats.setterFound++
+      else {
+        lookupStats.setterMissing++
+        console.warn(`   ⚠️ Hot Lead: Setter nicht gefunden: ${setterIds[0]}`)
+      }
+    }
+
+    if (closerIds[0]) {
+      supabaseCloser = idMappings.users.get(closerIds[0])
+      if (supabaseCloser) lookupStats.closerFound++
+      else {
+        lookupStats.closerMissing++
+        console.warn(`   ⚠️ Hot Lead: Closer nicht gefunden: ${closerIds[0]}`)
+      }
+    }
+
     supabaseRecords.push({
-      lead_id: originalLeadIds[0] ? idMappings.leads.get(originalLeadIds[0]) : null,
-      setter_id: setterIds[0] ? idMappings.users.get(setterIds[0]) : null,
-      closer_id: closerIds[0] ? idMappings.users.get(closerIds[0]) : null,
+      lead_id: supabaseLeadId,
+      setter_id: supabaseSetter,
+      closer_id: supabaseCloser,
       unternehmen: fields['Unternehmen'] || null,
       ansprechpartner_vorname: fields['Ansprechpartner_Vorname'] || null,
       ansprechpartner_nachname: fields['Ansprechpartner_Nachname'] || null,
@@ -374,6 +471,8 @@ async function migrateHotLeads() {
     airtableIds.push(record.id)
   }
 
+  console.log(`   📊 Lookups: Lead ${lookupStats.leadFound}/${lookupStats.leadFound + lookupStats.leadMissing}, Setter ${lookupStats.setterFound}/${lookupStats.setterFound + lookupStats.setterMissing}, Closer ${lookupStats.closerFound}/${lookupStats.closerFound + lookupStats.closerMissing}`)
+
   const results = await insertRecordsWithTracking('hot_leads', supabaseRecords, airtableIds)
 
   for (const result of results) {
@@ -395,16 +494,43 @@ async function migrateArchive() {
   const supabaseRecords = []
   const airtableIds = []
 
+  // Lookup-Statistiken
+  let lookupStats = { leadFound: 0, leadMissing: 0, userFound: 0, userMissing: 0 }
+
   for (const record of airtableRecords) {
     const fields = record.fields
 
-    // Verknüpfungen auflösen
-    const leadIds = fields['Immobilienmakler_Leads'] || fields['Lead'] || []
-    const userIds = fields['User_Datenbank'] || fields['User'] || []
+    // Verknüpfungen auflösen - Feldnamen aus v1: 'Lead' und 'Vertriebler'
+    const leadIds = fields['Lead'] || fields['Immobilienmakler_Leads'] || []
+    const userIds = fields['Vertriebler'] || fields['User_Datenbank'] || []
+
+    // Lookup mit Logging
+    let supabaseLeadId = null
+    let supabaseUserId = null
+
+    if (leadIds[0]) {
+      supabaseLeadId = idMappings.leads.get(leadIds[0])
+      if (supabaseLeadId) {
+        lookupStats.leadFound++
+      } else {
+        lookupStats.leadMissing++
+        console.warn(`   ⚠️ Archive: Lead nicht gefunden: ${leadIds[0]}`)
+      }
+    }
+
+    if (userIds[0]) {
+      supabaseUserId = idMappings.users.get(userIds[0])
+      if (supabaseUserId) {
+        lookupStats.userFound++
+      } else {
+        lookupStats.userMissing++
+        console.warn(`   ⚠️ Archive: User nicht gefunden: ${userIds[0]}`)
+      }
+    }
 
     supabaseRecords.push({
-      lead_id: leadIds[0] ? idMappings.leads.get(leadIds[0]) : null,
-      user_id: userIds[0] ? idMappings.users.get(userIds[0]) : null,
+      lead_id: supabaseLeadId,
+      user_id: supabaseUserId,
       bereits_kontaktiert: fields['Bereits_kontaktiert'] === true || fields['Bereits_kontaktiert'] === 'X',
       ergebnis: normalizeErgebnis(fields['Ergebnis']),
       datum: fields['Datum'] || null,
@@ -412,6 +538,8 @@ async function migrateArchive() {
     })
     airtableIds.push(record.id)
   }
+
+  console.log(`   📊 Lookups: Lead ${lookupStats.leadFound}/${lookupStats.leadFound + lookupStats.leadMissing}, User ${lookupStats.userFound}/${lookupStats.userFound + lookupStats.userMissing}`)
 
   const results = await insertRecordsWithTracking('lead_archive', supabaseRecords, airtableIds)
 
@@ -496,6 +624,57 @@ async function clearExistingData() {
   }
 }
 
+async function verifyMigration() {
+  console.log('\n🔍 VERIFIZIERE MIGRATION...')
+
+  // Zähle Records in Supabase
+  const counts = {}
+
+  const tables = ['users', 'leads', 'lead_assignments', 'hot_leads', 'lead_archive']
+  for (const table of tables) {
+    const { count, error } = await supabase
+      .from(table)
+      .select('*', { count: 'exact', head: true })
+
+    if (error) {
+      console.error(`   ❌ Fehler bei ${table}:`, error.message)
+      counts[table] = 'ERROR'
+    } else {
+      counts[table] = count
+    }
+  }
+
+  console.log('')
+  console.log('📊 SUPABASE COUNTS:')
+  console.log(`   users:            ${counts.users}`)
+  console.log(`   leads:            ${counts.leads}`)
+  console.log(`   lead_assignments: ${counts.lead_assignments}`)
+  console.log(`   hot_leads:        ${counts.hot_leads}`)
+  console.log(`   lead_archive:     ${counts.lead_archive}`)
+  console.log('')
+
+  // Prüfe Hot Leads Verknüpfungen
+  const { data: hotLeadsWithRefs } = await supabase
+    .from('hot_leads')
+    .select('id, setter_id, closer_id, lead_id')
+
+  let withSetter = 0, withCloser = 0, withLead = 0
+  if (hotLeadsWithRefs) {
+    for (const hl of hotLeadsWithRefs) {
+      if (hl.setter_id) withSetter++
+      if (hl.closer_id) withCloser++
+      if (hl.lead_id) withLead++
+    }
+  }
+
+  console.log('🔗 HOT LEADS VERKNÜPFUNGEN:')
+  console.log(`   Mit Setter:  ${withSetter}/${counts.hot_leads}`)
+  console.log(`   Mit Closer:  ${withCloser}/${counts.hot_leads}`)
+  console.log(`   Mit Lead:    ${withLead}/${counts.hot_leads}`)
+
+  return counts
+}
+
 async function main() {
   console.log('═══════════════════════════════════════════════════════')
   console.log('  SUNSIDE CRM - MIGRATION v2')
@@ -514,12 +693,15 @@ async function main() {
     await migrateHotLeads()
     await migrateArchive()
 
+    // 3. Verifizieren
+    await verifyMigration()
+
     // Zusammenfassung
     console.log('\n═══════════════════════════════════════════════════════')
     console.log('  MIGRATION ABGESCHLOSSEN')
     console.log('═══════════════════════════════════════════════════════')
     console.log('')
-    console.log('📊 STATISTIK:')
+    console.log('📊 MIGRATION STATISTIK:')
     console.log(`   Users:       ${stats.users.inserted}/${stats.users.total} (${stats.users.failed} Fehler)`)
     console.log(`   Leads:       ${stats.leads.inserted}/${stats.leads.total} (${stats.leads.failed} Fehler)`)
     console.log(`   Assignments: ${stats.assignments.inserted}/${stats.assignments.total} (${stats.assignments.failed} Fehler)`)
