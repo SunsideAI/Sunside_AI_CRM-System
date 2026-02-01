@@ -246,6 +246,16 @@ async function migrateLeads() {
   let kontaktiertCount = 0
   let ergebnisStats = {}
 
+  // DEBUG: Zeige erste 3 Records mit allen Feldnamen
+  console.log('\n   🔍 DEBUG - Erste 3 Airtable Records:')
+  for (let i = 0; i < Math.min(3, airtableRecords.length); i++) {
+    const r = airtableRecords[i]
+    console.log(`   Record ${i + 1}: ${r.fields['Unternehmensname'] || r.fields['Name'] || 'N/A'}`)
+    console.log(`      Feldnamen: ${Object.keys(r.fields).join(', ')}`)
+    console.log(`      Ergebnis-Feld: "${r.fields['Ergebnis']}"`)
+    console.log(`      Bereits_kontaktiert: "${r.fields['Bereits_kontaktiert']}"`)
+  }
+
   for (const record of airtableRecords) {
     const fields = record.fields
 
@@ -614,6 +624,7 @@ function normalizeErgebnis(ergebnis) {
     'Nicht erreicht': 'Nicht erreicht',
     'Kein Interesse': 'Kein Interesse',
     'Unterlage bereitstellen': 'Unterlage bereitstellen',
+    'Wiedervorlage': 'Wiedervorlage',
     'Ungültiger Lead': 'Ungültiger Lead'
   }
   // WICHTIG: Unbekannte Werte behalten statt null zurückzugeben!
