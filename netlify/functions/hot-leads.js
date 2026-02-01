@@ -82,11 +82,11 @@ export async function handler(event) {
           *,
           setter:users!hot_leads_setter_id_fkey(id, vor_nachname),
           closer:users!hot_leads_closer_id_fkey(id, vor_nachname),
-          original_lead:leads!hot_leads_original_lead_id_fkey(
+          original_lead:leads!hot_leads_lead_id_fkey(
             id, unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname,
             kategorie, mail, telefonnummer, stadt, bundesland, website, kommentar
           ),
-          hot_lead_attachments(id, url, filename, size, type)
+          hot_lead_attachments(id, file_url, file_name, file_size, mime_type)
         `)
 
       // Pool-Filter: Termine ohne Closer (offene Termine für Closer-Pool)
@@ -138,15 +138,15 @@ export async function handler(event) {
         return {
           id: record.id,
           unternehmen: record.unternehmen || originalLead.unternehmensname || '',
-          ansprechpartnerVorname: originalLead.ansprechpartner_vorname || '',
-          ansprechpartnerNachname: originalLead.ansprechpartner_nachname || '',
-          kategorie: originalLead.kategorie || '',
-          email: originalLead.mail || '',
-          telefon: originalLead.telefonnummer || '',
-          ort: originalLead.stadt || '',
-          bundesland: originalLead.bundesland || '',
-          website: originalLead.website || '',
-          terminDatum: record.termin_datum || '',
+          ansprechpartnerVorname: record.ansprechpartner_vorname || originalLead.ansprechpartner_vorname || '',
+          ansprechpartnerNachname: record.ansprechpartner_nachname || originalLead.ansprechpartner_nachname || '',
+          kategorie: record.kategorie || originalLead.kategorie || '',
+          email: record.mail || originalLead.mail || '',
+          telefon: record.telefonnummer || originalLead.telefonnummer || '',
+          ort: record.ort || originalLead.stadt || '',
+          bundesland: record.bundesland || originalLead.bundesland || '',
+          website: record.website || originalLead.website || '',
+          terminDatum: record.termin_beratungsgespraech || '',
           terminart: record.terminart || '',
           meetingLink: record.meeting_link || '',
           status: record.status || 'Lead',
@@ -155,21 +155,21 @@ export async function handler(event) {
           setup: record.setup || 0,
           retainer: record.retainer || 0,
           laufzeit: record.laufzeit || 0,
-          monatlicheBesuche: originalLead.monatliche_besuche || 0,
-          mehrwert: originalLead.mehrwert || 0,
-          absprungrate: originalLead.absprungrate || null,
-          anzahlLeads: originalLead.anzahl_leads || null,
+          monatlicheBesuche: record.monatliche_besuche || originalLead.monatliche_besuche || 0,
+          mehrwert: record.mehrwert || originalLead.mehrwert || 0,
+          absprungrate: record.absprungrate || originalLead.absprungrate || null,
+          anzahlLeads: record.anzahl_leads || originalLead.anzahl_leads || null,
           produktDienstleistung: record.produkt_dienstleistung || [],
           kommentar: originalLead.kommentar || '',
           kundeSeit: record.kunde_seit || '',
           attachments: (record.hot_lead_attachments || []).map(att => ({
             id: att.id,
-            url: att.url,
-            filename: att.filename,
-            size: att.size,
-            type: att.type
+            url: att.file_url,
+            filename: att.file_name,
+            size: att.file_size,
+            type: att.mime_type
           })),
-          originalLeadId: record.original_lead_id || null,
+          originalLeadId: record.lead_id || null,
           setterId: record.setter_id || null,
           closerId: record.closer_id || null,
           setterName: record.setter?.vor_nachname || '',
@@ -233,7 +233,7 @@ export async function handler(event) {
         // Hot Leads des Closers finden
         const { data: closerLeads, error: findError } = await supabase
           .from('hot_leads')
-          .select('id, unternehmen, termin_datum')
+          .select('id, unternehmen, termin_beratungsgespraech')
           .eq('closer_id', targetCloserId)
 
         if (findError) {
@@ -271,7 +271,7 @@ export async function handler(event) {
           try {
             const { data: activeClosers } = await supabase
               .from('users')
-              .select('id, mail, vor_nachname, rollen, status')
+              .select('id, email, vor_nachname, rollen, status')
               .eq('status', true)
 
             const closerUsers = (activeClosers || []).filter(user => {
@@ -279,7 +279,7 @@ export async function handler(event) {
               const isCloser = rollen.some(r =>
                 r.toLowerCase().includes('closer') || r.toLowerCase() === 'admin'
               )
-              return isCloser && user.id !== targetCloserId && user.mail
+              return isCloser && user.id !== targetCloserId && user.email
             })
 
             for (const closer of closerUsers) {
@@ -315,7 +315,7 @@ export async function handler(event) {
                 },
                 body: JSON.stringify({
                   from: 'Sunside AI <noreply@sunside.ai>',
-                  to: closer.mail,
+                  to: closer.email,
                   subject: `${closerLeads.length} neue Leads im Closer-Pool`,
                   html: emailHtml
                 })
@@ -389,7 +389,7 @@ export async function handler(event) {
       const { data: existing } = await supabase
         .from('hot_leads')
         .select('id')
-        .eq('original_lead_id', originalLeadId)
+        .eq('lead_id', originalLeadId)
         .limit(1)
 
       if (existing && existing.length > 0) {
@@ -418,11 +418,11 @@ export async function handler(event) {
 
       // Hot Lead erstellen
       const hotLeadData = {
-        original_lead_id: originalLeadId,
+        lead_id: originalLeadId,
         unternehmen: unternehmen || '',
-        termin_datum: terminDatum,
+        termin_beratungsgespraech: terminDatum,
         status: 'Lead',
-        quelle: quelle || 'Cold Calling',
+        quelle: quelle || 'Kaltakquise',
         setter_id: setterRecordId || null,
         closer_id: closerRecordId || null
       }
@@ -479,7 +479,7 @@ export async function handler(event) {
         'kundeSeit': 'kunde_seit',
         'prioritaet': 'prioritaet',
         'closerId': 'closer_id',
-        'terminDatum': 'termin_datum',
+        'terminDatum': 'termin_beratungsgespraech',
         'terminart': 'terminart',
         'meetingLink': 'meeting_link'
       }

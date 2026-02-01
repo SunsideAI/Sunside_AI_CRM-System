@@ -152,7 +152,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
 
     // Datum-Felder
     const kundeSeit = record.kunde_seit || null
-    const terminDatum = record.termin_datum || null
+    const terminDatum = record.termin_beratungsgespraech || null
 
     // Closer-Name
     const closerName = record.closer?.vor_nachname || ''
@@ -317,7 +317,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   // Archiv-Leads laden
   const { data: archivRecords, error: archivError } = await supabase
     .from('lead_archive')
-    .select('id, bereits_kontaktiert, ergebnis, datum, vertriebler_id')
+    .select('id, bereits_kontaktiert, ergebnis, datum, user_id')
 
   console.log(`Analytics: ${activeRecords?.length || 0} aktive Leads, ${archivRecords?.length || 0} Archiv-Einträge`)
 
@@ -337,7 +337,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     kontaktiert: record.bereits_kontaktiert === true,
     ergebnis: record.ergebnis || '',
     datum: record.datum || null,
-    zugewiesenAn: record.vertriebler_id ? [record.vertriebler_id] : []
+    zugewiesenAn: record.user_id ? [record.user_id] : []
   }))
 
   const allRecords = [...normalizedActive, ...normalizedArchiv]

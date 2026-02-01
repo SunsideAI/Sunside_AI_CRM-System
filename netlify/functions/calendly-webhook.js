@@ -174,9 +174,9 @@ async function findHotLeadByUnternehmen(unternehmen) {
 
   const { data: hotLeads, error } = await supabase
     .from('hot_leads')
-    .select('id, unternehmen, termin_datum, setter_id, closer_id, original_lead_id')
+    .select('id, unternehmen, termin_beratungsgespraech, setter_id, closer_id, lead_id')
     .neq('status', 'Abgesagt')
-    .not('termin_datum', 'is', null)
+    .not('termin_beratungsgespraech', 'is', null)
 
   if (error || !hotLeads) return null
 
@@ -191,10 +191,10 @@ async function findHotLeadByUnternehmen(unternehmen) {
       return {
         id: record.id,
         unternehmen: record.unternehmen,
-        termin: record.termin_datum,
+        termin: record.termin_beratungsgespraech,
         setterId: record.setter_id,
         closerId: record.closer_id,
-        originalLeadId: record.original_lead_id
+        originalLeadId: record.lead_id
       }
     }
   }
@@ -210,7 +210,7 @@ async function findHotLeadByTermin(terminDatum, email) {
 
   const { data: hotLeads, error } = await supabase
     .from('hot_leads')
-    .select('id, unternehmen, termin_datum, setter_id, closer_id, original_lead_id')
+    .select('id, unternehmen, termin_beratungsgespraech, setter_id, closer_id, lead_id')
     .neq('status', 'Abgesagt')
 
   if (error || !hotLeads) return null
@@ -219,9 +219,9 @@ async function findHotLeadByTermin(terminDatum, email) {
   const targetTime = searchDate.getTime()
 
   for (const record of hotLeads) {
-    if (!record.termin_datum) continue
+    if (!record.termin_beratungsgespraech) continue
 
-    const recordTime = new Date(record.termin_datum).getTime()
+    const recordTime = new Date(record.termin_beratungsgespraech).getTime()
     const timeDiff = Math.abs(recordTime - targetTime)
 
     if (timeDiff < 10 * 60 * 1000) {
@@ -229,10 +229,10 @@ async function findHotLeadByTermin(terminDatum, email) {
       return {
         id: record.id,
         unternehmen: record.unternehmen,
-        termin: record.termin_datum,
+        termin: record.termin_beratungsgespraech,
         setterId: record.setter_id,
         closerId: record.closer_id,
-        originalLeadId: record.original_lead_id
+        originalLeadId: record.lead_id
       }
     }
   }
@@ -246,7 +246,7 @@ async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
 
   const { error } = await supabase
     .from('hot_leads')
-    .update({ termin_datum: null, status: 'Termin abgesagt' })
+    .update({ termin_beratungsgespraech: null, status: 'Termin abgesagt' })
     .eq('id', hotLeadId)
 
   if (error) {
@@ -267,7 +267,7 @@ async function updateHotLeadTermin(hotLeadId, neuerTermin, originalLeadId, alter
 
   const { error } = await supabase
     .from('hot_leads')
-    .update({ termin_datum: neuerTermin, status: 'Termin verschoben' })
+    .update({ termin_beratungsgespraech: neuerTermin, status: 'Termin verschoben' })
     .eq('id', hotLeadId)
 
   if (error) {

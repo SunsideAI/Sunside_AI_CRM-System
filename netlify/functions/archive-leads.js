@@ -142,7 +142,7 @@ export async function handler(event) {
         .from('lead_archive')
         .insert({
           lead_id: lead.id,
-          vertriebler_id: vertriebId,
+          user_id: vertriebId,
           bereits_kontaktiert: true,
           ergebnis: lead.ergebnis || null,
           datum: lead.datum || null,
