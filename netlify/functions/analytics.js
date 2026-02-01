@@ -410,6 +410,12 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   const zeitverlaufMap = {}
   const perUserMap = {}
 
+  // Debug counters
+  let recordsWithAssignments = 0
+  let recordsWithoutAssignments = 0
+  let activeCount = 0
+  let archivCount = 0
+
   for (const record of allRecords) {
     if (!record.kontaktiert) continue
 
@@ -436,6 +442,16 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     }
 
     einwahlen++
+
+    // Debug: Track assignments and source
+    if (record.source === 'active') activeCount++
+    else archivCount++
+
+    if (zugewiesenAn && zugewiesenAn.length > 0) {
+      recordsWithAssignments++
+    } else {
+      recordsWithoutAssignments++
+    }
 
     // Ergebnis kategorisieren
     const istNichtErreicht = ergebnis.includes('nicht erreicht')
@@ -515,6 +531,8 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     .sort((a, b) => b.einwahlen - a.einwahlen)
 
   console.log(`Analytics: perUser hat ${perUser.length} Einträge, unterlagen=${unterlagen}`)
+  console.log(`Analytics: Von ${einwahlen} Einwahlen: ${activeCount} aktiv, ${archivCount} archiv`)
+  console.log(`Analytics: ${recordsWithAssignments} mit Assignments, ${recordsWithoutAssignments} ohne Assignments`)
 
   return {
     summary: {
