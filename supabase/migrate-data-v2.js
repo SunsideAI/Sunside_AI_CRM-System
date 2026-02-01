@@ -156,10 +156,21 @@ async function migrateUsers() {
   for (const record of airtableRecords) {
     const fields = record.fields
 
+    // vor_nachname ist eine generierte Spalte - wir müssen vorname/nachname setzen
+    let vorname = fields['Vorname'] || ''
+    let nachname = fields['Nachname'] || ''
+
+    // Falls nur Vor- & Nachname vorhanden, splitten
+    if (!vorname && !nachname) {
+      const fullName = fields['Vor- & Nachname'] || fields['Name'] || 'Unbekannt'
+      const parts = fullName.trim().split(' ')
+      vorname = parts[0] || ''
+      nachname = parts.slice(1).join(' ') || ''
+    }
+
     supabaseRecords.push({
-      vor_nachname: fields['Vor- & Nachname'] || fields['Name'] || 'Unbekannt',
-      vorname: fields['Vorname'] || '',
-      nachname: fields['Nachname'] || '',
+      vorname,
+      nachname,
       email: fields['Mail'] || fields['Email'] || '',
       rollen: parseRollen(fields['Rollen'] || fields['Rolle']),
       airtable_id: record.id // Speichere Airtable-ID für Referenz
