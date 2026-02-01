@@ -242,8 +242,20 @@ async function migrateLeads() {
   const airtableIds = []
   const assignmentData = [] // Speichere Assignment-Info für später
 
+  // Statistik-Counter für Debugging
+  let kontaktiertCount = 0
+  let ergebnisStats = {}
+
   for (const record of airtableRecords) {
     const fields = record.fields
+
+    const bereitsKontaktiert = isTruthy(fields['Bereits_kontaktiert'])
+    const ergebnis = normalizeErgebnis(fields['Ergebnis'])
+
+    if (bereitsKontaktiert) kontaktiertCount++
+    if (ergebnis) {
+      ergebnisStats[ergebnis] = (ergebnisStats[ergebnis] || 0) + 1
+    }
 
     supabaseRecords.push({
       unternehmensname: fields['Unternehmensname'] || fields['Name'] || null,
@@ -255,7 +267,7 @@ async function migrateLeads() {
       telefonnummer: fields['Telefonnummer'] || fields['Telefon'] || null,
       ansprechpartner_vorname: fields['Ansprechpartner_Vorname'] || null,
       ansprechpartner_nachname: fields['Ansprechpartner_Nachname'] || null,
-      bereits_kontaktiert: fields['Bereits_kontaktiert'] === true || fields['Bereits_kontaktiert'] === 'X',
+      bereits_kontaktiert: isTruthy(fields['Bereits_kontaktiert']),
       datum: fields['Datum'] || null,
       ergebnis: normalizeErgebnis(fields['Ergebnis']),
       kommentar: fields['Kommentar'] || fields['Notizen'] || null,
@@ -290,6 +302,11 @@ async function migrateLeads() {
   stats.leads.failed = airtableRecords.length - results.length
 
   console.log(`   📋 ID Mappings: ${idMappings.leads.size} Leads`)
+  console.log(`   📊 Kontaktiert: ${kontaktiertCount}/${airtableRecords.length}`)
+  console.log(`   📊 Ergebnis-Verteilung:`)
+  for (const [ergebnis, count] of Object.entries(ergebnisStats).sort((a, b) => b[1] - a[1])) {
+    console.log(`      - ${ergebnis}: ${count}`)
+  }
 
   // Lead Assignments migrieren
   await migrateLeadAssignments(assignmentData)
@@ -531,7 +548,7 @@ async function migrateArchive() {
     supabaseRecords.push({
       lead_id: supabaseLeadId,
       user_id: supabaseUserId,
-      bereits_kontaktiert: fields['Bereits_kontaktiert'] === true || fields['Bereits_kontaktiert'] === 'X',
+      bereits_kontaktiert: isTruthy(fields['Bereits_kontaktiert']),
       ergebnis: normalizeErgebnis(fields['Ergebnis']),
       datum: fields['Datum'] || null,
       airtable_id: record.id
@@ -577,6 +594,18 @@ function normalizeKategorie(kategorie) {
   return kategorie
 }
 
+// Helper: Prüft alle truthy Werte für bereits_kontaktiert
+function isTruthy(val) {
+  if (!val) return false
+  if (val === true) return true
+  if (typeof val === 'string') {
+    const v = val.toLowerCase().trim()
+    return v === 'x' || v === 'true' || v === '1' || v === 'ja' || v === 'yes'
+  }
+  if (typeof val === 'number') return val !== 0
+  return !!val
+}
+
 function normalizeErgebnis(ergebnis) {
   if (!ergebnis) return null
   const mapping = {
@@ -587,7 +616,8 @@ function normalizeErgebnis(ergebnis) {
     'Unterlage bereitstellen': 'Unterlage bereitstellen',
     'Ungültiger Lead': 'Ungültiger Lead'
   }
-  return mapping[ergebnis] || null
+  // WICHTIG: Unbekannte Werte behalten statt null zurückzugeben!
+  return mapping[ergebnis] || ergebnis
 }
 
 function normalizeHotLeadStatus(status) {
