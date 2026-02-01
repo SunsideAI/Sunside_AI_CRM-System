@@ -374,44 +374,6 @@ export async function handler(event) {
         throw new Error(error.message || 'Fehler beim Aktualisieren')
       }
 
-      // User-Zuweisung automatisch aktualisieren wenn ein historyEntry vorhanden ist
-      // Das stellt sicher, dass perUser-Analytics funktionieren
-      if (historyEntry && historyEntry.userName) {
-        try {
-          // User ID nach Namen finden
-          const { data: userData } = await supabase
-            .from('users')
-            .select('id')
-            .ilike('vor_nachname', historyEntry.userName)
-            .limit(1)
-            .single()
-
-          if (userData?.id) {
-            // Prüfen ob Zuweisung bereits existiert
-            const { data: existingAssignment } = await supabase
-              .from('lead_assignments')
-              .select('id')
-              .eq('lead_id', leadId)
-              .eq('user_id', userData.id)
-              .limit(1)
-
-            // Nur hinzufügen wenn nicht bereits vorhanden
-            if (!existingAssignment || existingAssignment.length === 0) {
-              await supabase
-                .from('lead_assignments')
-                .insert({
-                  lead_id: leadId,
-                  user_id: userData.id
-                })
-              console.log(`Lead ${leadId} wurde User ${historyEntry.userName} (${userData.id}) zugewiesen`)
-            }
-          }
-        } catch (assignError) {
-          // Fehler bei Zuweisung ignorieren, Lead-Update war erfolgreich
-          console.error('Assignment Update Error (ignored):', assignError.message)
-        }
-      }
-
       return {
         statusCode: 200,
         headers,
