@@ -289,19 +289,21 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   // User-Map laden
   const userMap = await loadUserMap()
 
-  // Aktive Leads laden
+  // Aktive Leads laden (kein Default-Limit von 1000)
   const { data: activeRecords, error: activeError } = await supabase
     .from('leads')
     .select('id, bereits_kontaktiert, ergebnis, datum')
+    .range(0, 50000)
 
   if (activeError) {
     throw new Error(activeError.message)
   }
 
-  // Lead Assignments laden
+  // Lead Assignments laden (kein Default-Limit)
   const { data: assignments, error: assignError } = await supabase
     .from('lead_assignments')
     .select('lead_id, user_id')
+    .range(0, 50000)
 
   // Assignments zu Map
   const assignmentMap = {}
@@ -320,11 +322,14 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     .select('id, bereits_kontaktiert, ergebnis, datum, user_id')
 
   // Debug: Prüfe wie bereits_kontaktiert gespeichert ist
-  const kontaktiertCount = (activeRecords || []).filter(r => r.bereits_kontaktiert === true || r.bereits_kontaktiert === 'true' || r.bereits_kontaktiert === 'TRUE').length
+  const sample = activeRecords?.slice(0, 3).map(r => ({ id: r.id?.substring(0,8), bk: r.bereits_kontaktiert, type: typeof r.bereits_kontaktiert }))
+  console.log('Sample bereits_kontaktiert:', JSON.stringify(sample))
+
+  const kontaktiertCount = (activeRecords || []).filter(r => r.bereits_kontaktiert).length
   console.log(`Analytics: ${activeRecords?.length || 0} aktive Leads (${kontaktiertCount} kontaktiert), ${archivRecords?.length || 0} Archiv-Einträge`)
 
-  // Helper: Boolean-Wert flexibel prüfen (true, 'true', 'TRUE', 1)
-  const isTruthy = (val) => val === true || val === 'true' || val === 'TRUE' || val === 1 || val === '1'
+  // Helper: Boolean-Wert flexibel prüfen (jeder truthy Wert)
+  const isTruthy = (val) => !!val
 
   // Daten normalisieren
   const normalizedActive = (activeRecords || []).map(record => ({
