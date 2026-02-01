@@ -1,104 +1,53 @@
-// Analytics API für Setting und Closing Performance
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
+// Analytics API für Setting und Closing Performance - Supabase Version
+import { createClient } from '@supabase/supabase-js'
 
-const headers = {
-  'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+)
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Content-Type': 'application/json'
 }
 
-// === RATE LIMIT SCHUTZ ===
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+// User-Map laden für Namen-Auflösung
+async function loadUserMap() {
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('id, vor_nachname')
 
-async function fetchWithRetry(url, options = {}, maxRetries = 3) {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, options)
-
-      // Bei Rate Limit: warten und erneut versuchen
-      if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After')
-        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt) * 1000
-        console.log(`Rate limit (429), warte ${delay}ms... (Versuch ${attempt + 1}/${maxRetries})`)
-        await sleep(delay)
-        continue
-      }
-
-      return response
-    } catch (err) {
-      if (attempt === maxRetries) throw err
-      await sleep(Math.pow(2, attempt) * 1000)
-    }
-  }
-  throw new Error('Max retries exceeded')
-}
-
-// Cache für User-Namen (Record-ID -> Name)
-let userNameCache = null
-let userNameCacheTime = 0
-const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
-
-async function loadUserNames() {
-  // Cache prüfen
-  if (userNameCache && (Date.now() - userNameCacheTime) < CACHE_DURATION) {
-    return userNameCache
-  }
-
-  const USER_TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('User_Datenbank')}`
-  
-  try {
-    const response = await fetchWithRetry(`${USER_TABLE_URL}?fields[]=Vor_Nachname`, { headers })
-    
-    if (!response.ok) {
-      console.error('User-Namen laden fehlgeschlagen:', response.status)
-      return {}
-    }
-    
-    const data = await response.json()
-    const nameMap = {}
-    
-    for (const record of data.records) {
-      nameMap[record.id] = record.fields.Vor_Nachname || record.id
-    }
-    
-    // Cache aktualisieren
-    userNameCache = nameMap
-    userNameCacheTime = Date.now()
-    
-    console.log('Analytics: User-Namen geladen:', Object.keys(nameMap).length, 'User')
-    return nameMap
-  } catch (err) {
-    console.error('Fehler beim Laden der User-Namen:', err)
+  if (error) {
+    console.error('Failed to load users:', error)
     return {}
   }
+
+  const userMap = {}
+  users.forEach(user => {
+    userMap[user.id] = user.vor_nachname || 'Unbekannt'
+  })
+  return userMap
 }
 
-// Helper: Record-ID zu Name auflösen
-function resolveUserName(field, userNames) {
-  if (!field) return ''
-  if (typeof field === 'string') {
-    // Prüfen ob es eine Record-ID ist (beginnt mit "rec")
-    if (field.startsWith('rec') && userNames[field]) {
-      return userNames[field]
-    }
-    return field // Bereits ein Name
-  }
-  if (Array.isArray(field) && field.length > 0) {
-    const id = field[0]
-    return userNames[id] || id
-  }
-  return ''
+// User ID nach Name finden
+async function getUserIdByName(userName) {
+  if (!userName) return null
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('id')
+    .ilike('vor_nachname', userName)
+    .limit(1)
+
+  if (error || !data || data.length === 0) return null
+  return data[0].id
 }
 
-exports.handler = async (event) => {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS'
-  }
-
+export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: corsHeaders }
+    return { statusCode: 204, headers: corsHeaders, body: '' }
   }
 
   if (event.httpMethod !== 'GET') {
@@ -109,6 +58,14 @@ exports.handler = async (event) => {
     }
   }
 
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Server nicht konfiguriert' })
+    }
+  }
+
   try {
     const params = event.queryStringParameters || {}
     const type = params.type || 'setting'
@@ -116,12 +73,11 @@ exports.handler = async (event) => {
     const userEmail = params.email
     const userName = params.userName
     const filterUserName = params.filterUserName
-    
+
     // Datum-Filter als Strings behalten (YYYY-MM-DD Format)
-    // Das vermeidet Zeitzonen-Probleme komplett
-    const startDateStr = params.startDate || null // z.B. "2025-12-12"
-    const endDateStr = params.endDate || null     // z.B. "2025-12-12"
-    
+    const startDateStr = params.startDate || null
+    const endDateStr = params.endDate || null
+
     // Für Funktionen die Date-Objekte brauchen (Zeitverlauf-Formatierung)
     const startDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : null
     const endDate = endDateStr ? new Date(endDateStr + 'T23:59:59') : null
@@ -153,57 +109,27 @@ exports.handler = async (event) => {
 }
 
 // ==========================================
-// USER RECORD ID HOLEN
-// ==========================================
-async function getUserRecordId(userName) {
-  if (!userName) return null
-  
-  const tableName = 'User_Datenbank'
-  const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
-  url.searchParams.append('filterByFormula', `{Vor_Nachname} = "${userName}"`)
-  url.searchParams.append('maxRecords', '1')
-
-  const response = await fetchWithRetry(url.toString(), { headers })
-  const data = await response.json()
-
-  if (data.records && data.records.length > 0) {
-    return data.records[0].id
-  }
-  return null
-}
-
-// ==========================================
 // CLOSING STATS (Hot Leads)
 // ==========================================
 async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDate, startDateStr, endDateStr }) {
-  const tableName = 'Immobilienmakler_Hot_Leads'
-  
   console.log('getClosingStats - Params:', { isAdmin, userName, startDateStr, endDateStr })
-  
-  // User-Namen laden für Record-ID -> Name Auflösung
-  const userNames = await loadUserNames()
-  console.log('User-Namen geladen:', Object.keys(userNames).length)
-  
-  let allRecords = []
-  let offset = null
 
-  do {
-    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
-    if (offset) {
-      url.searchParams.append('offset', offset)
-    }
+  // User-Map laden
+  const userMap = await loadUserMap()
 
-    const response = await fetchWithRetry(url.toString(), { headers })
-    const data = await response.json()
+  // Alle Hot Leads laden mit User-Joins
+  const { data: allRecords, error } = await supabase
+    .from('hot_leads')
+    .select(`
+      *,
+      setter:users!hot_leads_setter_id_fkey(id, vor_nachname),
+      closer:users!hot_leads_closer_id_fkey(id, vor_nachname)
+    `)
 
-    if (data.error) {
-      throw new Error(data.error.message)
-    }
+  if (error) {
+    throw new Error(error.message)
+  }
 
-    allRecords = allRecords.concat(data.records || [])
-    offset = data.offset
-  } while (offset)
-  
   console.log('Hot Leads geladen:', allRecords.length)
 
   let gewonnen = 0
@@ -215,61 +141,39 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
   const perUserMap = {}
 
   for (const record of allRecords) {
-    const fields = record.fields
-    
     // Status auslesen und normalisieren
-    const statusRaw = fields.Status || ''
+    const statusRaw = record.status || ''
     const status = statusRaw.toLowerCase().trim()
-    
-    // Umsatz-Felder - mit korrektem Währungs-Parsing
-    const setup = parseCurrency(fields.Setup)
-    const retainer = parseCurrency(fields.Retainer)
-    const laufzeit = parseInt(fields.Laufzeit) || 6  // Standard: 6 Monate
-    
-    // Datum-Felder (korrigierte Feldnamen)
-    // "Kunde seit" für Abschlussdatum, "Termin_Beratungsgespräch" als Fallback
-    const kundeSeit = fields['Kunde seit'] || fields.Kunde_seit || null
-    const terminDatum = fields.Termin_Beratungsgespräch || null
-    
-    // Closer - Record-ID zu Name auflösen
-    const closerName = resolveUserName(fields.Closer, userNames)
-    
-    // Setter - Record-ID zu Name auflösen
-    const setterName = resolveUserName(fields.Setter, userNames)
+
+    // Umsatz-Felder
+    const setup = parseCurrency(record.setup)
+    const retainer = parseCurrency(record.retainer)
+    const laufzeit = parseInt(record.laufzeit) || 6
+
+    // Datum-Felder
+    const kundeSeit = record.kunde_seit || null
+    const terminDatum = record.termin_datum || null
+
+    // Closer-Name
+    const closerName = record.closer?.vor_nachname || ''
+    const closerId = record.closer_id
 
     // Prüfen ob es ein gewonnener Deal ist
     const istGewonnen = status.includes('abgeschlossen')
 
     // Datum-Filter basierend auf relevantem Datum
-    // Für gewonnene: Kunde seit, sonst Termin_Beratungsgespräch
     const relevantDateStr = istGewonnen ? (kundeSeit || terminDatum) : terminDatum
-    
-    // String-Vergleich für YYYY-MM-DD Format
+
     if (startDateStr || endDateStr) {
-      if (!relevantDateStr) {
-        // Kein Datum vorhanden - Record trotzdem inkludieren wenn kein Zeitfilter
-        // Bei aktivem Zeitfilter: überspringen nur wenn strikt gefiltert werden soll
-      } else {
-        // Datum auf YYYY-MM-DD normalisieren falls nötig
+      if (relevantDateStr) {
         const dateOnly = relevantDateStr.split('T')[0]
         if (startDateStr && dateOnly < startDateStr) continue
         if (endDateStr && dateOnly > endDateStr) continue
       }
     }
 
-    // User-Filter (wenn nicht Admin) - nach Closer-Namen filtern
-    // Closer sehen nur Records wo sie als Closer eingetragen sind
+    // User-Filter (wenn nicht Admin)
     if (!isAdmin && userName) {
-      // Debug: Ersten paar Records loggen
-      if (allRecords.indexOf(record) < 3) {
-        console.log('Filter-Check:', {
-          recordId: record.id,
-          closerRaw: fields.Closer,
-          closerResolved: closerName,
-          userName: userName,
-          match: closerName && closerName.toLowerCase().includes(userName.toLowerCase())
-        })
-      }
       if (!closerName || !closerName.toLowerCase().includes(userName.toLowerCase())) continue
     }
 
@@ -279,23 +183,20 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
       const dealWert = setup + (retainer * laufzeit)
       umsatzGesamt += dealWert
 
-      // Zeitverlauf: Kunde seit für gewonnene Deals
+      // Zeitverlauf
       const timelineDateStr = kundeSeit || terminDatum
       if (timelineDateStr) {
         const date = new Date(timelineDateStr)
         if (!isNaN(date.getTime())) {
-          // Tages-Key für kurze Zeiträume
           const dayKey = date.toISOString().split('T')[0]
-          // Monats-Key für lange Zeiträume
           const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-          
-          // Beide Keys speichern
+
           if (!zeitverlaufMap[dayKey]) {
             zeitverlaufMap[dayKey] = { count: 0, umsatz: 0 }
           }
           zeitverlaufMap[dayKey].count++
           zeitverlaufMap[dayKey].umsatz += dealWert
-          
+
           if (!zeitverlaufMap[monthKey]) {
             zeitverlaufMap[monthKey] = { count: 0, umsatz: 0 }
           }
@@ -304,7 +205,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
         }
       }
 
-      // Per User Stats (Admin) - nach Closer-Namen gruppieren
+      // Per User Stats (Admin)
       if (closerName && isAdmin) {
         if (!perUserMap[closerName]) {
           perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
@@ -312,9 +213,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
         perUserMap[closerName].gewonnen++
         perUserMap[closerName].umsatz += dealWert
       }
-    } 
-    // Verloren
-    else if (status === 'verloren') {
+    } else if (status === 'verloren') {
       verloren++
       if (closerName && isAdmin) {
         if (!perUserMap[closerName]) {
@@ -322,9 +221,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
         }
         perUserMap[closerName].verloren++
       }
-    }
-    // Angebot versendet
-    else if (status.includes('angebot')) {
+    } else if (status.includes('angebot')) {
       angebotVersendet++
       if (closerName && isAdmin) {
         if (!perUserMap[closerName]) {
@@ -332,9 +229,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
         }
         perUserMap[closerName].offen++
       }
-    }
-    // Offen: "Lead" oder alles andere
-    else {
+    } else {
       offen++
       if (closerName && isAdmin) {
         if (!perUserMap[closerName]) {
@@ -345,49 +240,28 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
     }
   }
 
-  // Closing Quote berechnen (gewonnen / (gewonnen + verloren))
+  // Closing Quote berechnen
   const totalEntschieden = gewonnen + verloren
   const closingQuote = totalEntschieden > 0 ? (gewonnen / totalEntschieden) * 100 : 0
 
   // Durchschnittlicher Umsatz pro Deal
   const umsatzDurchschnitt = gewonnen > 0 ? umsatzGesamt / gewonnen : 0
 
-  // Zeitverlauf formatieren - mit Zeitraum-Parametern
+  // Zeitverlauf formatieren
   const zeitverlauf = formatZeitverlauf(zeitverlaufMap, startDate, endDate)
 
-  // Per User: Namen aus User_Datenbank holen falls Record IDs verwendet wurden
-  let perUser = []
-  if (Object.keys(perUserMap).length > 0) {
-    // Prüfen ob es Record IDs sind (starten mit "rec")
-    const keys = Object.keys(perUserMap)
-    const hasRecordIds = keys.some(k => k.startsWith('rec'))
-    
-    if (hasRecordIds) {
-      // Namen aus User_Datenbank holen
-      const userNames = await getUserNames(keys)
-      perUser = Object.entries(perUserMap).map(([id, stats]) => ({
-        name: userNames[id] || id, // Fallback auf ID wenn Name nicht gefunden
-        ...stats
-      }))
-    } else {
-      // Bereits Namen (Text-Felder)
-      perUser = Object.entries(perUserMap).map(([name, stats]) => ({
-        name,
-        ...stats
-      }))
-    }
-    
-    // Nach Umsatz sortieren
-    perUser.sort((a, b) => b.umsatz - a.umsatz)
-  }
+  // Per User sortieren
+  const perUser = Object.entries(perUserMap)
+    .map(([name, stats]) => ({ name, ...stats }))
+    .sort((a, b) => b.umsatz - a.umsatz)
 
   return {
     summary: {
       gewonnen,
       verloren,
       angebotVersendet,
-      noShow: 0,  // Deprecated, aber für Kompatibilität
-      offen: offen + angebotVersendet,  // Lead + Angebot versendet
+      noShow: 0,
+      offen: offen + angebotVersendet,
       closingQuote,
       umsatzGesamt,
       umsatzDurchschnitt
@@ -401,96 +275,71 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
 // SETTING STATS (Kaltakquise Leads)
 // ==========================================
 async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate, startDateStr, endDateStr }) {
-  const leadsTableName = 'Immobilienmakler_Leads'
-  const archivTableId = 'tbluaHfCySe8cSgSY' // Immobilienmakler_Leads_Archiv
-  
-  // User Record ID holen wenn nicht Admin
+  // User-IDs ermitteln falls nötig
   let userRecordId = null
   if (!isAdmin && userName) {
-    userRecordId = await getUserRecordId(userName)
+    userRecordId = await getUserIdByName(userName)
   }
-  
-  // Admin filtert nach bestimmtem Vertriebler
+
   let filterUserRecordId = null
   if (isAdmin && filterUserName) {
-    filterUserRecordId = await getUserRecordId(filterUserName)
+    filterUserRecordId = await getUserIdByName(filterUserName)
   }
 
-  // === 1. Aktive Leads laden ===
-  let activeRecords = []
-  let offset = null
+  // User-Map laden
+  const userMap = await loadUserMap()
 
-  do {
-    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(leadsTableName)}`)
-    if (offset) {
-      url.searchParams.append('offset', offset)
-    }
+  // Aktive Leads laden
+  const { data: activeRecords, error: activeError } = await supabase
+    .from('leads')
+    .select('id, bereits_kontaktiert, ergebnis, datum')
 
-    const response = await fetchWithRetry(url.toString(), { headers })
-    const data = await response.json()
+  if (activeError) {
+    throw new Error(activeError.message)
+  }
 
-    if (data.error) {
-      throw new Error(data.error.message)
-    }
+  // Lead Assignments laden
+  const { data: assignments, error: assignError } = await supabase
+    .from('lead_assignments')
+    .select('lead_id, user_id')
 
-    activeRecords = activeRecords.concat(data.records || [])
-    offset = data.offset
-  } while (offset)
+  // Assignments zu Map
+  const assignmentMap = {}
+  if (assignments) {
+    assignments.forEach(a => {
+      if (!assignmentMap[a.lead_id]) {
+        assignmentMap[a.lead_id] = []
+      }
+      assignmentMap[a.lead_id].push(a.user_id)
+    })
+  }
 
-  // === 2. Archiv-Leads laden ===
-  let archivRecords = []
-  offset = null
+  // Archiv-Leads laden
+  const { data: archivRecords, error: archivError } = await supabase
+    .from('lead_archive')
+    .select('id, bereits_kontaktiert, ergebnis, datum, vertriebler_id')
 
-  do {
-    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${archivTableId}`)
-    if (offset) {
-      url.searchParams.append('offset', offset)
-    }
+  console.log(`Analytics: ${activeRecords?.length || 0} aktive Leads, ${archivRecords?.length || 0} Archiv-Einträge`)
 
-    const response = await fetchWithRetry(url.toString(), { headers })
-    const data = await response.json()
-
-    if (data.error) {
-      console.error('Archiv-Fehler:', data.error.message)
-      // Archiv-Fehler ignorieren, weiter mit aktiven Leads
-      break
-    }
-
-    archivRecords = archivRecords.concat(data.records || [])
-    offset = data.offset
-  } while (offset)
-
-  console.log(`Analytics: ${activeRecords.length} aktive Leads, ${archivRecords.length} Archiv-Einträge`)
-
-  // === 3. Daten normalisieren und kombinieren ===
-  // Helper: kontaktiert kann "X", true, oder checkbox sein
-  const isKontaktiert = (val) => val === true || val === 'X' || val === 'x' || val === 1
-
-  // Aktive Leads: Felder direkt
-  const normalizedActive = activeRecords.map(record => ({
+  // Daten normalisieren
+  const normalizedActive = (activeRecords || []).map(record => ({
     source: 'active',
     id: record.id,
-    kontaktiert: isKontaktiert(
-      record.fields['Bereits kontaktiert'] || 
-      record.fields['Bereits_kontaktiert'] || 
-      record.fields.Bereits_kontaktiert
-    ),
-    ergebnis: record.fields.Ergebnis || '',
-    datum: record.fields.Datum || null,
-    zugewiesenAn: record.fields['User_Datenbank'] || record.fields.User_Datenbank || []
+    kontaktiert: record.bereits_kontaktiert === true,
+    ergebnis: record.ergebnis || '',
+    datum: record.datum || null,
+    zugewiesenAn: assignmentMap[record.id] || []
   }))
 
-  // Archiv-Leads: Gleiche Struktur wie aktive (Single Select für Bereits_kontaktiert)
-  const normalizedArchiv = archivRecords.map(record => ({
+  const normalizedArchiv = (archivRecords || []).map(record => ({
     source: 'archiv',
     id: record.id,
-    kontaktiert: isKontaktiert(record.fields.Bereits_kontaktiert),
-    ergebnis: record.fields.Ergebnis || '',
-    datum: record.fields.Datum || null,
-    zugewiesenAn: record.fields.Vertriebler || [] // Im Archiv heißt es "Vertriebler"
+    kontaktiert: record.bereits_kontaktiert === true,
+    ergebnis: record.ergebnis || '',
+    datum: record.datum || null,
+    zugewiesenAn: record.vertriebler_id ? [record.vertriebler_id] : []
   }))
 
-  // === 4. Beide Datenquellen kombinieren ===
   const allRecords = [...normalizedActive, ...normalizedArchiv]
 
   // Stats berechnen
@@ -504,37 +353,27 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   const perUserMap = {}
 
   for (const record of allRecords) {
-    // Kontaktiert prüfen (bereits normalisiert)
     if (!record.kontaktiert) continue
 
     const ergebnis = (record.ergebnis || '').toLowerCase()
     const datumRaw = record.datum
     const zugewiesenAn = record.zugewiesenAn
 
-    // Datum-Filter (String-Vergleich für YYYY-MM-DD Format)
-    // Wenn ein Zeitfilter aktiv ist, müssen Records ein Datum haben
+    // Datum-Filter
     if (startDateStr || endDateStr) {
-      if (!datumRaw) continue // Kein Datum = überspringen bei aktivem Zeitfilter
-      
-      // Datum auf YYYY-MM-DD normalisieren falls ISO-Format
+      if (!datumRaw) continue
       const datum = datumRaw.split('T')[0]
       if (startDateStr && datum < startDateStr) continue
       if (endDateStr && datum > endDateStr) continue
     }
-    
-    // Datum für Zeitverlauf (nach dem Filter)
-    const datum = datumRaw
 
-    // User-Filter: Nicht-Admin sieht nur eigene
+    // User-Filter
     if (!isAdmin && userRecordId) {
-      const assignedIds = Array.isArray(zugewiesenAn) ? zugewiesenAn : [zugewiesenAn]
-      if (!assignedIds.includes(userRecordId)) continue
+      if (!zugewiesenAn.includes(userRecordId)) continue
     }
 
-    // Admin filtert nach bestimmtem Vertriebler
     if (isAdmin && filterUserRecordId) {
-      const assignedIds = Array.isArray(zugewiesenAn) ? zugewiesenAn : [zugewiesenAn]
-      if (!assignedIds.includes(filterUserRecordId)) continue
+      if (!zugewiesenAn.includes(filterUserRecordId)) continue
     }
 
     einwahlen++
@@ -549,30 +388,22 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       nichtErreicht++
     } else {
       erreicht++
-      
-      if (istBeratungsgespraech) {
-        beratungsgespraech++
-      } else if (istUnterlagen) {
-        unterlagen++
-      } else if (istKeinInteresse) {
-        keinInteresse++
-      }
+      if (istBeratungsgespraech) beratungsgespraech++
+      else if (istUnterlagen) unterlagen++
+      else if (istKeinInteresse) keinInteresse++
     }
 
     // Zeitverlauf
-    if (datum) {
-      const date = new Date(datum)
-      // Tages-Key für kurze Zeiträume
+    if (datumRaw) {
+      const date = new Date(datumRaw)
       const dayKey = date.toISOString().split('T')[0]
-      // Monats-Key für lange Zeiträume
       const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      
-      // Beide Keys speichern
+
       if (!zeitverlaufMap[dayKey]) {
         zeitverlaufMap[dayKey] = { count: 0 }
       }
       zeitverlaufMap[dayKey].count++
-      
+
       if (!zeitverlaufMap[monthKey]) {
         zeitverlaufMap[monthKey] = { count: 0 }
       }
@@ -581,12 +412,12 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
 
     // Per User Stats (für Admins)
     if (isAdmin && zugewiesenAn && zugewiesenAn.length > 0) {
-      const oderId = Array.isArray(zugewiesenAn) ? zugewiesenAn[0] : zugewiesenAn
+      const oderId = zugewiesenAn[0]
       if (!perUserMap[oderId]) {
-        perUserMap[oderId] = { 
+        perUserMap[oderId] = {
           id: oderId,
-          einwahlen: 0, 
-          erreicht: 0, 
+          einwahlen: 0,
+          erreicht: 0,
           beratungsgespraech: 0,
           unterlagen: 0,
           keinInteresse: 0,
@@ -594,18 +425,14 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
         }
       }
       perUserMap[oderId].einwahlen++
-      
+
       if (istNichtErreicht) {
         perUserMap[oderId].nichtErreicht++
       } else {
         perUserMap[oderId].erreicht++
-        if (istBeratungsgespraech) {
-          perUserMap[oderId].beratungsgespraech++
-        } else if (istUnterlagen) {
-          perUserMap[oderId].unterlagen++
-        } else if (istKeinInteresse) {
-          perUserMap[oderId].keinInteresse++
-        }
+        if (istBeratungsgespraech) perUserMap[oderId].beratungsgespraech++
+        else if (istUnterlagen) perUserMap[oderId].unterlagen++
+        else if (istKeinInteresse) perUserMap[oderId].keinInteresse++
       }
     }
   }
@@ -616,18 +443,16 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   const unterlagenQuote = erreicht > 0 ? (unterlagen / erreicht) * 100 : 0
   const keinInteresseQuote = erreicht > 0 ? (keinInteresse / erreicht) * 100 : 0
 
-  // Zeitverlauf formatieren - mit Zeitraum-Parametern
+  // Zeitverlauf formatieren
   const zeitverlauf = formatZeitverlauf(zeitverlaufMap, startDate, endDate)
 
-  // Per User: Namen aus User-Tabelle holen (für Admin)
-  let perUser = []
-  if (isAdmin && Object.keys(perUserMap).length > 0) {
-    const userNames = await getUserNames(Object.keys(perUserMap))
-    perUser = Object.values(perUserMap).map(stats => ({
+  // Per User mit Namen
+  const perUser = Object.values(perUserMap)
+    .map(stats => ({
       ...stats,
-      name: userNames[stats.id] || `User ${String(stats.id).substring(0, 6)}`
-    })).sort((a, b) => b.einwahlen - a.einwahlen)
-  }
+      name: userMap[stats.id] || `User ${String(stats.id).substring(0, 6)}`
+    }))
+    .sort((a, b) => b.einwahlen - a.einwahlen)
 
   return {
     summary: {
@@ -648,59 +473,19 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
 }
 
 // ==========================================
-// USER NAMEN HOLEN (für Admin-Ansicht)
-// ==========================================
-async function getUserNames(recordIds) {
-  if (!recordIds || recordIds.length === 0) return {}
-  
-  const tableName = 'User_Datenbank'
-  const names = {}
-
-  let allUsers = []
-  let offset = null
-
-  do {
-    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
-    if (offset) {
-      url.searchParams.append('offset', offset)
-    }
-
-    const response = await fetchWithRetry(url.toString(), { headers })
-    const data = await response.json()
-
-    if (data.records) {
-      allUsers = allUsers.concat(data.records)
-    }
-    offset = data.offset
-  } while (offset)
-
-  for (const user of allUsers) {
-    if (recordIds.includes(user.id)) {
-      names[user.id] = user.fields.Vor_Nachname || user.fields['Vor_Nachname'] || 'Unbekannt'
-    }
-  }
-
-  return names
-}
-
-// ==========================================
 // HELPER FUNCTIONS
 // ==========================================
 
 function formatZeitverlauf(map, startDate, endDate) {
   const result = []
   const now = new Date()
-  
-  // Standard: Letzte 6 Monate wenn kein Zeitraum angegeben
+
   const start = startDate || new Date(now.getFullYear(), now.getMonth() - 5, 1)
   const end = endDate || now
-  
-  // Zeitraum in Tagen berechnen
+
   const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24))
-  
-  // Granularität basierend auf Zeitraum wählen
+
   if (diffDays <= 1) {
-    // Einzelner Tag: Keine Timeline nötig, aber für Konsistenz einen Eintrag
     const dayKey = start.toISOString().split('T')[0]
     const label = start.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' })
     result.push({
@@ -710,37 +495,30 @@ function formatZeitverlauf(map, startDate, endDate) {
       umsatz: map[dayKey]?.umsatz || 0
     })
   } else if (diffDays <= 14) {
-    // Bis 14 Tage: Tages-Ansicht
     const currentDate = new Date(start)
     while (currentDate <= end) {
       const dayKey = currentDate.toISOString().split('T')[0]
       const label = currentDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric' })
-      
+
       result.push({
         period: dayKey,
         label,
         count: map[dayKey]?.count || 0,
         umsatz: map[dayKey]?.umsatz || 0
       })
-      
+
       currentDate.setDate(currentDate.getDate() + 1)
     }
   } else if (diffDays <= 60) {
-    // Bis 60 Tage: Wochen-Ansicht
     const currentDate = new Date(start)
-    // Auf Montag der Woche setzen
     const dayOfWeek = currentDate.getDay()
     const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
     currentDate.setDate(currentDate.getDate() + diff)
-    
+
     while (currentDate <= end) {
-      const weekEnd = new Date(currentDate)
-      weekEnd.setDate(weekEnd.getDate() + 6)
-      
       const weekKey = `${currentDate.getFullYear()}-W${getWeekNumber(currentDate)}`
       const label = `KW ${getWeekNumber(currentDate)}`
-      
-      // Alle Tage dieser Woche summieren
+
       let weekCount = 0
       let weekUmsatz = 0
       const tempDate = new Date(currentDate)
@@ -750,39 +528,37 @@ function formatZeitverlauf(map, startDate, endDate) {
         weekUmsatz += map[dayKey]?.umsatz || 0
         tempDate.setDate(tempDate.getDate() + 1)
       }
-      
+
       result.push({
         period: weekKey,
         label,
         count: weekCount,
         umsatz: weekUmsatz
       })
-      
+
       currentDate.setDate(currentDate.getDate() + 7)
     }
   } else {
-    // Über 60 Tage: Monats-Ansicht
     const currentDate = new Date(start.getFullYear(), start.getMonth(), 1)
-    
+
     while (currentDate <= end) {
       const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
       const label = currentDate.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' })
-      
+
       result.push({
         period: monthKey,
         label,
         count: map[monthKey]?.count || 0,
         umsatz: map[monthKey]?.umsatz || 0
       })
-      
+
       currentDate.setMonth(currentDate.getMonth() + 1)
     }
   }
-  
+
   return result
 }
 
-// Kalenderwoche berechnen (ISO 8601)
 function getWeekNumber(date) {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
   const dayNum = d.getUTCDay() || 7
@@ -791,51 +567,30 @@ function getWeekNumber(date) {
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7)
 }
 
-// Währungswerte parsen (€1,000.00 → 1000)
 function parseCurrency(value) {
   if (!value) return 0
   if (typeof value === 'number') return value
-  
-  // String: Währungszeichen und Whitespace entfernen
+
   let cleaned = String(value)
-    .replace(/[€$£¥]/g, '')  // Währungszeichen
-    .replace(/\s/g, '')       // Whitespace
+    .replace(/[€$£¥]/g, '')
+    .replace(/\s/g, '')
     .trim()
-  
-  // Tausender-Kommas entfernen (1,000.00 → 1000.00)
-  // Aber: Deutsches Format berücksichtigen (1.000,00 → 1000.00)
+
   if (cleaned.includes(',') && cleaned.includes('.')) {
-    // Internationales Format: 1,000.00
     if (cleaned.lastIndexOf(',') < cleaned.lastIndexOf('.')) {
       cleaned = cleaned.replace(/,/g, '')
-    } 
-    // Deutsches Format: 1.000,00
-    else {
+    } else {
       cleaned = cleaned.replace(/\./g, '').replace(',', '.')
     }
   } else if (cleaned.includes(',') && !cleaned.includes('.')) {
-    // Nur Komma: könnte Dezimal sein (1000,50) oder Tausender (1,000)
     const parts = cleaned.split(',')
     if (parts[parts.length - 1].length === 2) {
-      // Wahrscheinlich Dezimal: 1000,50
       cleaned = cleaned.replace(',', '.')
     } else {
-      // Wahrscheinlich Tausender: 1,000
       cleaned = cleaned.replace(/,/g, '')
     }
   }
-  
+
   const result = parseFloat(cleaned)
   return isNaN(result) ? 0 : result
-}
-
-function extractNameFromEmail(email) {
-  if (!email) return 'Unbekannt'
-  
-  const local = email.split('@')[0]
-  const parts = local.split(/[._-]/)
-  
-  return parts.map(part => 
-    part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
-  ).join(' ')
 }

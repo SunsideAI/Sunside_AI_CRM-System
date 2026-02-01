@@ -1,5 +1,10 @@
-// Leads API - Laden und Aktualisieren von Leads
-import { fetchWithRetry } from './utils/airtable.js'
+// Leads API - Laden und Aktualisieren von Leads - Supabase Version
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+)
 
 export async function handler(event) {
   const headers = {
@@ -13,12 +18,7 @@ export async function handler(event) {
     return { statusCode: 200, headers, body: '' }
   }
 
-  const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-  const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
-  const LEADS_TABLE = 'Immobilienmakler_Leads'
-  const USERS_TABLE = 'User_Datenbank'
-
-  if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
     return {
       statusCode: 500,
       headers,
@@ -29,19 +29,18 @@ export async function handler(event) {
   // Hilfsfunktion: Alle User laden für Name-Mapping
   async function loadUserMap() {
     try {
-      const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USERS_TABLE)}?fields[]=Vor_Nachname`
-      const response = await fetchWithRetry(url, {
-        headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
-      })
-      if (!response.ok) {
-        console.error('Failed to load users')
+      const { data: users, error } = await supabase
+        .from('users')
+        .select('id, vor_nachname')
+
+      if (error) {
+        console.error('Failed to load users:', error)
         return {}
       }
-      
-      const data = await response.json()
+
       const userMap = {}
-      data.records.forEach(record => {
-        userMap[record.id] = record.fields.Vor_Nachname || 'Unbekannt'
+      users.forEach(user => {
+        userMap[user.id] = user.vor_nachname || 'Unbekannt'
       })
       console.log('Loaded users:', Object.keys(userMap).length)
       return userMap
@@ -51,198 +50,188 @@ export async function handler(event) {
     }
   }
 
+  // Hilfsfunktion: Lead Assignments laden
+  async function loadLeadAssignments(leadIds) {
+    if (!leadIds || leadIds.length === 0) return {}
+
+    const { data, error } = await supabase
+      .from('lead_assignments')
+      .select('lead_id, user_id, users(id, vor_nachname)')
+      .in('lead_id', leadIds)
+
+    if (error) {
+      console.error('Failed to load assignments:', error)
+      return {}
+    }
+
+    const assignmentMap = {}
+    data.forEach(assignment => {
+      if (!assignmentMap[assignment.lead_id]) {
+        assignmentMap[assignment.lead_id] = []
+      }
+      assignmentMap[assignment.lead_id].push({
+        id: assignment.user_id,
+        name: assignment.users?.vor_nachname || 'Unbekannt'
+      })
+    })
+    return assignmentMap
+  }
+
   // GET - Leads laden
   if (event.httpMethod === 'GET') {
     try {
       const params = event.queryStringParameters || {}
       const {
-        userName,      // Name des Users (Vor_Nachname) für Link-Feld Filter
-        userRole,      // 'Admin', 'Coldcaller', 'Closer'
-        view,          // 'all' oder 'own' (für Admins)
-        search,        // Suchbegriff
-        contacted,     // 'true' oder 'false'
-        result,        // Ergebnis-Filter
-        vertriebler,   // Filter nach Vertriebler (Name)
-        land,          // Land-Filter: 'Deutschland', 'Österreich', 'Schweiz'
-        quelle,        // Quelle-Filter: 'E-Book', 'Kaltakquise', etc.
-        offset,        // Pagination offset
-        wiedervorlage  // 'true' = nur Leads mit Wiedervorlage-Datum
+        userName,
+        userId,
+        userRole,
+        view,
+        search,
+        contacted,
+        result,
+        vertriebler,
+        land,
+        quelle,
+        offset,
+        wiedervorlage
       } = params
 
       // User-Map laden für Namen-Auflösung
       const userMap = await loadUserMap()
 
-      // Basis-URL
-      let url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}`
-      
-      // Filter bauen
-      const filters = []
-      
+      // Basis-Query
+      let query = supabase
+        .from('leads')
+        .select('*', { count: 'exact' })
+
       // User-Filter: Nur wenn NICHT Admin mit "all" view
       const needsUserFilter = userRole !== 'Admin' || view === 'own'
-      
-      if (needsUserFilter && userName) {
-        // Filter über den angezeigten Namen im Link-Feld
-        filters.push(`FIND("${userName}", ARRAYJOIN({User_Datenbank}, ","))`)
+
+      if (needsUserFilter && userId) {
+        // Zuerst Lead-IDs holen die diesem User zugewiesen sind
+        const { data: assignments } = await supabase
+          .from('lead_assignments')
+          .select('lead_id')
+          .eq('user_id', userId)
+
+        if (assignments && assignments.length > 0) {
+          const leadIds = assignments.map(a => a.lead_id)
+          query = query.in('id', leadIds)
+        } else {
+          // Keine Leads zugewiesen
+          return {
+            statusCode: 200,
+            headers,
+            body: JSON.stringify({
+              leads: [],
+              users: Object.entries(userMap).map(([id, name]) => ({ id, name })),
+              offset: null,
+              hasMore: false
+            })
+          }
+        }
       }
 
-      // Vertriebler-Filter (für Admins) - filtert nach Name
+      // Vertriebler-Filter (für Admins)
       if (vertriebler && vertriebler !== 'all') {
-        filters.push(`FIND("${vertriebler}", ARRAYJOIN({User_Datenbank}, ","))`)
+        const { data: assignments } = await supabase
+          .from('lead_assignments')
+          .select('lead_id')
+          .eq('user_id', vertriebler)
+
+        if (assignments && assignments.length > 0) {
+          const leadIds = assignments.map(a => a.lead_id)
+          query = query.in('id', leadIds)
+        }
       }
 
-      // Kontaktiert-Filter (Feld ist Text: "X" oder leer)
+      // Kontaktiert-Filter
       if (contacted === 'true') {
-        filters.push(`{Bereits_kontaktiert} = 'X'`)
+        query = query.eq('bereits_kontaktiert', true)
       } else if (contacted === 'false') {
-        filters.push(`OR({Bereits_kontaktiert} = '', {Bereits_kontaktiert} = BLANK())`)
+        query = query.or('bereits_kontaktiert.is.null,bereits_kontaktiert.eq.false')
       }
 
       // Ergebnis-Filter
       if (result && result !== 'all') {
-        filters.push(`{Ergebnis} = '${result}'`)
+        query = query.eq('ergebnis', result)
       }
 
       // Land-Filter
       if (land && land !== 'all') {
-        filters.push(`{Land} = '${land}'`)
+        query = query.eq('land', land)
       }
 
       // Quelle-Filter
       if (quelle && quelle !== 'all') {
-        filters.push(`{Quelle} = '${quelle}'`)
+        query = query.eq('quelle', quelle)
       }
 
-      // Wiedervorlage-Filter: Nur Leads mit Wiedervorlage-Datum
+      // Wiedervorlage-Filter
       if (wiedervorlage === 'true') {
-        filters.push(`{Wiedervorlage_Datum}`)
+        query = query.not('wiedervorlage_datum', 'is', null)
       }
 
-      // Suchfilter (Unternehmensname oder Stadt)
+      // Suchfilter
       if (search) {
-        const searchEscaped = search.replace(/"/g, '\\"')
-        filters.push(`OR(FIND(LOWER("${searchEscaped}"), LOWER({Unternehmensname})), FIND(LOWER("${searchEscaped}"), LOWER({Stadt})))`)
+        query = query.or(`unternehmensname.ilike.%${search}%,stadt.ilike.%${search}%`)
       }
 
-      // Query-Parameter
-      const queryParams = new URLSearchParams()
-      
-      // Filter kombinieren
-      if (filters.length > 0) {
-        const formula = filters.length === 1 ? filters[0] : `AND(${filters.join(', ')})`
-        queryParams.append('filterByFormula', formula)
+      // Sortierung und Pagination
+      const pageSize = 50
+      const offsetNum = parseInt(offset) || 0
+
+      query = query
+        .order('unternehmensname', { ascending: true })
+        .range(offsetNum, offsetNum + pageSize - 1)
+
+      const { data: leadsData, error, count } = await query
+
+      if (error) {
+        console.error('Supabase Error:', error)
+        throw new Error(error.message || 'Fehler beim Laden der Leads')
       }
 
-      // Pagination
-      queryParams.append('pageSize', '50')
+      // Lead Assignments laden
+      const leadIds = leadsData.map(l => l.id)
+      const assignmentMap = await loadLeadAssignments(leadIds)
 
-      // Sortierung
-      queryParams.append('sort[0][field]', 'Unternehmensname')
-      queryParams.append('sort[0][direction]', 'asc')
+      // Leads formatieren
+      const leads = leadsData.map(record => {
+        const assignments = assignmentMap[record.id] || []
 
-      // Felder die wir brauchen
-      const fields = [
-        'Unternehmensname',
-        'Stadt',
-        'Land',
-        'Kategorie',
-        'Mail',
-        'Website',
-        'Telefonnummer',
-        'User_Datenbank',
-        'Bereits_kontaktiert',
-        'Datum',
-        'Ergebnis',
-        'Kommentar',
-        'Ansprechpartner_Vorname',
-        'Ansprechpartner_Nachname',
-        'Wiedervorlage_Datum',
-        'Quelle',
-        // Website-Statistiken
-        'Absprungrate',
-        'Monatliche_Besuche',
-        'Anzahl_Leads',
-        'Mehrwert'
-      ]
-      fields.forEach(field => queryParams.append('fields[]', field))
-
-      // Offset für Pagination
-      if (offset) {
-        queryParams.append('offset', offset)
-      }
-
-      const fullUrl = `${url}?${queryParams.toString()}`
-      
-      const response = await fetchWithRetry(fullUrl, {
-        headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        console.error('Airtable Error:', JSON.stringify(error))
-        throw new Error(error.error?.message || 'Fehler beim Laden der Leads')
-      }
-
-      const data = await response.json()
-
-      // Leads formatieren mit aufgelösten User-Namen
-      const leads = data.records.map(record => {
-        // User IDs aus Link-Feld auflösen zu Namen
-        const userField = record.fields.User_Datenbank || []
-        
-        // Debug: Log ersten Lead
-        if (data.records.indexOf(record) === 0) {
-          console.log('First lead User_Datenbank field:', userField)
-        }
-        
-        // userField könnte Array von IDs oder Array von Namen sein
-        let userNames = []
-        let userIds = []
-        
-        if (Array.isArray(userField)) {
-          userField.forEach(item => {
-            // Prüfen ob es eine Record ID ist (beginnt mit "rec")
-            if (typeof item === 'string' && item.startsWith('rec')) {
-              userIds.push(item)
-              userNames.push(userMap[item] || item)
-            } else if (typeof item === 'string') {
-              // Es ist bereits ein Name
-              userNames.push(item)
-            }
-          })
-        }
-        
         return {
           id: record.id,
-          unternehmensname: record.fields.Unternehmensname || '',
-          stadt: record.fields.Stadt || '',
-          land: record.fields.Land || '',
-          kategorie: record.fields.Kategorie || '',
-          email: record.fields.Mail || '',
-          website: record.fields.Website || '',
-          telefon: record.fields.Telefonnummer || '',
-          zugewiesenAn: userNames,
-          zugewiesenAnIds: userIds,
-          kontaktiert: record.fields['Bereits_kontaktiert'] === 'X' || record.fields['Bereits_kontaktiert'] === true,
-          datum: record.fields.Datum || null,
-          ergebnis: record.fields.Ergebnis || '',
-          kommentar: record.fields.Kommentar || '',
-          ansprechpartnerVorname: record.fields.Ansprechpartner_Vorname || '',
-          ansprechpartnerNachname: record.fields.Ansprechpartner_Nachname || '',
-          wiedervorlageDatum: record.fields.Wiedervorlage_Datum || '',
-          quelle: record.fields.Quelle || '',
-          // Website-Statistiken
-          absprungrate: record.fields.Absprungrate || null,
-          monatlicheBesuche: record.fields.Monatliche_Besuche || null,
-          anzahlLeads: record.fields.Anzahl_Leads || null,
-          mehrwert: record.fields.Mehrwert || null
+          unternehmensname: record.unternehmensname || '',
+          stadt: record.stadt || '',
+          land: record.land || '',
+          kategorie: record.kategorie || '',
+          email: record.mail || '',
+          website: record.website || '',
+          telefon: record.telefonnummer || '',
+          zugewiesenAn: assignments.map(a => a.name),
+          zugewiesenAnIds: assignments.map(a => a.id),
+          kontaktiert: record.bereits_kontaktiert === true,
+          datum: record.datum || null,
+          ergebnis: record.ergebnis || '',
+          kommentar: record.kommentar || '',
+          ansprechpartnerVorname: record.ansprechpartner_vorname || '',
+          ansprechpartnerNachname: record.ansprechpartner_nachname || '',
+          wiedervorlageDatum: record.wiedervorlage_datum || '',
+          quelle: record.quelle || '',
+          absprungrate: record.absprungrate || null,
+          monatlicheBesuche: record.monatliche_besuche || null,
+          anzahlLeads: record.anzahl_leads || null,
+          mehrwert: record.mehrwert || null
         }
       })
 
-      // User-Liste für Filter mitgeben (sortiert nach Name)
+      // User-Liste für Filter
       const users = Object.entries(userMap)
         .map(([id, name]) => ({ id, name }))
         .sort((a, b) => a.name.localeCompare(b.name))
+
+      const hasMore = count > offsetNum + pageSize
 
       return {
         statusCode: 200,
@@ -250,8 +239,8 @@ export async function handler(event) {
         body: JSON.stringify({
           leads,
           users,
-          offset: data.offset || null,
-          hasMore: !!data.offset
+          offset: hasMore ? offsetNum + pageSize : null,
+          hasMore
         })
       }
 
@@ -269,7 +258,7 @@ export async function handler(event) {
   if (event.httpMethod === 'PATCH') {
     try {
       const body = JSON.parse(event.body)
-      const leadId = body.leadId || body.id  // Beide Varianten akzeptieren
+      const leadId = body.leadId || body.id
       const updates = body.updates || {}
       const historyEntry = body.historyEntry
 
@@ -281,15 +270,16 @@ export async function handler(event) {
         }
       }
 
-      // Erst aktuellen Lead laden (für History)
+      // Aktuellen Lead laden (für History)
       let currentKommentar = ''
       if (historyEntry) {
-        const getResponse = await fetchWithRetry(
-          `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}/${leadId}`,
-          { headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` } }
-        )
-        const leadData = await getResponse.json()
-        currentKommentar = leadData.fields?.Kommentar || ''
+        const { data: currentLead } = await supabase
+          .from('leads')
+          .select('kommentar')
+          .eq('id', leadId)
+          .single()
+
+        currentKommentar = currentLead?.kommentar || ''
       }
 
       const fieldsToUpdate = {}
@@ -297,72 +287,54 @@ export async function handler(event) {
       console.log('PATCH Lead - Incoming updates:', JSON.stringify(updates, null, 2))
 
       if (updates.kontaktiert !== undefined) {
-        // Für "kontaktiert": 'X' setzen
-        // Für "nicht kontaktiert": null (löscht das Feld in Airtable)
-        fieldsToUpdate['Bereits_kontaktiert'] = updates.kontaktiert ? 'X' : null
+        fieldsToUpdate.bereits_kontaktiert = updates.kontaktiert === true
       }
       if (updates.ergebnis !== undefined) {
-        // Leerer String → null (löscht das Feld in Airtable)
-        fieldsToUpdate['Ergebnis'] = updates.ergebnis || null
+        fieldsToUpdate.ergebnis = updates.ergebnis || null
       }
       if (updates.datum !== undefined) {
-        fieldsToUpdate['Datum'] = updates.datum || null
+        fieldsToUpdate.datum = updates.datum || null
       }
       if (updates.ansprechpartnerVorname !== undefined) {
-        fieldsToUpdate['Ansprechpartner_Vorname'] = updates.ansprechpartnerVorname || null
+        fieldsToUpdate.ansprechpartner_vorname = updates.ansprechpartnerVorname || null
       }
       if (updates.ansprechpartnerNachname !== undefined) {
-        fieldsToUpdate['Ansprechpartner_Nachname'] = updates.ansprechpartnerNachname || null
+        fieldsToUpdate.ansprechpartner_nachname = updates.ansprechpartnerNachname || null
       }
       if (updates.kategorie !== undefined) {
-        fieldsToUpdate['Kategorie'] = updates.kategorie || null
+        fieldsToUpdate.kategorie = updates.kategorie || null
       }
-      // Stammdaten (Kontaktdaten)
       if (updates.telefon !== undefined) {
-        fieldsToUpdate['Telefonnummer'] = updates.telefon || null
+        fieldsToUpdate.telefonnummer = updates.telefon || null
       }
       if (updates.email !== undefined) {
-        fieldsToUpdate['Mail'] = updates.email || null
+        fieldsToUpdate.mail = updates.email || null
       }
       if (updates.website !== undefined) {
-        fieldsToUpdate['Website'] = updates.website || null
+        fieldsToUpdate.website = updates.website || null
       }
       if (updates.wiedervorlageDatum !== undefined) {
-        // datetime-local liefert "2024-12-22T14:30"
-        // Airtable speichert als UTC und zeigt dann +1h an
-        // Deshalb 1 Stunde abziehen beim Speichern
-        if (updates.wiedervorlageDatum) {
-          const inputDate = new Date(updates.wiedervorlageDatum)
-          // 1 Stunde abziehen
-          inputDate.setHours(inputDate.getHours() - 1)
-          const isoDate = inputDate.toISOString()
-          console.log('Wiedervorlage Datum:', { input: updates.wiedervorlageDatum, output: isoDate })
-          fieldsToUpdate['Wiedervorlage_Datum'] = isoDate
-        } else {
-          fieldsToUpdate['Wiedervorlage_Datum'] = null
-        }
+        fieldsToUpdate.wiedervorlage_datum = updates.wiedervorlageDatum || null
       }
 
       // Automatisch Datum setzen wenn kontaktiert
-      // ABER: Nur wenn echte Updates vorhanden sind (nicht bei reinen Kommentar-Updates)
       const hasRealUpdates = Object.keys(updates).length > 0
       if (hasRealUpdates && updates.kontaktiert === true && !updates.datum) {
-        fieldsToUpdate['Datum'] = new Date().toISOString().split('T')[0]
+        fieldsToUpdate.datum = new Date().toISOString().split('T')[0]
       }
 
-      // History-Eintrag erstellen wenn vorhanden
+      // History-Eintrag erstellen
       if (historyEntry) {
         const now = new Date()
         const timestamp = now.toLocaleDateString('de-DE', {
           day: '2-digit',
-          month: '2-digit', 
+          month: '2-digit',
           year: 'numeric'
         }) + ', ' + now.toLocaleTimeString('de-DE', {
           hour: '2-digit',
           minute: '2-digit'
         })
 
-        // Icon basierend auf Aktion
         const icons = {
           'email': '📧',
           'termin': '📅',
@@ -378,38 +350,29 @@ export async function handler(event) {
           'kontaktdaten': '✏️'
         }
         const icon = icons[historyEntry.action] || '📋'
-        
+
         const newEntry = `[${timestamp}] ${icon} ${historyEntry.details} (${historyEntry.userName})`
-        
-        // Neuen Eintrag oben anhängen
-        fieldsToUpdate['Kommentar'] = currentKommentar 
+
+        fieldsToUpdate.kommentar = currentKommentar
           ? `${newEntry}\n${currentKommentar}`
           : newEntry
       } else if (updates.kommentar !== undefined) {
-        // Direkte Kommentar-Änderung (ohne History-Format)
-        fieldsToUpdate['Kommentar'] = updates.kommentar
+        fieldsToUpdate.kommentar = updates.kommentar
       }
-
-      const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}/${leadId}`
 
       console.log('PATCH Lead - Fields to update:', JSON.stringify(fieldsToUpdate, null, 2))
 
-      const response = await fetchWithRetry(url, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ fields: fieldsToUpdate })
-      })
+      const { data, error } = await supabase
+        .from('leads')
+        .update(fieldsToUpdate)
+        .eq('id', leadId)
+        .select()
+        .single()
 
-      if (!response.ok) {
-        const error = await response.json()
-        console.error('Airtable Update Error:', JSON.stringify(error))
-        throw new Error(error.error?.message || 'Fehler beim Aktualisieren')
+      if (error) {
+        console.error('Supabase Update Error:', error)
+        throw new Error(error.message || 'Fehler beim Aktualisieren')
       }
-
-      const data = await response.json()
 
       return {
         statusCode: 200,
@@ -418,12 +381,12 @@ export async function handler(event) {
           success: true,
           lead: {
             id: data.id,
-            kontaktiert: data.fields['Bereits_kontaktiert'] === 'X' || data.fields['Bereits_kontaktiert'] === true,
-            ergebnis: data.fields.Ergebnis || '',
-            kommentar: data.fields.Kommentar || '',
-            datum: data.fields.Datum || null,
-            ansprechpartnerVorname: data.fields.Ansprechpartner_Vorname || '',
-            ansprechpartnerNachname: data.fields.Ansprechpartner_Nachname || ''
+            kontaktiert: data.bereits_kontaktiert === true,
+            ergebnis: data.ergebnis || '',
+            kommentar: data.kommentar || '',
+            datum: data.datum || null,
+            ansprechpartnerVorname: data.ansprechpartner_vorname || '',
+            ansprechpartnerNachname: data.ansprechpartner_nachname || ''
           }
         })
       }

@@ -1,5 +1,11 @@
-// Change Password Function - Ändert Passwort für eingeloggten User
+// Change Password Function - Ändert Passwort für eingeloggten User - Supabase Version
 import bcrypt from 'bcryptjs'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+)
 
 export async function handler(event) {
   const headers = {
@@ -40,11 +46,7 @@ export async function handler(event) {
       }
     }
 
-    const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-    const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
-    const AIRTABLE_TABLE_NAME = 'User_Datenbank'
-
-    if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
       return {
         statusCode: 500,
         headers,
@@ -53,13 +55,13 @@ export async function handler(event) {
     }
 
     // User laden
-    const userUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}/${userId}`
-    
-    const userResponse = await fetch(userUrl, {
-      headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
-    })
+    const { data: user, error: userError } = await supabase
+      .from('users')
+      .select('password_hash')
+      .eq('id', userId)
+      .single()
 
-    if (!userResponse.ok) {
+    if (userError || !user) {
       return {
         statusCode: 404,
         headers,
@@ -67,8 +69,7 @@ export async function handler(event) {
       }
     }
 
-    const userData = await userResponse.json()
-    const storedPassword = userData.fields.Passwort || ''
+    const storedPassword = user.password_hash || ''
 
     if (!storedPassword) {
       return {
@@ -97,27 +98,21 @@ export async function handler(event) {
     // Neues Passwort hashen und speichern
     const hashedPassword = await bcrypt.hash(newPassword, 10)
 
-    const updateResponse = await fetch(userUrl, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        fields: { Passwort: hashedPassword }
-      })
-    })
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ password_hash: hashedPassword })
+      .eq('id', userId)
 
-    if (!updateResponse.ok) {
+    if (updateError) {
       throw new Error('Fehler beim Speichern')
     }
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ 
-        success: true, 
-        message: 'Passwort erfolgreich geändert' 
+      body: JSON.stringify({
+        success: true,
+        message: 'Passwort erfolgreich geändert'
       })
     }
 

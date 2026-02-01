@@ -1,5 +1,11 @@
-// Auth Function - Prüft User + Passwort (gehasht) gegen Airtable
+// Auth Function - Prüft User + Passwort gegen Supabase
 import bcrypt from 'bcryptjs'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+)
 
 export async function handler(event) {
   const headers = {
@@ -32,14 +38,11 @@ export async function handler(event) {
       }
     }
 
-    const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-    const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
-    const AIRTABLE_TABLE_NAME = 'User_Datenbank'
-
-    if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+    // Prüfen ob Supabase konfiguriert ist
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
       // Demo-Modus
-      console.log('Airtable nicht konfiguriert - Demo-Modus')
-      
+      console.log('Supabase nicht konfiguriert - Demo-Modus')
+
       if (email.includes('@sunsideai.de') && password === 'demo') {
         return {
           statusCode: 200,
@@ -57,7 +60,7 @@ export async function handler(event) {
           })
         }
       }
-      
+
       return {
         statusCode: 401,
         headers,
@@ -65,26 +68,21 @@ export async function handler(event) {
       }
     }
 
-    // Airtable Query - E-Mail escapen und case-insensitive vergleichen
-    const escapedEmail = email.toLowerCase().replace(/'/g, "\\'")
-    const formula = `OR(LOWER({E-Mail})='${escapedEmail}',LOWER({E-Mail_Geschäftlich})='${escapedEmail}')`
-    const url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`
+    console.log('Login attempt for:', email)
 
-    console.log('Login attempt for:', email) // Debug log
+    // Supabase Query - User nach E-Mail suchen
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('*')
+      .or(`email.ilike.${email},email_geschaeftlich.ilike.${email}`)
+      .limit(1)
 
-    const response = await fetch(url, {
-      headers: {
-        'Authorization': `Bearer ${AIRTABLE_API_KEY}`
-      }
-    })
-
-    if (!response.ok) {
-      throw new Error('Airtable API Fehler')
+    if (error) {
+      console.error('Supabase Error:', error)
+      throw new Error('Datenbank-Fehler')
     }
 
-    const data = await response.json()
-
-    if (!data.records || data.records.length === 0) {
+    if (!users || users.length === 0) {
       return {
         statusCode: 401,
         headers,
@@ -92,11 +90,10 @@ export async function handler(event) {
       }
     }
 
-    const record = data.records[0]
-    const fields = record.fields
+    const dbUser = users[0]
 
     // Status prüfen - deaktivierte User dürfen sich nicht anmelden
-    if (fields.Status !== true) {
+    if (dbUser.status !== true) {
       return {
         statusCode: 401,
         headers,
@@ -105,8 +102,8 @@ export async function handler(event) {
     }
 
     // Passwort prüfen
-    const storedPassword = fields.Passwort || ''
-    
+    const storedPassword = dbUser.password_hash || ''
+
     if (!storedPassword) {
       return {
         statusCode: 401,
@@ -133,22 +130,22 @@ export async function handler(event) {
       }
     }
 
-    // User Objekt erstellen (ohne Passwort!)
+    // User Objekt erstellen (ohne Passwort!) - Kompatibel mit Frontend
     const user = {
-      id: record.id,
-      vorname: fields.Vorname || '',
-      name: fields.Name || '',
-      vor_nachname: fields.Vor_Nachname || `${fields.Vorname} ${fields.Name}`,
-      email: fields['E-Mail'] || fields['E-Mail_Geschäftlich'],
-      email_geschaeftlich: fields['E-Mail_Geschäftlich'] || '',
-      telefon: fields.Telefon || '',
-      rolle: fields.Rolle || fields.Status || ['Setter'],
-      ort: fields.Ort || '',
-      bundesland: fields.Bundesland || '',
-      google_calendar_id: fields.Google_Calendar_ID || ''
+      id: dbUser.id,
+      vorname: dbUser.vorname || '',
+      name: dbUser.nachname || '',
+      vor_nachname: dbUser.vor_nachname || `${dbUser.vorname || ''} ${dbUser.nachname || ''}`.trim(),
+      email: dbUser.email || dbUser.email_geschaeftlich,
+      email_geschaeftlich: dbUser.email_geschaeftlich || '',
+      telefon: dbUser.telefon || '',
+      rolle: dbUser.rollen || ['Setter'],
+      ort: dbUser.ort || '',
+      bundesland: dbUser.bundesland || '',
+      google_calendar_id: dbUser.google_calendar_id || ''
     }
 
-    // Status zu Rolle mappen falls nötig
+    // Rolle zu Array falls nötig
     if (typeof user.rolle === 'string') {
       if (user.rolle === 'Coldcaller') {
         user.rolle = ['Setter']

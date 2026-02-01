@@ -1,6 +1,10 @@
-// Netlify Function: User-Verwaltung (CRUD)
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
+// Netlify Function: User-Verwaltung (CRUD) - Supabase
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,14 +13,12 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 }
 
-const TABLE_NAME = 'User_Datenbank'
-
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' }
   }
 
-  if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
     return {
       statusCode: 500,
       headers: corsHeaders,
@@ -24,23 +26,16 @@ export async function handler(event) {
     }
   }
 
-  const airtableHeaders = {
-    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
-
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}`
-
   try {
     switch (event.httpMethod) {
       case 'GET':
-        return await getUsers(TABLE_URL, airtableHeaders)
+        return await getUsers()
       case 'POST':
-        return await createUser(JSON.parse(event.body), TABLE_URL, airtableHeaders)
+        return await createUser(JSON.parse(event.body))
       case 'PATCH':
-        return await updateUser(JSON.parse(event.body), TABLE_URL, airtableHeaders)
+        return await updateUser(JSON.parse(event.body))
       case 'DELETE':
-        return await deleteUser(JSON.parse(event.body), TABLE_URL, airtableHeaders)
+        return await deleteUser(JSON.parse(event.body))
       default:
         return { statusCode: 405, headers: corsHeaders, body: JSON.stringify({ error: 'Method not allowed' }) }
     }
@@ -55,66 +50,63 @@ export async function handler(event) {
 }
 
 // GET - Alle User laden
-async function getUsers(TABLE_URL, airtableHeaders) {
-  // Basis-Felder die sicher existieren
-  const url = `${TABLE_URL}?fields[]=Vor_Nachname&fields[]=E-Mail&fields[]=E-Mail_Geschäftlich&fields[]=Rolle&fields[]=Status&fields[]=Telefon&fields[]=Bundesland&fields[]=Google_Calendar_ID&fields[]=Passwort&fields[]=Onboarding&fields[]=Straße&fields[]=PLZ&fields[]=Ort`
-  
-  console.log('Fetching users from:', TABLE_URL)
-  
-  const response = await fetch(url, { headers: airtableHeaders })
+async function getUsers() {
+  console.log('Fetching users from Supabase')
 
-  if (!response.ok) {
-    const errorText = await response.text()
-    console.error('Airtable Response Error:', response.status, errorText)
-    throw new Error('Airtable Fehler: ' + response.status)
+  const { data: users, error } = await supabase
+    .from('users')
+    .select('*')
+    .order('vor_nachname', { ascending: true })
+
+  if (error) {
+    console.error('Supabase Error:', error)
+    throw new Error('Datenbank-Fehler: ' + error.message)
   }
 
-  const data = await response.json()
-
-  const users = data.records.map(record => ({
-    id: record.id,
-    vor_nachname: record.fields.Vor_Nachname || '',
-    email: record.fields['E-Mail'] || '',
-    email_geschaeftlich: record.fields['E-Mail_Geschäftlich'] || '',
-    rolle: record.fields.Rolle || [],
-    status: record.fields.Status === true,  // Nur true wenn explizit angehakt
-    telefon: record.fields.Telefon || '',
-    strasse: record.fields['Straße'] || '',
-    plz: record.fields.PLZ || '',
-    ort: record.fields.Ort || '',
-    bundesland: record.fields.Bundesland || '',
-    google_calendar_id: record.fields.Google_Calendar_ID || '',
-    onboarding: record.fields.Onboarding || '',
-    hasPassword: !!(record.fields.Passwort && record.fields.Passwort.length > 0)
+  const mappedUsers = users.map(user => ({
+    id: user.id,
+    vor_nachname: user.vor_nachname || '',
+    email: user.email || '',
+    email_geschaeftlich: user.email_geschaeftlich || '',
+    rolle: user.rollen || [],
+    status: user.status === true,
+    telefon: user.telefon || '',
+    strasse: user.strasse || '',
+    plz: user.plz || '',
+    ort: user.ort || '',
+    bundesland: user.bundesland || '',
+    google_calendar_id: user.google_calendar_id || '',
+    onboarding: user.onboarding || false,
+    hasPassword: !!(user.password_hash && user.password_hash.length > 0)
   }))
-
-  users.sort((a, b) => a.vor_nachname.localeCompare(b.vor_nachname))
 
   return {
     statusCode: 200,
     headers: corsHeaders,
-    body: JSON.stringify({ users })
+    body: JSON.stringify({ users: mappedUsers })
   }
 }
 
 // POST - Neuen User erstellen
-async function createUser(data, TABLE_URL, airtableHeaders) {
+async function createUser(data) {
   const { vor_nachname, vorname, nachname, email, email_geschaeftlich, telefon, strasse, plz, ort, bundesland, rolle, onboarding } = data
 
-  if (!vor_nachname || !email) {
+  if (!email) {
     return {
       statusCode: 400,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Name und E-Mail sind erforderlich' })
+      body: JSON.stringify({ error: 'E-Mail ist erforderlich' })
     }
   }
 
   // Prüfen ob E-Mail bereits existiert
-  const checkUrl = `${TABLE_URL}?filterByFormula={E-Mail}="${email}"`
-  const checkResponse = await fetch(checkUrl, { headers: airtableHeaders })
-  const checkData = await checkResponse.json()
+  const { data: existing } = await supabase
+    .from('users')
+    .select('id')
+    .ilike('email', email)
+    .limit(1)
 
-  if (checkData.records && checkData.records.length > 0) {
+  if (existing && existing.length > 0) {
     return {
       statusCode: 400,
       headers: corsHeaders,
@@ -123,34 +115,29 @@ async function createUser(data, TABLE_URL, airtableHeaders) {
   }
 
   // User erstellen
-  const response = await fetch(TABLE_URL, {
-    method: 'POST',
-    headers: airtableHeaders,
-    body: JSON.stringify({
-      fields: {
-        'Vor_Nachname': vor_nachname,
-        'Vorname': vorname || null,
-        'Name': nachname || null,
-        'E-Mail': email,
-        'E-Mail_Geschäftlich': email_geschaeftlich || null,
-        'Telefon': telefon || null,
-        'Straße': strasse || null,
-        'PLZ': plz ? parseInt(plz, 10) : null,
-        'Ort': ort || null,
-        'Bundesland': bundesland || null,
-        'Rolle': rolle || [],
-        'Status': true,
-        'Onboarding': onboarding || null
-      }
+  const { data: newUser, error } = await supabase
+    .from('users')
+    .insert({
+      vorname: vorname || null,
+      nachname: nachname || null,
+      email: email,
+      email_geschaeftlich: email_geschaeftlich || null,
+      telefon: telefon || null,
+      strasse: strasse || null,
+      plz: plz || null,
+      ort: ort || null,
+      bundesland: bundesland || null,
+      rollen: rolle || [],
+      status: true,
+      onboarding: onboarding || false
     })
-  })
+    .select()
+    .single()
 
-  if (!response.ok) {
-    const errorData = await response.json()
-    throw new Error(errorData.error?.message || 'User konnte nicht erstellt werden')
+  if (error) {
+    console.error('Create User Error:', error)
+    throw new Error(error.message || 'User konnte nicht erstellt werden')
   }
-
-  const result = await response.json()
 
   return {
     statusCode: 201,
@@ -158,16 +145,16 @@ async function createUser(data, TABLE_URL, airtableHeaders) {
     body: JSON.stringify({
       success: true,
       user: {
-        id: result.id,
-        vor_nachname: result.fields.Vor_Nachname,
-        email: result.fields['E-Mail']
+        id: newUser.id,
+        vor_nachname: newUser.vor_nachname,
+        email: newUser.email
       }
     })
   }
 }
 
 // PATCH - User aktualisieren
-async function updateUser(data, TABLE_URL, airtableHeaders) {
+async function updateUser(data) {
   const { id, ...updateData } = data
 
   if (!id) {
@@ -178,36 +165,34 @@ async function updateUser(data, TABLE_URL, airtableHeaders) {
     }
   }
 
-  // Felder für Airtable mappen
+  // Felder für Supabase mappen
   const fields = {}
-  
-  if (updateData.vor_nachname !== undefined) fields['Vor_Nachname'] = updateData.vor_nachname || null
-  if (updateData.vorname !== undefined) fields['Vorname'] = updateData.vorname || null
-  if (updateData.nachname !== undefined) fields['Name'] = updateData.nachname || null
-  if (updateData.email !== undefined) fields['E-Mail'] = updateData.email
-  if (updateData.email_geschaeftlich !== undefined) fields['E-Mail_Geschäftlich'] = updateData.email_geschaeftlich || null
-  if (updateData.telefon !== undefined) fields['Telefon'] = updateData.telefon || null
-  if (updateData.strasse !== undefined) fields['Straße'] = updateData.strasse || null
-  if (updateData.plz !== undefined) fields['PLZ'] = updateData.plz ? parseInt(updateData.plz, 10) : null
-  if (updateData.ort !== undefined) fields['Ort'] = updateData.ort || null
-  if (updateData.bundesland !== undefined) fields['Bundesland'] = updateData.bundesland || null
-  if (updateData.rolle !== undefined) fields['Rolle'] = updateData.rolle
-  if (updateData.status !== undefined) fields['Status'] = updateData.status
-  if (updateData.onboarding !== undefined) fields['Onboarding'] = updateData.onboarding || null
-  if (updateData.google_calendar_id !== undefined) fields['Google_Calendar_ID'] = updateData.google_calendar_id || null
 
-  const response = await fetch(`${TABLE_URL}/${id}`, {
-    method: 'PATCH',
-    headers: airtableHeaders,
-    body: JSON.stringify({ fields })
-  })
+  if (updateData.vorname !== undefined) fields.vorname = updateData.vorname || null
+  if (updateData.nachname !== undefined) fields.nachname = updateData.nachname || null
+  if (updateData.email !== undefined) fields.email = updateData.email
+  if (updateData.email_geschaeftlich !== undefined) fields.email_geschaeftlich = updateData.email_geschaeftlich || null
+  if (updateData.telefon !== undefined) fields.telefon = updateData.telefon || null
+  if (updateData.strasse !== undefined) fields.strasse = updateData.strasse || null
+  if (updateData.plz !== undefined) fields.plz = updateData.plz || null
+  if (updateData.ort !== undefined) fields.ort = updateData.ort || null
+  if (updateData.bundesland !== undefined) fields.bundesland = updateData.bundesland || null
+  if (updateData.rolle !== undefined) fields.rollen = updateData.rolle
+  if (updateData.status !== undefined) fields.status = updateData.status
+  if (updateData.onboarding !== undefined) fields.onboarding = updateData.onboarding || false
+  if (updateData.google_calendar_id !== undefined) fields.google_calendar_id = updateData.google_calendar_id || null
 
-  if (!response.ok) {
-    const errorData = await response.json()
-    throw new Error(errorData.error?.message || 'User konnte nicht aktualisiert werden')
+  const { data: updatedUser, error } = await supabase
+    .from('users')
+    .update(fields)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Update User Error:', error)
+    throw new Error(error.message || 'User konnte nicht aktualisiert werden')
   }
-
-  const result = await response.json()
 
   return {
     statusCode: 200,
@@ -215,15 +200,15 @@ async function updateUser(data, TABLE_URL, airtableHeaders) {
     body: JSON.stringify({
       success: true,
       user: {
-        id: result.id,
-        vor_nachname: result.fields.Vor_Nachname
+        id: updatedUser.id,
+        vor_nachname: updatedUser.vor_nachname
       }
     })
   }
 }
 
 // DELETE - User deaktivieren (nicht löschen, nur Status auf false)
-async function deleteUser(data, TABLE_URL, airtableHeaders) {
+async function deleteUser(data) {
   const { id } = data
 
   if (!id) {
@@ -235,19 +220,14 @@ async function deleteUser(data, TABLE_URL, airtableHeaders) {
   }
 
   // User deaktivieren statt löschen
-  const response = await fetch(`${TABLE_URL}/${id}`, {
-    method: 'PATCH',
-    headers: airtableHeaders,
-    body: JSON.stringify({
-      fields: {
-        'Status': false
-      }
-    })
-  })
+  const { error } = await supabase
+    .from('users')
+    .update({ status: false })
+    .eq('id', id)
 
-  if (!response.ok) {
-    const errorData = await response.json()
-    throw new Error(errorData.error?.message || 'User konnte nicht deaktiviert werden')
+  if (error) {
+    console.error('Delete User Error:', error)
+    throw new Error(error.message || 'User konnte nicht deaktiviert werden')
   }
 
   return {

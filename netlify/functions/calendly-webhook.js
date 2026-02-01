@@ -1,47 +1,12 @@
-// Calendly Webhook Handler
+// Calendly Webhook Handler - Supabase Version
 // Verarbeitet Events: invitee.canceled, invitee.created (bei Reschedule)
 
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
-const CALENDLY_WEBHOOK_SECRET = process.env.CALENDLY_WEBHOOK_SECRET
+import { createClient } from '@supabase/supabase-js'
 
-// Helper: Email aus Airtable-Feld extrahieren (kann String oder Array sein)
-function getEmailFromField(field) {
-  if (!field) return ''
-  if (typeof field === 'string') return field.toLowerCase()
-  if (Array.isArray(field) && field.length > 0) return String(field[0]).toLowerCase()
-  return ''
-}
-
-// Helper: Unternehmen aus Airtable-Feld extrahieren (kann String oder Array sein)
-function getUnternehmenFromField(field) {
-  if (!field) return ''
-  if (typeof field === 'string') return field
-  if (Array.isArray(field) && field.length > 0) return String(field[0])
-  return ''
-}
-
-// Helper: Linked Record ID extrahieren
-function getLinkedRecordId(field) {
-  if (!field) return null
-  if (typeof field === 'string') return field
-  if (Array.isArray(field) && field.length > 0) return field[0]
-  return null
-}
-
-// Helper: Datum formatieren für Anzeige
-function formatDate(isoString) {
-  if (!isoString) return 'Unbekannt'
-  const date = new Date(isoString)
-  return date.toLocaleDateString('de-DE', { 
-    weekday: 'long',
-    day: '2-digit', 
-    month: '2-digit', 
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -49,724 +14,345 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 }
 
-exports.handler = async (event) => {
-  // CORS Preflight
+// Datum formatieren
+function formatDate(isoString) {
+  if (!isoString) return 'Unbekannt'
+  const date = new Date(isoString)
+  return date.toLocaleDateString('de-DE', {
+    weekday: 'long',
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' }
   }
 
-  // Nur POST erlauben
   if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      headers: corsHeaders,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    }
+    return { statusCode: 405, headers: corsHeaders, body: JSON.stringify({ error: 'Method not allowed' }) }
+  }
+
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'Server nicht konfiguriert' }) }
   }
 
   try {
     const payload = JSON.parse(event.body)
-    
+
     console.log('=== Calendly Webhook received ===')
     console.log('Event:', payload.event)
-    console.log('Payload:', JSON.stringify(payload.payload, null, 2))
 
     const eventType = payload.event
     const data = payload.payload
 
-    // ==========================================
-    // Event: invitee.canceled (Termin abgesagt ODER verschoben)
-    // ==========================================
+    // invitee.canceled (Termin abgesagt ODER verschoben)
     if (eventType === 'invitee.canceled') {
       const inviteeEmail = data.email
-      const inviteeName = data.name
       const scheduledTime = data.scheduled_event?.start_time
       const cancellation = data.cancellation || {}
       const canceledBy = cancellation.canceled_by || 'Unbekannt'
       const cancellationReason = cancellation.reason || ''
-      
-      // Unternehmensname aus questions_and_answers extrahieren
+
       const questionsAndAnswers = data.questions_and_answers || []
-      const unternehmensAnswer = questionsAndAnswers.find(q => 
-        q.question?.toLowerCase().includes('unternehmen') || 
+      const unternehmensAnswer = questionsAndAnswers.find(q =>
+        q.question?.toLowerCase().includes('unternehmen') ||
         q.question?.toLowerCase().includes('company')
       )
       const unternehmen = unternehmensAnswer?.answer || ''
-      
-      // WICHTIG: Bei Reschedule wird rescheduled=true gesetzt
-      // In dem Fall NICHT als "Abgesagt" markieren!
+
       const isReschedule = data.rescheduled === true
-      
-      console.log('Cancel Event Details:', {
-        email: inviteeEmail,
-        name: inviteeName,
-        unternehmen,
-        time: scheduledTime,
-        isReschedule,
-        canceledBy,
-        reason: cancellationReason
-      })
+
+      console.log('Cancel Event:', { email: inviteeEmail, unternehmen, isReschedule })
 
       if (isReschedule) {
-        // Bei Verschiebung: Nur loggen, das Update kommt mit invitee.created
-        console.log('→ Ist Reschedule, warte auf invitee.created Event')
+        console.log('Ist Reschedule, warte auf invitee.created Event')
         return {
           statusCode: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ 
-            success: true, 
-            message: 'Reschedule erkannt - warte auf neuen Termin'
-          })
+          body: JSON.stringify({ success: true, message: 'Reschedule erkannt' })
         }
       }
 
-      // Echte Absage - Hot Lead finden und Status setzen
-      console.log('→ Echte Absage, suche Hot Lead...')
-      
-      // Erst über Unternehmen suchen, dann Fallback über Zeit
+      // Echte Absage - Hot Lead finden
       let hotLead = null
       if (unternehmen) {
         hotLead = await findHotLeadByUnternehmen(unternehmen)
       }
       if (!hotLead && scheduledTime) {
-        console.log('→ Fallback: Suche über Termin-Zeit...')
         hotLead = await findHotLeadByTermin(scheduledTime, inviteeEmail)
       }
-      
+
       if (hotLead) {
-        // Datum löschen + Kommentar setzen
-        const grund = cancellationReason 
+        const grund = cancellationReason
           ? `Abgesagt von ${canceledBy}: ${cancellationReason}`
           : `Abgesagt von ${canceledBy}`
-        
+
         await updateHotLeadAbsage(hotLead.id, hotLead.originalLeadId, grund)
-        console.log('✓ Hot Lead Termin gelöscht:', hotLead.id, hotLead.unternehmen)
-        
-        // Benachrichtigungen an Setter & Closer senden
-        await sendNotifications(hotLead, 'absage', { 
-          grund,
-          alterTermin: scheduledTime
-        })
-      } else {
-        console.log('✗ Kein passender Hot Lead gefunden')
+        await sendNotifications(hotLead, 'absage', { grund })
+        console.log('Hot Lead Termin geloescht:', hotLead.id)
       }
 
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ 
-          success: true, 
-          message: 'Absage verarbeitet',
-          hotLeadId: hotLead?.id || null
-        })
+        body: JSON.stringify({ success: true, message: 'Absage verarbeitet', hotLeadId: hotLead?.id || null })
       }
     }
 
-    // ==========================================
-    // Event: invitee.created (Neuer Termin / Reschedule)
-    // ==========================================
+    // invitee.created (Neuer Termin / Reschedule)
     if (eventType === 'invitee.created') {
       const inviteeEmail = data.email
-      const inviteeName = data.name
       const newScheduledTime = data.scheduled_event?.start_time
-      const eventUri = data.scheduled_event?.uri
-      
-      // Unternehmensname aus questions_and_answers extrahieren
+
       const questionsAndAnswers = data.questions_and_answers || []
-      const unternehmensAnswer = questionsAndAnswers.find(q => 
-        q.question?.toLowerCase().includes('unternehmen') || 
+      const unternehmensAnswer = questionsAndAnswers.find(q =>
+        q.question?.toLowerCase().includes('unternehmen') ||
         q.question?.toLowerCase().includes('company')
       )
       const unternehmen = unternehmensAnswer?.answer || ''
-      
-      // old_invitee enthält die Daten des alten Termins bei Reschedule
+
       const oldInvitee = data.old_invitee
       const isReschedule = !!oldInvitee
-      
-      // Vollständiges old_invitee loggen um Struktur zu sehen
-      console.log('Created Event Details:', {
-        email: inviteeEmail,
-        name: inviteeName,
-        unternehmen,
-        newTime: newScheduledTime,
-        isReschedule,
-        oldInvitee_full: oldInvitee
-      })
+
+      console.log('Created Event:', { email: inviteeEmail, unternehmen, isReschedule, newTime: newScheduledTime })
 
       if (isReschedule) {
-        // Verschiedene mögliche Pfade für die alte Zeit
-        const oldScheduledTime = oldInvitee.scheduled_event?.start_time 
-          || oldInvitee.start_time 
-          || oldInvitee.event?.start_time
-        
-        console.log('→ Verschiebung erkannt:', oldScheduledTime, '→', newScheduledTime)
-        console.log('→ Suche mit Unternehmen:', unternehmen)
-        
-        // Hot Lead finden - über Unternehmen (zuverlässigster Weg)
+        const oldScheduledTime = oldInvitee.scheduled_event?.start_time || oldInvitee.start_time
+
         let hotLead = null
-        
         if (unternehmen) {
           hotLead = await findHotLeadByUnternehmen(unternehmen)
         }
-        
-        // Fallback: Über alte Zeit suchen
         if (!hotLead && oldScheduledTime) {
-          console.log('→ Fallback: Suche über Termin-Zeit...')
           hotLead = await findHotLeadByTermin(oldScheduledTime, inviteeEmail)
         }
-        
+
         if (hotLead) {
-          // Termin aktualisieren + Kommentar setzen
           await updateHotLeadTermin(hotLead.id, newScheduledTime, hotLead.originalLeadId, hotLead.termin)
-          console.log('✓ Hot Lead Termin aktualisiert:', hotLead.id, hotLead.unternehmen)
-          
-          // Benachrichtigungen an Setter & Closer senden
-          await sendNotifications(hotLead, 'verschiebung', { 
-            neuerTermin: newScheduledTime,
-            alterTermin: hotLead.termin
-          })
-        } else {
-          console.log('✗ Kein passender Hot Lead für Verschiebung gefunden')
+          await sendNotifications(hotLead, 'verschiebung', { neuerTermin: newScheduledTime, alterTermin: hotLead.termin })
+          console.log('Hot Lead Termin aktualisiert:', hotLead.id)
         }
 
         return {
           statusCode: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ 
-            success: true, 
-            message: 'Verschiebung verarbeitet',
-            hotLeadId: hotLead?.id || null,
-            newTime: newScheduledTime
-          })
+          body: JSON.stringify({ success: true, message: 'Verschiebung verarbeitet', hotLeadId: hotLead?.id || null })
         }
       }
 
-      // Normale neue Buchung (wird schon vom TerminPicker behandelt)
-      console.log('→ Neue Buchung (wird von CRM/TerminPicker behandelt)')
-      
+      console.log('Neue Buchung (wird von CRM/TerminPicker behandelt)')
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ 
-          success: true, 
-          message: 'Neue Buchung - wird vom CRM behandelt'
-        })
+        body: JSON.stringify({ success: true, message: 'Neue Buchung - wird vom CRM behandelt' })
       }
     }
 
-    // Unbekanntes Event
-    console.log('→ Unbekanntes Event ignoriert:', eventType)
+    console.log('Unbekanntes Event ignoriert:', eventType)
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: JSON.stringify({ success: true, message: 'Event ignoriert', event: eventType })
+      body: JSON.stringify({ success: true, message: 'Event ignoriert' })
     }
 
   } catch (err) {
     console.error('Calendly Webhook Error:', err)
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ error: err.message })
-    }
+    return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: err.message }) }
   }
 }
 
-// ==========================================
-// Helper: Hot Lead anhand Termin-Zeit und Email finden
-// ==========================================
-async function findHotLeadByTermin(terminDatum, email) {
-  if (!terminDatum) {
-    console.log('findHotLeadByTermin: Kein terminDatum übergeben')
-    return null
-  }
-
-  console.log('findHotLeadByTermin: Suche nach', { terminDatum, email })
-
-  const airtableHeaders = {
-    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
-
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}`
-
-  try {
-    // Alle Hot Leads laden (nicht abgesagte)
-    const filterFormula = `{Status} != "Abgesagt"`
-    
-    const response = await fetch(
-      `${TABLE_URL}?filterByFormula=${encodeURIComponent(filterFormula)}`,
-      { headers: airtableHeaders }
-    )
-
-    const data = await response.json()
-
-    if (!response.ok) {
-      console.log('Airtable Error:', data)
-      return null
-    }
-
-    if (!data.records || data.records.length === 0) {
-      console.log('Keine Hot Leads gefunden')
-      return null
-    }
-
-    console.log(`${data.records.length} Hot Leads geladen, suche Match...`)
-
-    // Suche nach bestem Match
-    const searchDate = new Date(terminDatum)
-    const targetTime = searchDate.getTime()
-    
-    // 1. Erst nach exakter Zeit suchen (±10 Minuten Toleranz)
-    for (const record of data.records) {
-      const recordTermin = record.fields.Termin_Beratungsgespräch || record.fields['Termin_Beratungsgespräch']
-      if (!recordTermin) continue
-      
-      const recordTime = new Date(recordTermin).getTime()
-      const timeDiff = Math.abs(recordTime - targetTime)
-      
-      if (timeDiff < 10 * 60 * 1000) { // 10 Minuten Toleranz
-        console.log(`✓ Zeit-Match gefunden: ${record.fields.Unternehmen} (Diff: ${Math.round(timeDiff/1000)}s)`)
-        return {
-          id: record.id,
-          unternehmen: record.fields.Unternehmen,
-          email: getEmailFromField(record.fields.Mail || record.fields['E-Mail'])
-        }
-      }
-    }
-
-    // 2. Falls keine Zeit-Match, nach Email suchen (am gleichen Tag)
-    if (email) {
-      const searchDateStr = searchDate.toISOString().split('T')[0]
-      
-      for (const record of data.records) {
-        const recordEmail = getEmailFromField(record.fields.Mail || record.fields['E-Mail'])
-        const recordTermin = record.fields.Termin_Beratungsgespräch || record.fields['Termin_Beratungsgespräch']
-        
-        if (recordEmail === email.toLowerCase() && recordTermin) {
-          const recordDateStr = new Date(recordTermin).toISOString().split('T')[0]
-          
-          if (recordDateStr === searchDateStr) {
-            console.log(`✓ Email+Tag-Match gefunden: ${record.fields.Unternehmen}`)
-            return {
-              id: record.id,
-              unternehmen: record.fields.Unternehmen,
-              email: recordEmail
-            }
-          }
-        }
-      }
-    }
-
-    console.log('✗ Kein Match gefunden')
-    return null
-    
-  } catch (err) {
-    console.error('Fehler beim Suchen des Hot Leads:', err)
-    return null
-  }
-}
-
-// ==========================================
-// Helper: Hot Lead anhand Email finden (Fallback)
-// ==========================================
-async function findHotLeadByEmail(email) {
-  if (!email) {
-    console.log('findHotLeadByEmail: Keine Email übergeben')
-    return null
-  }
-
-  console.log('findHotLeadByEmail: Suche nach', email)
-
-  const airtableHeaders = {
-    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
-
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}`
-
-  try {
-    // Hot Leads laden die nicht abgesagt sind und einen Termin haben
-    const filterFormula = `AND({Status} != "Abgesagt", {Termin_Beratungsgespräch} != "")`
-    
-    const response = await fetch(
-      `${TABLE_URL}?filterByFormula=${encodeURIComponent(filterFormula)}`,
-      { headers: airtableHeaders }
-    )
-
-    const data = await response.json()
-
-    if (!response.ok || !data.records || data.records.length === 0) {
-      console.log('Keine Hot Leads gefunden')
-      return null
-    }
-
-    console.log(`${data.records.length} Hot Leads geladen, suche Email-Match...`)
-
-    // Nach Email suchen
-    for (const record of data.records) {
-      const recordEmail = getEmailFromField(record.fields.Mail || record.fields['E-Mail'])
-      
-      if (recordEmail === email.toLowerCase()) {
-        console.log(`✓ Email-Match gefunden: ${record.fields.Unternehmen}`)
-        return {
-          id: record.id,
-          unternehmen: record.fields.Unternehmen,
-          email: recordEmail
-        }
-      }
-    }
-
-    console.log('✗ Kein Email-Match gefunden')
-    return null
-    
-  } catch (err) {
-    console.error('Fehler beim Suchen des Hot Leads via Email:', err)
-    return null
-  }
-}
-
-// ==========================================
-// Helper: Hot Lead anhand Unternehmen finden
-// ==========================================
+// Hot Lead anhand Unternehmen finden
 async function findHotLeadByUnternehmen(unternehmen) {
-  if (!unternehmen) {
-    console.log('findHotLeadByUnternehmen: Kein Unternehmen übergeben')
-    return null
-  }
+  if (!unternehmen) return null
 
-  console.log('findHotLeadByUnternehmen: Suche nach', unternehmen)
+  console.log('Suche Hot Lead nach Unternehmen:', unternehmen)
 
-  const airtableHeaders = {
-    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
+  const { data: hotLeads, error } = await supabase
+    .from('hot_leads')
+    .select('id, unternehmen, termin_datum, setter_id, closer_id, original_lead_id')
+    .neq('status', 'Abgesagt')
+    .not('termin_datum', 'is', null)
 
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}`
+  if (error || !hotLeads) return null
 
-  try {
-    // Alle Hot Leads mit Termin laden (nicht abgesagt)
-    const filterFormula = `AND({Status} != "Abgesagt", {Termin_Beratungsgespräch} != "")`
-    
-    let allRecords = []
-    let offset = null
-    
-    // Pagination: Alle Records laden
-    do {
-      const url = offset 
-        ? `${TABLE_URL}?filterByFormula=${encodeURIComponent(filterFormula)}&offset=${offset}`
-        : `${TABLE_URL}?filterByFormula=${encodeURIComponent(filterFormula)}`
-      
-      const response = await fetch(url, { headers: airtableHeaders })
-      const data = await response.json()
-      
-      if (!response.ok) {
-        console.log('Airtable Error:', data)
-        return null
-      }
-      
-      if (data.records) {
-        allRecords = allRecords.concat(data.records)
-      }
-      offset = data.offset
-    } while (offset)
+  const searchTerm = unternehmen.toLowerCase().trim()
 
-    console.log(`${allRecords.length} Hot Leads geladen, suche Unternehmens-Match...`)
-
-    // Nach Unternehmen suchen
-    const searchTerm = unternehmen.toLowerCase().trim()
-    
-    for (const record of allRecords) {
-      // Unternehmen kann String oder Array sein
-      const recordUnternehmen = getUnternehmenFromField(record.fields.Unternehmen)
-      const recordUnternehmenLower = recordUnternehmen.toLowerCase().trim()
-      
-      // Debug: Erste paar loggen
-      if (allRecords.indexOf(record) < 3) {
-        console.log(`  Record ${record.id}: "${recordUnternehmen}"`)
-      }
-      
-      // Match prüfen
-      if (recordUnternehmenLower === searchTerm || 
-          recordUnternehmenLower.includes(searchTerm) || 
-          searchTerm.includes(recordUnternehmenLower)) {
-        console.log(`✓ Unternehmens-Match gefunden: ${recordUnternehmen}`)
-        
-        // Mehr Daten zurückgeben für Email-Benachrichtigungen
-        const originalLeadId = getLinkedRecordId(record.fields.Immobilienmakler_Leads)
-        console.log('  → originalLeadId:', originalLeadId, '(Feld:', record.fields.Immobilienmakler_Leads, ')')
-        
-        return {
-          id: record.id,
-          unternehmen: recordUnternehmen,
-          email: getEmailFromField(record.fields.Mail || record.fields['E-Mail']),
-          termin: record.fields.Termin_Beratungsgespräch || '',
-          setterId: getLinkedRecordId(record.fields.Setter),
-          closerId: getLinkedRecordId(record.fields.Closer),
-          originalLeadId: originalLeadId,
-          ansprechpartner: record.fields.Ansprechpartner || ''
-        }
-      }
-    }
-
-    console.log('✗ Kein Unternehmens-Match gefunden für:', searchTerm)
-    return null
-    
-  } catch (err) {
-    console.error('Fehler beim Suchen des Hot Leads via Unternehmen:', err)
-    return null
-  }
-}
-
-// ==========================================
-// Helper: Hot Lead bei Absage aktualisieren (Datum löschen)
-// ==========================================
-async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
-  console.log('updateHotLeadAbsage aufgerufen:', { hotLeadId, originalLeadId, grund })
-  
-  const airtableHeaders = {
-    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
-
-  // 1. Datum löschen + Status setzen (Closer bleibt erhalten für Nachverfolgung)
-  const hotLeadUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}/${hotLeadId}`
-  
-  try {
-    const response = await fetch(hotLeadUrl, {
-      method: 'PATCH',
-      headers: airtableHeaders,
-      body: JSON.stringify({ 
-        fields: {
-          'Termin_Beratungsgespräch': null,
-          'Status': 'Termin abgesagt'
-          // Closer bleibt erhalten damit er ggf. neuen Termin machen kann
-        }
-      })
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      console.error('Airtable Hot Lead Update Error:', error)
-      return false
-    }
-    
-    console.log('✓ Hot Lead Termin gelöscht und Status gesetzt')
-
-    // 2. Kommentar im Original-Lead setzen (falls ID vorhanden)
-    if (originalLeadId) {
-      console.log('→ Aktualisiere Kommentar in Original-Lead:', originalLeadId)
-      await updateOriginalLeadKommentar(originalLeadId, `TERMIN ABGESAGT: ${grund}`)
-    } else {
-      console.log('⚠ Kein originalLeadId vorhanden - Kommentar wird nicht aktualisiert')
-    }
-
-    return true
-  } catch (err) {
-    console.error('Fehler beim Aktualisieren des Hot Leads:', err)
-    return false
-  }
-}
-
-// ==========================================
-// Helper: Hot Lead Termin aktualisieren (bei Verschiebung)
-// ==========================================
-async function updateHotLeadTermin(hotLeadId, neuerTermin, originalLeadId, alterTermin) {
-  console.log('updateHotLeadTermin aufgerufen:', { hotLeadId, neuerTermin, originalLeadId, alterTermin })
-  
-  const airtableHeaders = {
-    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
-
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Hot_Leads')}/${hotLeadId}`
-
-  try {
-    const response = await fetch(TABLE_URL, {
-      method: 'PATCH',
-      headers: airtableHeaders,
-      body: JSON.stringify({ 
-        fields: {
-          'Termin_Beratungsgespräch': neuerTermin,
-          'Status': 'Termin verschoben'
-        }
-      })
-    })
-
-    if (!response.ok) {
-      const error = await response.json()
-      console.error('Airtable Update Error:', error)
-      return false
-    }
-
-    console.log('✓ Hot Lead Termin und Status aktualisiert')
-
-    // Kommentar im Original-Lead setzen (falls ID vorhanden)
-    if (originalLeadId) {
-      console.log('→ Aktualisiere Kommentar in Original-Lead:', originalLeadId)
-      const kommentar = `TERMIN VERSCHOBEN: ${formatDate(alterTermin)} → ${formatDate(neuerTermin)}`
-      await updateOriginalLeadKommentar(originalLeadId, kommentar)
-    } else {
-      console.log('⚠ Kein originalLeadId vorhanden - Kommentar wird nicht aktualisiert')
-    }
-
-    return true
-  } catch (err) {
-    console.error('Fehler beim Aktualisieren des Termins:', err)
-    return false
-  }
-}
-
-// ==========================================
-// Helper: Kommentar im Original-Lead (Immobilienmakler_Leads) updaten
-// ==========================================
-async function updateOriginalLeadKommentar(leadId, neuerKommentar) {
-  console.log('updateOriginalLeadKommentar aufgerufen:', { leadId, neuerKommentar })
-  
-  const airtableHeaders = {
-    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
-
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Immobilienmakler_Leads')}/${leadId}`
-
-  try {
-    // Erst bestehenden Kommentar laden
-    const getResponse = await fetch(TABLE_URL, { headers: airtableHeaders })
-    const existingData = await getResponse.json()
-    
-    if (!getResponse.ok) {
-      console.error('Fehler beim Laden des Original-Leads:', existingData)
-      return
-    }
-    
-    const existingComment = existingData.fields?.Kommentar || ''
-    console.log('  Bestehender Kommentar:', existingComment ? existingComment.substring(0, 50) + '...' : '(leer)')
-    
-    // Timestamp hinzufügen
-    const timestamp = new Date().toLocaleDateString('de-DE', { 
-      day: '2-digit', month: '2-digit', year: 'numeric', 
-      hour: '2-digit', minute: '2-digit' 
-    })
-    
-    // Neuen Kommentar OBEN anhängen (neueste zuerst)
-    const newEntry = `[${timestamp}] 📅 ${neuerKommentar}`
-    const newComment = existingComment 
-      ? `${newEntry}\n${existingComment}`
-      : newEntry
-
-    const response = await fetch(TABLE_URL, {
-      method: 'PATCH',
-      headers: airtableHeaders,
-      body: JSON.stringify({ 
-        fields: { 'Kommentar': newComment }
-      })
-    })
-
-    if (response.ok) {
-      console.log('✓ Kommentar in Original-Lead aktualisiert')
-    } else {
-      const error = await response.json()
-      console.error('Fehler beim Speichern des Kommentars:', error)
-    }
-  } catch (err) {
-    console.error('Fehler beim Aktualisieren des Kommentars:', err)
-  }
-}
-
-// ==========================================
-// Helper: User-Daten laden (Name + Email)
-// ==========================================
-async function loadUserData(userId) {
-  if (!userId) return null
-  
-  const airtableHeaders = {
-    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
-
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('Users')}/${userId}`
-
-  try {
-    const response = await fetch(TABLE_URL, { headers: airtableHeaders })
-    const data = await response.json()
-    
-    if (response.ok && data.fields) {
+  for (const record of hotLeads) {
+    const recordUnternehmen = (record.unternehmen || '').toLowerCase().trim()
+    if (recordUnternehmen === searchTerm ||
+      recordUnternehmen.includes(searchTerm) ||
+      searchTerm.includes(recordUnternehmen)) {
+      console.log('Match gefunden:', record.unternehmen)
       return {
-        id: userId,
-        name: data.fields.Name || data.fields.Vorname || 'Unbekannt',
-        email: data.fields.Email || data.fields['E-Mail'] || ''
+        id: record.id,
+        unternehmen: record.unternehmen,
+        termin: record.termin_datum,
+        setterId: record.setter_id,
+        closerId: record.closer_id,
+        originalLeadId: record.original_lead_id
       }
     }
-  } catch (err) {
-    console.error('Fehler beim Laden der User-Daten:', err)
   }
+
   return null
 }
 
-// ==========================================
-// Helper: System-Message erstellen
-// ==========================================
-async function createSystemMessage(empfaengerId, nachricht, typ) {
-  const airtableHeaders = {
-    'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-    'Content-Type': 'application/json'
-  }
+// Hot Lead anhand Termin-Zeit finden
+async function findHotLeadByTermin(terminDatum, email) {
+  if (!terminDatum) return null
 
-  const TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent('System_Messages')}`
+  console.log('Suche Hot Lead nach Termin:', terminDatum)
 
-  try {
-    const response = await fetch(TABLE_URL, {
-      method: 'POST',
-      headers: airtableHeaders,
-      body: JSON.stringify({
-        fields: {
-          'Empfänger': empfaengerId ? [empfaengerId] : [],
-          'Nachricht': nachricht,
-          'Typ': typ || 'Info',
-          'Gelesen': false,
-          'Erstellt': new Date().toISOString()
-        }
-      })
-    })
+  const { data: hotLeads, error } = await supabase
+    .from('hot_leads')
+    .select('id, unternehmen, termin_datum, setter_id, closer_id, original_lead_id')
+    .neq('status', 'Abgesagt')
 
-    if (response.ok) {
-      console.log('✓ System-Message erstellt für:', empfaengerId)
-    } else {
-      const error = await response.json()
-      console.log('System-Message Fehler (evtl. Tabelle existiert nicht):', error.error?.message)
+  if (error || !hotLeads) return null
+
+  const searchDate = new Date(terminDatum)
+  const targetTime = searchDate.getTime()
+
+  for (const record of hotLeads) {
+    if (!record.termin_datum) continue
+
+    const recordTime = new Date(record.termin_datum).getTime()
+    const timeDiff = Math.abs(recordTime - targetTime)
+
+    if (timeDiff < 10 * 60 * 1000) {
+      console.log('Zeit-Match gefunden:', record.unternehmen)
+      return {
+        id: record.id,
+        unternehmen: record.unternehmen,
+        termin: record.termin_datum,
+        setterId: record.setter_id,
+        closerId: record.closer_id,
+        originalLeadId: record.original_lead_id
+      }
     }
-  } catch (err) {
-    console.error('Fehler beim Erstellen der System-Message:', err)
   }
+
+  return null
 }
 
-// ==========================================
-// Helper: Benachrichtigungen senden (System-Messages an Setter & Closer)
-// ==========================================
+// Hot Lead bei Absage aktualisieren
+async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
+  console.log('Aktualisiere Hot Lead Absage:', { hotLeadId, originalLeadId })
+
+  const { error } = await supabase
+    .from('hot_leads')
+    .update({ termin_datum: null, status: 'Termin abgesagt' })
+    .eq('id', hotLeadId)
+
+  if (error) {
+    console.error('Update Fehler:', error)
+    return false
+  }
+
+  if (originalLeadId) {
+    await updateOriginalLeadKommentar(originalLeadId, `TERMIN ABGESAGT: ${grund}`)
+  }
+
+  return true
+}
+
+// Hot Lead Termin aktualisieren
+async function updateHotLeadTermin(hotLeadId, neuerTermin, originalLeadId, alterTermin) {
+  console.log('Aktualisiere Hot Lead Termin:', { hotLeadId, neuerTermin })
+
+  const { error } = await supabase
+    .from('hot_leads')
+    .update({ termin_datum: neuerTermin, status: 'Termin verschoben' })
+    .eq('id', hotLeadId)
+
+  if (error) {
+    console.error('Update Fehler:', error)
+    return false
+  }
+
+  if (originalLeadId) {
+    const kommentar = `TERMIN VERSCHOBEN: ${formatDate(alterTermin)} → ${formatDate(neuerTermin)}`
+    await updateOriginalLeadKommentar(originalLeadId, kommentar)
+  }
+
+  return true
+}
+
+// Kommentar im Original-Lead aktualisieren
+async function updateOriginalLeadKommentar(leadId, neuerKommentar) {
+  console.log('Aktualisiere Lead Kommentar:', leadId)
+
+  const { data: lead } = await supabase
+    .from('leads')
+    .select('kommentar')
+    .eq('id', leadId)
+    .single()
+
+  const existingComment = lead?.kommentar || ''
+  const now = new Date()
+  const timestamp = now.toLocaleDateString('de-DE', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  })
+
+  const newEntry = `[${timestamp}] ${neuerKommentar}`
+  const newComment = existingComment ? `${newEntry}\n${existingComment}` : newEntry
+
+  await supabase
+    .from('leads')
+    .update({ kommentar: newComment })
+    .eq('id', leadId)
+}
+
+// System-Messages an Setter & Closer senden
 async function sendNotifications(hotLead, eventType, details) {
   const { setterId, closerId, unternehmen } = hotLead
-  
+
   let nachricht = ''
   let typ = 'Info'
-  
+  let titel = ''
+
   if (eventType === 'absage') {
-    nachricht = `❌ Termin abgesagt: ${unternehmen}\n${details.grund || 'Kein Grund angegeben'}`
-    typ = 'Warnung'
+    titel = 'Termin abgesagt'
+    nachricht = `Termin abgesagt: ${unternehmen}\n${details.grund || 'Kein Grund angegeben'}`
+    typ = 'Termin abgesagt'
   } else if (eventType === 'verschiebung') {
-    nachricht = `📅 Termin verschoben: ${unternehmen}\nNeuer Termin: ${formatDate(details.neuerTermin)}`
-    typ = 'Info'
+    titel = 'Termin verschoben'
+    nachricht = `Termin verschoben: ${unternehmen}\nNeuer Termin: ${formatDate(details.neuerTermin)}`
+    typ = 'Termin verschoben'
   }
-  
+
   // System-Message an Setter
   if (setterId) {
-    await createSystemMessage(setterId, nachricht, typ)
+    await createSystemMessage(setterId, titel, nachricht, typ, hotLead.id)
   }
-  
-  // System-Message an Closer (falls vorhanden)
+
+  // System-Message an Closer
   if (closerId) {
-    await createSystemMessage(closerId, nachricht, typ)
+    await createSystemMessage(closerId, titel, nachricht, typ, hotLead.id)
   }
-  
-  console.log('✓ Benachrichtigungen gesendet')
+
+  console.log('Benachrichtigungen gesendet')
+}
+
+// System-Message erstellen
+async function createSystemMessage(empfaengerId, titel, nachricht, typ, hotLeadId) {
+  const messageId = `MSG-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+
+  await supabase
+    .from('system_messages')
+    .insert({
+      message_id: messageId,
+      empfaenger_id: empfaengerId,
+      titel,
+      nachricht,
+      typ,
+      hot_lead_id: hotLeadId || null,
+      gelesen: false
+    })
 }

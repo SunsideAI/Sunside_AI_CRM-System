@@ -1,5 +1,11 @@
-// Forgot Password Function - Generiert temporäres Passwort und sendet E-Mail
+// Forgot Password Function - Generiert temporäres Passwort und sendet E-Mail - Supabase Version
 import bcrypt from 'bcryptjs'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+)
 
 // Zufälliges Passwort generieren
 function generateTempPassword() {
@@ -42,12 +48,9 @@ export async function handler(event) {
       }
     }
 
-    const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-    const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
     const RESEND_API_KEY = process.env.RESEND_API_KEY
-    const AIRTABLE_TABLE_NAME = 'User_Datenbank'
 
-    if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
       return {
         statusCode: 500,
         headers,
@@ -55,24 +58,22 @@ export async function handler(event) {
       }
     }
 
-    // User in Airtable suchen
-    const formula = `OR({E-Mail}='${email}',{E-Mail_Geschäftlich}='${email}')`
-    const searchUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}?filterByFormula=${encodeURIComponent(formula)}&maxRecords=1`
-
-    const searchResponse = await fetch(searchUrl, {
-      headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
-    })
-
-    if (!searchResponse.ok) {
-      throw new Error('Airtable API Fehler')
-    }
-
-    const searchData = await searchResponse.json()
-
     // Immer gleiche Antwort (Sicherheit - verrät nicht ob User existiert)
     const successMessage = 'Falls ein Konto mit dieser E-Mail existiert, wurde ein neues Passwort gesendet.'
 
-    if (!searchData.records || searchData.records.length === 0) {
+    // User in Supabase suchen
+    const { data: users, error: searchError } = await supabase
+      .from('users')
+      .select('id, vorname, email, email_geschaeftlich')
+      .or(`email.ilike.${email},email_geschaeftlich.ilike.${email}`)
+      .limit(1)
+
+    if (searchError) {
+      console.error('Supabase Error:', searchError)
+      throw new Error('Datenbank-Fehler')
+    }
+
+    if (!users || users.length === 0) {
       // User existiert nicht - aber gleiche Antwort zurückgeben
       return {
         statusCode: 200,
@@ -81,29 +82,27 @@ export async function handler(event) {
       }
     }
 
-    const record = searchData.records[0]
-    
-    // E-Mail an die Adresse senden, die der User eingegeben hat (nicht an eine andere!)
-    // Prüfen ob die eingegebene E-Mail in den Feldern existiert
-    const privateEmail = record.fields['E-Mail']?.trim()
-    const businessEmail = record.fields['E-Mail_Geschäftlich']?.trim()
+    const user = users[0]
+
+    // E-Mail an die Adresse senden, die der User eingegeben hat
+    const privateEmail = user.email?.trim()
+    const businessEmail = user.email_geschaeftlich?.trim()
     const inputEmailLower = email.toLowerCase().trim()
-    
+
     let userEmail = null
     if (privateEmail && privateEmail.toLowerCase() === inputEmailLower) {
       userEmail = privateEmail
     } else if (businessEmail && businessEmail.toLowerCase() === inputEmailLower) {
       userEmail = businessEmail
     } else {
-      // Fallback: Eine der beiden E-Mails verwenden
       userEmail = businessEmail || privateEmail
     }
-    
-    const userName = record.fields.Vorname || 'User'
+
+    const userName = user.vorname || 'User'
 
     // E-Mail validieren
     if (!userEmail || !userEmail.includes('@')) {
-      console.error('Invalid email in Airtable:', rawEmail)
+      console.error('Invalid email:', userEmail)
       return {
         statusCode: 200,
         headers,
@@ -117,21 +116,13 @@ export async function handler(event) {
     const tempPassword = generateTempPassword()
     const hashedPassword = await bcrypt.hash(tempPassword, 10)
 
-    // Passwort in Airtable speichern
-    const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}/${record.id}`
-    
-    const updateResponse = await fetch(updateUrl, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        fields: { Passwort: hashedPassword }
-      })
-    })
+    // Passwort in Supabase speichern
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ password_hash: hashedPassword })
+      .eq('id', user.id)
 
-    if (!updateResponse.ok) {
+    if (updateError) {
       throw new Error('Fehler beim Speichern des Passworts')
     }
 
@@ -144,7 +135,7 @@ export async function handler(event) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          from: 'Sunside CRM <noreply@sunsideai.de>', 
+          from: 'Sunside CRM <noreply@sunsideai.de>',
           to: [userEmail],
           subject: 'Dein neues Passwort - Sunside CRM',
           html: `
@@ -181,7 +172,6 @@ export async function handler(event) {
       if (!emailResponse.ok) {
         const errorData = await emailResponse.json()
         console.error('Resend Error:', errorData)
-        // Trotzdem Success zurückgeben - Passwort wurde gesetzt
       }
     } else {
       console.log('Resend nicht konfiguriert. Temp Password:', tempPassword)

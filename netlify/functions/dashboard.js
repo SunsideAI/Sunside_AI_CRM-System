@@ -1,29 +1,10 @@
-// Dashboard Analytics API - Statistiken für das Dashboard
+// Dashboard Analytics API - Statistiken für das Dashboard - Supabase Version
+import { createClient } from '@supabase/supabase-js'
 
-// === RATE LIMIT SCHUTZ ===
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
-
-async function fetchWithRetry(url, options = {}, maxRetries = 3) {
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      const response = await fetch(url, options)
-
-      if (response.status === 429) {
-        const retryAfter = response.headers.get('Retry-After')
-        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt) * 1000
-        console.log(`Rate limit (429), warte ${delay}ms... (Versuch ${attempt + 1}/${maxRetries})`)
-        await sleep(delay)
-        continue
-      }
-
-      return response
-    } catch (err) {
-      if (attempt === maxRetries) throw err
-      await sleep(Math.pow(2, attempt) * 1000)
-    }
-  }
-  throw new Error('Max retries exceeded')
-}
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+)
 
 export async function handler(event) {
   const headers = {
@@ -41,12 +22,7 @@ export async function handler(event) {
     return { statusCode: 405, headers, body: JSON.stringify({ error: 'Method not allowed' }) }
   }
 
-  const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-  const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
-  const LEADS_TABLE = 'Immobilienmakler_Leads'
-  const USERS_TABLE = 'User_Datenbank'
-
-  if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
     return {
       statusCode: 500,
       headers,
@@ -56,51 +32,59 @@ export async function handler(event) {
 
   try {
     const params = event.queryStringParameters || {}
-    const { userName, userRole } = params
+    const { userName, userId, userRole } = params
 
-    // User-Map laden
-    const usersUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USERS_TABLE)}?fields[]=Vor_Nachname&fields[]=Rolle`
-    const usersResponse = await fetchWithRetry(usersUrl, {
-      headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
-    })
-    const usersData = await usersResponse.json()
-    
+    // User-Map laden für Namen-Auflösung
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, vor_nachname, rollen')
+
+    if (usersError) {
+      console.error('Users Error:', usersError)
+      throw new Error('Fehler beim Laden der User')
+    }
+
     const userMap = {}
-    usersData.records.forEach(record => {
-      userMap[record.id] = {
-        name: record.fields.Vor_Nachname || 'Unbekannt',
-        rolle: record.fields.Rolle || []
+    users.forEach(user => {
+      userMap[user.id] = {
+        name: user.vor_nachname || 'Unbekannt',
+        rolle: user.rollen || []
       }
     })
 
-    // Alle Leads laden (mit Pagination)
-    let allLeads = []
-    let offset = null
-    
-    do {
-      let url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}?pageSize=100`
-      url += `&fields[]=Bereits_kontaktiert&fields[]=Ergebnis&fields[]=User_Datenbank&fields[]=Datum`
-      
-      if (offset) {
-        url += `&offset=${offset}`
-      }
+    // Alle Leads laden
+    const { data: leadsData, error: leadsError } = await supabase
+      .from('leads')
+      .select('id, bereits_kontaktiert, ergebnis, datum')
 
-      const response = await fetchWithRetry(url, {
-        headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
+    if (leadsError) {
+      console.error('Leads Error:', leadsError)
+      throw new Error('Fehler beim Laden der Leads')
+    }
+
+    // Lead Assignments laden
+    const { data: assignments, error: assignError } = await supabase
+      .from('lead_assignments')
+      .select('lead_id, user_id')
+
+    if (assignError) {
+      console.error('Assignments Error:', assignError)
+    }
+
+    // Assignments zu Map konvertieren (lead_id -> [user_ids])
+    const assignmentMap = {}
+    if (assignments) {
+      assignments.forEach(a => {
+        if (!assignmentMap[a.lead_id]) {
+          assignmentMap[a.lead_id] = []
+        }
+        assignmentMap[a.lead_id].push(a.user_id)
       })
-
-      if (!response.ok) {
-        throw new Error('Fehler beim Laden der Leads')
-      }
-
-      const data = await response.json()
-      allLeads = allLeads.concat(data.records)
-      offset = data.offset
-    } while (offset)
+    }
 
     // Statistiken berechnen
     const stats = {
-      gesamt: allLeads.length,
+      gesamt: leadsData.length,
       kontaktiert: 0,
       nichtKontaktiert: 0,
       ergebnisse: {
@@ -118,11 +102,11 @@ export async function handler(event) {
     // Datum-Helper
     const heute = new Date()
     const startOfToday = new Date(heute.getFullYear(), heute.getMonth(), heute.getDate())
-    
+
     const startOfWeek = new Date(heute)
     startOfWeek.setDate(heute.getDate() - heute.getDay() + 1) // Montag
     startOfWeek.setHours(0, 0, 0, 0)
-    
+
     const startOfMonth = new Date(heute.getFullYear(), heute.getMonth(), 1)
 
     // Stats für aktuellen User
@@ -130,11 +114,11 @@ export async function handler(event) {
     let userWoche = 0
 
     // Leads durchgehen
-    allLeads.forEach(record => {
-      const kontaktiert = record.fields['Bereits_kontaktiert'] === 'X'
-      const ergebnis = record.fields.Ergebnis || ''
-      const userIds = record.fields.User_Datenbank || []
-      const datum = record.fields.Datum ? new Date(record.fields.Datum) : null
+    leadsData.forEach(lead => {
+      const kontaktiert = lead.bereits_kontaktiert === true
+      const ergebnis = lead.ergebnis || ''
+      const userIds = assignmentMap[lead.id] || []
+      const datum = lead.datum ? new Date(lead.datum) : null
 
       // Prüfen ob Lead diesem User zugewiesen ist
       const userNames = userIds.map(id => userMap[id]?.name || '')
@@ -143,12 +127,12 @@ export async function handler(event) {
       // Kontaktiert zählen
       if (kontaktiert) {
         stats.kontaktiert++
-        
+
         // Diese Woche / Monat (global)
         if (datum) {
           if (datum >= startOfWeek) stats.dieseWoche++
           if (datum >= startOfMonth) stats.diesenMonat++
-          
+
           // User-spezifisch
           if (isUserLead) {
             if (datum >= startOfToday) userHeute++
@@ -168,13 +152,13 @@ export async function handler(event) {
 
       // Pro Vertriebler
       userIds.forEach(userId => {
-        const userName = userMap[userId]?.name || userId
-        if (!stats.proVertriebler[userName]) {
-          stats.proVertriebler[userName] = { gesamt: 0, kontaktiert: 0, beratungsgespraech: 0 }
+        const name = userMap[userId]?.name || userId
+        if (!stats.proVertriebler[name]) {
+          stats.proVertriebler[name] = { gesamt: 0, kontaktiert: 0, beratungsgespraech: 0 }
         }
-        stats.proVertriebler[userName].gesamt++
-        if (kontaktiert) stats.proVertriebler[userName].kontaktiert++
-        if (ergebnis === 'Beratungsgespräch') stats.proVertriebler[userName].beratungsgespraech++
+        stats.proVertriebler[name].gesamt++
+        if (kontaktiert) stats.proVertriebler[name].kontaktiert++
+        if (ergebnis === 'Beratungsgespräch') stats.proVertriebler[name].beratungsgespraech++
       })
     })
 
@@ -184,7 +168,7 @@ export async function handler(event) {
       .sort((a, b) => b.kontaktiert - a.kontaktiert)
 
     // Conversion Rate berechnen
-    const conversionRate = stats.kontaktiert > 0 
+    const conversionRate = stats.kontaktiert > 0
       ? ((stats.ergebnisse['Beratungsgespräch'] / stats.kontaktiert) * 100).toFixed(1)
       : 0
 

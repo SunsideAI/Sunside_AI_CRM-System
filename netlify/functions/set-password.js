@@ -1,5 +1,11 @@
-// Set Password Function - Hasht Passwort und speichert in Airtable
+// Set Password Function - Hasht Passwort und speichert in Supabase
 import bcrypt from 'bcryptjs'
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+)
 
 export async function handler(event) {
   const headers = {
@@ -40,34 +46,36 @@ export async function handler(event) {
       }
     }
 
-    const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-    const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
-    const AIRTABLE_TABLE_NAME = 'User_Datenbank'
-
-    if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID) {
+    if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
       return {
         statusCode: 500,
         headers,
-        body: JSON.stringify({ error: 'Airtable nicht konfiguriert' })
+        body: JSON.stringify({ error: 'Server nicht konfiguriert' })
       }
     }
 
     // Optional: Prüfen ob adminId wirklich Admin ist
     if (adminId) {
-      const adminCheckUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}/${adminId}`
-      const adminResponse = await fetch(adminCheckUrl, {
-        headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
-      })
-      
-      if (adminResponse.ok) {
-        const adminData = await adminResponse.json()
-        const adminRoles = adminData.fields.Rolle || []
-        if (!adminRoles.includes('Admin')) {
-          return {
-            statusCode: 403,
-            headers,
-            body: JSON.stringify({ error: 'Keine Berechtigung' })
-          }
+      const { data: adminUser, error: adminError } = await supabase
+        .from('users')
+        .select('rollen')
+        .eq('id', adminId)
+        .single()
+
+      if (adminError || !adminUser) {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ error: 'Admin nicht gefunden' })
+        }
+      }
+
+      const adminRoles = adminUser.rollen || []
+      if (!adminRoles.includes('Admin')) {
+        return {
+          statusCode: 403,
+          headers,
+          body: JSON.stringify({ error: 'Keine Berechtigung' })
         }
       }
     }
@@ -75,32 +83,21 @@ export async function handler(event) {
     // Passwort hashen (10 Salt Rounds)
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // In Airtable speichern
-    const updateUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(AIRTABLE_TABLE_NAME)}/${userId}`
-    
-    const updateResponse = await fetch(updateUrl, {
-      method: 'PATCH',
-      headers: {
-        'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        fields: {
-          Passwort: hashedPassword
-        }
-      })
-    })
+    // In Supabase speichern
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ password_hash: hashedPassword })
+      .eq('id', userId)
 
-    if (!updateResponse.ok) {
-      const errorText = await updateResponse.text()
-      console.error('Airtable Update Error:', errorText)
+    if (updateError) {
+      console.error('Supabase Update Error:', updateError)
       throw new Error('Fehler beim Speichern')
     }
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         success: true,
         message: 'Passwort erfolgreich gesetzt'
       })

@@ -1,25 +1,32 @@
-// Email Templates CRUD API
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID
-const TABLE_NAME = 'E-Mail_Templates'
+// Email Templates CRUD API - Supabase Version
+import { createClient } from '@supabase/supabase-js'
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+)
 
 // Gültige Kategorien
 const VALID_CATEGORIES = ['Kaltakquise', 'Closing', 'Allgemein']
 
-const headers = {
-  'Authorization': `Bearer ${AIRTABLE_API_KEY}`,
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Content-Type': 'application/json'
 }
 
-exports.handler = async (event) => {
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS'
+export async function handler(event) {
+  if (event.httpMethod === 'OPTIONS') {
+    return { statusCode: 204, headers: corsHeaders, body: '' }
   }
 
-  if (event.httpMethod === 'OPTIONS') {
-    return { statusCode: 204, headers: corsHeaders }
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
+    return {
+      statusCode: 500,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Server nicht konfiguriert' })
+    }
   }
 
   try {
@@ -27,79 +34,49 @@ exports.handler = async (event) => {
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
       const includeInactive = params.all === 'true'
-      const kategorie = params.kategorie // Optional: Filter nach Kategorie
-      
-      let url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}`
-      
-      // Filter aufbauen
-      const filters = []
+      const kategorie = params.kategorie
+
+      let query = supabase
+        .from('email_templates')
+        .select(`
+          *,
+          email_template_attachments(id, url, filename, size, type)
+        `)
+
       if (!includeInactive) {
-        filters.push('{Aktiv}=TRUE()')
+        query = query.eq('aktiv', true)
       }
+
       if (kategorie) {
-        // Kategorie oder "Allgemein" anzeigen
-        filters.push(`OR({Kategorie}='${kategorie}',{Kategorie}='Allgemein',{Kategorie}=BLANK())`)
-      }
-      
-      if (filters.length > 0) {
-        const formula = filters.length === 1 
-          ? filters[0] 
-          : `AND(${filters.join(',')})`
-        url += `?filterByFormula=${encodeURIComponent(formula)}`
-      }
-      
-      const response = await fetch(url, { headers })
-      const data = await response.json()
-
-      if (data.error) {
-        throw new Error(data.error.message)
+        query = query.or(`kategorie.eq.${kategorie},kategorie.eq.Allgemein,kategorie.is.null`)
       }
 
-      // Hilfsfunktion für Dateiendung
-      const getExtension = (filename) => {
-        if (!filename) return ''
-        const lastDot = filename.lastIndexOf('.')
-        return lastDot > 0 ? filename.substring(lastDot) : ''
+      const { data: templates, error } = await query
+
+      if (error) {
+        throw new Error(error.message)
       }
 
-      const templates = (data.records || []).map(record => {
-        // Attachments_Name kann ein einzelner Name oder kommasepariert sein
-        const attachmentNames = (record.fields.Attachments_Name || '')
-          .split(',')
-          .map(n => n.trim())
-          .filter(n => n)
-
-        const attachments = (record.fields.Attachments || []).map((att, index) => {
-          // Nutze Attachments_Name wenn vorhanden, sonst original filename
-          const customName = attachmentNames[index] || attachmentNames[0] || null
-          
-          return {
-            id: att.id,
-            // Wenn customName vorhanden, nutze ihn (mit korrekter Extension)
-            filename: customName 
-              ? (customName.includes('.') ? customName : `${customName}${getExtension(att.filename)}`)
-              : att.filename,
-            url: att.url,
-            type: att.type,
-            size: att.size
-          }
-        })
-
-        return {
-          id: record.id,
-          name: record.fields.Name || '',
-          betreff: record.fields.Betreff || '',
-          inhalt: record.fields.Inhalt || '',
-          aktiv: record.fields.Aktiv !== false,
-          kategorie: record.fields.Kategorie || 'Allgemein',
-          attachments
-        }
-      })
+      const formattedTemplates = (templates || []).map(record => ({
+        id: record.id,
+        name: record.name || '',
+        betreff: record.betreff || '',
+        inhalt: record.inhalt || '',
+        aktiv: record.aktiv !== false,
+        kategorie: record.kategorie || 'Allgemein',
+        attachments: (record.email_template_attachments || []).map(att => ({
+          id: att.id,
+          filename: att.filename,
+          url: att.url,
+          type: att.type,
+          size: att.size
+        }))
+      }))
 
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ templates })
+        body: JSON.stringify({ templates: formattedTemplates })
       }
     }
 
@@ -116,53 +93,51 @@ exports.handler = async (event) => {
         }
       }
 
-      // Felder für Airtable vorbereiten
-      const fields = {
-        Name: name,
-        Betreff: betreff,
-        Inhalt: inhalt,
-        Aktiv: aktiv,
-        Kategorie: VALID_CATEGORIES.includes(kategorie) ? kategorie : 'Allgemein'
+      // Template erstellen
+      const { data: newTemplate, error } = await supabase
+        .from('email_templates')
+        .insert({
+          name,
+          betreff,
+          inhalt,
+          aktiv,
+          kategorie: VALID_CATEGORIES.includes(kategorie) ? kategorie : 'Allgemein'
+        })
+        .select()
+        .single()
+
+      if (error) {
+        throw new Error(error.message)
       }
 
       // Attachments hinzufügen wenn vorhanden
-      if (attachments.length > 0) {
-        fields.Attachments = attachments.map(att => ({ url: att.url }))
-        // Dateinamen kommasepariert speichern
-        fields.Attachments_Name = attachments.map(att => att.filename).join(', ')
+      if (attachments.length > 0 && newTemplate) {
+        const attachmentRecords = attachments.map(att => ({
+          template_id: newTemplate.id,
+          url: att.url,
+          filename: att.filename,
+          size: att.size || 0,
+          type: att.type || 'application/octet-stream'
+        }))
+
+        await supabase
+          .from('email_template_attachments')
+          .insert(attachmentRecords)
       }
 
-      const response = await fetch(
-        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}`,
-        {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            records: [{ fields }]
-          })
-        }
-      )
-
-      const data = await response.json()
-
-      if (data.error) {
-        throw new Error(data.error.message)
-      }
-
-      const created = data.records[0]
       return {
         statusCode: 201,
         headers: corsHeaders,
         body: JSON.stringify({
           success: true,
           template: {
-            id: created.id,
-            name: created.fields.Name,
-            betreff: created.fields.Betreff,
-            inhalt: created.fields.Inhalt,
-            aktiv: created.fields.Aktiv,
-            kategorie: created.fields.Kategorie || 'Allgemein',
-            attachments: created.fields.Attachments || []
+            id: newTemplate.id,
+            name: newTemplate.name,
+            betreff: newTemplate.betreff,
+            inhalt: newTemplate.inhalt,
+            aktiv: newTemplate.aktiv,
+            kategorie: newTemplate.kategorie || 'Allgemein',
+            attachments: attachments
           }
         })
       }
@@ -182,36 +157,47 @@ exports.handler = async (event) => {
       }
 
       const fields = {}
-      if (name !== undefined) fields.Name = name
-      if (betreff !== undefined) fields.Betreff = betreff
-      if (inhalt !== undefined) fields.Inhalt = inhalt
-      if (aktiv !== undefined) fields.Aktiv = aktiv
+      if (name !== undefined) fields.name = name
+      if (betreff !== undefined) fields.betreff = betreff
+      if (inhalt !== undefined) fields.inhalt = inhalt
+      if (aktiv !== undefined) fields.aktiv = aktiv
       if (kategorie !== undefined) {
-        fields.Kategorie = VALID_CATEGORIES.includes(kategorie) ? kategorie : 'Allgemein'
+        fields.kategorie = VALID_CATEGORIES.includes(kategorie) ? kategorie : 'Allgemein'
       }
-      
-      // Attachments aktualisieren (auch leeres Array um alle zu entfernen)
+
+      const { data: updatedTemplate, error } = await supabase
+        .from('email_templates')
+        .update(fields)
+        .eq('id', id)
+        .select()
+        .single()
+
+      if (error) {
+        throw new Error(error.message)
+      }
+
+      // Attachments aktualisieren wenn vorhanden
       if (attachments !== undefined) {
-        fields.Attachments = attachments.map(att => ({ url: att.url }))
-        // Dateinamen kommasepariert speichern (oder leeren wenn keine Attachments)
-        fields.Attachments_Name = attachments.length > 0 
-          ? attachments.map(att => att.filename).join(', ')
-          : ''
-      }
+        // Alte löschen
+        await supabase
+          .from('email_template_attachments')
+          .delete()
+          .eq('template_id', id)
 
-      const response = await fetch(
-        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}/${id}`,
-        {
-          method: 'PATCH',
-          headers,
-          body: JSON.stringify({ fields })
+        // Neue hinzufügen
+        if (attachments.length > 0) {
+          const attachmentRecords = attachments.map(att => ({
+            template_id: id,
+            url: att.url,
+            filename: att.filename,
+            size: att.size || 0,
+            type: att.type || 'application/octet-stream'
+          }))
+
+          await supabase
+            .from('email_template_attachments')
+            .insert(attachmentRecords)
         }
-      )
-
-      const data = await response.json()
-
-      if (data.error) {
-        throw new Error(data.error.message)
       }
 
       return {
@@ -220,13 +206,13 @@ exports.handler = async (event) => {
         body: JSON.stringify({
           success: true,
           template: {
-            id: data.id,
-            name: data.fields.Name,
-            betreff: data.fields.Betreff,
-            inhalt: data.fields.Inhalt,
-            aktiv: data.fields.Aktiv,
-            kategorie: data.fields.Kategorie || 'Allgemein',
-            attachments: data.fields.Attachments || []
+            id: updatedTemplate.id,
+            name: updatedTemplate.name,
+            betreff: updatedTemplate.betreff,
+            inhalt: updatedTemplate.inhalt,
+            aktiv: updatedTemplate.aktiv,
+            kategorie: updatedTemplate.kategorie || 'Allgemein',
+            attachments: attachments || []
           }
         })
       }
@@ -245,17 +231,14 @@ exports.handler = async (event) => {
         }
       }
 
-      const response = await fetch(
-        `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(TABLE_NAME)}/${id}`,
-        {
-          method: 'DELETE',
-          headers
-        }
-      )
+      // Attachments werden durch CASCADE gelöscht
+      const { error } = await supabase
+        .from('email_templates')
+        .delete()
+        .eq('id', id)
 
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error?.message || 'Löschen fehlgeschlagen')
+      if (error) {
+        throw new Error(error.message)
       }
 
       return {
