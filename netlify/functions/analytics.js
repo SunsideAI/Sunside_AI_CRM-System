@@ -312,7 +312,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   while (true) {
     const { data, error } = await supabase
       .from('leads')
-      .select('id, bereits_kontaktiert, ergebnis, datum')
+      .select('id, bereits_kontaktiert, ergebnis, datum, wiedervorlage_datum')
       .eq('bereits_kontaktiert', true)
       .range(page * pageSize, (page + 1) * pageSize - 1)
 
@@ -347,6 +347,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   }
 
   // Archiv-Leads laden (auch mit Pagination)
+  // Hinweis: lead_archive hat KEIN wiedervorlage_datum Feld
   let archivRecords = []
   let archivPage = 0
 
@@ -371,6 +372,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
 
   // Debug-Logging
   console.log(`Analytics: ${activeRecords.length} kontaktierte Leads geladen (${page} Seiten), ${archivRecords.length} Archiv-Einträge (${archivPage} Seiten)`)
+  console.log(`Analytics: ${assignments.length} Lead-Assignments geladen, isAdmin=${isAdmin}`)
 
   // Helper: Boolean-Wert flexibel prüfen (jeder truthy Wert)
   const isTruthy = (val) => !!val
@@ -382,6 +384,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     kontaktiert: true,
     ergebnis: record.ergebnis || '',
     datum: record.datum || null,
+    wiedervorlageDatum: record.wiedervorlage_datum || null,
     zugewiesenAn: assignmentMap[record.id] || []
   }))
 
@@ -391,6 +394,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     kontaktiert: isTruthy(record.bereits_kontaktiert),
     ergebnis: record.ergebnis || '',
     datum: record.datum || null,
+    wiedervorlageDatum: null, // lead_archive hat kein wiedervorlage_datum
     zugewiesenAn: record.user_id ? [record.user_id] : []
   }))
 
@@ -412,6 +416,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     const ergebnis = (record.ergebnis || '').toLowerCase()
     const datumRaw = record.datum
     const zugewiesenAn = record.zugewiesenAn
+    const hatWiedervorlage = !!record.wiedervorlageDatum
 
     // Datum-Filter
     if (startDateStr || endDateStr) {
@@ -435,7 +440,8 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     // Ergebnis kategorisieren
     const istNichtErreicht = ergebnis.includes('nicht erreicht')
     const istBeratungsgespraech = ergebnis.includes('beratungsgespräch') || ergebnis.includes('beratungsgespraech') || ergebnis.includes('termin')
-    const istUnterlagen = ergebnis.includes('unterlage') || ergebnis.includes('wiedervorlage')
+    // Unterlagen: auch wenn wiedervorlage_datum gesetzt ist
+    const istUnterlagen = ergebnis.includes('unterlage') || ergebnis.includes('wiedervorlage') || hatWiedervorlage
     const istKeinInteresse = ergebnis.includes('kein interesse') || ergebnis.includes('absage')
 
     if (istNichtErreicht) {
@@ -507,6 +513,8 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       name: userMap[stats.id] || `User ${String(stats.id).substring(0, 6)}`
     }))
     .sort((a, b) => b.einwahlen - a.einwahlen)
+
+  console.log(`Analytics: perUser hat ${perUser.length} Einträge, unterlagen=${unterlagen}`)
 
   return {
     summary: {
