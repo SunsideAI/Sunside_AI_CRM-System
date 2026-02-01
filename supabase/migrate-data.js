@@ -11,10 +11,9 @@
  * WICHTIG: Führe zuerst schema.sql in Supabase aus!
  */
 
-require('dotenv').config()
-
-const Airtable = require('airtable')
-const { createClient } = require('@supabase/supabase-js')
+import 'dotenv/config'
+import Airtable from 'airtable'
+import { createClient } from '@supabase/supabase-js'
 
 // =====================================================
 // KONFIGURATION
