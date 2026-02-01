@@ -206,31 +206,75 @@ export async function handler(event) {
       ? ((stats.ergebnisse['Beratungsgespräch'] / stats.kontaktiert) * 100).toFixed(1)
       : 0
 
-    // Hot Leads laden für Abschlüsse diesen Monat
+    // User ID finden für Hot Leads Abfragen
+    let userRecordId = null
+    if (userName) {
+      const userNameNorm = userName.toLowerCase().trim()
+      const foundUser = users.find(u =>
+        (u.vor_nachname || '').toLowerCase().trim() === userNameNorm
+      )
+      userRecordId = foundUser?.id || null
+      console.log('Dashboard: User gefunden:', { userName, userRecordId })
+    }
+
+    // Hot Leads laden für Closer/Setter Statistiken
     let abschluesseMonat = 0
+    let termineWoche = 0
+    let zugewieseneHotLeads = 0
+
     try {
       const { data: hotLeadsData } = await supabase
         .from('hot_leads')
-        .select('id, status, kunde_seit, closer_id')
-        .eq('status', 'Abgeschlossen')
+        .select('id, status, kunde_seit, closer_id, setter_id, termin_beratungsgespraech')
 
       if (hotLeadsData) {
-        // Filter: Abschlüsse diesen Monat
+        // Abschlüsse diesen Monat (global oder für User)
         const abschlussLeads = hotLeadsData.filter(hl => {
+          if (hl.status !== 'Abgeschlossen') return false
           if (!hl.kunde_seit) return false
           const kundeSeit = new Date(hl.kunde_seit)
-          return kundeSeit >= startOfMonth
+          if (kundeSeit < startOfMonth) return false
 
-          // Optional: User-Filter wenn nicht Admin
-          // if (userName && userRecordId) {
-          //   return hl.closer_id === userRecordId
-          // }
+          // User-Filter: Closer oder Setter
+          if (userRecordId) {
+            return hl.closer_id === userRecordId || hl.setter_id === userRecordId
+          }
+          return true
         })
         abschluesseMonat = abschlussLeads.length
+
+        // Termine diese Woche (Hot Leads mit Termin diese Woche)
+        const termineLeads = hotLeadsData.filter(hl => {
+          if (!hl.termin_beratungsgespraech) return false
+          const terminDatum = new Date(hl.termin_beratungsgespraech)
+          if (terminDatum < startOfWeek) return false
+          // Nur zukünftige oder heutige Termine
+          if (terminDatum > new Date(heute.getTime() + 7 * 24 * 60 * 60 * 1000)) return false
+
+          // User-Filter: Closer oder Setter
+          if (userRecordId) {
+            return hl.closer_id === userRecordId || hl.setter_id === userRecordId
+          }
+          return true
+        })
+        termineWoche = termineLeads.length
+
+        // Zugewiesene Hot Leads (für diesen User als Closer oder Setter)
+        if (userRecordId) {
+          zugewieseneHotLeads = hotLeadsData.filter(hl =>
+            hl.closer_id === userRecordId || hl.setter_id === userRecordId
+          ).length
+        }
+
+        console.log('Dashboard Hot Leads Stats:', { abschluesseMonat, termineWoche, zugewieseneHotLeads })
       }
     } catch (hotLeadsError) {
       console.error('Hot Leads Error (ignored):', hotLeadsError)
     }
+
+    // termineWoche überschreiben wenn Hot Leads Termine vorhanden
+    // (userWoche zählt Beratungsgespräch-Ergebnisse aus Kaltakquise, nicht die Hot Leads Termine)
+    const finalTermineWoche = termineWoche > 0 ? termineWoche : userWoche
 
     return {
       statusCode: 200,
@@ -242,8 +286,9 @@ export async function handler(event) {
         dieseWoche: stats.dieseWoche,
         diesenMonat: stats.diesenMonat,
         heute: userHeute,
-        termineWoche: userWoche,
+        termineWoche: finalTermineWoche,
         abschluesseMonat,
+        zugewieseneHotLeads,
         ergebnisse: stats.ergebnisse,
         vertriebler: vertrieblerArray,
         conversionRate: parseFloat(conversionRate)

@@ -203,8 +203,11 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       v.name?.toLowerCase().trim() === user?.vor_nachname?.toLowerCase().trim()
     )
 
+    // Für Closers: zugewieseneHotLeads als Fallback nutzen
+    const zugewiesene = userStats?.gesamt || result.zugewieseneHotLeads || 0
+
     setData({
-      zugewiesenLeads: userStats?.gesamt || 0,
+      zugewiesenLeads: zugewiesene,
       callsHeute: result.heute || 0,
       termineWoche: result.termineWoche || 0,
       abschluesseMonat: result.abschluesseMonat || 0
@@ -413,12 +416,31 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
     }
   }
 
-  // Helper: Wert sicher in String konvertieren
+  // Helper: Wert sicher in String konvertieren (Arrays und JSON-Array-Strings)
   const safeString = (value) => {
     if (!value) return ''
-    if (typeof value === 'string') return value
-    if (Array.isArray(value)) return value[0] || ''
-    return String(value)
+
+    // Echtes Array
+    if (Array.isArray(value)) {
+      return value.join(' ').trim()
+    }
+
+    // String prüfen
+    const strValue = String(value).trim()
+
+    // JSON-Array-String: '["value"]' oder '["val1", "val2"]'
+    if (strValue.startsWith('[') && strValue.endsWith(']')) {
+      try {
+        const parsed = JSON.parse(strValue)
+        if (Array.isArray(parsed)) {
+          return parsed.join(' ').trim()
+        }
+      } catch (e) {
+        // Kein gültiges JSON
+      }
+    }
+
+    return strValue
   }
 
   // Gefilterte Leads

@@ -36,12 +36,29 @@ async function loadUserMap() {
 }
 
 // Helper: Array zu String konvertieren (falls Airtable-Migration Arrays hinterlassen hat)
+// Behandelt: echte Arrays, JSON-Strings mit Arrays, normale Strings
 function arrayToString(value) {
   if (!value) return ''
+
+  // Echtes Array
   if (Array.isArray(value)) {
     return value.join(' ').trim()
   }
-  return String(value).trim()
+
+  // String der wie ein JSON-Array aussieht: '["value"]' oder '["val1", "val2"]'
+  const strValue = String(value).trim()
+  if (strValue.startsWith('[') && strValue.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(strValue)
+      if (Array.isArray(parsed)) {
+        return parsed.join(' ').trim()
+      }
+    } catch (e) {
+      // Kein gültiges JSON, normalen String zurückgeben
+    }
+  }
+
+  return strValue
 }
 
 // User ID nach Name finden
