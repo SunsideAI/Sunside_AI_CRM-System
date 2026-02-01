@@ -319,13 +319,18 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     .from('lead_archive')
     .select('id, bereits_kontaktiert, ergebnis, datum, user_id')
 
-  console.log(`Analytics: ${activeRecords?.length || 0} aktive Leads, ${archivRecords?.length || 0} Archiv-Einträge`)
+  // Debug: Prüfe wie bereits_kontaktiert gespeichert ist
+  const kontaktiertCount = (activeRecords || []).filter(r => r.bereits_kontaktiert === true || r.bereits_kontaktiert === 'true' || r.bereits_kontaktiert === 'TRUE').length
+  console.log(`Analytics: ${activeRecords?.length || 0} aktive Leads (${kontaktiertCount} kontaktiert), ${archivRecords?.length || 0} Archiv-Einträge`)
+
+  // Helper: Boolean-Wert flexibel prüfen (true, 'true', 'TRUE', 1)
+  const isTruthy = (val) => val === true || val === 'true' || val === 'TRUE' || val === 1 || val === '1'
 
   // Daten normalisieren
   const normalizedActive = (activeRecords || []).map(record => ({
     source: 'active',
     id: record.id,
-    kontaktiert: record.bereits_kontaktiert === true,
+    kontaktiert: isTruthy(record.bereits_kontaktiert),
     ergebnis: record.ergebnis || '',
     datum: record.datum || null,
     zugewiesenAn: assignmentMap[record.id] || []
@@ -334,7 +339,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   const normalizedArchiv = (archivRecords || []).map(record => ({
     source: 'archiv',
     id: record.id,
-    kontaktiert: record.bereits_kontaktiert === true,
+    kontaktiert: isTruthy(record.bereits_kontaktiert),
     ergebnis: record.ergebnis || '',
     datum: record.datum || null,
     zugewiesenAn: record.user_id ? [record.user_id] : []
