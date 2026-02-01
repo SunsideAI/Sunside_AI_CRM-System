@@ -117,20 +117,34 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
   // User-Map laden
   const userMap = await loadUserMap()
 
-  // Alle Hot Leads laden mit User-Joins
-  const { data: allRecords, error } = await supabase
-    .from('hot_leads')
-    .select(`
-      *,
-      setter:users!hot_leads_setter_id_fkey(id, vor_nachname),
-      closer:users!hot_leads_closer_id_fkey(id, vor_nachname)
-    `)
+  // Alle Hot Leads laden mit User-Joins (Pagination für > 1000 Einträge)
+  let allRecords = []
+  let hotLeadsPage = 0
+  const hotLeadsPageSize = 1000
 
-  if (error) {
-    throw new Error(error.message)
+  while (true) {
+    const { data, error } = await supabase
+      .from('hot_leads')
+      .select(`
+        *,
+        setter:users!hot_leads_setter_id_fkey(id, vor_nachname),
+        closer:users!hot_leads_closer_id_fkey(id, vor_nachname)
+      `)
+      .range(hotLeadsPage * hotLeadsPageSize, (hotLeadsPage + 1) * hotLeadsPageSize - 1)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    if (!data || data.length === 0) break
+
+    allRecords = allRecords.concat(data)
+    hotLeadsPage++
+
+    if (data.length < hotLeadsPageSize) break
   }
 
-  console.log('Hot Leads geladen:', allRecords.length)
+  console.log('Hot Leads geladen:', allRecords.length, `(${hotLeadsPage} Seiten)`)
 
   let gewonnen = 0
   let verloren = 0
@@ -290,13 +304,29 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   const userMap = await loadUserMap()
 
   // Aktive Leads laden - NUR kontaktierte (bereits_kontaktiert = true)
-  const { data: activeRecords, error: activeError } = await supabase
-    .from('leads')
-    .select('id, bereits_kontaktiert, ergebnis, datum')
-    .eq('bereits_kontaktiert', true)
+  // Pagination um alle Daten zu laden (Supabase Limit = 1000)
+  let activeRecords = []
+  let page = 0
+  const pageSize = 1000
 
-  if (activeError) {
-    throw new Error(activeError.message)
+  while (true) {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('id, bereits_kontaktiert, ergebnis, datum')
+      .eq('bereits_kontaktiert', true)
+      .range(page * pageSize, (page + 1) * pageSize - 1)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    if (!data || data.length === 0) break
+
+    activeRecords = activeRecords.concat(data)
+    page++
+
+    // Wenn weniger als pageSize zurückkommt, sind wir fertig
+    if (data.length < pageSize) break
   }
 
   // Lead Assignments laden (kein Default-Limit)
@@ -316,13 +346,31 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     })
   }
 
-  // Archiv-Leads laden
-  const { data: archivRecords, error: archivError } = await supabase
-    .from('lead_archive')
-    .select('id, bereits_kontaktiert, ergebnis, datum, user_id')
+  // Archiv-Leads laden (auch mit Pagination)
+  let archivRecords = []
+  let archivPage = 0
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('lead_archive')
+      .select('id, bereits_kontaktiert, ergebnis, datum, user_id')
+      .range(archivPage * pageSize, (archivPage + 1) * pageSize - 1)
+
+    if (error) {
+      console.error('Archiv Error:', error)
+      break
+    }
+
+    if (!data || data.length === 0) break
+
+    archivRecords = archivRecords.concat(data)
+    archivPage++
+
+    if (data.length < pageSize) break
+  }
 
   // Debug-Logging
-  console.log(`Analytics: ${activeRecords?.length || 0} kontaktierte Leads geladen, ${archivRecords?.length || 0} Archiv-Einträge`)
+  console.log(`Analytics: ${activeRecords.length} kontaktierte Leads geladen (${page} Seiten), ${archivRecords.length} Archiv-Einträge (${archivPage} Seiten)`)
 
   // Helper: Boolean-Wert flexibel prüfen (jeder truthy Wert)
   const isTruthy = (val) => !!val
