@@ -40,7 +40,7 @@ export async function handler(event) {
         .from('email_templates')
         .select(`
           *,
-          email_template_attachments(id, url, filename, size, type)
+          email_template_attachments(id, file_url, file_name, file_size, mime_type)
         `)
 
       if (!includeInactive) {
@@ -66,10 +66,10 @@ export async function handler(event) {
         kategorie: record.kategorie || 'Allgemein',
         attachments: (record.email_template_attachments || []).map(att => ({
           id: att.id,
-          filename: att.filename,
-          url: att.url,
-          type: att.type,
-          size: att.size
+          filename: att.file_name,
+          url: att.file_url,
+          type: att.mime_type,
+          size: att.file_size
         }))
       }))
 
@@ -114,10 +114,10 @@ export async function handler(event) {
       if (attachments.length > 0 && newTemplate) {
         const attachmentRecords = attachments.map(att => ({
           template_id: newTemplate.id,
-          url: att.url,
-          filename: att.filename,
-          size: att.size || 0,
-          type: att.type || 'application/octet-stream'
+          file_url: att.url,
+          file_name: att.filename,
+          file_size: att.size || 0,
+          mime_type: att.type || 'application/octet-stream'
         }))
 
         await supabase
@@ -188,10 +188,10 @@ export async function handler(event) {
         if (attachments.length > 0) {
           const attachmentRecords = attachments.map(att => ({
             template_id: id,
-            url: att.url,
-            filename: att.filename,
-            size: att.size || 0,
-            type: att.type || 'application/octet-stream'
+            file_url: att.url,
+            file_name: att.filename,
+            file_size: att.size || 0,
+            mime_type: att.type || 'application/octet-stream'
           }))
 
           await supabase
