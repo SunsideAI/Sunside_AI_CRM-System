@@ -52,7 +52,7 @@ export async function handler(event) {
 
       let query = supabase
         .from('lead_requests')
-        .select('*, user:users!lead_requests_user_id_fkey(id, vor_nachname), bearbeiter:users!lead_requests_bearbeitet_von_id_fkey(id, vor_nachname)')
+        .select('*, user:users!lead_requests_user_id_fkey(id, vor_nachname), bearbeiter:users!lead_requests_bearbeitet_von_fkey(id, vor_nachname)')
         .order('erstellt_am', { ascending: false })
 
       if (status && status !== 'all') {
@@ -76,7 +76,7 @@ export async function handler(event) {
         nachricht: record.nachricht || '',
         status: record.status || 'Offen',
         erstelltAm: record.erstellt_am || null,
-        bearbeitetVonId: record.bearbeitet_von_id || null,
+        bearbeitetVonId: record.bearbeitet_von || null,
         bearbeitetVonName: record.bearbeiter?.vor_nachname || '',
         bearbeitetAm: record.bearbeitet_am || null,
         genehmigteAnzahl: record.genehmigte_anzahl || null,
@@ -161,7 +161,7 @@ export async function handler(event) {
         bearbeitet_am: new Date().toISOString()
       }
 
-      if (adminId) fields.bearbeitet_von_id = adminId
+      if (adminId) fields.bearbeitet_von = adminId
       if (genehmigteAnzahl !== undefined && genehmigteAnzahl !== null) {
         fields.genehmigte_anzahl = parseInt(genehmigteAnzahl, 10)
       }
