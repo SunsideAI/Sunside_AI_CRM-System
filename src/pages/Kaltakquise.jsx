@@ -865,7 +865,7 @@ function Kaltakquise() {
             >
               <option value="all">👤 Alle Vertriebler</option>
               {users.map(u => (
-                <option key={u.id} value={u.name}>{u.name}</option>
+                <option key={u.id} value={u.id}>{u.name}</option>
               ))}
             </select>
           )}
