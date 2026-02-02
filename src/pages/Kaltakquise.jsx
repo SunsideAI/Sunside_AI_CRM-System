@@ -135,6 +135,7 @@ function Kaltakquise() {
     try {
       const params = new URLSearchParams()
       params.append('userName', user?.vor_nachname || '')
+      params.append('userId', user?.id || '')
       params.append('userRole', isAdmin() ? 'Admin' : 'Setter')
       params.append('view', viewMode)
       params.append('limit', '50')
@@ -172,7 +173,7 @@ function Kaltakquise() {
     } finally {
       setLoading(false)
     }
-  }, [user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle, offset])
+  }, [user?.id, user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle, offset])
 
   // Initial laden
   useEffect(() => {
@@ -232,7 +233,8 @@ function Kaltakquise() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           leadId: lead.id,
-          vertrieblerName: user.vor_nachname
+          vertrieblerName: user.vor_nachname,
+          vertrieblerId: user.id
         })
       })
 
