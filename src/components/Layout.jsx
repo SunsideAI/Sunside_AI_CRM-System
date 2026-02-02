@@ -192,7 +192,8 @@ function Layout({ children }) {
               case 'Pool Update':
                 type = 'info'
                 icon = '📢'
-                link = '/closing'
+                // Lead-Anfragen gehen zu Einstellungen, Closer-Pool zu Closing
+                link = msg.titel?.includes('Lead-Anfrage') ? '/einstellungen?tab=anfragen' : '/closing'
                 break
             }
             

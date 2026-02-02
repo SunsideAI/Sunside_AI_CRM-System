@@ -50,6 +50,8 @@ export async function handler(event) {
       const status = params.status
       const isAdmin = params.isAdmin === 'true'
 
+      console.log('[Lead-Requests GET] Params:', { userId, status, isAdmin })
+
       let query = supabase
         .from('lead_requests')
         .select('*, user:users!lead_requests_user_id_fkey(id, vor_nachname), bearbeiter:users!lead_requests_bearbeitet_von_fkey(id, vor_nachname)')
@@ -65,7 +67,12 @@ export async function handler(event) {
 
       const { data: anfragenData, error } = await query
 
-      if (error) throw new Error(error.message)
+      if (error) {
+        console.error('[Lead-Requests GET] Error:', error)
+        throw new Error(error.message)
+      }
+
+      console.log('[Lead-Requests GET] Found', anfragenData?.length || 0, 'requests')
 
       const anfragen = (anfragenData || []).map(record => ({
         id: record.id,
@@ -120,6 +127,15 @@ export async function handler(event) {
 
       const anfrageId = generateAnfrageId()
 
+      // User-Namen laden für Benachrichtigung
+      const { data: userData } = await supabase
+        .from('users')
+        .select('vor_nachname')
+        .eq('id', userId)
+        .single()
+
+      const userName = userData?.vor_nachname || 'Ein Vertriebler'
+
       const { data: newRequest, error } = await supabase
         .from('lead_requests')
         .insert({
@@ -133,6 +149,40 @@ export async function handler(event) {
         .single()
 
       if (error) throw new Error(error.message)
+
+      console.log('[Lead-Requests POST] Created request:', anfrageId, 'by', userName)
+
+      // System Messages an alle Admins senden
+      try {
+        const { data: admins } = await supabase
+          .from('users')
+          .select('id, vor_nachname')
+          .eq('status', true)
+          .contains('rollen', ['Admin'])
+
+        if (admins && admins.length > 0) {
+          const messagePromises = admins.map(async (admin) => {
+            const messageId = `MSG-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+            try {
+              await supabase.from('system_messages').insert({
+                message_id: messageId,
+                empfaenger_id: admin.id,
+                typ: 'Pool Update',
+                titel: `Lead-Anfrage: ${userName} möchte ${anzahl} Leads`,
+                nachricht: nachricht || `${userName} hat ${anzahl} neue Leads angefordert.`,
+                gelesen: false
+              })
+            } catch (err) {
+              console.error('System Message für Admin fehlgeschlagen:', admin.id, err)
+            }
+          })
+          await Promise.all(messagePromises)
+          console.log(`[Lead-Requests POST] ${admins.length} Admin-Benachrichtigungen gesendet`)
+        }
+      } catch (notifyErr) {
+        console.error('Admin-Benachrichtigungen fehlgeschlagen:', notifyErr)
+        // Kein Fehler werfen - Anfrage wurde trotzdem erstellt
+      }
 
       return {
         statusCode: 201,
