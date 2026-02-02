@@ -1490,11 +1490,14 @@ function Kaltakquise() {
                         value={editForm.ergebnis}
                         onChange={(e) => {
                           const neuesErgebnis = e.target.value
-                          setEditForm(prev => ({ 
-                            ...prev, 
+                          setEditForm(prev => ({
+                            ...prev,
                             ergebnis: neuesErgebnis,
-                            // Automatisch als kontaktiert markieren wenn Ergebnis gesetzt (NICHT bei Ungültiger Lead)
-                            kontaktiert: (neuesErgebnis && neuesErgebnis !== 'Ungültiger Lead') ? true : prev.kontaktiert,
+                            // Automatisch als kontaktiert markieren wenn Ergebnis gesetzt
+                            // Bei "Ungültiger Lead" explizit auf FALSE setzen (zählt nicht als erreicht)
+                            kontaktiert: neuesErgebnis === 'Ungültiger Lead'
+                              ? false
+                              : (neuesErgebnis ? true : prev.kontaktiert),
                             // Wiedervorlage-Datum zurücksetzen wenn anderes Ergebnis gewählt
                             wiedervorlageDatum: neuesErgebnis === 'Wiedervorlage' ? prev.wiedervorlageDatum : ''
                           }))
