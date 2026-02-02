@@ -63,16 +63,20 @@ function Termine() {
       let wiedervorlagen = []
       try {
         const wiedervorlageParams = new URLSearchParams({
-          wiedervorlage: 'true',
-          userName: userName || ''
+          wiedervorlage: 'true'
         })
-        
+
         // Für Admins in "Alle" Ansicht: Alle Wiedervorlagen laden
         if (viewMode === 'all' && isAdmin()) {
           wiedervorlageParams.set('view', 'all')
           wiedervorlageParams.set('userRole', 'Admin')
+        } else {
+          // "Meine" Ansicht: Nur Wiedervorlagen für zugewiesene Leads
+          if (user?.id) {
+            wiedervorlageParams.set('userId', user.id)
+          }
         }
-        
+
         console.log('Wiedervorlagen laden mit params:', wiedervorlageParams.toString())
         const wvResponse = await fetch(`/.netlify/functions/leads?${wiedervorlageParams}`)
         if (wvResponse.ok) {
