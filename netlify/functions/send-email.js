@@ -178,7 +178,53 @@ async function processAttachments(attachments) {
 }
 
 function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
-  let htmlContent = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>\n')
-  const signatur = '<div style="margin-top: 20px;"><div>Mit freundlichen Gruessen</div><div><strong>' + (senderName || 'Sunside AI Team') + '</strong></div><div>Sunside AI GbR</div><div>E-Mail: ' + (senderEmail || 'contact@sunsideai.de') + ' | Tel: ' + (senderTelefon || '+49 176 56039050') + '</div></div>'
+  // Convert markdown-style formatting to HTML
+  let htmlContent = text
+    // Escape HTML entities first (but not our markdown syntax)
+    .replace(/&/g, '&amp;')
+    // Convert markdown links [text](url) to HTML links
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color: #7c3aed; text-decoration: underline;">$1</a>')
+    // Convert bold **text** to <strong>
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    // Convert line breaks
+    .replace(/\n/g, '<br>\n')
+
+  const signatur = `
+    <div style="margin-top: 30px; font-family: Arial, sans-serif; font-size: 10pt;">
+      <div style="margin-bottom: 5px;">Mit freundlichen Grüßen</div>
+      <div style="font-weight: bold; margin-bottom: 2px;">${senderName || 'Sunside AI Team'}</div>
+      <div style="color: #666; margin-bottom: 15px;">KI-Entwicklung für Immobilienmakler</div>
+
+      <img src="https://onecdn.io/media/8c3e476c-82b3-4db6-8cbe-85b46cd452d0/full" alt="Sunside AI" style="height: 32px; margin-bottom: 10px;" />
+
+      <div style="margin-bottom: 15px;">
+        <a href="https://www.instagram.com/sunside.ai/" style="text-decoration: none; margin-right: 8px;">
+          <img src="https://onecdn.io/media/a8cea175-8fcb-4f91-9d6f-f53479a9a7fe/full" alt="Instagram" style="width: 24px; height: 24px; vertical-align: middle;" />
+        </a>
+        <a href="https://www.sunsideai.de" style="text-decoration: none;">
+          <img src="https://onecdn.io/media/10252e19-d770-418d-8867-2ec8236c8d86/full" alt="Website" style="width: 24px; height: 24px; vertical-align: middle;" />
+        </a>
+      </div>
+
+      <div style="font-weight: bold; font-size: 9pt;">Sunside AI GbR</div>
+      <div style="font-size: 9pt; color: #666;">
+        Schiefer Berg 3 | 38124 Braunschweig | Deutschland<br />
+        E-Mail: ${senderEmail || 'contact@sunsideai.de'} | Tel: ${senderTelefon || '+49 176 56039050'}<br />
+        <a href="https://www.sunsideai.de" style="color: #7c3aed;">www.sunsideai.de</a> |
+        <a href="https://calendly.com/sunsideai/30min" style="color: #7c3aed; margin-left: 4px;">Jetzt Termin buchen</a> |
+        <a href="https://open.spotify.com/show/5OUFEuTHVKpGqPNWQOqUIp" style="color: #7c3aed; margin-left: 4px;">Zur Podcast-Folge</a>
+      </div>
+      <div style="font-size: 9pt; color: #888; margin-top: 5px;">Geschäftsführung: Paul Probodziak und Niklas Schwerin</div>
+
+      <div style="margin-top: 15px;">
+        <img src="https://onecdn.io/media/9de8d686-0a97-42a7-b7a6-8cf0fa4c6e95/full" alt="IBM AI Developer" style="height: 48px; margin-right: 8px; vertical-align: middle;" />
+        <img src="https://onecdn.io/media/2c4b8d13-4b19-4898-bd71-9b52f053ee57/full" alt="Make Badge" style="height: 48px; vertical-align: middle;" />
+      </div>
+      <div style="font-size: 9pt; color: #666; margin-top: 8px; font-style: italic;">
+        <strong>Wir sind zertifizierte IBM KI-Entwickler und Make Automatisierungsexperten.</strong>
+      </div>
+    </div>
+  `
+
   return '<!DOCTYPE html><html><head><meta charset="utf-8"></head><body style="font-family: Arial, sans-serif; font-size: 10pt;">' + htmlContent + signatur + '</body></html>'
 }
