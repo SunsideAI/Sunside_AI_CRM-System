@@ -30,6 +30,16 @@ import {
   Flame
 } from 'lucide-react'
 
+// Helper: Lokales Datum als YYYY-MM-DDTHH:MM für datetime-local inputs (ohne UTC-Konvertierung)
+const toLocalDateTimeString = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
 // Ergebnis-Optionen (aus Airtable)
 const ERGEBNIS_OPTIONEN = [
   { value: '', label: 'Kein Ergebnis', color: 'gray' },
@@ -1498,7 +1508,7 @@ function Kaltakquise() {
                             type="datetime-local"
                             value={editForm.wiedervorlageDatum || ''}
                             onChange={(e) => setEditForm(prev => ({ ...prev, wiedervorlageDatum: e.target.value }))}
-                            min={new Date().toISOString().slice(0, 16)}
+                            min={toLocalDateTimeString(new Date())}
                             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
                           />
                           <p className="text-xs text-gray-500 mt-1">Wann soll der Lead erneut kontaktiert werden?</p>

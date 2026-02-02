@@ -234,12 +234,21 @@ function Termine() {
     return days
   }
 
+  // Helper function to get local date string without UTC conversion
+  const toLocalDateString = (date) => {
+    const d = new Date(date)
+    const year = d.getFullYear()
+    const month = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    return `${year}-${month}-${day}`
+  }
+
   const getEventsForDay = (date) => {
-    const dateStr = date.toISOString().split('T')[0]
-    
+    const dateStr = toLocalDateString(date)
+
     return termine
       .filter(event => {
-        const eventDate = new Date(event.start).toISOString().split('T')[0]
+        const eventDate = toLocalDateString(new Date(event.start))
         return eventDate === dateStr
       })
       .sort((a, b) => new Date(a.start) - new Date(b.start))
