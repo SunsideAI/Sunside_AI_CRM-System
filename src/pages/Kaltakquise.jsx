@@ -32,12 +32,19 @@ import {
 
 // Helper: Lokales Datum als YYYY-MM-DDTHH:MM für datetime-local inputs (ohne UTC-Konvertierung)
 const toLocalDateTimeString = (date) => {
-  const year = date.getFullYear()
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const day = String(date.getDate()).padStart(2, '0')
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const d = new Date(date)
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  const hours = String(d.getHours()).padStart(2, '0')
+  const minutes = String(d.getMinutes()).padStart(2, '0')
   return `${year}-${month}-${day}T${hours}:${minutes}`
+}
+
+// Helper: Konvertiert ISO-String oder Date zu datetime-local Format
+const isoToLocalDateTimeString = (isoString) => {
+  if (!isoString) return ''
+  return toLocalDateTimeString(new Date(isoString))
 }
 
 // Ergebnis-Optionen (aus Airtable)
@@ -377,8 +384,8 @@ function Kaltakquise() {
       telefon: lead.telefon || '',
       email: lead.email || '',
       website: lead.website || '',
-      // Wiedervorlage
-      wiedervorlageDatum: lead.wiedervorlageDatum || ''
+      // Wiedervorlage - ISO-String zu datetime-local Format konvertieren
+      wiedervorlageDatum: isoToLocalDateTimeString(lead.wiedervorlageDatum)
     })
     setEditMode(false)
     setShowTerminPicker(false)
@@ -545,8 +552,9 @@ function Kaltakquise() {
       }
       
       // Wiedervorlage nur wenn Ergebnis Wiedervorlage
-      if (editForm.ergebnis === 'Wiedervorlage') {
-        updates.wiedervorlageDatum = editForm.wiedervorlageDatum
+      if (editForm.ergebnis === 'Wiedervorlage' && editForm.wiedervorlageDatum) {
+        // datetime-local gibt lokale Zeit ohne Zeitzone, konvertiere zu ISO mit Zeitzone
+        updates.wiedervorlageDatum = new Date(editForm.wiedervorlageDatum).toISOString()
       } else if (selectedLead.wiedervorlageDatum) {
         // Nur löschen wenn vorher gesetzt war
         updates.wiedervorlageDatum = ''

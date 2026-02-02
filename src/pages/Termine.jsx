@@ -169,7 +169,8 @@ function Termine() {
   const formatTime = (dateStr) => {
     return new Date(dateStr).toLocaleTimeString('de-DE', {
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
+      timeZone: 'Europe/Berlin'  // Immer deutsche Zeit anzeigen
     })
   }
 
@@ -178,7 +179,8 @@ function Termine() {
       weekday: 'long',
       day: '2-digit',
       month: 'long',
-      year: 'numeric'
+      year: 'numeric',
+      timeZone: 'Europe/Berlin'  // Immer deutsche Zeit anzeigen
     })
   }
 

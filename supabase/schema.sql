@@ -129,7 +129,7 @@ CREATE TABLE leads (
   datum DATE,
   ergebnis ergebnis_type,
   kommentar TEXT,
-  wiedervorlage_datum DATE,
+  wiedervorlage_datum TIMESTAMPTZ,  -- TIMESTAMPTZ für Datum + Uhrzeit
 
   -- Lead-Quelle
   quelle quelle_type DEFAULT 'Kaltakquise',
