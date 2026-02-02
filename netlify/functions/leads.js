@@ -6,6 +6,42 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_KEY
 )
 
+// Helper: Array zu String konvertieren (falls Airtable-Migration Arrays hinterlassen hat)
+function arrayToString(value) {
+  if (!value) return ''
+  if (Array.isArray(value)) return value.join(' ').trim()
+  const strValue = String(value).trim()
+  if (strValue.startsWith('[') && strValue.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(strValue)
+      if (Array.isArray(parsed)) return parsed.join(' ').trim()
+    } catch (e) { /* ignore */ }
+  }
+  return strValue
+}
+
+// Helper: Array zu Zahl konvertieren
+function arrayToNumber(value, defaultValue = null) {
+  if (value === null || value === undefined) return defaultValue
+  if (typeof value === 'number') return value
+  if (Array.isArray(value)) {
+    const num = parseFloat(value[0])
+    return isNaN(num) ? defaultValue : num
+  }
+  const strValue = String(value).trim()
+  if (strValue.startsWith('[') && strValue.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(strValue)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const num = parseFloat(parsed[0])
+        return isNaN(num) ? defaultValue : num
+      }
+    } catch (e) { /* ignore */ }
+  }
+  const num = parseFloat(strValue)
+  return isNaN(num) ? defaultValue : num
+}
+
 export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
@@ -202,27 +238,27 @@ export async function handler(event) {
 
         return {
           id: record.id,
-          unternehmensname: record.unternehmensname || '',
-          stadt: record.stadt || '',
-          land: record.land || '',
-          kategorie: record.kategorie || '',
-          email: record.mail || '',
-          website: record.website || '',
-          telefon: record.telefonnummer || '',
+          unternehmensname: arrayToString(record.unternehmensname) || '',
+          stadt: arrayToString(record.stadt) || '',
+          land: arrayToString(record.land) || '',
+          kategorie: arrayToString(record.kategorie) || '',
+          email: arrayToString(record.mail) || '',
+          website: arrayToString(record.website) || '',
+          telefon: arrayToString(record.telefonnummer) || '',
           zugewiesenAn: assignments.map(a => a.name),
           zugewiesenAnIds: assignments.map(a => a.id),
           kontaktiert: record.bereits_kontaktiert === true,
           datum: record.datum || null,
-          ergebnis: record.ergebnis || '',
+          ergebnis: arrayToString(record.ergebnis) || '',
           kommentar: record.kommentar || '',
-          ansprechpartnerVorname: record.ansprechpartner_vorname || '',
-          ansprechpartnerNachname: record.ansprechpartner_nachname || '',
+          ansprechpartnerVorname: arrayToString(record.ansprechpartner_vorname) || '',
+          ansprechpartnerNachname: arrayToString(record.ansprechpartner_nachname) || '',
           wiedervorlageDatum: record.wiedervorlage_datum || '',
-          quelle: record.quelle || '',
-          absprungrate: record.absprungrate || null,
-          monatlicheBesuche: record.monatliche_besuche || null,
-          anzahlLeads: record.anzahl_leads || null,
-          mehrwert: record.mehrwert || null
+          quelle: arrayToString(record.quelle) || '',
+          absprungrate: arrayToNumber(record.absprungrate),
+          monatlicheBesuche: arrayToNumber(record.monatliche_besuche),
+          anzahlLeads: arrayToNumber(record.anzahl_leads),
+          mehrwert: arrayToNumber(record.mehrwert)
         }
       })
 

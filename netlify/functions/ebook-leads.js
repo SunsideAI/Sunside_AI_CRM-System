@@ -9,6 +9,20 @@ const supabase = createClient(
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY
 
+// Helper: Array zu String konvertieren (falls Airtable-Migration Arrays hinterlassen hat)
+function arrayToString(value) {
+  if (!value) return ''
+  if (Array.isArray(value)) return value.join(' ').trim()
+  const strValue = String(value).trim()
+  if (strValue.startsWith('[') && strValue.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(strValue)
+      if (Array.isArray(parsed)) return parsed.join(' ').trim()
+    } catch (e) { /* ignore */ }
+  }
+  return strValue
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -140,20 +154,20 @@ export async function handler(event) {
         .filter(lead => !assignedLeadIds.includes(lead.id))
         .map(record => ({
           id: record.id,
-          unternehmensname: record.unternehmensname || '',
-          ansprechpartnerVorname: record.ansprechpartner_vorname || '',
-          ansprechpartnerNachname: record.ansprechpartner_nachname || '',
-          kategorie: record.kategorie || '',
-          email: record.mail || '',
-          telefon: record.telefonnummer || '',
-          ort: record.stadt || '',
-          bundesland: record.bundesland || '',
-          land: record.land || 'Deutschland',
-          website: record.website || '',
-          quelle: record.quelle || '',
+          unternehmensname: arrayToString(record.unternehmensname) || '',
+          ansprechpartnerVorname: arrayToString(record.ansprechpartner_vorname) || '',
+          ansprechpartnerNachname: arrayToString(record.ansprechpartner_nachname) || '',
+          kategorie: arrayToString(record.kategorie) || '',
+          email: arrayToString(record.mail) || '',
+          telefon: arrayToString(record.telefonnummer) || '',
+          ort: arrayToString(record.stadt) || '',
+          bundesland: arrayToString(record.bundesland) || '',
+          land: arrayToString(record.land) || 'Deutschland',
+          website: arrayToString(record.website) || '',
+          quelle: arrayToString(record.quelle) || '',
           datum: record.datum || '',
           kommentar: record.kommentar || '',
-          ergebnis: record.ergebnis || '',
+          ergebnis: arrayToString(record.ergebnis) || '',
           kontaktiert: record.bereits_kontaktiert === true
         }))
 

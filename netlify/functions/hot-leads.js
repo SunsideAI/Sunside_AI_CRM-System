@@ -61,6 +61,39 @@ function arrayToString(value) {
   return strValue
 }
 
+// Helper: Array zu Zahl konvertieren (für numerische Felder aus Airtable-Migration)
+function arrayToNumber(value, defaultValue = 0) {
+  if (value === null || value === undefined) return defaultValue
+
+  // Bereits eine Zahl
+  if (typeof value === 'number') return value
+
+  // Echtes Array - erstes Element nehmen
+  if (Array.isArray(value)) {
+    const first = value[0]
+    const num = parseFloat(first)
+    return isNaN(num) ? defaultValue : num
+  }
+
+  // String der wie ein JSON-Array aussieht: '[150]' oder '[1800]'
+  const strValue = String(value).trim()
+  if (strValue.startsWith('[') && strValue.endsWith(']')) {
+    try {
+      const parsed = JSON.parse(strValue)
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const num = parseFloat(parsed[0])
+        return isNaN(num) ? defaultValue : num
+      }
+    } catch (e) {
+      // Kein gültiges JSON
+    }
+  }
+
+  // Normaler String zu Zahl
+  const num = parseFloat(strValue)
+  return isNaN(num) ? defaultValue : num
+}
+
 // User ID nach Name finden
 async function getUserIdByName(userName) {
   if (!userName) return null
@@ -181,10 +214,10 @@ export async function handler(event) {
           setup: record.setup || 0,
           retainer: record.retainer || 0,
           laufzeit: record.laufzeit || 0,
-          monatlicheBesuche: record.monatliche_besuche || originalLead.monatliche_besuche || 0,
-          mehrwert: record.mehrwert || originalLead.mehrwert || 0,
-          absprungrate: record.absprungrate || originalLead.absprungrate || null,
-          anzahlLeads: record.anzahl_leads || originalLead.anzahl_leads || null,
+          monatlicheBesuche: arrayToNumber(record.monatliche_besuche) || arrayToNumber(originalLead.monatliche_besuche) || 0,
+          mehrwert: arrayToNumber(record.mehrwert) || arrayToNumber(originalLead.mehrwert) || 0,
+          absprungrate: arrayToNumber(record.absprungrate, null) ?? arrayToNumber(originalLead.absprungrate, null),
+          anzahlLeads: arrayToNumber(record.anzahl_leads, null) ?? arrayToNumber(originalLead.anzahl_leads, null),
           produktDienstleistung: record.produkt_dienstleistung || [],
           kommentar: originalLead.kommentar || '',
           kundeSeit: record.kunde_seit || '',
