@@ -493,8 +493,8 @@ function Kaltakquise() {
       // Wiedervorlage gesetzt?
       if (editForm.ergebnis === 'Wiedervorlage' && editForm.wiedervorlageDatum) {
         const wvDate = new Date(editForm.wiedervorlageDatum)
-        const wvFormatted = wvDate.toLocaleDateString('de-DE', { 
-          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+        const wvFormatted = wvDate.toLocaleDateString('de-DE', {
+          day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
         })
         historyEntries.push({
           action: 'wiedervorlage',

@@ -611,13 +611,14 @@ function Closing() {
           body: JSON.stringify({
             action: 'notify-closers-release',
             termin: {
-              datum: selectedLead.terminDatum ? new Date(selectedLead.terminDatum).toLocaleDateString('de-DE', { 
-                weekday: 'long', 
-                day: '2-digit', 
-                month: '2-digit', 
+              datum: selectedLead.terminDatum ? new Date(selectedLead.terminDatum).toLocaleDateString('de-DE', {
+                weekday: 'long',
+                day: '2-digit',
+                month: '2-digit',
                 year: 'numeric',
                 hour: '2-digit',
-                minute: '2-digit'
+                minute: '2-digit',
+                timeZone: 'Europe/Berlin'  // Immer deutsche Zeit anzeigen
               }) : 'Nicht festgelegt',
               art: selectedLead.terminart || 'Unbekannt',
               unternehmen: selectedLead.unternehmen,
@@ -680,7 +681,8 @@ function Closing() {
         month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        timeZone: 'Europe/Berlin'  // Immer deutsche Zeit anzeigen
       })
     } catch {
       return '-'
@@ -884,8 +886,8 @@ function Closing() {
           try {
             let messageData = null
             const unternehmen = selectedLead.unternehmen || 'Lead'
-            const terminDatum = selectedLead.terminDatum 
-              ? new Date(selectedLead.terminDatum).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+            const terminDatum = selectedLead.terminDatum
+              ? new Date(selectedLead.terminDatum).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })
               : ''
             
             if (editData.status === 'Termin abgesagt') {
@@ -1168,13 +1170,13 @@ function Closing() {
                             : 'bg-blue-50 text-blue-700'
                         }`}>
                           <div className="text-xs font-medium uppercase">
-                            {terminDate?.toLocaleDateString('de-DE', { weekday: 'short' })}
+                            {terminDate?.toLocaleDateString('de-DE', { weekday: 'short', timeZone: 'Europe/Berlin' })}
                           </div>
                           <div className="text-lg font-bold">
-                            {terminDate?.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                            {terminDate?.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Berlin' })}
                           </div>
                           <div className="text-sm font-medium">
-                            {terminDate?.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
+                            {terminDate?.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr
                           </div>
                           {isPast && (
                             <div className="text-xs mt-1">⚠️ Verpasst</div>
