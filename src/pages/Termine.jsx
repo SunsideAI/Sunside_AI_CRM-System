@@ -170,8 +170,18 @@ function Termine() {
   }
 
   // Formatierung
-  const formatTime = (dateStr) => {
-    return new Date(dateStr).toLocaleTimeString('de-DE', {
+  const formatTime = (dateStr, source) => {
+    const date = new Date(dateStr)
+    // Prüfen ob es eine "Mitternacht UTC" Zeit ist (alte DATE-Einträge ohne echte Uhrzeit)
+    // Diese werden zu 00:00 UTC konvertiert, was 01:00 deutscher Zeit entspricht
+    if (source === 'wiedervorlage') {
+      const utcHours = date.getUTCHours()
+      const utcMinutes = date.getUTCMinutes()
+      if (utcHours === 0 && utcMinutes === 0) {
+        return '-'  // Keine echte Uhrzeit gesetzt
+      }
+    }
+    return date.toLocaleTimeString('de-DE', {
       hour: '2-digit',
       minute: '2-digit',
       timeZone: 'Europe/Berlin'  // Immer deutsche Zeit anzeigen
@@ -463,7 +473,7 @@ function Termine() {
                               {event.title}
                             </div>
                             <div className="text-[10px] opacity-75">
-                              {formatTime(event.start)}
+                              {formatTime(event.start, event.source)}
                             </div>
                             {viewMode === 'all' && event.closerName && (
                               <div className="text-[10px] opacity-75 truncate">
@@ -510,7 +520,7 @@ function Termine() {
                         onClick={() => setSelectedEvent(event)}
                         className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] truncate hover:shadow-sm transition-shadow ${getEventColor(event)}`}
                       >
-                        <span className="font-medium">{formatTime(event.start)}</span> {event.title}
+                        <span className="font-medium">{formatTime(event.start, event.source)}</span> {event.title}
                       </button>
                     ))}
                     {dayEvents.length > 3 && (
@@ -594,7 +604,7 @@ function Termine() {
                   <Clock className="w-5 h-5 text-gray-400 mt-0.5" />
                   <div>
                     <div className="font-medium">{formatDateLong(selectedEvent.start)}</div>
-                    <div className="text-gray-600">{formatTime(selectedEvent.start)} - {formatTime(selectedEvent.end)}</div>
+                    <div className="text-gray-600">{formatTime(selectedEvent.start, selectedEvent.source)} - {formatTime(selectedEvent.end, selectedEvent.source)}</div>
                   </div>
                 </div>
 
