@@ -286,7 +286,12 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
         } catch (err) {
           console.error('Hot Lead Update fehlgeschlagen:', err)
         }
-      } else if (lead?.id) {
+      }
+
+      // Variable um Hot Lead ID für Closer-Benachrichtigung zu speichern
+      let createdHotLeadId = null
+
+      if (lead?.id && !isReschedule) {
         // Neuen Hot Lead erstellen
         try {
           const hotLeadResponse = await fetch('/.netlify/functions/hot-leads', {
@@ -304,7 +309,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
               meetingLink: meetingLink  // Video-Link speichern
             })
           })
-          
+
           const hotLeadData = await hotLeadResponse.json()
           if (!hotLeadResponse.ok) {
             // Duplikat-Prüfung: 409 = Hot Lead existiert bereits
@@ -316,6 +321,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
             console.error('Hot Lead Erstellung fehlgeschlagen:', hotLeadData)
           } else {
             console.log('Hot Lead erstellt:', hotLeadData.hotLeadId)
+            createdHotLeadId = hotLeadData.hotLeadId
           }
         } catch (err) {
           console.error('Hot Lead Erstellung fehlgeschlagen:', err)
@@ -399,7 +405,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
         }
       }
 
-      // Bei "An Closer vergeben": Email an alle Closer senden
+      // Bei "An Closer vergeben": Benachrichtigung an alle Closer senden (Email + In-App)
       if (assignToPool && !isReschedule) {
         try {
           await fetch('/.netlify/functions/send-email', {
@@ -407,11 +413,12 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               action: 'notify-closers',
+              hotLeadId: createdHotLeadId,  // Hot Lead ID für System Message Verknüpfung
               termin: {
-                datum: new Date(selectedSlot.start).toLocaleDateString('de-DE', { 
-                  weekday: 'long', 
-                  day: '2-digit', 
-                  month: '2-digit', 
+                datum: new Date(selectedSlot.start).toLocaleDateString('de-DE', {
+                  weekday: 'long',
+                  day: '2-digit',
+                  month: '2-digit',
                   year: 'numeric',
                   hour: '2-digit',
                   minute: '2-digit',
@@ -425,6 +432,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
               }
             })
           })
+          console.log('Closer-Benachrichtigungen gesendet (Email + In-App)')
         } catch (err) {
           console.error('Closer-Benachrichtigung fehlgeschlagen:', err)
           // Kein harter Fehler - Termin wurde trotzdem gebucht

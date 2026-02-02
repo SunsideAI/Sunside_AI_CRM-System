@@ -140,8 +140,8 @@ export async function handler(event) {
         .from('leads')
         .select('*', { count: 'exact' })
 
-      // User-Filter: Nur wenn NICHT Admin mit "all" view
-      const needsUserFilter = userRole !== 'Admin' || view === 'own'
+      // User-Filter: Nur wenn NICHT Admin mit "all" view ODER bei Wiedervorlagen-Abfrage
+      const needsUserFilter = userRole !== 'Admin' || view === 'own' || wiedervorlage === 'true'
 
       if (needsUserFilter && userId) {
         // Zuerst Lead-IDs holen die diesem User zugewiesen sind

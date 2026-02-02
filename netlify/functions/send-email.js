@@ -31,11 +31,11 @@ export async function handler(event) {
   try {
     const body = JSON.parse(event.body)
 
-    // NOTIFY CLOSERS - Benachrichtigung bei neuem Termin
+    // NOTIFY CLOSERS - Benachrichtigung bei neuem Termin (Email + System Message)
     if (body.action === 'notify-closers') {
-      const { termin } = body
+      const { termin, hotLeadId } = body
 
-      if (!termin || !RESEND_API_KEY) {
+      if (!termin) {
         return {
           statusCode: 400,
           headers: corsHeaders,
@@ -43,32 +43,57 @@ export async function handler(event) {
         }
       }
 
+      // Alle aktiven Closer/Admins laden (mit ID für System Messages)
       const { data: users } = await supabase
         .from('users')
-        .select('email_geschaeftlich, rollen')
+        .select('id, email_geschaeftlich, rollen')
         .eq('status', true)
 
-      const closerEmails = (users || [])
+      const closerUsers = (users || [])
         .filter(u => (u.rollen || []).some(r => r.toLowerCase().includes('closer') || r.toLowerCase() === 'admin'))
-        .map(u => u.email_geschaeftlich)
-        .filter(Boolean)
 
-      if (closerEmails.length === 0) {
+      if (closerUsers.length === 0) {
         return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true, message: 'Keine Closer' }) }
       }
 
-      await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { 'Authorization': 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: 'Sunside CRM <team@sunsideai.de>',
-          to: closerEmails,
-          subject: 'Neues Beratungsgespraech: ' + termin.unternehmen,
-          html: '<p>Neues Beratungsgespraech von ' + termin.setter + ' fuer ' + termin.unternehmen + ' am ' + termin.datum + '</p>'
-        })
+      // System Messages für alle Closer erstellen (In-App-Benachrichtigungen)
+      const messagePromises = closerUsers.map(async (closer) => {
+        const messageId = `MSG-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+        try {
+          await supabase.from('system_messages').insert({
+            message_id: messageId,
+            empfaenger_id: closer.id,
+            typ: 'Pool Update',
+            titel: `Neuer Termin im Pool: ${termin.unternehmen}`,
+            nachricht: `${termin.setter} hat ein Beratungsgespräch mit ${termin.unternehmen} (${termin.ansprechpartner || ''}) für ${termin.datum} gebucht. Terminart: ${termin.art}`,
+            hot_lead_id: hotLeadId || null,
+            gelesen: false
+          })
+        } catch (err) {
+          console.error('System Message für Closer fehlgeschlagen:', closer.id, err)
+        }
       })
+      await Promise.all(messagePromises)
+      console.log(`${closerUsers.length} System Messages für Closer erstellt`)
 
-      return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true }) }
+      // Email-Benachrichtigung (falls konfiguriert)
+      if (RESEND_API_KEY) {
+        const closerEmails = closerUsers.map(u => u.email_geschaeftlich).filter(Boolean)
+        if (closerEmails.length > 0) {
+          await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              from: 'Sunside CRM <team@sunsideai.de>',
+              to: closerEmails,
+              subject: 'Neues Beratungsgespraech: ' + termin.unternehmen,
+              html: '<p>Neues Beratungsgespraech von ' + termin.setter + ' fuer ' + termin.unternehmen + ' am ' + termin.datum + '</p>'
+            })
+          })
+        }
+      }
+
+      return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true, notifiedClosers: closerUsers.length }) }
     }
 
     // NOTIFY CLOSERS RELEASE

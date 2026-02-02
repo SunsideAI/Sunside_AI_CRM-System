@@ -83,20 +83,23 @@ function Layout({ children }) {
   useEffect(() => {
     const loadNotifications = async () => {
       if (!user?.id) return
-      
+
+      console.log('[Notifications] Loading notifications for user:', user.id, user.vor_nachname)
+
       try {
         // Gelesene Benachrichtigungen aus localStorage laden
         const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]')
-        
+
         let allNotifications = []
-        
+
         // 1. Lead-Anfragen laden (wie bisher)
         const params = new URLSearchParams({
           isAdmin: isAdmin() ? 'true' : 'false',
           userId: user.id
         })
-        
+
         const anfragenResponse = await fetch(`/.netlify/functions/lead-requests?${params}`)
+        console.log('[Notifications] Lead-Anfragen Response:', anfragenResponse.status)
         if (anfragenResponse.ok) {
           const data = await anfragenResponse.json()
           const anfragen = data.anfragen || []
@@ -153,6 +156,7 @@ function Layout({ children }) {
         
         // 2. System Messages laden
         const systemResponse = await fetch(`/.netlify/functions/system-messages?userId=${user.id}`)
+        console.log('[Notifications] System Messages Response:', systemResponse.status)
         if (systemResponse.ok) {
           const systemData = await systemResponse.json()
           const systemMessages = systemData.messages || []
@@ -228,10 +232,10 @@ function Layout({ children }) {
             const hotLeads = [...(closerResponse.hotLeads || []), ...(setterResponse.hotLeads || [])]
               .filter((lead, idx, arr) => arr.findIndex(l => l.id === lead.id) === idx) // Duplikate entfernen
             
-            // Wiedervorlagen laden
+            // Wiedervorlagen laden - mit userId statt userName für korrekten Filter
             const wvParams = new URLSearchParams({
               wiedervorlage: 'true',
-              userName: userName
+              userId: user.id
             })
             const wvResponse = await fetch(`/.netlify/functions/leads?${wvParams}`)
             const wvData = wvResponse.ok ? await wvResponse.json() : { leads: [] }
@@ -315,7 +319,9 @@ function Layout({ children }) {
           // Dann nach Zeit
           return new Date(b.time) - new Date(a.time)
         })
-        
+
+        console.log('[Notifications] Total loaded:', allNotifications.length, 'Unread:', allNotifications.filter(n => n.unread).length)
+
         setNotifications(allNotifications)
         setNotificationCount(allNotifications.filter(n => n.unread).length)
         

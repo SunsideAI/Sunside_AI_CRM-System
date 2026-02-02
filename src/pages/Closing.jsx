@@ -882,14 +882,16 @@ function Closing() {
       // System Message senden bei bestimmten Status-Änderungen
       if (hasStatusChange) {
         const setterId = selectedLead.setterId
+        const unternehmen = selectedLead.unternehmen || 'Lead'
+        const terminDatum = selectedLead.terminDatum
+          ? new Date(selectedLead.terminDatum).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })
+          : ''
+
+        // Nachricht an Setter senden (wenn vorhanden)
         if (setterId) {
           try {
             let messageData = null
-            const unternehmen = selectedLead.unternehmen || 'Lead'
-            const terminDatum = selectedLead.terminDatum
-              ? new Date(selectedLead.terminDatum).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })
-              : ''
-            
+
             if (editData.status === 'Termin abgesagt') {
               messageData = {
                 empfaengerId: setterId,
@@ -923,18 +925,20 @@ function Closing() {
                 hotLeadId: selectedLead.id
               }
             }
-            
+
             if (messageData) {
-              await fetch('/.netlify/functions/system-messages', {
+              const response = await fetch('/.netlify/functions/system-messages', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(messageData)
               })
-              console.log('System Message gesendet für:', editData.status)
+              console.log('System Message an Setter gesendet:', editData.status, response.ok ? 'OK' : 'Fehler')
             }
           } catch (msgErr) {
             console.warn('System Message konnte nicht gesendet werden:', msgErr)
           }
+        } else {
+          console.log('Kein Setter für diesen Lead - keine System Message gesendet')
         }
       }
 
