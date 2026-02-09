@@ -5,7 +5,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 // Throttle: Mindestabstand zwischen Requests (Airtable erlaubt 5 req/sec)
 let lastRequestTime = 0
-const MIN_REQUEST_INTERVAL = 250 // 250ms = max 4 req/sec (Puffer)
+const MIN_REQUEST_INTERVAL = 210 // 210ms ≈ 4.7 req/sec (knapp unter Airtable-Limit von 5/sec)
 
 async function throttledFetch(url, options = {}) {
   const now = Date.now()

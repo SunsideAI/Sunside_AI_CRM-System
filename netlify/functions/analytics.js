@@ -12,7 +12,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
 // Throttle: Mindestabstand zwischen Requests (Airtable erlaubt 5 req/sec)
 let lastRequestTime = 0
-const MIN_REQUEST_INTERVAL = 250 // 250ms = max 4 req/sec (Puffer für parallele Invocations)
+const MIN_REQUEST_INTERVAL = 210 // 210ms ≈ 4.7 req/sec (knapp unter Airtable-Limit von 5/sec)
 
 async function throttledFetch(url, options = {}) {
   const now = Date.now()
@@ -473,6 +473,17 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     filterUserRecordId = await getUserRecordId(filterUserName)
   }
 
+  // === Server-seitige Datum-Filterung (reduziert Seitenanzahl drastisch) ===
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/
+  let dateFormula = null
+  if (startDateStr && dateRegex.test(startDateStr) && endDateStr && dateRegex.test(endDateStr)) {
+    dateFormula = `AND({Datum}, NOT(IS_BEFORE({Datum}, '${startDateStr}')), NOT(IS_AFTER({Datum}, '${endDateStr}')))`
+  } else if (startDateStr && dateRegex.test(startDateStr)) {
+    dateFormula = `AND({Datum}, NOT(IS_BEFORE({Datum}, '${startDateStr}')))`
+  } else if (endDateStr && dateRegex.test(endDateStr)) {
+    dateFormula = `AND({Datum}, NOT(IS_AFTER({Datum}, '${endDateStr}')))`
+  }
+
   // === 1. Aktive Leads laden ===
   let activeRecords = []
   let offset = null
@@ -486,6 +497,9 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       url.searchParams.append('fields[]', field)
     }
     url.searchParams.append('pageSize', '100')
+    if (dateFormula) {
+      url.searchParams.append('filterByFormula', dateFormula)
+    }
     if (offset) {
       url.searchParams.append('offset', offset)
     }
@@ -512,6 +526,9 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
       url.searchParams.append('fields[]', field)
     }
     url.searchParams.append('pageSize', '100')
+    if (dateFormula) {
+      url.searchParams.append('filterByFormula', dateFormula)
+    }
     if (offset) {
       url.searchParams.append('offset', offset)
     }
