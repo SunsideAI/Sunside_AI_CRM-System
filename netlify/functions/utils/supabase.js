@@ -2,10 +2,15 @@
  * Supabase Client Utility für Netlify Functions
  *
  * Verwendung:
- * const { supabase } = require('./utils/supabase')
+ * const { supabase, queryWithRetry } = require('./utils/supabase')
  *
  * Beispiel Query:
  * const { data, error } = await supabase.from('leads').select('*')
+ *
+ * Mit Retry-Logik:
+ * const { data, error } = await queryWithRetry(() =>
+ *   supabase.from('leads').select('*')
+ * )
  */
 
 const { createClient } = require('@supabase/supabase-js')
@@ -27,6 +32,166 @@ const supabase = createClient(SUPABASE_URL || '', SUPABASE_SERVICE_KEY || '', {
     persistSession: false
   }
 })
+
+// =====================================================
+// RATE LIMIT HANDLING
+// =====================================================
+
+const MAX_RETRIES = 3
+const INITIAL_DELAY = 1000 // 1 Sekunde
+
+/**
+ * Sleep-Helper für Retry-Logik
+ */
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/**
+ * Query mit automatischem Retry bei Rate-Limit-Fehlern
+ * Verwendet exponential backoff: 1s, 2s, 4s
+ *
+ * @param {Function} queryFn - Funktion die die Supabase-Query ausführt
+ * @param {number} retries - Anzahl der Retry-Versuche
+ * @returns {Promise<{data: any, error: any}>}
+ */
+async function queryWithRetry(queryFn, retries = MAX_RETRIES) {
+  let lastError = null
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const result = await queryFn()
+
+      // Prüfe auf Rate-Limit-Fehler in der Supabase-Antwort
+      if (result.error) {
+        const errorMsg = result.error.message || ''
+        const errorCode = result.error.code || ''
+
+        // Rate limit oder Server-Fehler
+        if (errorMsg.includes('rate limit') ||
+            errorMsg.includes('too many requests') ||
+            errorCode === '429' ||
+            errorCode === 'PGRST301') {
+
+          if (attempt < retries) {
+            const delay = INITIAL_DELAY * Math.pow(2, attempt)
+            console.log(`Rate limit (429), warte ${delay}ms... (Versuch ${attempt + 1}/${retries})`)
+            await sleep(delay)
+            continue
+          }
+        }
+
+        // Temporäre Server-Fehler
+        if (errorCode === '503' || errorCode === '502' || errorCode === '500') {
+          if (attempt < retries) {
+            const delay = INITIAL_DELAY * Math.pow(2, attempt)
+            console.log(`Server error (${errorCode}), warte ${delay}ms... (Versuch ${attempt + 1}/${retries})`)
+            await sleep(delay)
+            continue
+          }
+        }
+      }
+
+      return result
+
+    } catch (error) {
+      lastError = error
+
+      // Netzwerk-Fehler oder unerwartete Fehler
+      if (attempt < retries) {
+        const delay = INITIAL_DELAY * Math.pow(2, attempt)
+        console.log(`Netzwerk-Fehler, warte ${delay}ms... (Versuch ${attempt + 1}/${retries})`)
+        await sleep(delay)
+        continue
+      }
+    }
+  }
+
+  // Alle Versuche fehlgeschlagen
+  return {
+    data: null,
+    error: lastError || new Error(`Query fehlgeschlagen nach ${retries} Versuchen`)
+  }
+}
+
+/**
+ * Führt mehrere Queries parallel aus mit Rate-Limit-Schutz
+ * Begrenzt auf maxConcurrent gleichzeitige Anfragen
+ *
+ * @param {Array<Function>} queryFns - Array von Query-Funktionen
+ * @param {number} maxConcurrent - Maximale gleichzeitige Anfragen
+ * @returns {Promise<Array<{data: any, error: any}>>}
+ */
+async function queryParallel(queryFns, maxConcurrent = 3) {
+  const results = []
+
+  for (let i = 0; i < queryFns.length; i += maxConcurrent) {
+    const batch = queryFns.slice(i, i + maxConcurrent)
+    const batchResults = await Promise.all(
+      batch.map(fn => queryWithRetry(fn))
+    )
+    results.push(...batchResults)
+
+    // Kleine Pause zwischen Batches um Rate-Limits zu vermeiden
+    if (i + maxConcurrent < queryFns.length) {
+      await sleep(100)
+    }
+  }
+
+  return results
+}
+
+/**
+ * Lädt alle Daten einer Tabelle mit Pagination und Rate-Limit-Schutz
+ *
+ * @param {string} table - Tabellenname
+ * @param {string} select - Select-Klausel
+ * @param {Object} filters - Filter als Objekt {column: value}
+ * @param {number} pageSize - Seitengröße
+ * @returns {Promise<{data: Array, error: any}>}
+ */
+async function fetchAllWithPagination(table, select = '*', filters = {}, pageSize = 1000) {
+  let allRecords = []
+  let page = 0
+  let hasMore = true
+
+  while (hasMore) {
+    const result = await queryWithRetry(async () => {
+      let query = supabase
+        .from(table)
+        .select(select)
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+
+      // Filter anwenden
+      for (const [column, value] of Object.entries(filters)) {
+        if (value === true || value === false) {
+          query = query.eq(column, value)
+        } else if (value !== null && value !== undefined) {
+          query = query.eq(column, value)
+        }
+      }
+
+      return query
+    })
+
+    if (result.error) {
+      return { data: allRecords, error: result.error }
+    }
+
+    if (!result.data || result.data.length === 0) {
+      hasMore = false
+    } else {
+      allRecords = allRecords.concat(result.data)
+      page++
+
+      if (result.data.length < pageSize) {
+        hasMore = false
+      }
+    }
+  }
+
+  return { data: allRecords, error: null }
+}
 
 // =====================================================
 // HELPER FUNKTIONEN
@@ -294,6 +459,12 @@ async function unassignLeadFromUser(leadId, userId) {
 module.exports = {
   // Supabase Client
   supabase,
+
+  // Rate Limit & Retry Helper
+  queryWithRetry,
+  queryParallel,
+  fetchAllWithPagination,
+  sleep,
 
   // Response Helper
   errorResponse,
