@@ -237,14 +237,10 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
   let allRecords = []
   let offset = null
 
-  // Nur benötigte Felder laden
-  const hotLeadFields = ['Status', 'Setup', 'Retainer', 'Laufzeit', 'Kunde seit', 'Kunde_seit', 'Termin_Beratungsgespräch', 'Closer', 'Setter']
-
+  // Hot Leads: kein fields[]-Filter wegen unsicherer Feldnamen ('Kunde seit' vs 'Kunde_seit')
+  // Tabelle ist klein genug, dass alle Felder geladen werden können
   do {
     const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
-    for (const field of hotLeadFields) {
-      url.searchParams.append('fields[]', field)
-    }
     url.searchParams.append('pageSize', '100')
     if (offset) {
       url.searchParams.append('offset', offset)
