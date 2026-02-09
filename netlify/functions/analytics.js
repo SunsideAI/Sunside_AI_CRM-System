@@ -484,14 +484,8 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   let activeRecords = []
   let offset = null
 
-  // Nur benötigte Felder laden (reduziert Datenmenge drastisch)
-  const activeLeadFields = ['Bereits_kontaktiert', 'Ergebnis', 'Datum', 'User_Datenbank']
-
   do {
     const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(leadsTableName)}`)
-    for (const field of activeLeadFields) {
-      url.searchParams.append('fields[]', field)
-    }
     url.searchParams.append('pageSize', '100')
     if (dateFormula) {
       url.searchParams.append('filterByFormula', dateFormula)
@@ -514,13 +508,9 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   // === 2. Archiv-Leads laden ===
   let archivRecords = []
   offset = null
-  const archivFields = ['Bereits_kontaktiert', 'Ergebnis', 'Datum', 'Vertriebler']
 
   do {
     const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${archivTableId}`)
-    for (const field of archivFields) {
-      url.searchParams.append('fields[]', field)
-    }
     url.searchParams.append('pageSize', '100')
     if (dateFormula) {
       url.searchParams.append('filterByFormula', dateFormula)
