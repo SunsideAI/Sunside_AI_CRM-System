@@ -470,14 +470,25 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   }
 
   // === Server-seitige Datum-Filterung (reduziert Seitenanzahl drastisch) ===
+  // Wichtig: endDate + 1 Tag verwenden, weil Datum Zeitkomponenten haben kann
+  // (z.B. 2026-02-09T14:30:00 ist "nach" 2026-02-09 Mitternacht)
   const dateRegex = /^\d{4}-\d{2}-\d{2}$/
   let dateFormula = null
+
+  function nextDay(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00')
+    d.setDate(d.getDate() + 1)
+    return d.toISOString().split('T')[0]
+  }
+
   if (startDateStr && dateRegex.test(startDateStr) && endDateStr && dateRegex.test(endDateStr)) {
-    dateFormula = `AND({Datum}, NOT(IS_BEFORE({Datum}, '${startDateStr}')), NOT(IS_AFTER({Datum}, '${endDateStr}')))`
+    const endPlus1 = nextDay(endDateStr)
+    dateFormula = `AND({Datum}, NOT(IS_BEFORE({Datum}, '${startDateStr}')), IS_BEFORE({Datum}, '${endPlus1}'))`
   } else if (startDateStr && dateRegex.test(startDateStr)) {
     dateFormula = `AND({Datum}, NOT(IS_BEFORE({Datum}, '${startDateStr}')))`
   } else if (endDateStr && dateRegex.test(endDateStr)) {
-    dateFormula = `AND({Datum}, NOT(IS_AFTER({Datum}, '${endDateStr}')))`
+    const endPlus1 = nextDay(endDateStr)
+    dateFormula = `AND({Datum}, IS_BEFORE({Datum}, '${endPlus1}'))`
   }
 
   // === 1. Aktive Leads laden ===
