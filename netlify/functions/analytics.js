@@ -489,7 +489,7 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   let offset = null
 
   // Nur benötigte Felder laden (reduziert Datenmenge drastisch)
-  const activeLeadFields = ['Bereits kontaktiert', 'Bereits_kontaktiert', 'Ergebnis', 'Datum', 'User_Datenbank']
+  const activeLeadFields = ['Bereits_kontaktiert', 'Ergebnis', 'Datum', 'User_Datenbank']
 
   do {
     const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(leadsTableName)}`)
