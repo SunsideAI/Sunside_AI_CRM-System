@@ -7,19 +7,41 @@ const headers = {
   'Content-Type': 'application/json'
 }
 
-// === RATE LIMIT SCHUTZ ===
+// === RATE LIMIT SCHUTZ (verbessert) ===
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+// Throttle: Mindestabstand zwischen Requests (Airtable erlaubt 5 req/sec)
+let lastRequestTime = 0
+const MIN_REQUEST_INTERVAL = 250 // 250ms = max 4 req/sec (Puffer für parallele Invocations)
+
+async function throttledFetch(url, options = {}) {
+  const now = Date.now()
+  const elapsed = now - lastRequestTime
+  if (elapsed < MIN_REQUEST_INTERVAL) {
+    await sleep(MIN_REQUEST_INTERVAL - elapsed)
+  }
+  lastRequestTime = Date.now()
+  return fetch(url, options)
+}
+
+async function fetchWithRetry(url, options = {}, maxRetries = 5) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(url, options)
+      const response = await throttledFetch(url, options)
 
-      // Bei Rate Limit: warten und erneut versuchen
       if (response.status === 429) {
+        if (attempt >= maxRetries) {
+          console.error(`Rate limit (429) nach ${maxRetries} Versuchen`)
+          return response
+        }
         const retryAfter = response.headers.get('Retry-After')
-        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt) * 1000
-        console.log(`Rate limit (429), warte ${delay}ms... (Versuch ${attempt + 1}/${maxRetries})`)
+        // Exponential backoff mit Jitter: 2s, 4s, 8s, 16s, max 30s
+        const baseDelay = retryAfter
+          ? parseInt(retryAfter, 10) * 1000
+          : Math.min(Math.pow(2, attempt + 1) * 1000, 30000)
+        const jitter = Math.random() * 1000
+        const delay = baseDelay + jitter
+        console.log(`Rate limit (429), warte ${Math.round(delay)}ms... (Versuch ${attempt + 1}/${maxRetries})`)
         await sleep(delay)
         continue
       }
@@ -27,7 +49,8 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
       return response
     } catch (err) {
       if (attempt === maxRetries) throw err
-      await sleep(Math.pow(2, attempt) * 1000)
+      const delay = Math.pow(2, attempt + 1) * 1000 + Math.random() * 1000
+      await sleep(delay)
     }
   }
   throw new Error('Max retries exceeded')
@@ -37,6 +60,14 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
 let userNameCache = null
 let userNameCacheTime = 0
 const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
+
+// Analytics Result Cache (2 Minuten TTL) - vermeidet wiederholte Voll-Scans
+const analyticsResultCache = new Map()
+const RESULT_CACHE_TTL = 2 * 60 * 1000
+
+function getAnalyticsCacheKey(params) {
+  return `${params.type || 'setting'}|${params.admin}|${params.email}|${params.userName}|${params.filterUserName}|${params.startDate}|${params.endDate}`
+}
 
 async function loadUserNames() {
   // Cache prüfen
@@ -126,20 +157,39 @@ exports.handler = async (event) => {
     const startDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : null
     const endDate = endDateStr ? new Date(endDateStr + 'T23:59:59') : null
 
+    // Result Cache prüfen
+    const cacheKey = getAnalyticsCacheKey(params)
+    const cached = analyticsResultCache.get(cacheKey)
+    if (cached && (Date.now() - cached.time) < RESULT_CACHE_TTL) {
+      console.log('Analytics: Cache-Hit')
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: cached.body
+      }
+    }
+
+    let result
     if (type === 'closing') {
-      const result = await getClosingStats({ isAdmin, userEmail, userName, startDate, endDate, startDateStr, endDateStr })
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify(result)
-      }
+      result = await getClosingStats({ isAdmin, userEmail, userName, startDate, endDate, startDateStr, endDateStr })
     } else {
-      const result = await getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate, startDateStr, endDateStr })
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify(result)
-      }
+      result = await getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate, startDateStr, endDateStr })
+    }
+
+    const body = JSON.stringify(result)
+
+    // Result cachen
+    analyticsResultCache.set(cacheKey, { body, time: Date.now() })
+    // Alte Einträge aufräumen (max 50)
+    if (analyticsResultCache.size > 50) {
+      const oldestKey = analyticsResultCache.keys().next().value
+      analyticsResultCache.delete(oldestKey)
+    }
+
+    return {
+      statusCode: 200,
+      headers: corsHeaders,
+      body
     }
 
   } catch (error) {
@@ -187,8 +237,15 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
   let allRecords = []
   let offset = null
 
+  // Nur benötigte Felder laden
+  const hotLeadFields = ['Status', 'Setup', 'Retainer', 'Laufzeit', 'Kunde seit', 'Kunde_seit', 'Termin_Beratungsgespräch', 'Closer', 'Setter']
+
   do {
     const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
+    for (const field of hotLeadFields) {
+      url.searchParams.append('fields[]', field)
+    }
+    url.searchParams.append('pageSize', '100')
     if (offset) {
       url.searchParams.append('offset', offset)
     }
@@ -203,7 +260,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
     allRecords = allRecords.concat(data.records || [])
     offset = data.offset
   } while (offset)
-  
+
   console.log('Hot Leads geladen:', allRecords.length)
 
   let gewonnen = 0
@@ -420,8 +477,15 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   let activeRecords = []
   let offset = null
 
+  // Nur benötigte Felder laden (reduziert Datenmenge drastisch)
+  const activeLeadFields = ['Bereits kontaktiert', 'Bereits_kontaktiert', 'Ergebnis', 'Datum', 'User_Datenbank']
+
   do {
     const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(leadsTableName)}`)
+    for (const field of activeLeadFields) {
+      url.searchParams.append('fields[]', field)
+    }
+    url.searchParams.append('pageSize', '100')
     if (offset) {
       url.searchParams.append('offset', offset)
     }
@@ -440,9 +504,14 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
   // === 2. Archiv-Leads laden ===
   let archivRecords = []
   offset = null
+  const archivFields = ['Bereits_kontaktiert', 'Ergebnis', 'Datum', 'Vertriebler']
 
   do {
     const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${archivTableId}`)
+    for (const field of archivFields) {
+      url.searchParams.append('fields[]', field)
+    }
+    url.searchParams.append('pageSize', '100')
     if (offset) {
       url.searchParams.append('offset', offset)
     }
@@ -652,31 +721,14 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
 // ==========================================
 async function getUserNames(recordIds) {
   if (!recordIds || recordIds.length === 0) return {}
-  
-  const tableName = 'User_Datenbank'
+
+  // Cached User-Namen verwenden statt erneut zu laden
+  const allNames = await loadUserNames()
   const names = {}
 
-  let allUsers = []
-  let offset = null
-
-  do {
-    const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
-    if (offset) {
-      url.searchParams.append('offset', offset)
-    }
-
-    const response = await fetchWithRetry(url.toString(), { headers })
-    const data = await response.json()
-
-    if (data.records) {
-      allUsers = allUsers.concat(data.records)
-    }
-    offset = data.offset
-  } while (offset)
-
-  for (const user of allUsers) {
-    if (recordIds.includes(user.id)) {
-      names[user.id] = user.fields.Vor_Nachname || user.fields['Vor_Nachname'] || 'Unbekannt'
+  for (const id of recordIds) {
+    if (allNames[id]) {
+      names[id] = allNames[id]
     }
   }
 
