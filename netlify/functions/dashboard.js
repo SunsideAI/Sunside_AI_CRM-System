@@ -1,17 +1,39 @@
 // Dashboard Analytics API - Statistiken für das Dashboard
 
-// === RATE LIMIT SCHUTZ ===
+// === RATE LIMIT SCHUTZ (verbessert) ===
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-async function fetchWithRetry(url, options = {}, maxRetries = 3) {
+// Throttle: Mindestabstand zwischen Requests (Airtable erlaubt 5 req/sec)
+let lastRequestTime = 0
+const MIN_REQUEST_INTERVAL = 210 // 210ms ≈ 4.7 req/sec (knapp unter Airtable-Limit von 5/sec)
+
+async function throttledFetch(url, options = {}) {
+  const now = Date.now()
+  const elapsed = now - lastRequestTime
+  if (elapsed < MIN_REQUEST_INTERVAL) {
+    await sleep(MIN_REQUEST_INTERVAL - elapsed)
+  }
+  lastRequestTime = Date.now()
+  return fetch(url, options)
+}
+
+async function fetchWithRetry(url, options = {}, maxRetries = 5) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await fetch(url, options)
+      const response = await throttledFetch(url, options)
 
       if (response.status === 429) {
+        if (attempt >= maxRetries) {
+          console.error(`Rate limit (429) nach ${maxRetries} Versuchen`)
+          return response
+        }
         const retryAfter = response.headers.get('Retry-After')
-        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : Math.pow(2, attempt) * 1000
-        console.log(`Rate limit (429), warte ${delay}ms... (Versuch ${attempt + 1}/${maxRetries})`)
+        const baseDelay = retryAfter
+          ? parseInt(retryAfter, 10) * 1000
+          : Math.min(Math.pow(2, attempt + 1) * 1000, 30000)
+        const jitter = Math.random() * 1000
+        const delay = baseDelay + jitter
+        console.log(`Rate limit (429), warte ${Math.round(delay)}ms... (Versuch ${attempt + 1}/${maxRetries})`)
         await sleep(delay)
         continue
       }
@@ -19,7 +41,8 @@ async function fetchWithRetry(url, options = {}, maxRetries = 3) {
       return response
     } catch (err) {
       if (attempt === maxRetries) throw err
-      await sleep(Math.pow(2, attempt) * 1000)
+      const delay = Math.pow(2, attempt + 1) * 1000 + Math.random() * 1000
+      await sleep(delay)
     }
   }
   throw new Error('Max retries exceeded')
