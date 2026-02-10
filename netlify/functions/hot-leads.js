@@ -712,7 +712,6 @@ export async function handler(event) {
         'Retainer',
         'Laufzeit',
         'Produkt_Dienstleistung',
-        'Kategorie',
         'Kunde_seit',
         'Priorität',
         'Closer',  // Falls Closer gewechselt werden soll
@@ -733,7 +732,6 @@ export async function handler(event) {
           'laufzeit': 'Laufzeit',
           'produkt': 'Produkt_Dienstleistung',
           'produktDienstleistung': 'Produkt_Dienstleistung',
-          'kategorie': 'Kategorie',
           'kundeSeit': 'Kunde_seit',
           'prioritaet': 'Priorität',
           'closerId': 'Closer',
@@ -750,6 +748,10 @@ export async function handler(event) {
           // Attachments brauchen Array mit url-Objekten für Airtable
           if (airtableField === 'Attachments' && Array.isArray(value)) {
             fields[airtableField] = value.map(att => ({ url: att.url }))
+          }
+          // Produkt_Dienstleistung: als Array senden (Multi-Select)
+          else if (airtableField === 'Produkt_Dienstleistung' && value) {
+            fields[airtableField] = Array.isArray(value) ? value : [value]
           }
           // Closer braucht Array-Format für Link
           else if (airtableField === 'Closer' && value) {
