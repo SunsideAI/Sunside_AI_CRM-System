@@ -40,42 +40,15 @@ import {
 } from 'lucide-react'
 
 // Paket-Optionen für Angebot
-const PAKET_OPTIONS = [
-  { 
-    value: 'S', 
-    label: 'Paket S (<500 Besucher)', 
-    setup: 999, 
-    retainer: 349,
-    description: '999 € Setup + 349 €/Monat'
-  },
-  { 
-    value: 'M', 
-    label: 'Paket M (500-1000 Besucher)', 
-    setup: 1199, 
-    retainer: 449,
-    description: '1.199 € Setup + 449 €/Monat'
-  },
-  { 
-    value: 'L', 
-    label: 'Paket L (1000-1500 Besucher)', 
-    setup: 1499, 
-    retainer: 549,
-    description: '1.499 € Setup + 549 €/Monat'
-  },
-  { 
-    value: 'XL', 
-    label: 'Paket XL (>1500 Besucher)', 
-    setup: 1799, 
-    retainer: 649,
-    description: '1.799 € Setup + 649 €/Monat'
-  },
-  { 
-    value: 'individuell', 
-    label: 'Individueller Preis', 
-    setup: null, 
-    retainer: null,
-    description: 'Setup manuell eingeben'
-  }
+const PRODUKT_OPTIONS = [
+  { value: 'KI-Chatbot', label: 'KI-Chatbot' },
+  { value: 'Website & KI-Chatbot', label: 'Website & KI-Chatbot' },
+  { value: 'SEO & KI-Chatbot', label: 'SEO & KI-Chatbot' }
+]
+
+const KATEGORIE_OPTIONS = [
+  { value: 'Immobilienmakler', label: 'Immobilienmakler' },
+  { value: 'Sachverständiger', label: 'Sachverständiger' }
 ]
 
 // Status-Optionen für Dropdown
@@ -113,10 +86,11 @@ function Closing() {
   // Angebot-View State (innerhalb des Modals)
   const [showAngebotView, setShowAngebotView] = useState(false)
   const [angebotData, setAngebotData] = useState({
-    paket: '',
+    produkt: '',
     setup: '',
     retainer: '',
-    laufzeit: 12  // Default 12 Monate
+    laufzeit: 12,  // Default 12 Monate
+    kategorie: ''
   })
   const [sendingAngebot, setSendingAngebot] = useState(false)
   const [angebotSuccess, setAngebotSuccess] = useState(false) // Erfolgs-Ansicht im Modal
@@ -302,47 +276,55 @@ function Closing() {
     return evenRetainer
   }
 
-  // Paket-Auswahl Handler
-  const handlePaketChange = (paketValue) => {
-    const paket = PAKET_OPTIONS.find(p => p.value === paketValue)
-    if (paket) {
-      if (paket.value === 'individuell') {
-        setAngebotData(prev => ({
-          paket: paketValue,
-          setup: '',
-          retainer: '',
-          laufzeit: prev.laufzeit  // Laufzeit beibehalten
-        }))
-      } else {
-        setAngebotData(prev => ({
-          paket: paketValue,
-          setup: paket.setup,
-          retainer: paket.retainer,
-          laufzeit: prev.laufzeit  // Laufzeit beibehalten
-        }))
-      }
-    }
+  // Produkt-Auswahl Handler
+  const handleProduktChange = (produktValue) => {
+    setAngebotData(prev => ({
+      ...prev,
+      produkt: produktValue,
+      setup: '',
+      retainer: '',
+      kategorie: prev.kategorie
+    }))
   }
 
-  // Setup ändern bei individuellem Preis
+  // Setup ändern + Retainer-Minimum berechnen
   const handleSetupChange = (value) => {
     const setup = parseFloat(value) || ''
-    const retainer = setup ? calculateRetainer(setup) : ''
     setAngebotData(prev => ({
       ...prev,
       setup,
+      retainer: prev.retainer  // Retainer bleibt, User gibt ihn manuell ein
+    }))
+  }
+
+  // Retainer ändern mit Validierung (min. 1/4 des Setups)
+  const handleRetainerChange = (value) => {
+    const retainer = parseFloat(value) || ''
+    setAngebotData(prev => ({
+      ...prev,
       retainer
     }))
   }
 
+  // Retainer-Validierung: min. 1/4 des Setups
+  const getRetainerError = () => {
+    if (!angebotData.setup || !angebotData.retainer) return null
+    const minRetainer = Math.ceil(parseFloat(angebotData.setup) / 4)
+    if (parseFloat(angebotData.retainer) < minRetainer) {
+      return `Mindestens ${minRetainer} € (¼ des Setups)`
+    }
+    return null
+  }
+
   // Angebot absenden
   const handleSendAngebot = async () => {
-    if (!selectedLead || !angebotData.setup || !angebotData.retainer) return
-    
+    if (!selectedLead || !angebotData.setup || !angebotData.retainer || !angebotData.produkt || !angebotData.kategorie) return
+    if (getRetainerError()) return
+
     try {
       setSendingAngebot(true)
-      
-      // Hot Lead updaten mit Setup, Retainer, Laufzeit und Status
+
+      // Hot Lead updaten mit Setup, Retainer, Laufzeit, Produkt, Kategorie und Status
       const response = await fetch('/.netlify/functions/hot-leads', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -352,11 +334,13 @@ function Closing() {
             setup: parseFloat(angebotData.setup),
             retainer: parseFloat(angebotData.retainer),
             laufzeit: parseInt(angebotData.laufzeit) || 12,
+            produkt: angebotData.produkt,
+            kategorie: angebotData.kategorie,
             status: 'Angebot'  // Zapier sendet dann das Angebot und setzt auf "Angebot versendet"
           }
         })
       })
-      
+
       if (!response.ok) {
         throw new Error('Fehler beim Speichern')
       }
@@ -364,8 +348,7 @@ function Closing() {
       // Kommentar im Original-Lead (Immobilienmakler_Leads) hinzufügen
       console.log('Original Lead ID:', selectedLead.originalLeadId)
       if (selectedLead.originalLeadId) {
-        const paketInfo = PAKET_OPTIONS.find(p => p.value === angebotData.paket)?.label || 'Individuell'
-        const kommentarText = `Angebot versendet - ${paketInfo}: Setup ${angebotData.setup}€, Retainer ${angebotData.retainer}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
+        const kommentarText = `Angebot versendet - ${angebotData.produkt} (${angebotData.kategorie}): Setup ${angebotData.setup}€, Retainer ${angebotData.retainer}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
         const userName = user?.vor_nachname || user?.name || 'Closer'
         
         try {
@@ -760,7 +743,7 @@ function Closing() {
     setEditMode(false)
     setEditData({})
     setShowAngebotView(false)
-    setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
+    setAngebotData({ produkt: '', setup: '', retainer: '', laufzeit: 12, kategorie: '' })
     setAngebotSuccess(false)
     setShowEmailComposer(false)
     setShowTerminPicker(false)
@@ -1472,7 +1455,7 @@ function Closing() {
                     type="button"
                     onClick={() => {
                       setShowAngebotView(false)
-                      setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
+                      setAngebotData({ produkt: '', setup: '', retainer: '', laufzeit: 12, kategorie: '' })
                     }}
                     className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
                   >
@@ -1487,60 +1470,35 @@ function Closing() {
                     </div>
                     <div>
                       <h3 className="text-xl font-semibold text-gray-900">Angebot konfigurieren</h3>
-                      <p className="text-sm text-gray-500">Wähle ein Paket oder erstelle ein individuelles Angebot</p>
+                      <p className="text-sm text-gray-500">Produkt auswählen und Konditionen festlegen</p>
                     </div>
                   </div>
 
-                  {/* Paket-Auswahl als Cards */}
-                  <div className="space-y-3 mb-6">
-                    {PAKET_OPTIONS.map(option => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => handlePaketChange(option.value)}
-                        className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                          angebotData.paket === option.value
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                              angebotData.paket === option.value
-                                ? 'border-green-500 bg-green-500'
-                                : 'border-gray-300'
-                            }`}>
-                              {angebotData.paket === option.value && (
-                                <div className="w-2 h-2 bg-white rounded-full" />
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900">{option.label}</p>
-                              {option.value !== 'individuell' && (
-                                <p className="text-sm text-gray-500">{option.description}</p>
-                              )}
-                            </div>
-                          </div>
-                          {option.value !== 'individuell' && (
-                            <div className="text-right">
-                              <p className="font-bold text-gray-900">{option.setup} €</p>
-                              <p className="text-sm text-gray-500">+ {option.retainer} €/Mon</p>
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    ))}
+                  {/* Produkt-Auswahl Dropdown */}
+                  <div className="mb-5">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Produkt
+                    </label>
+                    <select
+                      value={angebotData.produkt}
+                      onChange={(e) => handleProduktChange(e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white text-gray-900 appearance-none cursor-pointer"
+                    >
+                      <option value="">Produkt auswählen...</option>
+                      {PRODUKT_OPTIONS.map(option => (
+                        <option key={option.value} value={option.value}>{option.label}</option>
+                      ))}
+                    </select>
                   </div>
 
-                  {/* Individuelle Preiseingabe */}
-                  {angebotData.paket === 'individuell' && (
-                    <div className="bg-gray-50 rounded-xl p-5 mb-6">
-                      <h4 className="font-medium text-gray-900 mb-4">Individuellen Preis festlegen</h4>
-                      <div className="space-y-4">
+                  {/* Felder nach Produktauswahl */}
+                  {angebotData.produkt && (
+                    <div className="space-y-5">
+                      {/* Setup & Retainer nebeneinander */}
+                      <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Setup-Gebühr (netto)
+                            Setup (netto)
                           </label>
                           <div className="relative">
                             <input
@@ -1553,84 +1511,126 @@ function Closing() {
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
                           </div>
                         </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Retainer (netto)
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={angebotData.retainer}
+                              onChange={(e) => handleRetainerChange(e.target.value)}
+                              placeholder={angebotData.setup ? `min. ${Math.ceil(parseFloat(angebotData.setup) / 4)} €` : 'z.B. 400'}
+                              className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none ${
+                                getRetainerError() ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                              }`}
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
+                          </div>
+                          {getRetainerError() && (
+                            <p className="text-xs text-red-500 mt-1">{getRetainerError()}</p>
+                          )}
+                          {angebotData.setup && !getRetainerError() && (
+                            <p className="text-xs text-gray-400 mt-1">Min. ¼ des Setups = {Math.ceil(parseFloat(angebotData.setup) / 4)} €</p>
+                          )}
+                        </div>
+                      </div>
 
-                        {angebotData.setup && angebotData.retainer && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <p className="text-sm text-blue-700 mb-1">Automatisch berechneter Retainer</p>
-                            <p className="text-sm text-blue-600">
-                              {angebotData.setup} € / 2,75 = <span className="font-bold text-blue-800">{angebotData.retainer} €/Monat</span>
+                      {/* Laufzeit & Kategorie nebeneinander */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Laufzeit
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number"
+                              value={angebotData.laufzeit}
+                              onChange={(e) => setAngebotData(prev => ({
+                                ...prev,
+                                laufzeit: Math.min(32, Math.max(3, parseInt(e.target.value) || 12))
+                              }))}
+                              min="3"
+                              max="32"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                            />
+                            <span className="text-gray-500 whitespace-nowrap">Monate</span>
+                          </div>
+                          <div className="flex gap-2 mt-2">
+                            {[6, 12, 24].map(months => (
+                              <button
+                                key={months}
+                                type="button"
+                                onClick={() => setAngebotData(prev => ({ ...prev, laufzeit: months }))}
+                                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                                  angebotData.laufzeit === months
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                              >
+                                {months} Mon
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Kategorie
+                          </label>
+                          <select
+                            value={angebotData.kategorie}
+                            onChange={(e) => setAngebotData(prev => ({ ...prev, kategorie: e.target.value }))}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white text-gray-900 appearance-none cursor-pointer"
+                          >
+                            <option value="">Kategorie wählen...</option>
+                            {KATEGORIE_OPTIONS.map(option => (
+                              <option key={option.value} value={option.value}>{option.label}</option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Zusammenfassung */}
+                      {angebotData.setup && angebotData.retainer && !getRetainerError() && angebotData.kategorie && (
+                        <div className="bg-green-50 border border-green-200 rounded-xl p-5">
+                          <h4 className="font-medium text-green-900 mb-4">Angebot Zusammenfassung</h4>
+                          <div className="grid grid-cols-2 gap-3 mb-3">
+                            <div className="bg-white rounded-lg p-3 text-center">
+                              <p className="text-xs text-gray-500 mb-1">Produkt</p>
+                              <p className="text-sm font-bold text-gray-900">{angebotData.produkt}</p>
+                            </div>
+                            <div className="bg-white rounded-lg p-3 text-center">
+                              <p className="text-xs text-gray-500 mb-1">Kategorie</p>
+                              <p className="text-sm font-bold text-gray-900">{angebotData.kategorie}</p>
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-3 gap-3 mb-3">
+                            <div className="bg-white rounded-lg p-3 text-center">
+                              <p className="text-xs text-gray-500 mb-1">Setup</p>
+                              <p className="text-xl font-bold text-gray-900">{angebotData.setup} €</p>
+                            </div>
+                            <div className="bg-white rounded-lg p-3 text-center">
+                              <p className="text-xs text-gray-500 mb-1">Retainer</p>
+                              <p className="text-xl font-bold text-gray-900">{angebotData.retainer} €</p>
+                            </div>
+                            <div className="bg-white rounded-lg p-3 text-center">
+                              <p className="text-xs text-gray-500 mb-1">Laufzeit</p>
+                              <p className="text-xl font-bold text-gray-900">{angebotData.laufzeit} Mon</p>
+                            </div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 text-center">
+                            <p className="text-xs text-gray-500 mb-1">Gesamtwert ({angebotData.laufzeit} Monate)</p>
+                            <p className="text-2xl font-bold text-green-600">
+                              {(parseFloat(angebotData.setup) + parseFloat(angebotData.retainer) * angebotData.laufzeit).toLocaleString('de-DE')} €
                             </p>
                           </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                        </div>
+                      )}
 
-                  {/* Vertragslaufzeit */}
-                  {angebotData.paket && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Vertragslaufzeit
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <input
-                          type="number"
-                          value={angebotData.laufzeit}
-                          onChange={(e) => setAngebotData(prev => ({ 
-                            ...prev, 
-                            laufzeit: Math.min(32, Math.max(3, parseInt(e.target.value) || 12))
-                          }))}
-                          min="3"
-                          max="32"
-                          className="w-24 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-center"
-                        />
-                        <span className="text-gray-600">Monate</span>
-                        <div className="flex gap-2 ml-auto">
-                          {[6, 12, 24].map(months => (
-                            <button
-                              key={months}
-                              type="button"
-                              onClick={() => setAngebotData(prev => ({ ...prev, laufzeit: months }))}
-                              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                angebotData.laufzeit === months 
-                                  ? 'bg-purple-100 text-purple-700' 
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              }`}
-                            >
-                              {months} Mon
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <p className="text-xs text-gray-400 mt-1">Min. 3 Monate, max. 32 Monate</p>
-                    </div>
-                  )}
-
-                  {/* Zusammenfassung */}
-                  {angebotData.setup && angebotData.retainer && (
-                    <div className="bg-green-50 border border-green-200 rounded-xl p-5">
-                      <h4 className="font-medium text-green-900 mb-4">Angebot Zusammenfassung</h4>
-                      <div className="grid grid-cols-3 gap-4 mb-4">
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <p className="text-sm text-gray-500 mb-1">Setup-Gebühr</p>
-                          <p className="text-2xl font-bold text-gray-900">{angebotData.setup} €</p>
-                          <p className="text-xs text-gray-400">einmalig, netto</p>
-                        </div>
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <p className="text-sm text-gray-500 mb-1">Monatlicher Retainer</p>
-                          <p className="text-2xl font-bold text-gray-900">{angebotData.retainer} €</p>
-                          <p className="text-xs text-gray-400">pro Monat, netto</p>
-                        </div>
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <p className="text-sm text-gray-500 mb-1">Laufzeit</p>
-                          <p className="text-2xl font-bold text-gray-900">{angebotData.laufzeit}</p>
-                          <p className="text-xs text-gray-400">Monate</p>
-                        </div>
-                      </div>
-                      <div className="bg-white rounded-lg p-4 text-center">
-                        <p className="text-sm text-gray-500 mb-1">Gesamtwert ({angebotData.laufzeit} Monate)</p>
-                        <p className="text-3xl font-bold text-green-600">
-                          {(parseFloat(angebotData.setup) + parseFloat(angebotData.retainer) * angebotData.laufzeit).toLocaleString('de-DE')} €
+                      {/* Hinweis für Sonderfälle */}
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <p className="text-sm text-amber-800">
+                          Bei Sonderfällen erfolgt die Angebotserstellung auf Grundlage eines schriftlichen Konzepts und wird manuell per E-Mail versendet.
                         </p>
                       </div>
                     </div>
@@ -2195,7 +2195,7 @@ function Closing() {
                       type="button"
                       onClick={() => {
                         setShowAngebotView(false)
-                        setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
+                        setAngebotData({ produkt: '', setup: '', retainer: '', laufzeit: 12, kategorie: '' })
                       }}
                       disabled={sendingAngebot}
                       className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
@@ -2205,7 +2205,7 @@ function Closing() {
                     <button
                       type="button"
                       onClick={handleSendAngebot}
-                      disabled={!angebotData.setup || !angebotData.retainer || sendingAngebot}
+                      disabled={!angebotData.produkt || !angebotData.setup || !angebotData.retainer || !angebotData.kategorie || !!getRetainerError() || sendingAngebot}
                       className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {sendingAngebot ? (
