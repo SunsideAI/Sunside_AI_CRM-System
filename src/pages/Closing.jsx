@@ -335,7 +335,7 @@ function Closing() {
             retainer: parseFloat(angebotData.retainer),
             laufzeit: parseInt(angebotData.laufzeit) || 12,
             produkt: angebotData.produkt,
-            kategorie: angebotData.kategorie,
+            // Kategorie ist ein Lookup-Feld (read-only), wird nicht gesendet
             status: 'Angebot'  // Zapier sendet dann das Angebot und setzt auf "Angebot versendet"
           }
         })
