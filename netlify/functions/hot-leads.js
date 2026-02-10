@@ -712,6 +712,7 @@ export async function handler(event) {
         'Retainer',
         'Laufzeit',
         'Produkt_Dienstleistung',
+        'Kategorie',
         'Kunde_seit',
         'Priorität',
         'Closer',  // Falls Closer gewechselt werden soll
@@ -730,7 +731,9 @@ export async function handler(event) {
           'setup': 'Setup',
           'retainer': 'Retainer',
           'laufzeit': 'Laufzeit',
+          'produkt': 'Produkt_Dienstleistung',
           'produktDienstleistung': 'Produkt_Dienstleistung',
+          'kategorie': 'Kategorie',
           'kundeSeit': 'Kunde_seit',
           'prioritaet': 'Priorität',
           'closerId': 'Closer',
