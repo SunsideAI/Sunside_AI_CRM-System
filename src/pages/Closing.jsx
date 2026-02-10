@@ -88,6 +88,7 @@ function Closing() {
   const [angebotData, setAngebotData] = useState({
     produkt: '',
     setup: '',
+    chatbotSetup: '',  // Bei Kombi-Produkten: KI-Chatbot-Anteil des Setups
     retainer: '',
     laufzeit: 12,  // Default 12 Monate
     kategorie: ''
@@ -276,42 +277,30 @@ function Closing() {
     return evenRetainer
   }
 
+  // Ist es ein Kombi-Produkt (Website/SEO + Chatbot)?
+  const isKombiProdukt = (produkt) => produkt === 'Website & KI-Chatbot' || produkt === 'SEO & KI-Chatbot'
+
   // Produkt-Auswahl Handler
   const handleProduktChange = (produktValue) => {
     setAngebotData(prev => ({
       ...prev,
       produkt: produktValue,
       setup: '',
+      chatbotSetup: '',
       retainer: '',
       kategorie: prev.kategorie
     }))
   }
 
-  // Setup ändern + Retainer-Minimum berechnen
-  const handleSetupChange = (value) => {
-    const setup = parseFloat(value) || ''
-    setAngebotData(prev => ({
-      ...prev,
-      setup,
-      retainer: prev.retainer  // Retainer bleibt, User gibt ihn manuell ein
-    }))
-  }
-
-  // Retainer ändern mit Validierung (min. 1/4 des Setups)
-  const handleRetainerChange = (value) => {
-    const retainer = parseFloat(value) || ''
-    setAngebotData(prev => ({
-      ...prev,
-      retainer
-    }))
-  }
-
-  // Retainer-Validierung: min. 1/4 des Setups
-  const getRetainerError = () => {
-    if (!angebotData.setup || !angebotData.retainer) return null
-    const minRetainer = Math.ceil(parseFloat(angebotData.setup) / 4)
+  // Retainer-Hinweis: min. 1/4 des KI-Chatbot-Setups (nur Hinweis, kein Blocker)
+  const getRetainerHint = () => {
+    const basisSetup = isKombiProdukt(angebotData.produkt)
+      ? parseFloat(angebotData.chatbotSetup)
+      : parseFloat(angebotData.setup)
+    if (!basisSetup || !angebotData.retainer) return null
+    const minRetainer = Math.ceil(basisSetup / 4)
     if (parseFloat(angebotData.retainer) < minRetainer) {
-      return `Mindestens ${minRetainer} € (¼ des Setups)`
+      return `Empfehlung: min. ${minRetainer} € (¼ des KI-Chatbot Setups)`
     }
     return null
   }
@@ -319,7 +308,6 @@ function Closing() {
   // Angebot absenden
   const handleSendAngebot = async () => {
     if (!selectedLead || !angebotData.setup || !angebotData.retainer || !angebotData.produkt || !angebotData.kategorie) return
-    if (getRetainerError()) return
 
     try {
       setSendingAngebot(true)
@@ -743,7 +731,7 @@ function Closing() {
     setEditMode(false)
     setEditData({})
     setShowAngebotView(false)
-    setAngebotData({ produkt: '', setup: '', retainer: '', laufzeit: 12, kategorie: '' })
+    setAngebotData({ produkt: '', setup: '', chatbotSetup: '', retainer: '', laufzeit: 12, kategorie: '' })
     setAngebotSuccess(false)
     setShowEmailComposer(false)
     setShowTerminPicker(false)
@@ -1455,7 +1443,7 @@ function Closing() {
                     type="button"
                     onClick={() => {
                       setShowAngebotView(false)
-                      setAngebotData({ produkt: '', setup: '', retainer: '', laufzeit: 12, kategorie: '' })
+                      setAngebotData({ produkt: '', setup: '', chatbotSetup: '', retainer: '', laufzeit: 12, kategorie: '' })
                     }}
                     className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
                   >
@@ -1494,8 +1482,8 @@ function Closing() {
                   {/* Felder nach Produktauswahl */}
                   {angebotData.produkt && (
                     <div className="space-y-5">
-                      {/* Setup & Retainer nebeneinander */}
-                      <div className="grid grid-cols-2 gap-4">
+                      {/* Setup-Felder */}
+                      <div className={`grid gap-4 ${isKombiProdukt(angebotData.produkt) ? 'grid-cols-3' : 'grid-cols-2'}`}>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Setup (netto)
@@ -1504,13 +1492,33 @@ function Closing() {
                             <input
                               type="number"
                               value={angebotData.setup}
-                              onChange={(e) => handleSetupChange(e.target.value)}
-                              placeholder="z.B. 1500"
+                              onChange={(e) => setAngebotData(prev => ({ ...prev, setup: parseFloat(e.target.value) || '' }))}
+                              placeholder="z.B. 2500"
                               className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                             />
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
                           </div>
                         </div>
+
+                        {/* Bei Kombi-Produkten: KI-Chatbot-Anteil */}
+                        {isKombiProdukt(angebotData.produkt) && (
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              davon KI-Chatbot
+                            </label>
+                            <div className="relative">
+                              <input
+                                type="number"
+                                value={angebotData.chatbotSetup}
+                                onChange={(e) => setAngebotData(prev => ({ ...prev, chatbotSetup: parseFloat(e.target.value) || '' }))}
+                                placeholder="z.B. 1399"
+                                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                              />
+                              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
+                            </div>
+                          </div>
+                        )}
+
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Retainer (netto)
@@ -1519,19 +1527,14 @@ function Closing() {
                             <input
                               type="number"
                               value={angebotData.retainer}
-                              onChange={(e) => handleRetainerChange(e.target.value)}
-                              placeholder={angebotData.setup ? `min. ${Math.ceil(parseFloat(angebotData.setup) / 4)} €` : 'z.B. 400'}
-                              className={`w-full px-4 py-3 pr-12 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none ${
-                                getRetainerError() ? 'border-red-300 bg-red-50' : 'border-gray-300'
-                              }`}
+                              onChange={(e) => setAngebotData(prev => ({ ...prev, retainer: parseFloat(e.target.value) || '' }))}
+                              placeholder="z.B. 400"
+                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                             />
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
                           </div>
-                          {getRetainerError() && (
-                            <p className="text-xs text-red-500 mt-1">{getRetainerError()}</p>
-                          )}
-                          {angebotData.setup && !getRetainerError() && (
-                            <p className="text-xs text-gray-400 mt-1">Min. ¼ des Setups = {Math.ceil(parseFloat(angebotData.setup) / 4)} €</p>
+                          {getRetainerHint() && (
+                            <p className="text-xs text-amber-600 mt-1">{getRetainerHint()}</p>
                           )}
                         </div>
                       </div>
@@ -1591,7 +1594,7 @@ function Closing() {
                       </div>
 
                       {/* Zusammenfassung */}
-                      {angebotData.setup && angebotData.retainer && !getRetainerError() && angebotData.kategorie && (
+                      {angebotData.setup && angebotData.retainer && angebotData.kategorie && (
                         <div className="bg-green-50 border border-green-200 rounded-xl p-5">
                           <h4 className="font-medium text-green-900 mb-4">Angebot Zusammenfassung</h4>
                           <div className="grid grid-cols-2 gap-3 mb-3">
@@ -2195,7 +2198,7 @@ function Closing() {
                       type="button"
                       onClick={() => {
                         setShowAngebotView(false)
-                        setAngebotData({ produkt: '', setup: '', retainer: '', laufzeit: 12, kategorie: '' })
+                        setAngebotData({ produkt: '', setup: '', chatbotSetup: '', retainer: '', laufzeit: 12, kategorie: '' })
                       }}
                       disabled={sendingAngebot}
                       className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
@@ -2205,7 +2208,7 @@ function Closing() {
                     <button
                       type="button"
                       onClick={handleSendAngebot}
-                      disabled={!angebotData.produkt || !angebotData.setup || !angebotData.retainer || !angebotData.kategorie || !!getRetainerError() || sendingAngebot}
+                      disabled={!angebotData.produkt || !angebotData.setup || !angebotData.retainer || !angebotData.kategorie || sendingAngebot}
                       className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {sendingAngebot ? (
