@@ -1,26 +1,12 @@
 // Dashboard Analytics API - Statistiken für das Dashboard
 
-// === RATE LIMIT SCHUTZ (verbessert) ===
+// === RATE LIMIT SCHUTZ ===
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
-
-// Throttle: Mindestabstand zwischen Requests (Airtable erlaubt 5 req/sec)
-let lastRequestTime = 0
-const MIN_REQUEST_INTERVAL = 210 // 210ms ≈ 4.7 req/sec (knapp unter Airtable-Limit von 5/sec)
-
-async function throttledFetch(url, options = {}) {
-  const now = Date.now()
-  const elapsed = now - lastRequestTime
-  if (elapsed < MIN_REQUEST_INTERVAL) {
-    await sleep(MIN_REQUEST_INTERVAL - elapsed)
-  }
-  lastRequestTime = Date.now()
-  return fetch(url, options)
-}
 
 async function fetchWithRetry(url, options = {}, maxRetries = 5) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      const response = await throttledFetch(url, options)
+      const response = await fetch(url, options)
 
       if (response.status === 429) {
         if (attempt >= maxRetries) {
