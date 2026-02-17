@@ -154,20 +154,13 @@ export async function handler(event) {
 
       // System Messages an alle Admins senden
       try {
-        const { data: allUsers } = await supabase
+        const { data: admins } = await supabase
           .from('users')
-          .select('id, vor_nachname, rollen')
+          .select('id, vor_nachname')
           .eq('status', true)
+          .contains('rollen', ['Admin'])
 
-        // Admins im JavaScript filtern (robuster als Supabase contains)
-        const admins = (allUsers || []).filter(u => {
-          const rollen = u.rollen || []
-          return rollen.some(r => r.toLowerCase() === 'admin')
-        })
-
-        console.log('[Lead-Requests POST] Found', admins.length, 'admins for notification')
-
-        if (admins.length > 0) {
+        if (admins && admins.length > 0) {
           const messagePromises = admins.map(async (admin) => {
             const messageId = `MSG-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
             try {

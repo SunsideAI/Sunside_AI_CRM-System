@@ -1,87 +1,10 @@
 // Analytics API für Setting und Closing Performance - Supabase Version
-// Mit Rate-Limit-Handling und optimierter Parallelisierung
 import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
 )
-
-// ==========================================
-// RATE LIMIT HELPER
-// ==========================================
-const MAX_RETRIES = 3
-const INITIAL_DELAY = 1000
-
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-async function queryWithRetry(queryFn, retries = MAX_RETRIES) {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      const result = await queryFn()
-
-      if (result.error) {
-        const errorMsg = result.error.message || ''
-        const errorCode = result.error.code || ''
-
-        // Rate limit oder Server-Fehler
-        if (errorMsg.includes('rate limit') ||
-            errorMsg.includes('too many requests') ||
-            errorCode === '429' ||
-            errorCode === 'PGRST301' ||
-            errorCode === '503' ||
-            errorCode === '502') {
-
-          if (attempt < retries) {
-            const delay = INITIAL_DELAY * Math.pow(2, attempt)
-            console.log(`Rate limit (429), warte ${delay}ms... (Versuch ${attempt + 1}/${retries})`)
-            await sleep(delay)
-            continue
-          }
-        }
-      }
-
-      return result
-    } catch (error) {
-      if (attempt < retries) {
-        const delay = INITIAL_DELAY * Math.pow(2, attempt)
-        console.log(`Rate limit (429), warte ${delay}ms... (Versuch ${attempt + 1}/${retries})`)
-        await sleep(delay)
-        continue
-      }
-      return { data: null, error }
-    }
-  }
-
-  return { data: null, error: new Error(`Query fehlgeschlagen nach ${retries} Versuchen`) }
-}
-
-async function fetchAllPaginated(queryBuilder, pageSize = 1000) {
-  let allRecords = []
-  let page = 0
-
-  while (true) {
-    const result = await queryWithRetry(() =>
-      queryBuilder().range(page * pageSize, (page + 1) * pageSize - 1)
-    )
-
-    if (result.error) {
-      console.error('Pagination Error:', result.error)
-      break
-    }
-
-    if (!result.data || result.data.length === 0) break
-
-    allRecords = allRecords.concat(result.data)
-    page++
-
-    if (result.data.length < pageSize) break
-  }
-
-  return { data: allRecords, pages: page }
-}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -191,22 +114,37 @@ export async function handler(event) {
 async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDate, startDateStr, endDateStr }) {
   console.log('getClosingStats - Params:', { isAdmin, userName, startDateStr, endDateStr })
 
-  // OPTIMIERUNG: Parallele Abfragen
-  const [userMap, hotLeadsResult] = await Promise.all([
-    loadUserMap(),
-    fetchAllPaginated(() =>
-      supabase
-        .from('hot_leads')
-        .select(`
-          *,
-          setter:users!hot_leads_setter_id_fkey(id, vor_nachname),
-          closer:users!hot_leads_closer_id_fkey(id, vor_nachname)
-        `)
-    )
-  ])
+  // User-Map laden
+  const userMap = await loadUserMap()
 
-  const allRecords = hotLeadsResult.data
-  console.log('Hot Leads geladen:', allRecords.length, `(${hotLeadsResult.pages} Seiten)`)
+  // Alle Hot Leads laden mit User-Joins (Pagination für > 1000 Einträge)
+  let allRecords = []
+  let hotLeadsPage = 0
+  const hotLeadsPageSize = 1000
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('hot_leads')
+      .select(`
+        *,
+        setter:users!hot_leads_setter_id_fkey(id, vor_nachname),
+        closer:users!hot_leads_closer_id_fkey(id, vor_nachname)
+      `)
+      .range(hotLeadsPage * hotLeadsPageSize, (hotLeadsPage + 1) * hotLeadsPageSize - 1)
+
+    if (error) {
+      throw new Error(error.message)
+    }
+
+    if (!data || data.length === 0) break
+
+    allRecords = allRecords.concat(data)
+    hotLeadsPage++
+
+    if (data.length < hotLeadsPageSize) break
+  }
+
+  console.log('Hot Leads geladen:', allRecords.length, `(${hotLeadsPage} Seiten)`)
 
   let gewonnen = 0
   let verloren = 0
@@ -362,42 +300,60 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     filterUserRecordId = await getUserIdByName(filterUserName)
   }
 
-  // OPTIMIERUNG: Parallele Abfragen für unabhängige Daten
-  const [userMapResult, activeResult, assignmentsResult, archivResult] = await Promise.all([
-    // User-Map laden
-    loadUserMap(),
+  // User-Map laden
+  const userMap = await loadUserMap()
 
-    // Aktive Leads laden - NUR kontaktierte (bereits_kontaktiert = true)
-    fetchAllPaginated(() =>
-      supabase
-        .from('leads')
-        .select('id, bereits_kontaktiert, ergebnis, datum, wiedervorlage_datum')
-        .eq('bereits_kontaktiert', true)
-    ),
+  // Aktive Leads laden - NUR kontaktierte (bereits_kontaktiert = true)
+  // Pagination um alle Daten zu laden (Supabase Limit = 1000)
+  let activeRecords = []
+  let page = 0
+  const pageSize = 1000
 
-    // Lead Assignments laden
-    fetchAllPaginated(() =>
-      supabase
-        .from('lead_assignments')
-        .select('lead_id, user_id')
-    ),
+  while (true) {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('id, bereits_kontaktiert, ergebnis, datum, wiedervorlage_datum')
+      .eq('bereits_kontaktiert', true)
+      .range(page * pageSize, (page + 1) * pageSize - 1)
 
-    // Archiv-Leads laden
-    fetchAllPaginated(() =>
-      supabase
-        .from('lead_archive')
-        .select('id, bereits_kontaktiert, ergebnis, datum, user_id')
-    )
-  ])
+    if (error) {
+      throw new Error(error.message)
+    }
 
-  const userMap = userMapResult
-  const activeRecords = activeResult.data
-  const allAssignments = assignmentsResult.data
-  const archivRecords = archivResult.data
+    if (!data || data.length === 0) break
 
-  // Logging im erwarteten Format
-  console.log(`Analytics: ${activeRecords.length} aktive Leads, ${archivRecords.length} Archiv-Einträge`)
-  console.log(`Analytics: ${allAssignments.length} Lead-Assignments geladen (${assignmentsResult.pages} Seiten)`)
+    activeRecords = activeRecords.concat(data)
+    page++
+
+    // Wenn weniger als pageSize zurückkommt, sind wir fertig
+    if (data.length < pageSize) break
+  }
+
+  // Lead Assignments laden MIT PAGINATION (Supabase Default-Limit ist 1000)
+  let allAssignments = []
+  let assignPage = 0
+  const assignPageSize = 1000
+
+  while (true) {
+    const { data: assignData, error: assignError } = await supabase
+      .from('lead_assignments')
+      .select('lead_id, user_id')
+      .range(assignPage * assignPageSize, (assignPage + 1) * assignPageSize - 1)
+
+    if (assignError) {
+      console.error('Assignment Load Error:', assignError)
+      break
+    }
+
+    if (!assignData || assignData.length === 0) break
+
+    allAssignments = allAssignments.concat(assignData)
+    assignPage++
+
+    if (assignData.length < assignPageSize) break
+  }
+
+  console.log(`Analytics: ${allAssignments.length} Lead-Assignments geladen (${assignPage} Seiten)`)
 
   // Assignments zu Map
   const assignmentMap = {}
@@ -407,7 +363,34 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     }
     assignmentMap[a.lead_id].push(a.user_id)
   })
-  // isAdmin=${isAdmin} für Debug
+
+  // Archiv-Leads laden (auch mit Pagination)
+  // Hinweis: lead_archive hat KEIN wiedervorlage_datum Feld
+  let archivRecords = []
+  let archivPage = 0
+
+  while (true) {
+    const { data, error } = await supabase
+      .from('lead_archive')
+      .select('id, bereits_kontaktiert, ergebnis, datum, user_id')
+      .range(archivPage * pageSize, (archivPage + 1) * pageSize - 1)
+
+    if (error) {
+      console.error('Archiv Error:', error)
+      break
+    }
+
+    if (!data || data.length === 0) break
+
+    archivRecords = archivRecords.concat(data)
+    archivPage++
+
+    if (data.length < pageSize) break
+  }
+
+  // Debug-Logging
+  console.log(`Analytics: ${activeRecords.length} kontaktierte Leads geladen (${page} Seiten), ${archivRecords.length} Archiv-Einträge (${archivPage} Seiten)`)
+  console.log(`Analytics: ${allAssignments.length} Lead-Assignments geladen, isAdmin=${isAdmin}`)
 
   // Helper: Boolean-Wert flexibel prüfen (jeder truthy Wert)
   const isTruthy = (val) => !!val
@@ -565,10 +548,9 @@ async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, s
     }))
     .sort((a, b) => b.einwahlen - a.einwahlen)
 
-  // Debug-Logging nur wenn nötig (auskommentiert für Performance)
-  // console.log(`Analytics: perUser hat ${perUser.length} Einträge, unterlagen=${unterlagen}`)
-  // console.log(`Analytics: Von ${einwahlen} Einwahlen: ${activeCount} aktiv, ${archivCount} archiv`)
-  // console.log(`Analytics: ${recordsWithAssignments} mit Assignments, ${recordsWithoutAssignments} ohne Assignments`)
+  console.log(`Analytics: perUser hat ${perUser.length} Einträge, unterlagen=${unterlagen}`)
+  console.log(`Analytics: Von ${einwahlen} Einwahlen: ${activeCount} aktiv, ${archivCount} archiv`)
+  console.log(`Analytics: ${recordsWithAssignments} mit Assignments, ${recordsWithoutAssignments} ohne Assignments`)
 
   return {
     summary: {

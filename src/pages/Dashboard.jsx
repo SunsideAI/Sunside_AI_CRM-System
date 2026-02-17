@@ -162,6 +162,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
   })
 
   useEffect(() => {
+    // Nur laden wenn der User verfügbar ist
     if (user?.vor_nachname) {
       loadData()
     }

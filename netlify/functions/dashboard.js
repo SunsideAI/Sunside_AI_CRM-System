@@ -206,16 +206,14 @@ export async function handler(event) {
       ? ((stats.ergebnisse['Beratungsgespräch'] / stats.kontaktiert) * 100).toFixed(1)
       : 0
 
-    // User ID finden für Hot Leads Abfragen (mit ilike für konsistente Suche)
+    // User ID finden für Hot Leads Abfragen
     let userRecordId = null
     if (userName) {
-      const { data: foundUsers } = await supabase
-        .from('users')
-        .select('id')
-        .ilike('vor_nachname', userName.trim())
-        .limit(1)
-
-      userRecordId = foundUsers?.[0]?.id || null
+      const userNameNorm = userName.toLowerCase().trim()
+      const foundUser = users.find(u =>
+        (u.vor_nachname || '').toLowerCase().trim() === userNameNorm
+      )
+      userRecordId = foundUser?.id || null
       console.log('Dashboard: User gefunden:', { userName, userRecordId })
     }
 

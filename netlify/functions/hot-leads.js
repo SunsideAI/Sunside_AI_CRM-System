@@ -546,29 +546,16 @@ export async function handler(event) {
       const fields = {}
 
       for (const [key, value] of Object.entries(updates)) {
-        // Closer nach Name auflösen (separate Behandlung)
-        if (key === 'closerName') {
-          if (value) {
+        const dbField = fieldMap[key]
+        if (dbField) {
+          // Closer nach Name auflösen
+          if (key === 'closerName' && value) {
             const cid = await getUserIdByName(value)
             if (cid) fields.closer_id = cid
           } else {
-            // Leerer closerName = zurück in Pool
-            fields.closer_id = null
+            fields[dbField] = value
           }
-          continue
         }
-
-        const dbField = fieldMap[key]
-        if (dbField) {
-          fields[dbField] = value
-        }
-      }
-
-      // Automatisch kunde_seit setzen wenn Status auf 'Abgeschlossen' wechselt
-      if (fields.status === 'Abgeschlossen' && !updates.kundeSeit) {
-        const today = new Date().toISOString().split('T')[0]
-        fields.kunde_seit = today
-        console.log('Auto-setting kunde_seit to:', today)
       }
 
       if (Object.keys(fields).length === 0) {
