@@ -154,6 +154,7 @@ function Dashboard() {
 function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [data, setData] = useState({
     zugewiesenLeads: 0,
     callsHeute: 0,
@@ -176,6 +177,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     }
 
     setLoading(true)
+    setError(null)
     if (!cached) setInitialLoading(true)
 
     try {
@@ -189,9 +191,13 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       if (response.ok) {
         setCache(cacheKey, result)
         updateDataFromResult(result)
+        setError(null)
+      } else {
+        setError(result.error || 'Daten konnten nicht geladen werden')
       }
     } catch (err) {
       console.error('Dashboard load error:', err)
+      setError('Verbindungsfehler – bitte erneut versuchen')
     } finally {
       setLoading(false)
       setInitialLoading(false)
@@ -277,6 +283,20 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
           <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
+
+      {/* Fehler-Anzeige */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center justify-between">
+          <p className="text-sm text-red-700">{error}</p>
+          <button
+            onClick={() => loadData(true)}
+            disabled={loading}
+            className="text-sm text-red-600 hover:text-red-800 font-medium ml-4"
+          >
+            Erneut versuchen
+          </button>
+        </div>
+      )}
 
       {/* Statistiken */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

@@ -3,6 +3,11 @@
 // === RATE LIMIT SCHUTZ ===
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
+// === SERVER-SIDE RESULT CACHE ===
+let resultCache = null
+let resultCacheTime = 0
+const RESULT_CACHE_TTL = 2 * 60 * 1000 // 2 Minuten
+
 async function fetchWithRetry(url, options = {}, maxRetries = 5) {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
@@ -33,6 +38,9 @@ async function fetchWithRetry(url, options = {}, maxRetries = 5) {
   }
   throw new Error('Max retries exceeded')
 }
+
+// Helper: kontaktiert kann "X", true, oder checkbox sein
+const isKontaktiert = (val) => val === true || val === 'X' || val === 'x' || val === 1
 
 export async function handler(event) {
   const headers = {
@@ -67,13 +75,23 @@ export async function handler(event) {
     const params = event.queryStringParameters || {}
     const { userName, userRole } = params
 
+    // Result Cache prüfen (2 Minuten TTL)
+    if (resultCache && (Date.now() - resultCacheTime) < RESULT_CACHE_TTL) {
+      console.log('Dashboard: Cache-Hit')
+      return {
+        statusCode: 200,
+        headers,
+        body: resultCache
+      }
+    }
+
     // User-Map laden
     const usersUrl = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USERS_TABLE)}?fields[]=Vor_Nachname&fields[]=Rolle`
     const usersResponse = await fetchWithRetry(usersUrl, {
       headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
     })
     const usersData = await usersResponse.json()
-    
+
     const userMap = {}
     usersData.records.forEach(record => {
       userMap[record.id] = {
@@ -83,27 +101,28 @@ export async function handler(event) {
     })
 
     // Alle Leads laden (mit Pagination)
+    // Kein fields[]-Filter wegen unsicherer Feldnamen (wie in analytics.js/hot-leads.js)
     let allLeads = []
     let offset = null
-    
+
     do {
-      let url = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}?pageSize=100`
-      url += `&fields[]=Bereits_kontaktiert&fields[]=Ergebnis&fields[]=User_Datenbank&fields[]=Datum`
-      
+      const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(LEADS_TABLE)}`)
+      url.searchParams.append('pageSize', '100')
       if (offset) {
-        url += `&offset=${offset}`
+        url.searchParams.append('offset', offset)
       }
 
-      const response = await fetchWithRetry(url, {
+      const response = await fetchWithRetry(url.toString(), {
         headers: { 'Authorization': `Bearer ${AIRTABLE_API_KEY}` }
       })
 
       if (!response.ok) {
-        throw new Error('Fehler beim Laden der Leads')
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error?.message || `Airtable API Fehler: ${response.status}`)
       }
 
       const data = await response.json()
-      allLeads = allLeads.concat(data.records)
+      allLeads = allLeads.concat(data.records || [])
       offset = data.offset
     } while (offset)
 
@@ -140,9 +159,14 @@ export async function handler(event) {
 
     // Leads durchgehen
     allLeads.forEach(record => {
-      const kontaktiert = record.fields['Bereits_kontaktiert'] === 'X'
+      // Feldname-Varianten behandeln (Leerzeichen vs Unterstrich)
+      const kontaktiert = isKontaktiert(
+        record.fields['Bereits kontaktiert'] ||
+        record.fields['Bereits_kontaktiert'] ||
+        record.fields.Bereits_kontaktiert
+      )
       const ergebnis = record.fields.Ergebnis || ''
-      const userIds = record.fields.User_Datenbank || []
+      const userIds = record.fields['User_Datenbank'] || record.fields.User_Datenbank || []
       const datum = record.fields.Datum ? new Date(record.fields.Datum) : null
 
       // Prüfen ob Lead diesem User zugewiesen ist
@@ -197,21 +221,28 @@ export async function handler(event) {
       ? ((stats.ergebnisse['Beratungsgespräch'] / stats.kontaktiert) * 100).toFixed(1)
       : 0
 
+    const body = JSON.stringify({
+      gesamt: stats.gesamt,
+      kontaktiert: stats.kontaktiert,
+      nichtKontaktiert: stats.nichtKontaktiert,
+      dieseWoche: stats.dieseWoche,
+      diesenMonat: stats.diesenMonat,
+      heute: userHeute,
+      termineWoche: userWoche,
+      ergebnisse: stats.ergebnisse,
+      vertriebler: vertrieblerArray,
+      conversionRate: parseFloat(conversionRate)
+    })
+
+    // Result cachen (2 Minuten)
+    resultCache = body
+    resultCacheTime = Date.now()
+    console.log('Dashboard: Ergebnis gecacht,', allLeads.length, 'Leads verarbeitet')
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        gesamt: stats.gesamt,
-        kontaktiert: stats.kontaktiert,
-        nichtKontaktiert: stats.nichtKontaktiert,
-        dieseWoche: stats.dieseWoche,
-        diesenMonat: stats.diesenMonat,
-        heute: userHeute,
-        termineWoche: userWoche,
-        ergebnisse: stats.ergebnisse,
-        vertriebler: vertrieblerArray,
-        conversionRate: parseFloat(conversionRate)
-      })
+      body
     }
 
   } catch (error) {
