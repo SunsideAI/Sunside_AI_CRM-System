@@ -162,11 +162,13 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
   })
 
   useEffect(() => {
-    loadData()
-  }, [])
+    if (user?.vor_nachname) {
+      loadData()
+    }
+  }, [user?.vor_nachname])
 
   const loadData = async (forceRefresh = false) => {
-    const cacheKey = 'dashboard_uebersicht'
+    const cacheKey = `dashboard_uebersicht_${user?.vor_nachname || 'unknown'}`
     const cached = getCache(cacheKey)
     
     if (cached && !forceRefresh) {
