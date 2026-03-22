@@ -10,6 +10,40 @@ const toLocalDateString = (date) => {
   return `${year}-${month}-${day}`
 }
 
+// Prüft ob ein Calendly-Slot durch einen Kalender-Blocker gesperrt ist
+const isSlotBlocked = (slotStart, blockers) => {
+  if (!blockers || blockers.length === 0) return false
+
+  const slotDate = new Date(slotStart)
+  const slotTimeStr = slotDate.toLocaleTimeString('de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'Europe/Berlin'
+  }) // "HH:MM"
+
+  const dateStr = slotDate.toLocaleDateString('sv-SE', { timeZone: 'Europe/Berlin' }) // YYYY-MM-DD
+  const weekdayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+  const weekdayName = weekdayNames[slotDate.getDay()]
+
+  return blockers.some(b => {
+    if (!b.aktiv) return false
+
+    let dayMatches = false
+    if (b.typ === 'Einmalig') {
+      const end = b.enddatum || b.startdatum
+      dayMatches = dateStr >= b.startdatum && dateStr <= end
+    } else if (b.typ === 'Wöchentlich') {
+      dayMatches = (b.wochentage || []).includes(weekdayName) &&
+        (!b.gueltigVon || dateStr >= b.gueltigVon) &&
+        (!b.gueltigBis || dateStr <= b.gueltigBis)
+    }
+    if (!dayMatches) return false
+
+    // Slot-Zeit liegt im Blockzeitraum?
+    return slotTimeStr >= b.startzeit && slotTimeStr < b.endzeit
+  })
+}
+
 function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
   const { user } = useAuth()
   
@@ -26,6 +60,9 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
   const [slots, setSlots] = useState([])
   const [weekOffset, setWeekOffset] = useState(0)
   
+  // Kalender-Blocker
+  const [blockers, setBlockers] = useState([])
+
   // Loading States
   const [loading, setLoading] = useState(true)
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -54,9 +91,10 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
     r.toLowerCase() === 'coldcaller + closer'
   )
 
-  // Calendly Event Types laden
+  // Calendly Event Types und Blocker laden
   useEffect(() => {
     loadEventTypes()
+    loadBlockerData()
   }, [])
 
   // Kontaktdaten aktualisieren wenn lead sich ändert (z.B. bei Reschedule)
@@ -95,6 +133,16 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
     }
   }
 
+  const loadBlockerData = async () => {
+    try {
+      const res = await fetch('/.netlify/functions/calendar-blockers')
+      const data = await res.json()
+      if (res.ok) setBlockers(data.blockers || [])
+    } catch {
+      // Fail-open: Buchungsflow nicht blockieren
+    }
+  }
+
   const loadSlots = async () => {
     if (!selectedType || !selectedDate) return
     
@@ -122,17 +170,18 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
         // Erfolgreiche Antwort - auch wenn keine Slots verfügbar sind
         const availableSlots = data.slots || []
         
-        // Nur zukünftige Slots filtern (Vergleich in UTC)
+        // Nur zukünftige und nicht-geblockte Slots filtern
         const now = new Date()
         const futureSlots = availableSlots
           .filter(slot => new Date(slot.start) > now)
+          .filter(slot => !isSlotBlocked(slot.start, blockers))
           .map(slot => {
             // Zeiten immer in deutscher Zeitzone anzeigen
             const startTime = new Date(slot.start)
             return {
               start: slot.start,
-              startTime: startTime.toLocaleTimeString('de-DE', { 
-                hour: '2-digit', 
+              startTime: startTime.toLocaleTimeString('de-DE', {
+                hour: '2-digit',
                 minute: '2-digit',
                 timeZone: 'Europe/Berlin'  // Immer deutsche Zeit anzeigen
               }),

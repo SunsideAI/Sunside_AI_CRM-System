@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Calendar, ChevronLeft, ChevronRight, Clock, User, Users, Loader2, Building2, Phone, Video, RefreshCw, CalendarDays, CalendarRange, PhoneCall } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Clock, User, Users, Loader2, Building2, Phone, Video, RefreshCw, CalendarDays, CalendarRange, PhoneCall, Ban, Plus, Trash2, ToggleLeft, ToggleRight, X } from 'lucide-react'
 
 function Termine() {
   const { user, isAdmin } = useAuth()
@@ -14,12 +14,24 @@ function Termine() {
   const [viewMode, setViewMode] = useState('own')
   // Calendar Mode: week = Wochenansicht, month = Monatsansicht
   const [calendarMode, setCalendarMode] = useState('week')
+
+  // Kalender-Blocker
+  const [blockers, setBlockers] = useState([])
+  // Admin: Blocker-Verwaltung
+  const [showBlockerModal, setShowBlockerModal] = useState(false)
+  const [allBlockers, setAllBlockers] = useState([])
+  const [savingBlocker, setSavingBlocker] = useState(false)
+  const [blockerForm, setBlockerForm] = useState(null)
   
   const userName = user?.vor_nachname || user?.name
 
   useEffect(() => {
     loadTermine()
   }, [currentDate, userName, viewMode])
+
+  useEffect(() => {
+    loadBlockers()
+  }, [])
 
   const loadTermine = async () => {
     if (!userName && viewMode === 'own') {
@@ -142,6 +154,113 @@ function Termine() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const loadBlockers = async () => {
+    try {
+      const res = await fetch('/.netlify/functions/calendar-blockers')
+      const data = await res.json()
+      if (res.ok) setBlockers(data.blockers || [])
+    } catch {
+      // Fail-open: Kalenderanzeige nicht blockieren
+    }
+  }
+
+  const loadAllBlockers = async () => {
+    try {
+      const res = await fetch('/.netlify/functions/calendar-blockers?all=true')
+      const data = await res.json()
+      if (res.ok) setAllBlockers(data.blockers || [])
+    } catch {
+      // ignorieren
+    }
+  }
+
+  const saveBlocker = async () => {
+    if (!blockerForm?.name || !blockerForm?.startzeit || !blockerForm?.endzeit) return
+    if (blockerForm.typ === 'Wöchentlich' && (!blockerForm.wochentage || blockerForm.wochentage.length === 0)) return
+    if (blockerForm.typ === 'Einmalig' && !blockerForm.startdatum) return
+
+    setSavingBlocker(true)
+    try {
+      const res = await fetch('/.netlify/functions/calendar-blockers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...blockerForm, erstelltVon: userName })
+      })
+      if (res.ok) {
+        setBlockerForm(null)
+        await Promise.all([loadAllBlockers(), loadBlockers()])
+      }
+    } finally {
+      setSavingBlocker(false)
+    }
+  }
+
+  const toggleBlockerActive = async (blocker) => {
+    await fetch('/.netlify/functions/calendar-blockers', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recordId: blocker.id, fields: { aktiv: !blocker.aktiv } })
+    })
+    await Promise.all([loadAllBlockers(), loadBlockers()])
+  }
+
+  const deleteBlocker = async (recordId) => {
+    await fetch('/.netlify/functions/calendar-blockers', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recordId })
+    })
+    await Promise.all([loadAllBlockers(), loadBlockers()])
+  }
+
+  // Gibt alle Blocker zurück, die an einem bestimmten Tag aktiv sind
+  const getBlockersForDay = (date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+    const weekdayNames = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa']
+    const weekdayName = weekdayNames[date.getDay()]
+
+    return blockers.filter(b => {
+      if (!b.aktiv) return false
+      if (b.typ === 'Einmalig') {
+        const end = b.enddatum || b.startdatum
+        return dateStr >= b.startdatum && dateStr <= end
+      }
+      if (b.typ === 'Wöchentlich') {
+        if (!b.wochentage?.includes(weekdayName)) return false
+        if (b.gueltigVon && dateStr < b.gueltigVon) return false
+        if (b.gueltigBis && dateStr > b.gueltigBis) return false
+        return true
+      }
+      return false
+    })
+  }
+
+  const newBlockerForm = () => ({
+    name: '',
+    typ: 'Einmalig',
+    startdatum: '',
+    enddatum: '',
+    startzeit: '09:00',
+    endzeit: '17:00',
+    wochentage: [],
+    gueltigVon: '',
+    gueltigBis: '',
+    notiz: ''
+  })
+
+  const toggleWochentag = (tag) => {
+    setBlockerForm(prev => {
+      const current = prev.wochentage || []
+      return {
+        ...prev,
+        wochentage: current.includes(tag) ? current.filter(t => t !== tag) : [...current, tag]
+      }
+    })
   }
 
   // Navigation
@@ -305,6 +424,17 @@ function Termine() {
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
+          {/* Blocker verwalten - nur für Admins */}
+          {isAdmin() && (
+            <button
+              onClick={() => { setShowBlockerModal(true); loadAllBlockers() }}
+              className="flex items-center px-3 py-2 text-sm bg-red-50 border border-red-200 text-red-700 rounded-lg hover:bg-red-100 transition-colors"
+            >
+              <Ban className="w-4 h-4 mr-1.5" />
+              Blocker
+            </button>
+          )}
+
           {/* View Mode Toggle - nur für Admins */}
           {isAdmin() && (
             <div className="flex items-center bg-gray-100 rounded-lg p-1">
@@ -433,7 +563,7 @@ function Termine() {
                 
                 return (
                   <div key={idx} className={`border-r last:border-r-0 p-2 ${isToday ? 'bg-purple-50/50' : isWeekend ? 'bg-gray-50' : ''}`}>
-                    {dayEvents.length === 0 ? (
+                    {dayEvents.length === 0 && getBlockersForDay(date).length === 0 ? (
                       <div className="text-xs text-gray-400 text-center py-4">Keine Termine</div>
                     ) : (
                       <div className="space-y-1">
@@ -456,6 +586,21 @@ function Termine() {
                               </div>
                             )}
                           </button>
+                        ))}
+                        {getBlockersForDay(date).map(blocker => (
+                          <div
+                            key={`blocker-${blocker.id}`}
+                            className="w-full p-2 rounded-lg border text-xs bg-red-50 border-red-200 text-red-700 cursor-default"
+                            title={blocker.notiz || blocker.name}
+                          >
+                            <div className="font-medium truncate flex items-center">
+                              <Ban className="w-3 h-3 mr-1 flex-shrink-0" />
+                              {blocker.name}
+                            </div>
+                            <div className="text-[10px] opacity-75">
+                              {blocker.startzeit} – {blocker.endzeit}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     )}
@@ -503,6 +648,16 @@ function Termine() {
                         +{dayEvents.length - 3} weitere
                       </div>
                     )}
+                    {getBlockersForDay(date).map(blocker => (
+                      <div
+                        key={`blocker-${blocker.id}`}
+                        className="w-full px-1.5 py-0.5 rounded text-[10px] truncate bg-red-50 border border-red-200 text-red-600 cursor-default"
+                        title={`${blocker.startzeit}–${blocker.endzeit}: ${blocker.name}`}
+                      >
+                        <Ban className="w-2.5 h-2.5 inline mr-0.5" />
+                        {blocker.name}
+                      </div>
+                    ))}
                   </div>
                 </div>
               )
@@ -544,7 +699,253 @@ function Termine() {
             </div>
           </>
         )}
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-red-100 border border-red-200"></div>
+          <span>Gesperrter Zeitraum</span>
+        </div>
       </div>
+
+      {/* Admin: Blocker-Verwaltung Modal */}
+      {showBlockerModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            {/* Modal Header */}
+            <div className="flex justify-between items-center p-6 border-b">
+              <div className="flex items-center gap-2">
+                <Ban className="w-5 h-5 text-red-600" />
+                <h3 className="text-xl font-semibold text-gray-900">Kalender-Blocker verwalten</h3>
+              </div>
+              <button onClick={() => { setShowBlockerModal(false); setBlockerForm(null) }} className="text-gray-400 hover:text-gray-600">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 p-6 space-y-6">
+              {/* Neuer Blocker */}
+              {blockerForm === null ? (
+                <button
+                  onClick={() => setBlockerForm(newBlockerForm())}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  Neuer Blocker
+                </button>
+              ) : (
+                <div className="border border-red-200 rounded-xl p-4 bg-red-50/50 space-y-4">
+                  <h4 className="font-medium text-gray-900">Neuer Blocker</h4>
+
+                  {/* Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Bezeichnung *</label>
+                    <input
+                      type="text"
+                      value={blockerForm.name}
+                      onChange={e => setBlockerForm(p => ({ ...p, name: e.target.value }))}
+                      placeholder="z.B. Mittagspause, Teambesprechung"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                  </div>
+
+                  {/* Typ */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Typ *</label>
+                    <div className="flex gap-2">
+                      {['Einmalig', 'Wöchentlich'].map(typ => (
+                        <button
+                          key={typ}
+                          onClick={() => setBlockerForm(p => ({ ...p, typ }))}
+                          className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                            blockerForm.typ === typ
+                              ? 'bg-red-600 text-white border-red-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {typ}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Typ-spezifische Felder */}
+                  {blockerForm.typ === 'Einmalig' ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Startdatum *</label>
+                        <input
+                          type="date"
+                          value={blockerForm.startdatum}
+                          onChange={e => setBlockerForm(p => ({ ...p, startdatum: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Enddatum</label>
+                        <input
+                          type="date"
+                          value={blockerForm.enddatum}
+                          onChange={e => setBlockerForm(p => ({ ...p, enddatum: e.target.value }))}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Wochentage *</label>
+                        <div className="flex flex-wrap gap-2">
+                          {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map(tag => (
+                            <button
+                              key={tag}
+                              onClick={() => toggleWochentag(tag)}
+                              className={`w-10 h-10 rounded-full text-sm font-medium border transition-colors ${
+                                blockerForm.wochentage?.includes(tag)
+                                  ? 'bg-red-600 text-white border-red-600'
+                                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                              }`}
+                            >
+                              {tag}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Gültig ab</label>
+                          <input
+                            type="date"
+                            value={blockerForm.gueltigVon}
+                            onChange={e => setBlockerForm(p => ({ ...p, gueltigVon: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Gültig bis</label>
+                          <input
+                            type="date"
+                            value={blockerForm.gueltigBis}
+                            onChange={e => setBlockerForm(p => ({ ...p, gueltigBis: e.target.value }))}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Zeiten */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Startzeit *</label>
+                      <input
+                        type="time"
+                        value={blockerForm.startzeit}
+                        onChange={e => setBlockerForm(p => ({ ...p, startzeit: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Endzeit *</label>
+                      <input
+                        type="time"
+                        value={blockerForm.endzeit}
+                        onChange={e => setBlockerForm(p => ({ ...p, endzeit: e.target.value }))}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Notiz */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Notiz (optional)</label>
+                    <textarea
+                      value={blockerForm.notiz}
+                      onChange={e => setBlockerForm(p => ({ ...p, notiz: e.target.value }))}
+                      rows={2}
+                      placeholder="Interner Kommentar..."
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-500 resize-none"
+                    />
+                  </div>
+
+                  {/* Aktionen */}
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      onClick={saveBlocker}
+                      disabled={savingBlocker}
+                      className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm disabled:opacity-50"
+                    >
+                      {savingBlocker ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                      Blocker erstellen
+                    </button>
+                    <button
+                      onClick={() => setBlockerForm(null)}
+                      className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm"
+                    >
+                      Abbrechen
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Bestehende Blocker */}
+              <div>
+                <h4 className="font-medium text-gray-900 mb-3">Bestehende Blocker</h4>
+                {allBlockers.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-6 border border-dashed border-gray-300 rounded-lg">
+                    Noch keine Blocker vorhanden
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {allBlockers.map(blocker => (
+                      <div
+                        key={blocker.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border ${
+                          blocker.aktiv ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-200 opacity-60'
+                        }`}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm text-gray-900 truncate">{blocker.name}</span>
+                            <span className={`flex-shrink-0 text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                              blocker.typ === 'Einmalig'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-purple-100 text-purple-700'
+                            }`}>
+                              {blocker.typ}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500 mt-0.5">
+                            {blocker.typ === 'Einmalig'
+                              ? `${blocker.startdatum}${blocker.enddatum && blocker.enddatum !== blocker.startdatum ? ` – ${blocker.enddatum}` : ''}`
+                              : `${blocker.wochentage?.join(', ')}${blocker.gueltigVon ? ` · ab ${blocker.gueltigVon}` : ''}`
+                            }
+                            {' · '}{blocker.startzeit} – {blocker.endzeit}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => toggleBlockerActive(blocker)}
+                          className={`flex-shrink-0 ${blocker.aktiv ? 'text-green-600' : 'text-gray-400'}`}
+                          title={blocker.aktiv ? 'Deaktivieren' : 'Aktivieren'}
+                        >
+                          {blocker.aktiv
+                            ? <ToggleRight className="w-6 h-6" />
+                            : <ToggleLeft className="w-6 h-6" />
+                          }
+                        </button>
+                        <button
+                          onClick={() => deleteBlocker(blocker.id)}
+                          className="flex-shrink-0 text-gray-400 hover:text-red-600 transition-colors"
+                          title="Blocker löschen"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Termin-Detail Modal */}
       {selectedEvent && (
