@@ -718,7 +718,11 @@ export async function handler(event) {
         'Termin_Beratungsgespräch',  // Für Neu-Terminierung
         'Terminart',  // Video oder Telefonisch
         'Meeting_Link',  // Google Meet Link
-        'Attachments'  // Dokumente (PDFs, etc.)
+        'Attachments',  // Dokumente (PDFs, etc.)
+        'Vertragsbestandteile',       // Individuelle Vertragsbestandteile (immer)
+        'Paketname_Individuell',      // Nur bei Produkt = Individuell
+        'Kurzbeschreibung',           // Nur bei Produkt = Individuell
+        'Leistungsbeschreibung',      // Nur bei Produkt = Individuell
       ]
 
       const fields = {}
@@ -739,7 +743,11 @@ export async function handler(event) {
           'terminDatum': 'Termin_Beratungsgespräch',
           'terminart': 'Terminart',
           'meetingLink': 'Meeting_Link',
-          'attachments': 'Attachments'
+          'attachments': 'Attachments',
+          'vertragsbestandteile': 'Vertragsbestandteile',
+          'paketname': 'Paketname_Individuell',
+          'kurzbeschreibung': 'Kurzbeschreibung',
+          'leistungsbeschreibung': 'Leistungsbeschreibung',
         }
 
         const airtableField = fieldMap[key] || key
