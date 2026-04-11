@@ -1509,12 +1509,14 @@ function Closing() {
                       </select>
                     </div>
 
-                    {/* Sachverständigen-Hinweis */}
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                      <p className="text-sm text-amber-800">
-                        Für Sachverständige bitte ein individuelles Angebot erstellen und manuell per E-Mail versenden.
-                      </p>
-                    </div>
+                    {/* Sachverständigen-Hinweis – nur wenn kein individuelles Angebot */}
+                    {angebotData.produkt !== 'Individuell' && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <p className="text-sm text-amber-800">
+                          Für Sachverständige bitte ein individuelles Angebot erstellen und manuell per E-Mail versenden.
+                        </p>
+                      </div>
+                    )}
 
                     {/* Setup & Retainer */}
                     <div className="grid grid-cols-2 gap-4">
