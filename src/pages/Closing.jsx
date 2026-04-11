@@ -1513,7 +1513,7 @@ function Closing() {
                     {angebotData.produkt !== 'Individuell' && (
                       <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
                         <p className="text-sm text-amber-800">
-                          Für Sachverständige bitte ein individuelles Angebot erstellen und manuell per E-Mail versenden.
+                          Für Sachverständige bitte ein individuelles Angebot erstellen.
                         </p>
                       </div>
                     )}
