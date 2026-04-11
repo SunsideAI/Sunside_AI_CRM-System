@@ -42,13 +42,33 @@ import {
 // Paket-Optionen für Angebot
 const PRODUKT_OPTIONS = [
   { value: 'KI-Chatbot', label: 'KI-Chatbot' },
+  { value: 'KI-Voicebot', label: 'KI-Voicebot' },
+  { value: 'SEO & KI-Chatbot', label: 'SEO & KI-Chatbot' },
   { value: 'Website & KI-Chatbot', label: 'Website & KI-Chatbot' },
-  { value: 'SEO & KI-Chatbot', label: 'SEO & KI-Chatbot' }
+  { value: 'KI-Voicebot & KI-Chatbot', label: 'KI-Voicebot & KI-Chatbot' },
+  { value: 'Website & KI-Voicebot & KI-Chatbot', label: 'Website & KI-Voicebot & KI-Chatbot' },
+  { value: 'SEO & KI-Voicebot & KI-Chatbot', label: 'SEO & KI-Voicebot & KI-Chatbot' },
+  { value: 'Individuell', label: 'Individuell' },
 ]
 
-const KATEGORIE_OPTIONS = [
-  { value: 'Immobilienmakler', label: 'Immobilienmakler' },
-  { value: 'Sachverständiger', label: 'Sachverständiger' }
+const PRODUKT_PREISE = {
+  'KI-Chatbot':                         { setup: 1399, retainer: 360 },
+  'KI-Voicebot':                        { setup: 1399, retainer: 360 },
+  'SEO & KI-Chatbot':                   { setup: 2798, retainer: 360 },
+  'Website & KI-Chatbot':               { setup: 3998, retainer: 360 },
+  'KI-Voicebot & KI-Chatbot':           { setup: 2798, retainer: 612 },
+  'Website & KI-Voicebot & KI-Chatbot': { setup: 5397, retainer: 612 },
+  'SEO & KI-Voicebot & KI-Chatbot':     { setup: 4197, retainer: 612 },
+  'Individuell':                        { setup: '', retainer: '' },
+}
+
+const DEFAULT_VERTRAGSBESTANDTEILE = (laufzeit = 12) =>
+  `* Alle Preise verstehen sich zzgl. 19 % Umsatzsteuer und basieren auf einer Vertragslaufzeit von ${laufzeit} Monaten. Die Abrechnung der einmaligen Leistungen erfolgt bei Auftragserteilung. Die Abrechnung der regelmäßigen Leistungen erfolgt monatlich im Voraus. Der Vertrag verlängert sich automatisch um jeweils 3 Monate, wenn er nicht mit einer Frist von 3 Monaten zum Laufzeitende in Textform gekündigt wird. Das Recht zur außerordentlichen Kündigung bleibt unberührt.`
+
+const TEXTBAUSTEINE = [
+  'Die ersten zwei Monate sind kostenfrei; die Abrechnung der regelmäßigen Leistungen beginnt ab dem dritten Monat der Vertragslaufzeit.',
+  'Der Vertragsbeginn ist der [DATUM]. Die Vertragslaufzeit beginnt ab diesem Datum.',
+  'Die Setup-Gebühr wird in zwei Raten abgerechnet: 50 % bei Auftragserteilung, 50 % nach Livegang.',
 ]
 
 // Status-Optionen für Dropdown
@@ -88,10 +108,12 @@ function Closing() {
   const [angebotData, setAngebotData] = useState({
     produkt: '',
     setup: '',
-    chatbotSetup: '',  // Bei Kombi-Produkten: KI-Chatbot-Anteil des Setups
     retainer: '',
-    laufzeit: 12,  // Default 12 Monate
-    kategorie: ''
+    laufzeit: 12,
+    paketname: '',
+    kurzbeschreibung: '',
+    leistungsbeschreibung: '',
+    vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12),
   })
   const [sendingAngebot, setSendingAngebot] = useState(false)
   const [angebotSuccess, setAngebotSuccess] = useState(false) // Erfolgs-Ansicht im Modal
@@ -264,55 +286,42 @@ function Closing() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
-  // Retainer aus Setup berechnen (Setup / 2.75, abgerundet auf gerade Beträge, max 10% nach unten)
-  const calculateRetainer = (setup) => {
-    if (!setup || isNaN(setup)) return ''
-    const rawRetainer = setup / 2.75
-    const evenRetainer = Math.floor(rawRetainer / 10) * 10 // Auf 10er abrunden
-    const minRetainer = rawRetainer * 0.9 // Max 10% weniger
-    // Wenn zu viel abgerundet, auf nächsten 10er aufrunden
-    if (evenRetainer < minRetainer) {
-      return Math.ceil(rawRetainer / 10) * 10
-    }
-    return evenRetainer
-  }
-
-  // Ist es ein Kombi-Produkt (Website/SEO + Chatbot)?
-  const isKombiProdukt = (produkt) => produkt === 'Website & KI-Chatbot' || produkt === 'SEO & KI-Chatbot'
-
-  // Produkt-Auswahl Handler
+  // Produkt-Auswahl Handler – füllt Setup/Retainer automatisch aus Preistabelle
   const handleProduktChange = (produktValue) => {
+    const preise = PRODUKT_PREISE[produktValue] || { setup: '', retainer: '' }
     setAngebotData(prev => ({
       ...prev,
       produkt: produktValue,
-      setup: '',
-      chatbotSetup: '',
-      retainer: '',
-      kategorie: prev.kategorie
+      setup: preise.setup,
+      retainer: preise.retainer,
+      paketname: '',
+      kurzbeschreibung: '',
+      leistungsbeschreibung: '',
     }))
   }
 
-  // Retainer-Hinweis: min. 1/4 des KI-Chatbot-Setups (nur Hinweis, kein Blocker)
-  const getRetainerHint = () => {
-    const basisSetup = isKombiProdukt(angebotData.produkt)
-      ? parseFloat(angebotData.chatbotSetup)
-      : parseFloat(angebotData.setup)
-    if (!basisSetup || !angebotData.retainer) return null
-    const minRetainer = Math.ceil(basisSetup / 4)
-    if (parseFloat(angebotData.retainer) < minRetainer) {
-      return `Empfehlung: min. ${minRetainer} € (¼ des KI-Chatbot Setups)`
-    }
-    return null
+  // Laufzeit-Handler – aktualisiert auch den Vertragstext automatisch
+  const handleLaufzeitChange = (newLaufzeit) => {
+    setAngebotData(prev => {
+      const updatedText = prev.vertragsbestandteile.replace(
+        /Vertragslaufzeit von \d+ Monaten/,
+        `Vertragslaufzeit von ${newLaufzeit} Monaten`
+      )
+      return { ...prev, laufzeit: newLaufzeit, vertragsbestandteile: updatedText }
+    })
   }
 
   // Angebot absenden
   const handleSendAngebot = async () => {
-    if (!selectedLead || !angebotData.setup || !angebotData.retainer || !angebotData.produkt || !angebotData.kategorie) return
+    const isIndividuell = angebotData.produkt === 'Individuell'
+    const baseValid = selectedLead && angebotData.produkt && angebotData.setup !== '' && angebotData.retainer !== ''
+    const individuellValid = !isIndividuell || (angebotData.paketname && angebotData.kurzbeschreibung && angebotData.leistungsbeschreibung)
+    if (!baseValid || !individuellValid) return
 
     try {
       setSendingAngebot(true)
 
-      // Hot Lead updaten mit Setup, Retainer, Laufzeit, Produkt, Kategorie und Status
+      // Hot Lead updaten mit allen Angebotsdaten
       const response = await fetch('/.netlify/functions/hot-leads', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -323,8 +332,13 @@ function Closing() {
             retainer: parseFloat(angebotData.retainer),
             laufzeit: parseInt(angebotData.laufzeit) || 12,
             produkt: angebotData.produkt,
-            // Kategorie ist ein Lookup-Feld (read-only), wird nicht gesendet
-            status: 'Angebot'  // Zapier sendet dann das Angebot und setzt auf "Angebot versendet"
+            ...(isIndividuell && {
+              paketname: angebotData.paketname,
+              kurzbeschreibung: angebotData.kurzbeschreibung,
+              leistungsbeschreibung: angebotData.leistungsbeschreibung,
+            }),
+            vertragsbestandteile: angebotData.vertragsbestandteile,
+            status: 'Angebot',  // Zapier sendet dann das Angebot und setzt auf "Angebot versendet"
           }
         })
       })
@@ -336,7 +350,7 @@ function Closing() {
       // Kommentar im Original-Lead (Immobilienmakler_Leads) hinzufügen
       console.log('Original Lead ID:', selectedLead.originalLeadId)
       if (selectedLead.originalLeadId) {
-        const kommentarText = `Angebot versendet - ${angebotData.produkt} (${angebotData.kategorie}): Setup ${angebotData.setup}€, Retainer ${angebotData.retainer}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
+        const kommentarText = `Angebot versendet - ${angebotData.produkt}: Setup ${angebotData.setup}€, Retainer ${angebotData.retainer}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
         const userName = user?.vor_nachname || user?.name || 'Closer'
         
         try {
@@ -731,7 +745,7 @@ function Closing() {
     setEditMode(false)
     setEditData({})
     setShowAngebotView(false)
-    setAngebotData({ produkt: '', setup: '', chatbotSetup: '', retainer: '', laufzeit: 12, kategorie: '' })
+    setAngebotData({ produkt: '', setup: '', retainer: '', laufzeit: 12, paketname: '', kurzbeschreibung: '', leistungsbeschreibung: '', vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12) })
     setAngebotSuccess(false)
     setShowEmailComposer(false)
     setShowTerminPicker(false)
@@ -1443,16 +1457,31 @@ function Closing() {
                     type="button"
                     onClick={() => {
                       setShowAngebotView(false)
-                      setAngebotData({ produkt: '', setup: '', chatbotSetup: '', retainer: '', laufzeit: 12, kategorie: '' })
+                      setAngebotData({ produkt: '', setup: '', retainer: '', laufzeit: 12, paketname: '', kurzbeschreibung: '', leistungsbeschreibung: '', vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12) })
                     }}
-                    className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
+                    className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
                   >
                     <ChevronLeft className="w-4 h-4 mr-1" />
                     Zurück zur Übersicht
                   </button>
 
+                  {/* Kontakt-Info-Bar */}
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg mb-5 text-sm text-gray-600 truncate">
+                    <Building2 className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <span className="truncate">
+                      {[
+                        safeString(selectedLead.unternehmen),
+                        safeString(selectedLead.kategorie)
+                      ].filter(Boolean).join(' – ')}
+                      {(safeString(selectedLead.ansprechpartnerVorname) || safeString(selectedLead.ansprechpartnerNachname)) && (
+                        <> | {[safeString(selectedLead.ansprechpartnerVorname), safeString(selectedLead.ansprechpartnerNachname)].filter(Boolean).join(' ')}</>
+                      )}
+                      {safeString(selectedLead.email) && <> | {safeString(selectedLead.email)}</>}
+                    </span>
+                  </div>
+
                   {/* Angebot Header */}
-                  <div className="flex items-center gap-3 mb-6">
+                  <div className="flex items-center gap-3 mb-5">
                     <div className="p-3 bg-green-100 rounded-xl">
                       <FileText className="w-6 h-6 text-green-600" />
                     </div>
@@ -1462,182 +1491,193 @@ function Closing() {
                     </div>
                   </div>
 
-                  {/* Produkt-Auswahl Dropdown */}
-                  <div className="mb-5">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Produkt
-                    </label>
-                    <select
-                      value={angebotData.produkt}
-                      onChange={(e) => handleProduktChange(e.target.value)}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white text-gray-900 appearance-none cursor-pointer"
-                    >
-                      <option value="">Produkt auswählen...</option>
-                      {PRODUKT_OPTIONS.map(option => (
-                        <option key={option.value} value={option.value}>{option.label}</option>
-                      ))}
-                    </select>
-                  </div>
+                  <div className="space-y-5">
+                    {/* Produkt-Auswahl Dropdown */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Produkt <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={angebotData.produkt}
+                        onChange={(e) => handleProduktChange(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white text-gray-900 appearance-none cursor-pointer"
+                      >
+                        <option value="">Produkt auswählen...</option>
+                        {PRODUKT_OPTIONS.map(option => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                  {/* Felder nach Produktauswahl */}
-                  {angebotData.produkt && (
-                    <div className="space-y-5">
-                      {/* Setup-Felder */}
-                      <div className={`grid gap-4 ${isKombiProdukt(angebotData.produkt) ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Setup (netto)
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              value={angebotData.setup}
-                              onChange={(e) => setAngebotData(prev => ({ ...prev, setup: parseFloat(e.target.value) || '' }))}
-                              placeholder="z.B. 2500"
-                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                            />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
-                          </div>
-                        </div>
+                    {/* Sachverständigen-Hinweis */}
+                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                      <p className="text-sm text-amber-800">
+                        Für Sachverständige bitte ein individuelles Angebot erstellen und manuell per E-Mail versenden.
+                      </p>
+                    </div>
 
-                        {/* Bei Kombi-Produkten: KI-Chatbot-Anteil */}
-                        {isKombiProdukt(angebotData.produkt) && (
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              davon KI-Chatbot
-                            </label>
-                            <div className="relative">
-                              <input
-                                type="number"
-                                value={angebotData.chatbotSetup}
-                                onChange={(e) => setAngebotData(prev => ({ ...prev, chatbotSetup: parseFloat(e.target.value) || '' }))}
-                                placeholder="z.B. 1399"
-                                className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                              />
-                              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
-                            </div>
-                          </div>
-                        )}
-
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Retainer (netto)
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              value={angebotData.retainer}
-                              onChange={(e) => setAngebotData(prev => ({ ...prev, retainer: parseFloat(e.target.value) || '' }))}
-                              placeholder="z.B. 400"
-                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                            />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
-                          </div>
-                          {getRetainerHint() && (
-                            <p className="text-xs text-amber-600 mt-1">{getRetainerHint()}</p>
-                          )}
+                    {/* Setup & Retainer */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Setup (netto) <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={angebotData.setup}
+                            onChange={(e) => setAngebotData(prev => ({ ...prev, setup: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
+                            placeholder="z.B. 2500"
+                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
                         </div>
                       </div>
-
-                      {/* Laufzeit & Kategorie nebeneinander */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Laufzeit
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              value={angebotData.laufzeit}
-                              onChange={(e) => setAngebotData(prev => ({
-                                ...prev,
-                                laufzeit: Math.min(32, Math.max(3, parseInt(e.target.value) || 12))
-                              }))}
-                              min="3"
-                              max="32"
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                            />
-                            <span className="text-gray-500 whitespace-nowrap">Monate</span>
-                          </div>
-                          <div className="flex gap-2 mt-2">
-                            {[6, 12, 24].map(months => (
-                              <button
-                                key={months}
-                                type="button"
-                                onClick={() => setAngebotData(prev => ({ ...prev, laufzeit: months }))}
-                                className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                                  angebotData.laufzeit === months
-                                    ? 'bg-purple-100 text-purple-700'
-                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                }`}
-                              >
-                                {months} Mon
-                              </button>
-                            ))}
-                          </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Retainer (netto) <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={angebotData.retainer}
+                            onChange={(e) => setAngebotData(prev => ({ ...prev, retainer: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
+                            placeholder="z.B. 400"
+                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
                         </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Kategorie
-                          </label>
-                          <select
-                            value={angebotData.kategorie}
-                            onChange={(e) => setAngebotData(prev => ({ ...prev, kategorie: e.target.value }))}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white text-gray-900 appearance-none cursor-pointer"
-                          >
-                            <option value="">Kategorie wählen...</option>
-                            {KATEGORIE_OPTIONS.map(option => (
-                              <option key={option.value} value={option.value}>{option.label}</option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Zusammenfassung */}
-                      {angebotData.setup && angebotData.retainer && angebotData.kategorie && (
-                        <div className="bg-green-50 border border-green-200 rounded-xl p-5">
-                          <h4 className="font-medium text-green-900 mb-4">Angebot Zusammenfassung</h4>
-                          <div className="grid grid-cols-2 gap-3 mb-3">
-                            <div className="bg-white rounded-lg p-3 text-center">
-                              <p className="text-xs text-gray-500 mb-1">Produkt</p>
-                              <p className="text-sm font-bold text-gray-900">{angebotData.produkt}</p>
-                            </div>
-                            <div className="bg-white rounded-lg p-3 text-center">
-                              <p className="text-xs text-gray-500 mb-1">Kategorie</p>
-                              <p className="text-sm font-bold text-gray-900">{angebotData.kategorie}</p>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-3 gap-3 mb-3">
-                            <div className="bg-white rounded-lg p-3 text-center">
-                              <p className="text-xs text-gray-500 mb-1">Setup</p>
-                              <p className="text-xl font-bold text-gray-900">{angebotData.setup} €</p>
-                            </div>
-                            <div className="bg-white rounded-lg p-3 text-center">
-                              <p className="text-xs text-gray-500 mb-1">Retainer</p>
-                              <p className="text-xl font-bold text-gray-900">{angebotData.retainer} €</p>
-                            </div>
-                            <div className="bg-white rounded-lg p-3 text-center">
-                              <p className="text-xs text-gray-500 mb-1">Laufzeit</p>
-                              <p className="text-xl font-bold text-gray-900">{angebotData.laufzeit} Mon</p>
-                            </div>
-                          </div>
-                          <div className="bg-white rounded-lg p-3 text-center">
-                            <p className="text-xs text-gray-500 mb-1">Gesamtwert ({angebotData.laufzeit} Monate)</p>
-                            <p className="text-2xl font-bold text-green-600">
-                              {(parseFloat(angebotData.setup) + parseFloat(angebotData.retainer) * angebotData.laufzeit).toLocaleString('de-DE')} €
-                            </p>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Hinweis für Sonderfälle */}
-                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-                        <p className="text-sm text-amber-800">
-                          Bei Sonderfällen erfolgt die Angebotserstellung auf Grundlage eines schriftlichen Konzepts und wird manuell per E-Mail versendet.
-                        </p>
                       </div>
                     </div>
-                  )}
+
+                    {/* Laufzeit */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Laufzeit <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          value={angebotData.laufzeit}
+                          onChange={(e) => handleLaufzeitChange(Math.min(32, Math.max(3, parseInt(e.target.value) || 12)))}
+                          min="3"
+                          max="32"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                        />
+                        <span className="text-gray-500 whitespace-nowrap">Monate</span>
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        {[6, 12, 24].map(months => (
+                          <button
+                            key={months}
+                            type="button"
+                            onClick={() => handleLaufzeitChange(months)}
+                            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                              angebotData.laufzeit === months
+                                ? 'bg-green-100 text-green-700 ring-2 ring-green-400'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {months} Mon
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Individuelle Felder – nur bei "Individuell" */}
+                    {angebotData.produkt === 'Individuell' && (
+                      <>
+                        {/* Paketname */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Paketname <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={angebotData.paketname}
+                            onChange={(e) => setAngebotData(prev => ({ ...prev, paketname: e.target.value }))}
+                            placeholder="z.B. KI-Chatbot, WhatsApp-Assistent."
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        {/* Kurzbeschreibung */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Kurzbeschreibung der Leistung <span className="text-red-500">*</span>
+                          </label>
+                          <p className="text-xs text-gray-500 mb-2">
+                            Eine Kurzbeschreibung der Leistung für die Mail an den Makler (z.B. Aufbau &amp; Betrieb Ihrer individuellen KI-Vertriebsassistenz).
+                          </p>
+                          <input
+                            type="text"
+                            value={angebotData.kurzbeschreibung}
+                            onChange={(e) => setAngebotData(prev => ({ ...prev, kurzbeschreibung: e.target.value }))}
+                            placeholder="z.B. Aufbau & Betrieb Ihrer individuellen KI-Vertriebsassistenz"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        {/* Leistungsbeschreibung */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Leistungsbeschreibung <span className="text-red-500">*</span>
+                          </label>
+                          <p className="text-xs text-gray-500 mb-2">
+                            Bitte mit Überschriften und einzelnen Unterpunkten mit Spiegelstrichen angeben (Siehe Hinweis unten).
+                          </p>
+                          <textarea
+                            value={angebotData.leistungsbeschreibung}
+                            onChange={(e) => setAngebotData(prev => ({ ...prev, leistungsbeschreibung: e.target.value }))}
+                            rows={5}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-y min-h-[120px]"
+                          />
+                          <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
+                            <p className="font-medium mb-1">Format-Beispiel:</p>
+                            <p>1. SEO Überarbeitung<br />– Website-Analyse mit Hilfe von verschiedenen Software-Tools<br />– Prüfung und Anpassung der .htaccess, Sitemap &amp; robots.txt.<br />2. Implementierung der KI-Vertriebsassistenz<br />– Analyse der bestehenden Website, Zielgruppen und typischen Nutzeranfragen<br />– Konzeption einer individuellen KI-Vertriebsassistenz (Eigentümer, Käufer, Interessenten)</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Individuelle Vertragsbestandteile – immer sichtbar */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Individuelle Vertragsbestandteile
+                      </label>
+                      <p className="text-xs text-gray-500 mb-2">
+                        Hier können Vertragsbestandteile individuell angepasst werden. WICHTIG: Es müssen alle Bestandteile wie Umsatzsteuer, Laufzeit und Kündigungsfrist berücksichtigt werden (siehe Platzhalter).
+                      </p>
+                      <textarea
+                        value={angebotData.vertragsbestandteile}
+                        onChange={(e) => setAngebotData(prev => ({ ...prev, vertragsbestandteile: e.target.value }))}
+                        rows={5}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-y min-h-[120px]"
+                      />
+                    </div>
+
+                    {/* Textbausteine */}
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                      <p className="text-xs font-semibold text-gray-600 mb-3">Textbausteine – zum Kopieren</p>
+                      <div className="space-y-2">
+                        {TEXTBAUSTEINE.map((baustein, idx) => (
+                          <button
+                            key={idx}
+                            type="button"
+                            onClick={() => setAngebotData(prev => ({
+                              ...prev,
+                              vertragsbestandteile: prev.vertragsbestandteile
+                                ? prev.vertragsbestandteile + '\n' + baustein
+                                : baustein
+                            }))}
+                            className="w-full text-left px-3 py-2 bg-white border border-gray-200 rounded-lg text-xs text-gray-700 hover:bg-green-50 hover:border-green-300 transition-colors"
+                          >
+                            {baustein}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               ) : showTerminPicker ? (
                 /* ========================================
@@ -2198,7 +2238,7 @@ function Closing() {
                       type="button"
                       onClick={() => {
                         setShowAngebotView(false)
-                        setAngebotData({ produkt: '', setup: '', chatbotSetup: '', retainer: '', laufzeit: 12, kategorie: '' })
+                        setAngebotData({ produkt: '', setup: '', retainer: '', laufzeit: 12, paketname: '', kurzbeschreibung: '', leistungsbeschreibung: '', vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12) })
                       }}
                       disabled={sendingAngebot}
                       className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
@@ -2208,7 +2248,17 @@ function Closing() {
                     <button
                       type="button"
                       onClick={handleSendAngebot}
-                      disabled={!angebotData.produkt || !angebotData.setup || !angebotData.retainer || !angebotData.kategorie || sendingAngebot}
+                      disabled={
+                        !angebotData.produkt ||
+                        angebotData.setup === '' ||
+                        angebotData.retainer === '' ||
+                        (angebotData.produkt === 'Individuell' && (
+                          !angebotData.paketname ||
+                          !angebotData.kurzbeschreibung ||
+                          !angebotData.leistungsbeschreibung
+                        )) ||
+                        sendingAngebot
+                      }
                       className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {sendingAngebot ? (
