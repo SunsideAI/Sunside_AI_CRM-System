@@ -33,23 +33,8 @@ export async function handler(event) {
 
   try {
     switch (event.httpMethod) {
-      case 'GET': {
-        const params = event.queryStringParameters || {}
-        // ?id=xxx → nur Preferences dieses Users zurückgeben (für AuthContext-Refresh)
-        if (params.id) {
-          const url = `${TABLE_URL}/${params.id}?fields[]=Preferences`
-          const resp = await fetch(url, { headers: airtableHeaders })
-          if (!resp.ok) {
-            return { statusCode: resp.status, headers: corsHeaders, body: JSON.stringify({ error: 'User nicht gefunden' }) }
-          }
-          const data = await resp.json()
-          // Airtable omits unchecked checkbox → undefined = OFF (explizit abgewählt)
-          // true = ON, undefined/false = OFF
-          const preferences = data.fields?.Preferences === true
-          return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ preferences }) }
-        }
+      case 'GET':
         return await getUsers(TABLE_URL, airtableHeaders)
-      }
       case 'POST':
         return await createUser(JSON.parse(event.body), TABLE_URL, airtableHeaders)
       case 'PATCH':
@@ -101,7 +86,7 @@ async function getUsers(TABLE_URL, airtableHeaders) {
     google_calendar_id: record.fields.Google_Calendar_ID || '',
     onboarding: record.fields.Onboarding || '',
     hasPassword: !!(record.fields.Passwort && record.fields.Passwort.length > 0),
-    preferences: record.fields.Preferences === true  // Airtable omits unchecked → true only when explicitly checked
+    preferences: record.fields.Preferences !== false  // default true
   }))
 
   users.sort((a, b) => a.vor_nachname.localeCompare(b.vor_nachname))
@@ -156,8 +141,7 @@ async function createUser(data, TABLE_URL, airtableHeaders) {
         'Bundesland': bundesland || null,
         'Rolle': rolle || [],
         'Status': true,
-        'Onboarding': onboarding || null,
-        'Preferences': true  // Carl Klammer standardmäßig aktiviert
+        'Onboarding': onboarding || null
       }
     })
   })

@@ -146,7 +146,7 @@ export async function handler(event) {
       ort: fields.Ort || '',
       bundesland: fields.Bundesland || '',
       google_calendar_id: fields.Google_Calendar_ID || '',
-      preferences: fields.Preferences === true  // Airtable omits unchecked checkbox → true only when explicitly checked
+      preferences: fields.Preferences !== false  // default true wenn nicht explizit false
     }
 
     // Status zu Rolle mappen falls nötig

@@ -11,22 +11,7 @@ export function AuthProvider({ children }) {
     const storedUser = localStorage.getItem('sunside_user')
     if (storedUser) {
       try {
-        const parsedUser = JSON.parse(storedUser)
-        setUser(parsedUser)
-
-        // Preferences nachladen wenn nicht im Cache (z.B. nach Feature-Deploy oder AT-Änderung)
-        if (parsedUser.preferences === undefined) {
-          fetch(`/.netlify/functions/users?id=${parsedUser.id}`)
-            .then(r => r.ok ? r.json() : null)
-            .then(data => {
-              if (data && data.preferences !== undefined) {
-                const updated = { ...parsedUser, preferences: data.preferences }
-                setUser(updated)
-                localStorage.setItem('sunside_user', JSON.stringify(updated))
-              }
-            })
-            .catch(() => {})
-        }
+        setUser(JSON.parse(storedUser))
       } catch (e) {
         localStorage.removeItem('sunside_user')
       }
