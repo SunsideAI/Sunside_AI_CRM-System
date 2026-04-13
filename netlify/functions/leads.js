@@ -143,50 +143,22 @@ export async function handler(event) {
       // User-Filter: Nur wenn NICHT Admin mit "all" view ODER bei Wiedervorlagen-Abfrage
       const needsUserFilter = userRole !== 'Admin' || view === 'own' || wiedervorlage === 'true'
 
-      console.log('[Leads] Filter params:', { userId, userName, userRole, view, needsUserFilter })
+      // User-Filter: Filtere nach lead_assignments für diesen User
+      if (needsUserFilter && userId) {
+        const { data: assignments, error: assignError } = await supabase
+          .from('lead_assignments')
+          .select('lead_id')
+          .eq('user_id', userId)
 
-      if (needsUserFilter && (userId || userName)) {
-        // Zuerst Lead-IDs holen die diesem User zugewiesen sind
-        let assignments = []
-
-        // Primär: Nach User-ID suchen
-        if (userId) {
-          const { data: idAssignments } = await supabase
-            .from('lead_assignments')
-            .select('lead_id')
-            .eq('user_id', userId)
-
-          assignments = idAssignments || []
-          console.log('[Leads] Assignments by userId:', { userId, found: assignments.length })
+        if (assignError) {
+          console.error('[Leads] Assignment query error:', assignError.message)
         }
 
-        // Fallback: Nach User-Namen suchen (falls ID keine Ergebnisse liefert)
-        if (assignments.length === 0 && userName) {
-          // Finde alle User-IDs die zum Namen passen
-          const { data: matchingUsers } = await supabase
-            .from('users')
-            .select('id')
-            .ilike('vor_nachname', userName)
-
-          if (matchingUsers && matchingUsers.length > 0) {
-            const userIds = matchingUsers.map(u => u.id)
-            console.log('[Leads] Found user IDs for name:', { userName, userIds })
-
-            const { data: nameAssignments } = await supabase
-              .from('lead_assignments')
-              .select('lead_id')
-              .in('user_id', userIds)
-
-            assignments = nameAssignments || []
-            console.log('[Leads] Assignments by userName:', { userName, found: assignments.length })
-          }
-        }
-
-        if (assignments.length > 0) {
+        if (assignments && assignments.length > 0) {
           const leadIds = assignments.map(a => a.lead_id)
           query = query.in('id', leadIds)
         } else {
-          console.log('[Leads] Keine Assignments gefunden für:', { userId, userName })
+          // Keine Leads zugewiesen
           return {
             statusCode: 200,
             headers,
