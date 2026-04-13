@@ -30,10 +30,11 @@ function Profil() {
   const { user, updatePreferences } = useAuth()
   const [preferenceSaving, setPreferenceSaving] = useState(false)
 
+  const clippyOn = user?.preferences !== false
+
   const handleToggleClippy = async () => {
-    const newValue = user?.preferences === false ? true : false
     setPreferenceSaving(true)
-    await updatePreferences(newValue)
+    await updatePreferences(!clippyOn)
     setPreferenceSaving(false)
   }
   const [showPasswordForm, setShowPasswordForm] = useState(false)
@@ -208,13 +209,13 @@ function Profil() {
             onClick={handleToggleClippy}
             disabled={preferenceSaving}
             className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
-              user?.preferences !== false ? 'bg-sunside-primary' : 'bg-gray-200'
+              clippyOn ? 'bg-sunside-primary' : 'bg-gray-200'
             }`}
             aria-label="Carl Klammer an/ausschalten"
           >
             <span
               className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
-                user?.preferences !== false ? 'translate-x-5' : 'translate-x-0'
+                clippyOn ? 'translate-x-5' : 'translate-x-0'
               }`}
             />
           </button>
