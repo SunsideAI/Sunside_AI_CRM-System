@@ -731,8 +731,8 @@ function Layout({ children }) {
         </div>
       )}
 
-      {/* Clippy - Der hilfreiche Assistent 📎 */}
-      <Clippy />
+      {/* Clippy - Der hilfreiche Assistent 📎 (nur wenn in Präferenzen aktiviert) */}
+      {user?.preferences !== false && <Clippy />}
     </div>
   )
 }

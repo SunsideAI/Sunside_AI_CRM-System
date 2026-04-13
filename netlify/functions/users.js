@@ -57,7 +57,7 @@ export async function handler(event) {
 // GET - Alle User laden
 async function getUsers(TABLE_URL, airtableHeaders) {
   // Basis-Felder die sicher existieren
-  const url = `${TABLE_URL}?fields[]=Vor_Nachname&fields[]=E-Mail&fields[]=E-Mail_Geschäftlich&fields[]=Rolle&fields[]=Status&fields[]=Telefon&fields[]=Bundesland&fields[]=Google_Calendar_ID&fields[]=Passwort&fields[]=Onboarding&fields[]=Straße&fields[]=PLZ&fields[]=Ort`
+  const url = `${TABLE_URL}?fields[]=Vor_Nachname&fields[]=E-Mail&fields[]=E-Mail_Geschäftlich&fields[]=Rolle&fields[]=Status&fields[]=Telefon&fields[]=Bundesland&fields[]=Google_Calendar_ID&fields[]=Passwort&fields[]=Onboarding&fields[]=Straße&fields[]=PLZ&fields[]=Ort&fields[]=Preferences`
   
   console.log('Fetching users from:', TABLE_URL)
   
@@ -85,7 +85,8 @@ async function getUsers(TABLE_URL, airtableHeaders) {
     bundesland: record.fields.Bundesland || '',
     google_calendar_id: record.fields.Google_Calendar_ID || '',
     onboarding: record.fields.Onboarding || '',
-    hasPassword: !!(record.fields.Passwort && record.fields.Passwort.length > 0)
+    hasPassword: !!(record.fields.Passwort && record.fields.Passwort.length > 0),
+    preferences: record.fields.Preferences !== false  // default true
   }))
 
   users.sort((a, b) => a.vor_nachname.localeCompare(b.vor_nachname))
@@ -195,6 +196,7 @@ async function updateUser(data, TABLE_URL, airtableHeaders) {
   if (updateData.status !== undefined) fields['Status'] = updateData.status
   if (updateData.onboarding !== undefined) fields['Onboarding'] = updateData.onboarding || null
   if (updateData.google_calendar_id !== undefined) fields['Google_Calendar_ID'] = updateData.google_calendar_id || null
+  if (updateData.preferences !== undefined) fields['Preferences'] = updateData.preferences === true
 
   const response = await fetch(`${TABLE_URL}/${id}`, {
     method: 'PATCH',

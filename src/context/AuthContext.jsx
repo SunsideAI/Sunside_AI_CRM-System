@@ -29,6 +29,22 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('sunside_user')
   }
 
+  // Carl Klammer Präferenz speichern (lokal + Airtable)
+  const updatePreferences = async (value) => {
+    const updated = { ...user, preferences: value }
+    setUser(updated)
+    localStorage.setItem('sunside_user', JSON.stringify(updated))
+    try {
+      await fetch('/.netlify/functions/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: user.id, preferences: value })
+      })
+    } catch (err) {
+      console.error('Fehler beim Speichern der Präferenz:', err)
+    }
+  }
+
   // Prüft ob User eine bestimmte Rolle hat
   const hasRole = (role) => {
     if (!user?.rolle) return false
@@ -49,7 +65,8 @@ export function AuthProvider({ children }) {
     hasRole,
     isAdmin,
     isColdcaller,
-    isCloser
+    isCloser,
+    updatePreferences
   }
 
   return (
