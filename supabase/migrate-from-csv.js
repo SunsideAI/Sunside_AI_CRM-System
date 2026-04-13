@@ -46,13 +46,13 @@ const CSV_DIR = join(__dirname, 'csv')
 
 // CSV-Dateinamen -> Supabase Tabellen
 const TABLE_MAPPING = {
-  'User_Datenbank.csv': 'users',
-  'Immobilienmakler_Leads.csv': 'leads',
-  'Immobilienmakler_Hot_Leads.csv': 'hot_leads',
-  'Immobilienmakler_Leads_Archiv.csv': 'lead_archive',
-  'E-Mail_Templates.csv': 'email_templates',
-  'Lead_Anfragen.csv': 'lead_requests',
-  'System_Messages.csv': 'system_messages'
+  'User_Datenbank-Grid view.csv': 'users',
+  'Immobilienmakler_Leads-Grid view.csv': 'leads',
+  'Immobilienmakler_Hot_Leads-Grid view.csv': 'hot_leads',
+  'Immobilienmakler_Leads_Archiv-Grid view.csv': 'lead_archive',
+  'E-Mail_Templates-Grid view.csv': 'email_templates',
+  'Lead_Anfragen-Grid view.csv': 'lead_requests',
+  'System_Messages-Grid view.csv': 'system_messages'
 }
 
 // ID Mappings: Airtable Record ID -> Supabase UUID
@@ -228,7 +228,7 @@ async function insertWithRetry(table, record, retries = 3) {
 async function migrateUsers() {
   console.log('\n👤 MIGRIERE USERS...')
 
-  const records = readCSV('User_Datenbank.csv')
+  const records = readCSV('User_Datenbank-Grid view.csv')
   if (!records) return
 
   stats.users.total = records.length
@@ -285,7 +285,7 @@ async function migrateUsers() {
 async function migrateLeads() {
   console.log('\n📋 MIGRIERE LEADS...')
 
-  const records = readCSV('Immobilienmakler_Leads.csv')
+  const records = readCSV('Immobilienmakler_Leads-Grid view.csv')
   if (!records) return
 
   stats.leads.total = records.length
@@ -380,7 +380,7 @@ async function migrateLeadAssignments(assignmentData) {
 async function migrateHotLeads() {
   console.log('\n🔥 MIGRIERE HOT LEADS...')
 
-  const records = readCSV('Immobilienmakler_Hot_Leads.csv')
+  const records = readCSV('Immobilienmakler_Hot_Leads-Grid view.csv')
   if (!records) return
 
   stats.hot_leads.total = records.length
@@ -448,7 +448,7 @@ async function migrateHotLeads() {
 async function migrateEmailTemplates() {
   console.log('\n📧 MIGRIERE E-MAIL TEMPLATES...')
 
-  const records = readCSV('E-Mail_Templates.csv')
+  const records = readCSV('E-Mail_Templates-Grid view.csv')
   if (!records) return
 
   stats.email_templates.total = records.length
@@ -483,7 +483,7 @@ async function migrateEmailTemplates() {
 async function migrateLeadArchive() {
   console.log('\n📦 MIGRIERE LEAD ARCHIV...')
 
-  const records = readCSV('Immobilienmakler_Leads_Archiv.csv')
+  const records = readCSV('Immobilienmakler_Leads_Archiv-Grid view.csv')
   if (!records) return
 
   stats.lead_archive.total = records.length
@@ -518,7 +518,7 @@ async function migrateLeadArchive() {
 async function migrateLeadRequests() {
   console.log('\n📝 MIGRIERE LEAD ANFRAGEN...')
 
-  const records = readCSV('Lead_Anfragen.csv')
+  const records = readCSV('Lead_Anfragen-Grid view.csv')
   if (!records) return
 
   stats.lead_requests.total = records.length
@@ -560,7 +560,7 @@ async function migrateLeadRequests() {
 async function migrateSystemMessages() {
   console.log('\n💬 MIGRIERE SYSTEM MESSAGES...')
 
-  const records = readCSV('System_Messages.csv')
+  const records = readCSV('System_Messages-Grid view.csv')
   if (!records) return
 
   stats.system_messages.total = records.length
