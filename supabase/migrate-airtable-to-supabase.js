@@ -49,6 +49,14 @@ const stats = {
   leadRequests: { total: 0, inserted: 0, failed: 0 }
 }
 
+// Rate Limiting State - Airtable erlaubt 5 req/s
+const rateLimiter = {
+  lastRequestTime: 0,
+  minDelay: 250,           // 250ms = max 4 req/s (safe)
+  backoffMultiplier: 1,    // Erhöht sich bei Rate Limits
+  maxBackoff: 8            // Max 8x Backoff
+}
+
 // =====================================================
 // AIRTABLE API FUNKTIONEN
 // =====================================================
@@ -57,9 +65,22 @@ async function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-async function fetchFromAirtable(tableName, offset = null) {
-  // Proaktiv warten BEVOR Request - verhindert 429
-  await sleep(300)
+async function throttledWait() {
+  // Berechne erforderliche Wartezeit basierend auf letztem Request
+  const now = Date.now()
+  const delay = rateLimiter.minDelay * rateLimiter.backoffMultiplier
+  const timeSinceLastRequest = now - rateLimiter.lastRequestTime
+  const waitTime = Math.max(0, delay - timeSinceLastRequest)
+
+  if (waitTime > 0) {
+    await sleep(waitTime)
+  }
+  rateLimiter.lastRequestTime = Date.now()
+}
+
+async function fetchFromAirtable(tableName, offset = null, retryCount = 0) {
+  // Rate limiting: Warte vor Request
+  await throttledWait()
 
   const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
   url.searchParams.set('pageSize', '100')
@@ -75,9 +96,17 @@ async function fetchFromAirtable(tableName, offset = null) {
   })
 
   if (response.status === 429) {
-    console.log('   ⏳ Rate limit - warte 35 Sekunden...')
-    await sleep(35000)
-    return fetchFromAirtable(tableName, offset)
+    // Exponentielles Backoff
+    rateLimiter.backoffMultiplier = Math.min(rateLimiter.backoffMultiplier * 2, rateLimiter.maxBackoff)
+    const waitTime = 30 + (retryCount * 10) // 30s, 40s, 50s...
+    console.log(`   ⏳ Rate limit (Backoff ${rateLimiter.backoffMultiplier}x) - warte ${waitTime} Sekunden...`)
+    await sleep(waitTime * 1000)
+    return fetchFromAirtable(tableName, offset, retryCount + 1)
+  }
+
+  // Bei Erfolg: Backoff schrittweise reduzieren
+  if (rateLimiter.backoffMultiplier > 1) {
+    rateLimiter.backoffMultiplier = Math.max(1, rateLimiter.backoffMultiplier * 0.9)
   }
 
   if (!response.ok) {
@@ -93,18 +122,21 @@ async function fetchAllFromAirtable(tableName) {
 
   const allRecords = []
   let offset = null
+  let pageCount = 0
 
   do {
     const data = await fetchFromAirtable(tableName, offset)
     allRecords.push(...(data.records || []))
     offset = data.offset
+    pageCount++
 
-    if (offset) {
-      await sleep(250) // Rate limiting: max 5 requests/second
+    // Fortschrittsanzeige bei großen Tabellen
+    if (pageCount % 5 === 0) {
+      console.log(`   📊 ${allRecords.length} Records geladen...`)
     }
   } while (offset)
 
-  console.log(`   ✓ ${allRecords.length} Records geladen`)
+  console.log(`   ✓ ${allRecords.length} Records geladen (${pageCount} Seiten)`)
   return allRecords
 }
 
@@ -656,12 +688,22 @@ async function main() {
     // 1. Clear existing data
     await clearAllData()
 
+    // Kurze Pause um sicherzustellen, dass keine Rate Limits aktiv sind
+    console.log('\n⏳ Warte 5 Sekunden vor Airtable-Requests...')
+    await sleep(5000)
+
     // 2. Migrate in correct order (dependencies first)
+    // Zwischen Tabellen kurz warten um Rate Limits zu vermeiden
     await migrateUsers()
+    await sleep(2000)
     await migrateLeads()       // Also creates assignments
+    await sleep(2000)
     await migrateHotLeads()
+    await sleep(2000)
     await migrateArchive()
+    await sleep(2000)
     await migrateEmailTemplates()
+    await sleep(2000)
     await migrateLeadRequests()
 
     // 3. Verify
