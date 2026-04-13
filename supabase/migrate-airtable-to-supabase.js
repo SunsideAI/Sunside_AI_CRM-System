@@ -58,6 +58,9 @@ async function sleep(ms) {
 }
 
 async function fetchFromAirtable(tableName, offset = null) {
+  // Proaktiv warten BEVOR Request - verhindert 429
+  await sleep(300)
+
   const url = new URL(`https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(tableName)}`)
   url.searchParams.set('pageSize', '100')
   if (offset) {
@@ -72,8 +75,8 @@ async function fetchFromAirtable(tableName, offset = null) {
   })
 
   if (response.status === 429) {
-    console.log('   ⏳ Rate limit - warte 30 Sekunden...')
-    await sleep(30000)
+    console.log('   ⏳ Rate limit - warte 35 Sekunden...')
+    await sleep(35000)
     return fetchFromAirtable(tableName, offset)
   }
 
