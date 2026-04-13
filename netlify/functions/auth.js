@@ -145,8 +145,7 @@ export async function handler(event) {
       rolle: fields.Rolle || fields.Status || ['Setter'],
       ort: fields.Ort || '',
       bundesland: fields.Bundesland || '',
-      google_calendar_id: fields.Google_Calendar_ID || '',
-      preferences: fields.Preferences !== false  // default true wenn nicht explizit false
+      google_calendar_id: fields.Google_Calendar_ID || ''
     }
 
     // Status zu Rolle mappen falls nötig
