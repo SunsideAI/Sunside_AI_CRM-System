@@ -90,8 +90,8 @@ function Dashboard() {
           </p>
         </div>
 
-        {/* Toggle Buttons - Glass Style */}
-        <div className="flex items-center glass-panel p-1.5 gap-1">
+        {/* Toggle Buttons */}
+        <div className="flex items-center bg-gray-100 rounded-lg p-1">
           <button
             onClick={() => setActiveView('uebersicht')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all duration-250 ${
@@ -642,8 +642,8 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
           </div>
         ) : (
           <div>
-            {/* Lead Rows - No dividers, use spacing */}
-            <div className="space-y-1 p-2">
+            {/* Lead Rows */}
+            <div className="divide-y divide-gray-100">
               {paginatedLeads.map((lead) => (
                 <div
                   key={lead.id}

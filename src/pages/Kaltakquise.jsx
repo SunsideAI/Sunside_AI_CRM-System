@@ -711,8 +711,8 @@ function Kaltakquise() {
             </button>
           )}
 
-          {/* Tab-Navigation - Glass Style */}
-          <div className="flex items-center glass-panel p-1.5 gap-1">
+          {/* Tab-Navigation */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-1">
             {/* Meine Leads */}
             <button
               onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setFilterVertriebler('all'); setLeads([]); }}

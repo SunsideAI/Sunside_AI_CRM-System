@@ -1028,8 +1028,8 @@ function Closing() {
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Toggle: Meine Leads / Pool / Alle (für Admins) - Glass Style */}
-          <div className="flex items-center glass-panel p-1.5 gap-1">
+          {/* Toggle: Meine Leads / Pool / Alle (für Admins) */}
+          <div className="flex items-center bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => { setViewMode('own'); setCurrentPage(1); }}
               className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
@@ -1110,7 +1110,7 @@ function Closing() {
               <p className="text-outline mt-1">Alle Beratungsgespräche wurden bereits übernommen</p>
             </div>
           ) : (
-            <div className="space-y-1 p-2">
+            <div className="divide-y divide-gray-100">
               {poolLeads.map((lead) => {
                 const terminDate = lead.terminDatum ? new Date(lead.terminDatum) : null
                 const isUpcoming = terminDate && terminDate > new Date()
@@ -1309,8 +1309,8 @@ function Closing() {
                 <div className="col-span-1"></div>
               </div>
 
-              {/* Lead Rows - No dividers */}
-              <div className="space-y-1 p-2">
+              {/* Lead Rows */}
+              <div className="divide-y divide-gray-100">
                 {paginatedLeads.map((lead, index) => (
                   <div
                     key={lead.id}

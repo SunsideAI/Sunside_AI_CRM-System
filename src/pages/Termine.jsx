@@ -332,7 +332,7 @@ function Termine() {
         <div className="flex flex-wrap items-center gap-3">
           {/* View Mode Toggle - nur für Admins */}
           {isAdmin() && (
-            <div className="flex items-center glass-panel p-1.5 gap-1">
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
               <button
                 onClick={() => setViewMode('own')}
                 className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
@@ -359,7 +359,7 @@ function Termine() {
           )}
 
           {/* Calendar Mode Toggle */}
-          <div className="flex items-center glass-panel p-1.5 gap-1">
+          <div className="flex items-center bg-gray-100 rounded-lg p-1">
             <button
               onClick={() => setCalendarMode('week')}
               className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
