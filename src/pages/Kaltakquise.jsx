@@ -1136,11 +1136,11 @@ function Kaltakquise() {
                 <p className="text-gray-400 mt-1">Neue Leads erscheinen hier automatisch</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="space-y-2 p-3">
                 {ebookLeads.map((lead) => (
-                  <div 
+                  <div
                     key={lead.id}
-                    className="p-5 hover:bg-gray-50 transition-colors"
+                    className="p-5 rounded-xl bg-surface-container-lowest hover:bg-surface-container transition-colors"
                   >
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       {/* Lead-Info */}

@@ -643,12 +643,12 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
         ) : (
           <div>
             {/* Lead Rows */}
-            <div className="divide-y divide-gray-100">
+            <div className="space-y-1 p-2">
               {paginatedLeads.map((lead) => (
                 <div
                   key={lead.id}
                   onClick={() => openModal(lead)}
-                  className="table-row p-4 rounded-lg cursor-pointer"
+                  className="table-row p-4 rounded-xl cursor-pointer bg-surface-container-lowest hover:bg-surface-container transition-colors"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">

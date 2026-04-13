@@ -1371,12 +1371,12 @@ function Closing() {
               </div>
 
               {/* Lead Rows */}
-              <div className="divide-y divide-gray-100">
+              <div className="space-y-1 p-2">
                 {paginatedLeads.map((lead, index) => (
                   <div
                     key={lead.id}
                     onClick={() => openModal(lead)}
-                    className={`table-row px-6 py-4 rounded-lg cursor-pointer ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
+                    className="table-row px-6 py-4 rounded-xl cursor-pointer bg-surface-container-lowest hover:bg-surface-container transition-colors"
                   >
                     <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
                       {/* Unternehmen */}
