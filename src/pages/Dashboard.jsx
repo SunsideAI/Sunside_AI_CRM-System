@@ -397,24 +397,10 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
     }
     
     try {
-      // Beide Abfragen parallel: Als Closer UND als Setter (wie in Termine.jsx)
-      const [closerResponse, setterResponse] = await Promise.all([
-        fetch(`/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`)
-          .then(r => r.json())
-          .catch(() => ({ hotLeads: [] })),
-        fetch(`/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`)
-          .then(r => r.json())
-          .catch(() => ({ hotLeads: [] }))
-      ])
-      
-      // Kombinieren und Duplikate entfernen (basierend auf ID)
-      const allLeads = [...(closerResponse.hotLeads || []), ...(setterResponse.hotLeads || [])]
-      const uniqueLeads = allLeads.reduce((acc, lead) => {
-        if (!acc.find(l => l.id === lead.id)) {
-          acc.push(lead)
-        }
-        return acc
-      }, [])
+      // Einzel-Request: Leads wo User Setter ODER Closer ist
+      const response = await fetch(`/.netlify/functions/hot-leads?anyUserName=${encodeURIComponent(userName)}`)
+      const data = await response.json().catch(() => ({ hotLeads: [] }))
+      const uniqueLeads = data.hotLeads || []
       
       // Sortieren: Neueste Termine zuerst
       const sortedLeads = uniqueLeads.sort((a, b) => {

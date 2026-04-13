@@ -39,24 +39,10 @@ function Termine() {
         const data = await response.json()
         allLeads = data.hotLeads || []
       } else {
-        // Normale User: Nur eigene Termine
-        const [closerResponse, setterResponse] = await Promise.all([
-          fetch(`/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`)
-            .then(r => r.json())
-            .catch(() => ({ hotLeads: [] })),
-          fetch(`/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`)
-            .then(r => r.json())
-            .catch(() => ({ hotLeads: [] }))
-        ])
-        
-        // Kombinieren und Duplikate entfernen
-        const combined = [...(closerResponse.hotLeads || []), ...(setterResponse.hotLeads || [])]
-        allLeads = combined.reduce((acc, lead) => {
-          if (!acc.find(l => l.id === lead.id)) {
-            acc.push(lead)
-          }
-          return acc
-        }, [])
+        // Normale User: Einzel-Request für Leads wo User Setter ODER Closer ist
+        const response = await fetch(`/.netlify/functions/hot-leads?anyUserName=${encodeURIComponent(userName)}`)
+        const data = await response.json().catch(() => ({ hotLeads: [] }))
+        allLeads = data.hotLeads || []
       }
       
       // Wiedervorlagen für den User laden

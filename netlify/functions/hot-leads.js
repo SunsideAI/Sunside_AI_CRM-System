@@ -20,6 +20,8 @@ const corsHeaders = {
 let userNameCache = null
 let userNameCacheTime = 0
 const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
+// In-flight deduplication: alle gleichzeitigen Aufrufe teilen sich ein Promise
+let userNameFetchPromise = null
 
 async function loadUserNames(airtableHeaders) {
   // Cache prüfen
@@ -27,35 +29,45 @@ async function loadUserNames(airtableHeaders) {
     return userNameCache
   }
 
+  // Wenn bereits ein Fetch läuft, auf diesen warten statt neuen zu starten
+  if (userNameFetchPromise) {
+    return await userNameFetchPromise
+  }
+
   const USER_TABLE_URL = `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}/${encodeURIComponent(USER_TABLE_NAME)}`
-  
-  try {
+
+  userNameFetchPromise = (async () => {
     const response = await fetchWithRetry(`${USER_TABLE_URL}?fields[]=Vor_Nachname`, {
       headers: airtableHeaders
     })
-    
+
     if (!response.ok) {
       console.error('User-Namen laden fehlgeschlagen:', response.status)
       return {}
     }
-    
+
     const data = await response.json()
     const nameMap = {}
-    
+
     for (const record of data.records) {
       nameMap[record.id] = record.fields.Vor_Nachname || record.id
     }
-    
-    // Cache aktualisieren
+
     userNameCache = nameMap
     userNameCacheTime = Date.now()
-    
+
     console.log('User-Namen geladen:', Object.keys(nameMap).length, 'User')
     return nameMap
-  } catch (err) {
-    console.error('Fehler beim Laden der User-Namen:', err)
-    return {}
-  }
+  })()
+    .catch(err => {
+      console.error('Fehler beim Laden der User-Namen:', err)
+      return {}
+    })
+    .finally(() => {
+      userNameFetchPromise = null
+    })
+
+  return await userNameFetchPromise
 }
 
 // Helper: Record-ID zu Name auflösen
@@ -101,9 +113,9 @@ export async function handler(event) {
     // ==========================================
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
-      const { setterId, closerId, setterName, closerName, status, limit, pool } = params
+      const { setterId, closerId, setterName, closerName, status, limit, pool, anyUserName } = params
 
-      console.log('Hot Leads GET - Params:', { setterId, closerId, setterName, closerName, status, limit, pool })
+      console.log('Hot Leads GET - Params:', { setterId, closerId, setterName, closerName, status, limit, pool, anyUserName })
 
       let allRecords = []
       let offset = null
@@ -123,7 +135,19 @@ export async function handler(event) {
         if (pool === 'true') {
           filters.push(`OR({Closer} = '', {Closer} = BLANK())`)
         }
-        
+
+        // anyUserName: Leads wo User Setter ODER Closer ist (ersetzt zwei separate Requests)
+        if (anyUserName) {
+          filters.push(
+            `OR(` +
+              `FIND("${anyUserName}", {Setter}),` +
+              `FIND("${anyUserName}", ARRAYJOIN({Setter}, ",")),` +
+              `FIND("${anyUserName}", {Closer}),` +
+              `FIND("${anyUserName}", ARRAYJOIN({Closer}, ","))` +
+            `)`
+          )
+        }
+
         // Setter-Filter: Unterstützt Text-Felder UND Linked Records
         if (setterName) {
           // OR-Kombination: Suche im Text-Feld ODER im Linked Record Namen
