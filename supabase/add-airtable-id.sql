@@ -20,6 +20,14 @@ CREATE INDEX IF NOT EXISTS idx_hot_leads_airtable_id ON hot_leads(airtable_id);
 ALTER TABLE lead_archive ADD COLUMN IF NOT EXISTS airtable_id TEXT;
 CREATE INDEX IF NOT EXISTS idx_lead_archive_airtable_id ON lead_archive(airtable_id);
 
+-- Email Templates
+ALTER TABLE email_templates ADD COLUMN IF NOT EXISTS airtable_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_email_templates_airtable_id ON email_templates(airtable_id);
+
+-- Lead Requests
+ALTER TABLE lead_requests ADD COLUMN IF NOT EXISTS airtable_id TEXT;
+CREATE INDEX IF NOT EXISTS idx_lead_requests_airtable_id ON lead_requests(airtable_id);
+
 -- Verify: vor_nachname as stored column
 -- Note: In schema.sql vor_nachname is generated. For migration we need it writable.
 -- If migration fails on vor_nachname, run this:
