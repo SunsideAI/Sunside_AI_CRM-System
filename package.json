@@ -8,10 +8,14 @@
     "build": "vite build",
     "preview": "vite preview",
     "netlify": "netlify dev",
-    "migrate": "node supabase/migrate-data.js"
+    "migrate": "node supabase/migrate-data.js",
+    "migrate:csv": "node supabase/migrate-from-csv.js",
+    "migrate:csv:clear": "node supabase/migrate-from-csv.js --clear",
+    "migrate:csv:dry": "node supabase/migrate-from-csv.js --dry-run"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
+    "csv-parse": "^5.5.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.20.0",
