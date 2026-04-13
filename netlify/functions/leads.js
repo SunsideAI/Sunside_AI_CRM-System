@@ -143,18 +143,35 @@ export async function handler(event) {
       // User-Filter: Nur wenn NICHT Admin mit "all" view ODER bei Wiedervorlagen-Abfrage
       const needsUserFilter = userRole !== 'Admin' || view === 'own' || wiedervorlage === 'true'
 
+      console.log('[Leads] Filter params:', { userId, userRole, view, needsUserFilter })
+
       if (needsUserFilter && userId) {
         // Zuerst Lead-IDs holen die diesem User zugewiesen sind
-        const { data: assignments } = await supabase
+        const { data: assignments, error: assignError } = await supabase
           .from('lead_assignments')
           .select('lead_id')
           .eq('user_id', userId)
+
+        console.log('[Leads] Assignments query result:', {
+          userId,
+          assignmentsFound: assignments?.length || 0,
+          error: assignError?.message || null
+        })
 
         if (assignments && assignments.length > 0) {
           const leadIds = assignments.map(a => a.lead_id)
           query = query.in('id', leadIds)
         } else {
-          // Keine Leads zugewiesen
+          // Keine Leads zugewiesen - debug: zeige alle vorhandenen user_ids
+          const { data: allAssignments } = await supabase
+            .from('lead_assignments')
+            .select('user_id')
+            .limit(10)
+
+          const uniqueUserIds = [...new Set((allAssignments || []).map(a => a.user_id))]
+          console.log('[Leads] DEBUG - User hat keine Assignments. Vorhandene user_ids (Sample):', uniqueUserIds)
+          console.log('[Leads] DEBUG - Gesuchte userId:', userId)
+
           return {
             statusCode: 200,
             headers,
@@ -162,7 +179,12 @@ export async function handler(event) {
               leads: [],
               users: Object.entries(userMap).map(([id, name]) => ({ id, name })),
               offset: null,
-              hasMore: false
+              hasMore: false,
+              debug: {
+                message: 'Keine lead_assignments für diesen User gefunden',
+                userId,
+                sampleUserIdsInAssignments: uniqueUserIds
+              }
             })
           }
         }
