@@ -1,17 +1,18 @@
 import { useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin, 
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
   Shield,
   Key,
   Eye,
   EyeOff,
   Check,
   AlertCircle,
-  Loader2
+  Loader2,
+  Sparkles
 } from 'lucide-react'
 
 // Markdown-Links aus E-Mail entfernen: [email](mailto:email) → email
@@ -26,7 +27,15 @@ function cleanEmail(email) {
 }
 
 function Profil() {
-  const { user } = useAuth()
+  const { user, updatePreferences } = useAuth()
+  const [preferenceSaving, setPreferenceSaving] = useState(false)
+
+  const handleToggleClippy = async () => {
+    const newValue = user?.preferences === false ? true : false
+    setPreferenceSaving(true)
+    await updatePreferences(newValue)
+    setPreferenceSaving(false)
+  }
   const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [currentPassword, setCurrentPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -179,6 +188,36 @@ function Profil() {
               <p className="text-gray-900">{user?.rolle?.join(', ')}</p>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Carl Klammer */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Sparkles className="w-5 h-5 text-gray-400" />
+            <div>
+              <h3 className="font-medium text-gray-900">Carl Klammer</h3>
+              <p className="text-sm text-gray-500 mt-0.5">
+                Der hilfreiche Assistent im CRM – erscheint alle 5 Minuten mit Tipps.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleToggleClippy}
+            disabled={preferenceSaving}
+            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none disabled:opacity-50 ${
+              user?.preferences !== false ? 'bg-sunside-primary' : 'bg-gray-200'
+            }`}
+            aria-label="Carl Klammer an/ausschalten"
+          >
+            <span
+              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                user?.preferences !== false ? 'translate-x-5' : 'translate-x-0'
+              }`}
+            />
+          </button>
         </div>
       </div>
 
