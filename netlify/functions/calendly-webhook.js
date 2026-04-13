@@ -78,13 +78,19 @@ export async function handler(event) {
         }
       }
 
-      // Echte Absage - Hot Lead finden
+      // Echte Absage - Hot Lead finden (3 Fallback-Strategien wie in main)
       let hotLead = null
-      if (unternehmen) {
-        hotLead = await findHotLeadByUnternehmen(unternehmen)
-      }
-      if (!hotLead && scheduledTime) {
+      // 1. Nach Termin-Zeit suchen
+      if (scheduledTime) {
         hotLead = await findHotLeadByTermin(scheduledTime, inviteeEmail)
+      }
+      // 2. Nach E-Mail suchen (Fallback)
+      if (!hotLead && inviteeEmail) {
+        hotLead = await findHotLeadByEmail(inviteeEmail)
+      }
+      // 3. Nach Unternehmen suchen (letzter Fallback)
+      if (!hotLead && unternehmen) {
+        hotLead = await findHotLeadByUnternehmen(unternehmen)
       }
 
       if (hotLead) {
@@ -124,12 +130,19 @@ export async function handler(event) {
       if (isReschedule) {
         const oldScheduledTime = oldInvitee.scheduled_event?.start_time || oldInvitee.start_time
 
+        // Hot Lead finden (3 Fallback-Strategien wie in main)
         let hotLead = null
-        if (unternehmen) {
-          hotLead = await findHotLeadByUnternehmen(unternehmen)
-        }
-        if (!hotLead && oldScheduledTime) {
+        // 1. Nach altem Termin suchen
+        if (oldScheduledTime) {
           hotLead = await findHotLeadByTermin(oldScheduledTime, inviteeEmail)
+        }
+        // 2. Nach E-Mail suchen (Fallback)
+        if (!hotLead && inviteeEmail) {
+          hotLead = await findHotLeadByEmail(inviteeEmail)
+        }
+        // 3. Nach Unternehmen suchen (letzter Fallback)
+        if (!hotLead && unternehmen) {
+          hotLead = await findHotLeadByUnternehmen(unternehmen)
         }
 
         if (hotLead) {
@@ -234,6 +247,41 @@ async function findHotLeadByTermin(terminDatum, email) {
         closerId: record.closer_id,
         originalLeadId: record.lead_id
       }
+    }
+  }
+
+  return null
+}
+
+// Hot Lead anhand E-Mail finden (Fallback wenn Termin/Unternehmen nicht matchen)
+async function findHotLeadByEmail(email) {
+  if (!email) return null
+
+  console.log('Suche Hot Lead nach E-Mail:', email)
+
+  const { data, error } = await supabase
+    .from('hot_leads')
+    .select('id, lead_id, unternehmen, mail, termin_beratungsgespraech, status, setter_id, closer_id')
+    .eq('mail', email)
+    .not('status', 'in', '(Abgeschlossen,Verloren)')
+    .order('termin_beratungsgespraech', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.error('findHotLeadByEmail Error:', error)
+    return null
+  }
+
+  if (data) {
+    console.log('E-Mail-Match gefunden:', data.unternehmen)
+    return {
+      id: data.id,
+      unternehmen: data.unternehmen,
+      termin: data.termin_beratungsgespraech,
+      setterId: data.setter_id,
+      closerId: data.closer_id,
+      originalLeadId: data.lead_id
     }
   }
 

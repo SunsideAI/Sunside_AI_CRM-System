@@ -241,6 +241,20 @@ export async function handler(event) {
         }
       }
 
+      // E-Mail-Benachrichtigung an den Anfragenden
+      try {
+        await sendUserNotification({
+          userId: updatedRequest.user_id,
+          status: updatedRequest.status,
+          genehmigteAnzahl: updatedRequest.genehmigte_anzahl || updatedRequest.anzahl,
+          angefragt: updatedRequest.anzahl,
+          adminKommentar: updatedRequest.admin_kommentar,
+          zugewieseneLeads
+        })
+      } catch (e) {
+        console.error('User-Benachrichtigung fehlgeschlagen:', e)
+      }
+
       return {
         statusCode: 200,
         headers: corsHeaders,
@@ -269,21 +283,51 @@ export async function handler(event) {
 }
 
 async function assignLeadsToUser(userId, anzahl) {
+  // Versuche zuerst die skalierbare RPC-Funktion zu verwenden
+  const { data: freeLeads, error: rpcError } = await supabase
+    .rpc('get_unassigned_leads', { requested_count: anzahl })
+
+  if (rpcError) {
+    // Fallback auf alte Methode wenn RPC nicht existiert (Migration noch nicht angewendet)
+    console.warn('RPC get_unassigned_leads nicht verfügbar, verwende Fallback:', rpcError.message)
+    return await assignLeadsToUserFallback(userId, anzahl)
+  }
+
+  if (!freeLeads || freeLeads.length === 0) return 0
+
+  const newAssignments = freeLeads.map(lead => ({
+    lead_id: lead.id,
+    user_id: userId
+  }))
+
+  const { error } = await supabase
+    .from('lead_assignments')
+    .insert(newAssignments)
+
+  if (error) throw new Error(error.message)
+
+  console.log(`[Lead-Requests] ${freeLeads.length} Leads zugewiesen via RPC`)
+  return freeLeads.length
+}
+
+// Fallback-Methode für Kompatibilität (vor Migration)
+async function assignLeadsToUserFallback(userId, anzahl) {
   const { data: assignments } = await supabase
     .from('lead_assignments')
     .select('lead_id')
 
-  const assignedLeadIds = (assignments || []).map(a => a.lead_id)
+  const assignedLeadIds = new Set((assignments || []).map(a => a.lead_id))
 
+  // Erhöhtes Limit für bessere Skalierbarkeit
   const { data: allFreeLeads } = await supabase
     .from('leads')
     .select('id')
     .or('bereits_kontaktiert.is.null,bereits_kontaktiert.eq.false')
     .neq('ergebnis', 'Ungültiger Lead')
-    .limit(anzahl * 2)
+    .limit(anzahl * 10)
 
   const freeLeads = (allFreeLeads || [])
-    .filter(l => !assignedLeadIds.includes(l.id))
+    .filter(l => !assignedLeadIds.has(l.id))
     .slice(0, anzahl)
 
   if (freeLeads.length === 0) return 0
@@ -299,5 +343,106 @@ async function assignLeadsToUser(userId, anzahl) {
 
   if (error) throw new Error(error.message)
 
+  console.log(`[Lead-Requests] ${freeLeads.length} Leads zugewiesen via Fallback`)
   return freeLeads.length
+}
+
+// E-Mail-Benachrichtigung an den Anfragenden User
+async function sendUserNotification({ userId, status, genehmigteAnzahl, angefragt, adminKommentar, zugewieseneLeads }) {
+  const RESEND_API_KEY = process.env.RESEND_API_KEY
+  if (!RESEND_API_KEY) return
+
+  const { data: user } = await supabase
+    .from('users')
+    .select('vor_nachname, email_geschaeftlich, email')
+    .eq('id', userId)
+    .single()
+
+  const userEmail = user?.email_geschaeftlich || user?.email
+  if (!userEmail) return
+
+  const userName = user.vor_nachname || 'Vertriebler'
+
+  // Status-spezifische Texte
+  let statusTitle, statusColor, statusIcon, mainMessage, subject
+  if (status === 'Genehmigt') {
+    statusTitle = 'Genehmigt ✓'
+    statusColor = '#10B981'
+    statusIcon = '✅'
+    mainMessage = `Deine Anfrage über ${angefragt} Leads wurde genehmigt. ${zugewieseneLeads > 0 ? `${zugewieseneLeads} Leads wurden dir zugewiesen.` : ''}`
+    subject = `✅ Deine Lead-Anfrage wurde genehmigt (${zugewieseneLeads} Leads)`
+  } else if (status === 'Teilweise_Genehmigt') {
+    statusTitle = 'Teilweise Genehmigt'
+    statusColor = '#F59E0B'
+    statusIcon = '⚠️'
+    mainMessage = `Deine Anfrage wurde teilweise genehmigt. ${genehmigteAnzahl} von ${angefragt} Leads wurden dir zugewiesen.`
+    subject = `⚠️ Lead-Anfrage teilweise genehmigt (${genehmigteAnzahl}/${angefragt})`
+  } else if (status === 'Abgelehnt') {
+    statusTitle = 'Abgelehnt'
+    statusColor = '#EF4444'
+    statusIcon = '❌'
+    mainMessage = `Deine Anfrage über ${angefragt} Leads wurde leider abgelehnt.`
+    subject = `❌ Deine Lead-Anfrage wurde abgelehnt`
+  } else {
+    return
+  }
+
+  // HTML Template
+  const emailBody = buildUserNotificationHtml({
+    userName, statusTitle, statusColor, statusIcon,
+    mainMessage, adminKommentar
+  })
+
+  await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: 'Sunside CRM <noreply@sunsideai.de>',
+      to: [userEmail],
+      subject,
+      html: emailBody
+    })
+  })
+
+  console.log(`[Lead-Requests] User-Benachrichtigung gesendet an ${userEmail}`)
+}
+
+// HTML-Template für User-Benachrichtigung
+function buildUserNotificationHtml({ userName, statusTitle, statusColor, statusIcon, mainMessage, adminKommentar }) {
+  const kommentarSection = adminKommentar
+    ? `<div style="background-color: #F3F4F6; padding: 15px; border-radius: 8px; margin-top: 20px;">
+        <strong style="color: #374151;">Kommentar vom Admin:</strong>
+        <p style="color: #4B5563; margin: 8px 0 0 0;">${adminKommentar}</p>
+      </div>`
+    : ''
+
+  return `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 10px;">${statusIcon}</div>
+      <h1 style="color: white; margin: 0; font-size: 24px;">Lead-Anfrage ${statusTitle}</h1>
+    </div>
+    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
+        Hallo ${userName},
+      </p>
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+        ${mainMessage}
+      </p>
+      ${kommentarSection}
+      <div style="text-align: center; margin-top: 25px;">
+        <a href="https://crm.sunside.ai/kaltakquise" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+          Zum CRM
+        </a>
+      </div>
+    </div>
+    <p style="text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 20px;">
+      Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
+    </p>
+  </div>
+</body>
+</html>`
 }

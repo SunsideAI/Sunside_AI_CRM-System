@@ -135,6 +135,7 @@ export async function handler(event) {
       const userMap = await loadUserMap()
 
       // Basis-Query mit Joins zu users und leads
+      // Hinweis: Attachments werden jetzt aus dem JSONB-Feld 'attachments' gelesen, nicht aus separater Tabelle
       let query = supabase
         .from('hot_leads')
         .select(`
@@ -144,8 +145,7 @@ export async function handler(event) {
           original_lead:leads!hot_leads_lead_id_fkey(
             id, unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname,
             kategorie, mail, telefonnummer, stadt, website, kommentar
-          ),
-          hot_lead_attachments(id, file_url, file_name, file_size, mime_type)
+          )
         `)
 
       // Pool-Filter: Termine ohne Closer (offene Termine für Closer-Pool)
@@ -219,15 +219,15 @@ export async function handler(event) {
           absprungrate: arrayToNumber(record.absprungrate, null) ?? arrayToNumber(originalLead.absprungrate, null),
           anzahlLeads: arrayToNumber(record.anzahl_leads, null) ?? arrayToNumber(originalLead.anzahl_leads, null),
           produktDienstleistung: record.produkt_dienstleistung || [],
-          kommentar: originalLead.kommentar || '',
+          kommentar: record.kommentar || originalLead.kommentar || '',
           kundeSeit: record.kunde_seit || '',
-          attachments: (record.hot_lead_attachments || []).map(att => ({
-            id: att.id,
-            url: att.file_url,
-            filename: att.file_name,
-            size: att.file_size,
-            type: att.mime_type
-          })),
+          // Angebot konfigurieren - Felder
+          vertragsbestandteile: record.vertragsbestandteile || '',
+          paketname: record.paketname_individuell || '',
+          kurzbeschreibung: record.kurzbeschreibung || '',
+          leistungsbeschreibung: record.leistungsbeschreibung || '',
+          // Attachments aus JSONB-Feld (nicht mehr aus separater Tabelle)
+          attachments: Array.isArray(record.attachments) ? record.attachments : [],
           originalLeadId: record.lead_id || null,
           setterId: record.setter_id || null,
           closerId: record.closer_id || null,
@@ -540,7 +540,15 @@ export async function handler(event) {
         'closerId': 'closer_id',
         'terminDatum': 'termin_beratungsgespraech',
         'terminart': 'terminart',
-        'meetingLink': 'meeting_link'
+        'meetingLink': 'meeting_link',
+        // Angebot konfigurieren - Felder
+        'vertragsbestandteile': 'vertragsbestandteile',
+        'paketname': 'paketname_individuell',
+        'kurzbeschreibung': 'kurzbeschreibung',
+        'leistungsbeschreibung': 'leistungsbeschreibung',
+        // Eigene Felder (nicht mehr Lookup)
+        'kommentar': 'kommentar',
+        'attachments': 'attachments'
       }
 
       const fields = {}
@@ -552,9 +560,14 @@ export async function handler(event) {
           if (key === 'closerName' && value) {
             const cid = await getUserIdByName(value)
             if (cid) fields.closer_id = cid
-          } else {
-            fields[dbField] = value
+            continue
           }
+          // Spezialbehandlung für produkt_dienstleistung (TEXT[] in DB)
+          if (dbField === 'produkt_dienstleistung') {
+            fields[dbField] = Array.isArray(value) ? value : (value ? [value] : null)
+            continue
+          }
+          fields[dbField] = value
         }
       }
 

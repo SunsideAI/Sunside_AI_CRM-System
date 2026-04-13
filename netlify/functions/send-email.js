@@ -175,15 +175,50 @@ export async function handler(event) {
 }
 
 async function updateLeadHistory({ leadId, action, details, userName, attachmentCount }) {
-  const { data: lead } = await supabase.from('leads').select('kommentar').eq('id', leadId).single()
+  // Lead laden (Kommentar + Ergebnis für Status-Eskalation)
+  const { data: lead, error: fetchErr } = await supabase
+    .from('leads')
+    .select('kommentar, ergebnis')
+    .eq('id', leadId)
+    .single()
+
+  if (fetchErr) {
+    console.error('Lead konnte nicht geladen werden:', fetchErr.message)
+    return
+  }
+
   const currentKommentar = lead?.kommentar || ''
+  const currentStatus = lead?.ergebnis || ''
+
+  // Timestamp + neuer Eintrag
   const now = new Date()
-  const timestamp = now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-  const icon = action === 'email' ? '📧' : '📋'
+  const timestamp = now.toLocaleDateString('de-DE', {
+    day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  })
+  const icon = action === 'email' ? '📧' : action === 'call' ? '📞' : '📋'
   const attachmentInfo = attachmentCount > 0 ? ' (' + attachmentCount + ' Anhaenge)' : ''
   const newEntry = '[' + timestamp + '] ' + icon + ' ' + details + attachmentInfo + ' (' + userName + ')'
   const updatedKommentar = currentKommentar ? newEntry + '\n' + currentKommentar : newEntry
-  await supabase.from('leads').update({ kommentar: updatedKommentar }).eq('id', leadId)
+
+  // Update-Payload
+  const updatePayload = { kommentar: updatedKommentar }
+
+  // Status-Auto-Eskalation bei E-Mail-Versand (wie in main/Airtable)
+  const lowerStatuses = ['Nicht erreicht', 'Kein Interesse']
+  if (action === 'email' && lowerStatuses.includes(currentStatus)) {
+    updatePayload.ergebnis = 'Unterlage bereitstellen'
+    console.log(`Status-Eskalation: ${currentStatus} → Unterlage bereitstellen`)
+  }
+
+  const { error: updateErr } = await supabase
+    .from('leads')
+    .update(updatePayload)
+    .eq('id', leadId)
+
+  if (updateErr) {
+    console.error('Lead-Update fehlgeschlagen:', updateErr.message)
+  }
 }
 
 async function processAttachments(attachments) {
