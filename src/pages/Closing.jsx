@@ -39,44 +39,71 @@ import {
   File
 } from 'lucide-react'
 
-// Paket-Optionen für Angebot
-const PAKET_OPTIONS = [
-  { 
-    value: 'S', 
-    label: 'Paket S (<500 Besucher)', 
-    setup: 999, 
-    retainer: 349,
-    description: '999 € Setup + 349 €/Monat'
+// Produkt-Optionen für Angebot (entspricht Airtable-Produkten)
+const PRODUKT_OPTIONS = [
+  {
+    value: 'KI-Chatbot',
+    label: 'KI-Chatbot',
+    setup: 1399,
+    retainer: 360,
+    description: '1.399 € Setup + 360 €/Monat'
   },
-  { 
-    value: 'M', 
-    label: 'Paket M (500-1000 Besucher)', 
-    setup: 1199, 
-    retainer: 449,
-    description: '1.199 € Setup + 449 €/Monat'
+  {
+    value: 'KI-Voicebot',
+    label: 'KI-Voicebot',
+    setup: 1399,
+    retainer: 360,
+    description: '1.399 € Setup + 360 €/Monat'
   },
-  { 
-    value: 'L', 
-    label: 'Paket L (1000-1500 Besucher)', 
-    setup: 1499, 
-    retainer: 549,
-    description: '1.499 € Setup + 549 €/Monat'
+  {
+    value: 'SEO & KI-Chatbot',
+    label: 'SEO & KI-Chatbot',
+    setup: 2798,
+    retainer: 360,
+    description: '2.798 € Setup + 360 €/Monat'
   },
-  { 
-    value: 'XL', 
-    label: 'Paket XL (>1500 Besucher)', 
-    setup: 1799, 
-    retainer: 649,
-    description: '1.799 € Setup + 649 €/Monat'
+  {
+    value: 'Website & KI-Chatbot',
+    label: 'Website & KI-Chatbot',
+    setup: 3998,
+    retainer: 360,
+    description: '3.998 € Setup + 360 €/Monat'
   },
-  { 
-    value: 'individuell', 
-    label: 'Individueller Preis', 
-    setup: null, 
+  {
+    value: 'KI-Voicebot & KI-Chatbot',
+    label: 'KI-Voicebot & KI-Chatbot',
+    setup: 2798,
+    retainer: 612,
+    description: '2.798 € Setup + 612 €/Monat'
+  },
+  {
+    value: 'Website & KI-Voicebot & KI-Chatbot',
+    label: 'Website & KI-Voicebot & KI-Chatbot',
+    setup: 5397,
+    retainer: 612,
+    description: '5.397 € Setup + 612 €/Monat'
+  },
+  {
+    value: 'SEO & KI-Voicebot & KI-Chatbot',
+    label: 'SEO & KI-Voicebot & KI-Chatbot',
+    setup: 4197,
+    retainer: 612,
+    description: '4.197 € Setup + 612 €/Monat'
+  },
+  {
+    value: 'Individuell',
+    label: 'Individuelles Angebot',
+    setup: null,
     retainer: null,
-    description: 'Setup manuell eingeben'
+    description: 'Setup & Retainer manuell eingeben'
   }
 ]
+
+// Standard-Vertragsbestandteile
+const DEFAULT_VERTRAGSBESTANDTEILE = `Alle Preise verstehen sich zzgl. der gesetzlichen Umsatzsteuer von derzeit 19%.
+Mindestvertragslaufzeit: 12 Monate
+Kündigungsfrist: 3 Monate zum Vertragsende
+Zahlungsweise: Monatlich im Voraus`
 
 // Status-Optionen für Dropdown
 const STATUS_OPTIONS = [
@@ -113,10 +140,14 @@ function Closing() {
   // Angebot-View State (innerhalb des Modals)
   const [showAngebotView, setShowAngebotView] = useState(false)
   const [angebotData, setAngebotData] = useState({
-    paket: '',
+    produkt: '',
     setup: '',
     retainer: '',
-    laufzeit: 12  // Default 12 Monate
+    laufzeit: 12,  // Default 12 Monate
+    vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE,
+    paketname: '',           // Nur bei Individuell
+    kurzbeschreibung: '',    // Nur bei Individuell
+    leistungsbeschreibung: '' // Nur bei Individuell
   })
   const [sendingAngebot, setSendingAngebot] = useState(false)
   const [angebotSuccess, setAngebotSuccess] = useState(false) // Erfolgs-Ansicht im Modal
@@ -302,23 +333,29 @@ function Closing() {
     return evenRetainer
   }
 
-  // Paket-Auswahl Handler
-  const handlePaketChange = (paketValue) => {
-    const paket = PAKET_OPTIONS.find(p => p.value === paketValue)
-    if (paket) {
-      if (paket.value === 'individuell') {
+  // Produkt-Auswahl Handler
+  const handleProduktChange = (produktValue) => {
+    const produkt = PRODUKT_OPTIONS.find(p => p.value === produktValue)
+    if (produkt) {
+      if (produkt.value === 'Individuell') {
         setAngebotData(prev => ({
-          paket: paketValue,
+          ...prev,
+          produkt: produktValue,
           setup: '',
           retainer: '',
-          laufzeit: prev.laufzeit  // Laufzeit beibehalten
+          paketname: '',
+          kurzbeschreibung: '',
+          leistungsbeschreibung: ''
         }))
       } else {
         setAngebotData(prev => ({
-          paket: paketValue,
-          setup: paket.setup,
-          retainer: paket.retainer,
-          laufzeit: prev.laufzeit  // Laufzeit beibehalten
+          ...prev,
+          produkt: produktValue,
+          setup: produkt.setup,
+          retainer: produkt.retainer,
+          paketname: '',
+          kurzbeschreibung: '',
+          leistungsbeschreibung: ''
         }))
       }
     }
@@ -338,25 +375,45 @@ function Closing() {
   // Angebot absenden
   const handleSendAngebot = async () => {
     if (!selectedLead || !angebotData.setup || !angebotData.retainer) return
-    
+
+    // Bei Individuell: Pflichtfelder prüfen
+    if (angebotData.produkt === 'Individuell') {
+      if (!angebotData.paketname || !angebotData.kurzbeschreibung || !angebotData.leistungsbeschreibung) {
+        showToast('error', 'Bitte alle Pflichtfelder für individuelles Angebot ausfüllen')
+        return
+      }
+    }
+
     try {
       setSendingAngebot(true)
-      
-      // Hot Lead updaten mit Setup, Retainer, Laufzeit und Status
+
+      // Updates zusammenstellen
+      const updates = {
+        setup: parseFloat(angebotData.setup),
+        retainer: parseFloat(angebotData.retainer),
+        laufzeit: parseInt(angebotData.laufzeit) || 12,
+        produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
+        vertragsbestandteile: angebotData.vertragsbestandteile,
+        status: 'Angebot'  // Zapier sendet dann das Angebot und setzt auf "Angebot versendet"
+      }
+
+      // Individuelle Felder nur bei Individuell-Produkt
+      if (angebotData.produkt === 'Individuell') {
+        updates.paketname = angebotData.paketname
+        updates.kurzbeschreibung = angebotData.kurzbeschreibung
+        updates.leistungsbeschreibung = angebotData.leistungsbeschreibung
+      }
+
+      // Hot Lead updaten
       const response = await fetch('/.netlify/functions/hot-leads', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           hotLeadId: selectedLead.id,
-          updates: {
-            setup: parseFloat(angebotData.setup),
-            retainer: parseFloat(angebotData.retainer),
-            laufzeit: parseInt(angebotData.laufzeit) || 12,
-            status: 'Angebot'  // Zapier sendet dann das Angebot und setzt auf "Angebot versendet"
-          }
+          updates
         })
       })
-      
+
       if (!response.ok) {
         throw new Error('Fehler beim Speichern')
       }
@@ -364,8 +421,8 @@ function Closing() {
       // Kommentar im Original-Lead (Immobilienmakler_Leads) hinzufügen
       console.log('Original Lead ID:', selectedLead.originalLeadId)
       if (selectedLead.originalLeadId) {
-        const paketInfo = PAKET_OPTIONS.find(p => p.value === angebotData.paket)?.label || 'Individuell'
-        const kommentarText = `Angebot versendet - ${paketInfo}: Setup ${angebotData.setup}€, Retainer ${angebotData.retainer}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
+        const produktInfo = angebotData.produkt || 'Individuell'
+        const kommentarText = `Angebot versendet - ${produktInfo}: Setup ${angebotData.setup}€, Retainer ${angebotData.retainer}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
         const userName = user?.vor_nachname || user?.name || 'Closer'
         
         try {
@@ -396,24 +453,28 @@ function Closing() {
       }
       
       // Lead in Liste aktualisieren
-      setLeads(prev => prev.map(lead => 
-        lead.id === selectedLead.id 
-          ? { 
-              ...lead, 
+      setLeads(prev => prev.map(lead =>
+        lead.id === selectedLead.id
+          ? {
+              ...lead,
               setup: parseFloat(angebotData.setup),
               retainer: parseFloat(angebotData.retainer),
               laufzeit: parseInt(angebotData.laufzeit) || 12,
+              produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
+              vertragsbestandteile: angebotData.vertragsbestandteile,
               status: 'Angebot'
             }
           : lead
       ))
-      
+
       // Selected Lead auch aktualisieren
       setSelectedLead(prev => ({
         ...prev,
         setup: parseFloat(angebotData.setup),
         retainer: parseFloat(angebotData.retainer),
         laufzeit: parseInt(angebotData.laufzeit) || 12,
+        produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
+        vertragsbestandteile: angebotData.vertragsbestandteile,
         status: 'Angebot'
       }))
       
@@ -1482,7 +1543,16 @@ function Closing() {
                     type="button"
                     onClick={() => {
                       setShowAngebotView(false)
-                      setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
+                      setAngebotData({
+                        produkt: '',
+                        setup: '',
+                        retainer: '',
+                        laufzeit: 12,
+                        vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE,
+                        paketname: '',
+                        kurzbeschreibung: '',
+                        leistungsbeschreibung: ''
+                      })
                     }}
                     className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
                   >
@@ -1497,19 +1567,20 @@ function Closing() {
                     </div>
                     <div>
                       <h3 className="text-xl font-semibold text-gray-900">Angebot konfigurieren</h3>
-                      <p className="text-sm text-gray-500">Wähle ein Paket oder erstelle ein individuelles Angebot</p>
+                      <p className="text-sm text-gray-500">Wähle ein Produkt oder erstelle ein individuelles Angebot</p>
                     </div>
                   </div>
 
-                  {/* Paket-Auswahl als Cards */}
+                  {/* Produkt-Auswahl als Cards */}
                   <div className="space-y-3 mb-6">
-                    {PAKET_OPTIONS.map(option => (
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Produkt auswählen</label>
+                    {PRODUKT_OPTIONS.map(option => (
                       <button
                         key={option.value}
                         type="button"
-                        onClick={() => handlePaketChange(option.value)}
+                        onClick={() => handleProduktChange(option.value)}
                         className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                          angebotData.paket === option.value
+                          angebotData.produkt === option.value
                             ? 'border-green-500 bg-green-50'
                             : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
                         }`}
@@ -1517,24 +1588,24 @@ function Closing() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                              angebotData.paket === option.value
+                              angebotData.produkt === option.value
                                 ? 'border-green-500 bg-green-500'
                                 : 'border-gray-300'
                             }`}>
-                              {angebotData.paket === option.value && (
+                              {angebotData.produkt === option.value && (
                                 <div className="w-2 h-2 bg-white rounded-full" />
                               )}
                             </div>
                             <div>
                               <p className="font-medium text-gray-900">{option.label}</p>
-                              {option.value !== 'individuell' && (
+                              {option.value !== 'Individuell' && (
                                 <p className="text-sm text-gray-500">{option.description}</p>
                               )}
                             </div>
                           </div>
-                          {option.value !== 'individuell' && (
+                          {option.value !== 'Individuell' && (
                             <div className="text-right">
-                              <p className="font-bold text-gray-900">{option.setup} €</p>
+                              <p className="font-bold text-gray-900">{option.setup.toLocaleString('de-DE')} €</p>
                               <p className="text-sm text-gray-500">+ {option.retainer} €/Mon</p>
                             </div>
                           )}
@@ -1543,41 +1614,100 @@ function Closing() {
                     ))}
                   </div>
 
-                  {/* Individuelle Preiseingabe */}
-                  {angebotData.paket === 'individuell' && (
-                    <div className="bg-gray-50 rounded-xl p-5 mb-6">
-                      <h4 className="font-medium text-gray-900 mb-4">Individuellen Preis festlegen</h4>
-                      <div className="space-y-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Setup-Gebühr (netto)
-                          </label>
-                          <div className="relative">
-                            <input
-                              type="number"
-                              value={angebotData.setup}
-                              onChange={(e) => handleSetupChange(e.target.value)}
-                              placeholder="z.B. 1500"
-                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                            />
-                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
-                          </div>
-                        </div>
+                  {/* Individuelle Preiseingabe & Felder */}
+                  {angebotData.produkt === 'Individuell' && (
+                    <div className="bg-gray-50 rounded-xl p-5 mb-6 space-y-4">
+                      <h4 className="font-medium text-gray-900">Individuelles Angebot konfigurieren</h4>
 
-                        {angebotData.setup && angebotData.retainer && (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                            <p className="text-sm text-blue-700 mb-1">Automatisch berechneter Retainer</p>
-                            <p className="text-sm text-blue-600">
-                              {angebotData.setup} € / 2,75 = <span className="font-bold text-blue-800">{angebotData.retainer} €/Monat</span>
-                            </p>
-                          </div>
-                        )}
+                      {/* Paketname */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Paketname <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={angebotData.paketname}
+                          onChange={(e) => setAngebotData(prev => ({ ...prev, paketname: e.target.value }))}
+                          placeholder="z.B. KI-Chatbot, WhatsApp-Assistent"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                        />
                       </div>
+
+                      {/* Kurzbeschreibung */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Kurzbeschreibung <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={angebotData.kurzbeschreibung}
+                          onChange={(e) => setAngebotData(prev => ({ ...prev, kurzbeschreibung: e.target.value }))}
+                          placeholder="z.B. Aufbau & Betrieb Ihrer individuellen KI-Vertriebsassistenz"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Wird in der Angebots-E-Mail verwendet</p>
+                      </div>
+
+                      {/* Leistungsbeschreibung */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Leistungsbeschreibung <span className="text-red-500">*</span>
+                        </label>
+                        <textarea
+                          value={angebotData.leistungsbeschreibung}
+                          onChange={(e) => setAngebotData(prev => ({ ...prev, leistungsbeschreibung: e.target.value }))}
+                          placeholder="Detaillierte Beschreibung der Leistungen..."
+                          rows={5}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Verwende Überschriften und Spiegelstriche für Struktur</p>
+                      </div>
+
+                      {/* Setup-Gebühr */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Setup-Gebühr (netto) <span className="text-red-500">*</span>
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={angebotData.setup}
+                            onChange={(e) => handleSetupChange(e.target.value)}
+                            placeholder="z.B. 1500"
+                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
+                        </div>
+                      </div>
+
+                      {angebotData.setup && angebotData.retainer && (
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <p className="text-sm text-blue-700 mb-1">Automatisch berechneter Retainer</p>
+                          <p className="text-sm text-blue-600">
+                            {angebotData.setup} € / 2,75 = <span className="font-bold text-blue-800">{angebotData.retainer} €/Monat</span>
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Vertragsbestandteile (immer sichtbar wenn Produkt gewählt) */}
+                  {angebotData.produkt && (
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Vertragsbestandteile
+                      </label>
+                      <textarea
+                        value={angebotData.vertragsbestandteile}
+                        onChange={(e) => setAngebotData(prev => ({ ...prev, vertragsbestandteile: e.target.value }))}
+                        rows={4}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none text-sm"
+                      />
                     </div>
                   )}
 
                   {/* Vertragslaufzeit */}
-                  {angebotData.paket && (
+                  {angebotData.produkt && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Vertragslaufzeit
@@ -1586,8 +1716,8 @@ function Closing() {
                         <input
                           type="number"
                           value={angebotData.laufzeit}
-                          onChange={(e) => setAngebotData(prev => ({ 
-                            ...prev, 
+                          onChange={(e) => setAngebotData(prev => ({
+                            ...prev,
                             laufzeit: Math.min(32, Math.max(3, parseInt(e.target.value) || 12))
                           }))}
                           min="3"
@@ -1602,8 +1732,8 @@ function Closing() {
                               type="button"
                               onClick={() => setAngebotData(prev => ({ ...prev, laufzeit: months }))}
                               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                angebotData.laufzeit === months 
-                                  ? 'bg-purple-100 text-purple-700' 
+                                angebotData.laufzeit === months
+                                  ? 'bg-purple-100 text-purple-700'
                                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                               }`}
                             >
@@ -1620,10 +1750,18 @@ function Closing() {
                   {angebotData.setup && angebotData.retainer && (
                     <div className="bg-green-50 border border-green-200 rounded-xl p-5">
                       <h4 className="font-medium text-green-900 mb-4">Angebot Zusammenfassung</h4>
+                      {angebotData.produkt && (
+                        <p className="text-sm text-green-700 mb-4">
+                          Produkt: <span className="font-semibold">{angebotData.produkt}</span>
+                          {angebotData.produkt === 'Individuell' && angebotData.paketname && (
+                            <span> - {angebotData.paketname}</span>
+                          )}
+                        </p>
+                      )}
                       <div className="grid grid-cols-3 gap-4 mb-4">
                         <div className="bg-white rounded-lg p-4 text-center">
                           <p className="text-sm text-gray-500 mb-1">Setup-Gebühr</p>
-                          <p className="text-2xl font-bold text-gray-900">{angebotData.setup} €</p>
+                          <p className="text-2xl font-bold text-gray-900">{parseFloat(angebotData.setup).toLocaleString('de-DE')} €</p>
                           <p className="text-xs text-gray-400">einmalig, netto</p>
                         </div>
                         <div className="bg-white rounded-lg p-4 text-center">
