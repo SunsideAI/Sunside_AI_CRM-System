@@ -143,35 +143,50 @@ export async function handler(event) {
       // User-Filter: Nur wenn NICHT Admin mit "all" view ODER bei Wiedervorlagen-Abfrage
       const needsUserFilter = userRole !== 'Admin' || view === 'own' || wiedervorlage === 'true'
 
-      console.log('[Leads] Filter params:', { userId, userRole, view, needsUserFilter })
+      console.log('[Leads] Filter params:', { userId, userName, userRole, view, needsUserFilter })
 
-      if (needsUserFilter && userId) {
+      if (needsUserFilter && (userId || userName)) {
         // Zuerst Lead-IDs holen die diesem User zugewiesen sind
-        const { data: assignments, error: assignError } = await supabase
-          .from('lead_assignments')
-          .select('lead_id')
-          .eq('user_id', userId)
+        let assignments = []
 
-        console.log('[Leads] Assignments query result:', {
-          userId,
-          assignmentsFound: assignments?.length || 0,
-          error: assignError?.message || null
-        })
+        // Primär: Nach User-ID suchen
+        if (userId) {
+          const { data: idAssignments } = await supabase
+            .from('lead_assignments')
+            .select('lead_id')
+            .eq('user_id', userId)
 
-        if (assignments && assignments.length > 0) {
+          assignments = idAssignments || []
+          console.log('[Leads] Assignments by userId:', { userId, found: assignments.length })
+        }
+
+        // Fallback: Nach User-Namen suchen (falls ID keine Ergebnisse liefert)
+        if (assignments.length === 0 && userName) {
+          // Finde alle User-IDs die zum Namen passen
+          const { data: matchingUsers } = await supabase
+            .from('users')
+            .select('id')
+            .ilike('vor_nachname', userName)
+
+          if (matchingUsers && matchingUsers.length > 0) {
+            const userIds = matchingUsers.map(u => u.id)
+            console.log('[Leads] Found user IDs for name:', { userName, userIds })
+
+            const { data: nameAssignments } = await supabase
+              .from('lead_assignments')
+              .select('lead_id')
+              .in('user_id', userIds)
+
+            assignments = nameAssignments || []
+            console.log('[Leads] Assignments by userName:', { userName, found: assignments.length })
+          }
+        }
+
+        if (assignments.length > 0) {
           const leadIds = assignments.map(a => a.lead_id)
           query = query.in('id', leadIds)
         } else {
-          // Keine Leads zugewiesen - debug: zeige alle vorhandenen user_ids
-          const { data: allAssignments } = await supabase
-            .from('lead_assignments')
-            .select('user_id')
-            .limit(10)
-
-          const uniqueUserIds = [...new Set((allAssignments || []).map(a => a.user_id))]
-          console.log('[Leads] DEBUG - User hat keine Assignments. Vorhandene user_ids (Sample):', uniqueUserIds)
-          console.log('[Leads] DEBUG - Gesuchte userId:', userId)
-
+          console.log('[Leads] Keine Assignments gefunden für:', { userId, userName })
           return {
             statusCode: 200,
             headers,
@@ -179,12 +194,7 @@ export async function handler(event) {
               leads: [],
               users: Object.entries(userMap).map(([id, name]) => ({ id, name })),
               offset: null,
-              hasMore: false,
-              debug: {
-                message: 'Keine lead_assignments für diesen User gefunden',
-                userId,
-                sampleUserIdsInAssignments: uniqueUserIds
-              }
+              hasMore: false
             })
           }
         }
