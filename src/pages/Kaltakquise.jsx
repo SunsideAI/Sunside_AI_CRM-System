@@ -808,12 +808,12 @@ function Kaltakquise() {
         </div>
 
         {/* Zeile 2: Filter */}
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {/* Filter: Kontaktiert */}
           <select
             value={filterContacted}
             onChange={(e) => { setFilterContacted(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-            className="select-field text-body-sm py-2.5"
+            className="select-field w-auto min-w-[140px] text-body-sm py-2.5"
           >
             <option value="all">Alle Status</option>
             <option value="false">Nicht kontaktiert</option>
@@ -824,7 +824,7 @@ function Kaltakquise() {
           <select
             value={filterResult}
             onChange={(e) => { setFilterResult(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-            className="select-field text-body-sm py-2.5"
+            className="select-field w-auto min-w-[160px] text-body-sm py-2.5"
           >
             <option value="all">Alle Ergebnisse</option>
             {ERGEBNIS_OPTIONEN.filter(o => o.value).map(option => (
@@ -836,7 +836,7 @@ function Kaltakquise() {
           <select
             value={filterLand}
             onChange={(e) => { setFilterLand(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-            className="select-field text-body-sm py-2.5"
+            className="select-field w-auto min-w-[140px] text-body-sm py-2.5"
           >
             <option value="all">Alle Länder</option>
             <option value="Deutschland">Deutschland</option>
@@ -848,7 +848,7 @@ function Kaltakquise() {
           <select
             value={filterQuelle}
             onChange={(e) => { setFilterQuelle(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-            className="select-field text-body-sm py-2.5"
+            className="select-field w-auto min-w-[140px] text-body-sm py-2.5"
           >
             <option value="all">Alle Quellen</option>
             <option value="E-Book">E-Book</option>
@@ -863,7 +863,7 @@ function Kaltakquise() {
             <select
               value={filterVertriebler}
               onChange={(e) => { setFilterVertriebler(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-              className="select-field text-body-sm py-2.5"
+              className="select-field w-auto min-w-[160px] text-body-sm py-2.5"
             >
               <option value="all">Alle Vertriebler</option>
               {users.map(u => (
