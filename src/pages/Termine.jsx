@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { Calendar, ChevronLeft, ChevronRight, Clock, User, Users, Loader2, Building2, Phone, Video, RefreshCw, CalendarDays, CalendarRange, PhoneCall } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Clock, User, Users, Loader2, Building2, Phone, Video, RefreshCw, CalendarDays, CalendarRange, PhoneCall, X } from 'lucide-react'
 
 function Termine() {
   const { user, isAdmin } = useAuth()
@@ -573,9 +573,9 @@ function Termine() {
 
       {/* Termin-Detail Modal */}
       {selectedEvent && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="modal-backdrop absolute inset-0" onClick={() => setSelectedEvent(null)} />
+          <div className="modal-content relative max-w-md w-full max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-start mb-4">
                 <div>
                   <h3 className="text-xl font-semibold text-gray-900">{selectedEvent.title}</h3>
@@ -596,7 +596,9 @@ function Termine() {
                     </span>
                   )}
                 </div>
-                <button onClick={() => setSelectedEvent(null)} className="text-gray-400 hover:text-gray-600">✕</button>
+                <button onClick={() => setSelectedEvent(null)} className="p-2 hover:bg-surface-container rounded-lg transition-colors text-muted hover:text-on-surface">
+                  <X className="w-5 h-5" />
+                </button>
               </div>
 
               <div className="space-y-4">
@@ -737,12 +739,12 @@ function Termine() {
                       </div>
                     )}
 
-                    <div className="pt-3 border-t">
-                      <a 
-                        href="/kaltakquise" 
-                        className="w-full inline-flex items-center justify-center px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors"
+                    <div className="pt-6">
+                      <a
+                        href="/kaltakquise"
+                        className="btn-primary w-full inline-flex items-center justify-center gap-2"
                       >
-                        <PhoneCall className="w-4 h-4 mr-2" />
+                        <PhoneCall className="w-4 h-4" />
                         Zur Kaltakquise
                       </a>
                     </div>
@@ -750,11 +752,11 @@ function Termine() {
                 )}
               </div>
 
-              <div className="flex gap-3 mt-6 pt-4 border-t">
+              <div className="flex gap-3 mt-6 pt-6">
                 {selectedEvent.isMyClosing && (
                   <a
                     href="/closing"
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+                    className="btn-primary flex-1 flex items-center justify-center gap-2"
                   >
                     <Building2 className="w-4 h-4" />
                     Zum Closing
@@ -762,12 +764,11 @@ function Termine() {
                 )}
                 <button
                   onClick={() => setSelectedEvent(null)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="btn-ghost flex-1"
                 >
                   Schließen
                 </button>
               </div>
-            </div>
           </div>
         </div>
       )}

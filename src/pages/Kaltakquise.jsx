@@ -1220,24 +1220,28 @@ function Kaltakquise() {
 
       {/* Lead Detail Modal - Portal rendert direkt in body */}
       {selectedLead && createPortal(
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]">
-          <div className="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="modal-backdrop absolute inset-0"
+            onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
+          />
+          <div className="modal-content relative max-w-2xl w-full max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between pb-4 flex-shrink-0">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">{selectedLead.unternehmensname}</h2>
-                <p className="text-sm text-gray-500">{selectedLead.kategorie}</p>
+                <h2 className="text-headline-sm font-display text-on-surface">{selectedLead.unternehmensname}</h2>
+                <p className="text-body-sm text-muted">{selectedLead.kategorie}</p>
               </div>
               <button
                 onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-surface-container rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-muted" />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="px-6 py-4 overflow-y-auto flex-1">
+            <div className="overflow-y-auto flex-1">
               {showTerminPicker ? (
                 // Termin-Picker anzeigen
                 <TerminPicker
@@ -1813,25 +1817,25 @@ function Kaltakquise() {
       {/* Lead-Anfrage Modal */}
       {showAnfrageModal && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          <div
+            className="modal-backdrop absolute inset-0"
             onClick={() => setShowAnfrageModal(false)}
           />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+          <div className="modal-content relative w-full max-w-md">
             {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Neue Leads anfordern</h2>
+            <div className="flex items-center justify-between pb-6">
+              <h2 className="text-headline-sm font-display text-on-surface">Neue Leads anfordern</h2>
               <button
                 onClick={() => setShowAnfrageModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-surface-container rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-muted" />
               </button>
             </div>
 
             {/* Error */}
             {anfrageError && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+              <div className="mb-4 p-3 bg-red-50 rounded-lg flex items-center gap-2 text-red-700">
                 <AlertCircle className="w-5 h-5 flex-shrink-0" />
                 <span className="text-sm">{anfrageError}</span>
               </div>
@@ -1840,7 +1844,7 @@ function Kaltakquise() {
             {/* Form */}
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-label-md font-medium text-on-surface mb-2">
                   Anzahl Leads
                 </label>
                 <input
@@ -1849,13 +1853,13 @@ function Kaltakquise() {
                   max="500"
                   value={anfrageAnzahl}
                   onChange={(e) => setAnfrageAnzahl(parseInt(e.target.value) || 0)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                  className="input-field"
                 />
-                <p className="mt-1 text-sm text-gray-500">Empfohlen: 100-300 Leads</p>
+                <p className="mt-1 text-body-sm text-muted">Empfohlen: 100-300 Leads</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-label-md font-medium text-on-surface mb-2">
                   Nachricht (optional)
                 </label>
                 <textarea
@@ -1863,23 +1867,23 @@ function Kaltakquise() {
                   onChange={(e) => setAnfrageNachricht(e.target.value)}
                   placeholder="z.B. Meine Liste ist fast durch..."
                   rows={3}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none"
+                  className="input-field resize-none"
                 />
               </div>
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-3 mt-6">
+            <div className="flex justify-end gap-3 pt-6">
               <button
                 onClick={() => setShowAnfrageModal(false)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                className="btn-ghost"
               >
                 Abbrechen
               </button>
               <button
                 onClick={sendLeadAnfrage}
                 disabled={anfrageSending || anfrageAnzahl < 1}
-                className="flex items-center gap-2 px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="btn-primary flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {anfrageSending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />

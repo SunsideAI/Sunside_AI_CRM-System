@@ -42,22 +42,19 @@ const BUNDESLAENDER = [
 // Rollen Optionen
 const ROLLEN = ['Admin', 'Closer', 'Coldcaller']
 
-// Modal Component mit Portal
-function Modal({ isOpen, onClose, children, zIndex = 99999 }) {
+// Modal Component mit Portal - CI Design System
+function Modal({ isOpen, onClose, children }) {
   if (!isOpen) return null
-  
+
   return createPortal(
-    <div 
-      className="fixed inset-0 flex items-center justify-center p-4"
-      style={{ zIndex }}
-    >
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50"
+      <div
+        className="modal-backdrop absolute inset-0"
         onClick={onClose}
       />
       {/* Content */}
-      <div className="relative">
+      <div className="modal-content relative">
         {children}
       </div>
     </div>,
@@ -674,17 +671,15 @@ function MitarbeiterVerwaltung() {
 
       {/* Add Modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)}>
-        <div className="bg-white rounded-xl w-[750px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Neuer Mitarbeiter</h3>
-              <button onClick={() => setShowAddModal(false)}>
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
+        <div className="w-[750px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
+          <div className="flex items-center justify-between pb-6">
+            <h3 className="text-headline-sm font-display text-on-surface">Neuer Mitarbeiter</h3>
+            <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-surface-container rounded-lg transition-colors">
+              <X className="w-5 h-5 text-muted" />
+            </button>
           </div>
 
-          <div className="p-6 space-y-5">
+          <div className="space-y-5">
             {/* Zeile 1: Vorname + Nachname + Telefon */}
             <div className="grid grid-cols-3 gap-4">
               <div>
@@ -824,17 +819,17 @@ function MitarbeiterVerwaltung() {
             </div>
           </div>
 
-          <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+          <div className="pt-6 flex justify-end gap-3">
             <button
               onClick={() => setShowAddModal(false)}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="btn-ghost"
             >
               Abbrechen
             </button>
             <button
               onClick={handleAdd}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+              className="btn-primary flex items-center gap-2 disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               Hinzufügen
@@ -845,17 +840,15 @@ function MitarbeiterVerwaltung() {
 
       {/* Edit Modal */}
       <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
-        <div className="bg-white rounded-xl w-[750px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Mitarbeiter bearbeiten</h3>
-              <button onClick={() => setShowEditModal(false)}>
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
+        <div className="w-[750px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
+          <div className="flex items-center justify-between pb-6">
+            <h3 className="text-headline-sm font-display text-on-surface">Mitarbeiter bearbeiten</h3>
+            <button onClick={() => setShowEditModal(false)} className="p-2 hover:bg-surface-container rounded-lg transition-colors">
+              <X className="w-5 h-5 text-muted" />
+            </button>
           </div>
 
-          <div className="p-6 space-y-5">
+          <div className="space-y-5">
             {/* Zeile 1: Vorname + Nachname + Telefon */}
             <div className="grid grid-cols-3 gap-4">
               <div>
@@ -1029,14 +1022,14 @@ function MitarbeiterVerwaltung() {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowEditModal(false)}
-                className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+                className="btn-ghost"
               >
                 Abbrechen
               </button>
               <button
                 onClick={handleEdit}
                 disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                className="btn-primary flex items-center gap-2 disabled:opacity-50"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 Speichern
@@ -1047,48 +1040,46 @@ function MitarbeiterVerwaltung() {
       </Modal>
 
       {/* Delete Confirmation Modal */}
-      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} zIndex={999999}>
-        <div className="bg-white rounded-xl max-w-md w-full">
-          <div className="p-6">
-            <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-4">
-              <UserX className="w-6 h-6 text-red-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-center mb-2">Mitarbeiter deaktivieren?</h3>
-            <p className="text-gray-600 text-center mb-3">
-              <strong>{selectedUser?.vor_nachname}</strong> wird deaktiviert und kann sich nicht mehr einloggen.
-            </p>
-            
-            {/* Hinweis für Coldcaller */}
-            {selectedUser?.rolle?.includes('Coldcaller') && (
-              <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm mb-3">
-                <p className="text-amber-800">
-                  <strong>📋 Lead-Archivierung:</strong> Alle bearbeiteten Leads dieses Vertrieblers werden ins Archiv verschoben. 
-                  Die Leads werden zurückgesetzt und können einem neuen Vertriebler zugewiesen werden.
-                </p>
-              </div>
-            )}
-            
-            {/* Hinweis für Closer */}
-            {selectedUser?.rolle?.some(r => r.toLowerCase().includes('closer') || r.toLowerCase() === 'admin') && (
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-                <p className="text-blue-800">
-                  <strong>🔄 Hot Leads:</strong> Alle Closing-Leads dieses Mitarbeiters werden in den Pool zurückgegeben und können von anderen Closern übernommen werden.
-                </p>
-              </div>
-            )}
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
+        <div className="max-w-md w-full">
+          <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-4">
+            <UserX className="w-6 h-6 text-red-600" />
           </div>
+          <h3 className="text-headline-sm font-display text-on-surface text-center mb-2">Mitarbeiter deaktivieren?</h3>
+          <p className="text-muted text-center mb-4">
+            <strong className="text-on-surface">{selectedUser?.vor_nachname}</strong> wird deaktiviert und kann sich nicht mehr einloggen.
+          </p>
 
-          <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+          {/* Hinweis für Coldcaller */}
+          {selectedUser?.rolle?.includes('Coldcaller') && (
+            <div className="bg-amber-50 rounded-lg p-3 text-sm mb-3">
+              <p className="text-amber-800">
+                <strong>Lead-Archivierung:</strong> Alle bearbeiteten Leads dieses Vertrieblers werden ins Archiv verschoben.
+                Die Leads werden zurückgesetzt und können einem neuen Vertriebler zugewiesen werden.
+              </p>
+            </div>
+          )}
+
+          {/* Hinweis für Closer */}
+          {selectedUser?.rolle?.some(r => r.toLowerCase().includes('closer') || r.toLowerCase() === 'admin') && (
+            <div className="bg-blue-50 rounded-lg p-3 text-sm mb-4">
+              <p className="text-blue-800">
+                <strong>Hot Leads:</strong> Alle Closing-Leads dieses Mitarbeiters werden in den Pool zurückgegeben und können von anderen Closern übernommen werden.
+              </p>
+            </div>
+          )}
+
+          <div className="pt-6 flex justify-end gap-3">
             <button
               onClick={() => setShowDeleteModal(false)}
-              className="px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-lg"
+              className="btn-ghost"
             >
               Abbrechen
             </button>
             <button
               onClick={handleDelete}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              className="px-6 py-3 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors flex items-center gap-2 disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserX className="w-4 h-4" />}
               {saving ? 'Wird verarbeitet...' : 'Deaktivieren'}

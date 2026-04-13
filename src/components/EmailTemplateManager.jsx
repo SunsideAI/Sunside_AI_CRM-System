@@ -623,27 +623,28 @@ function EmailTemplateManager() {
 
       {/* Editor Modal - Portal für Fullscreen */}
       {editMode && createPortal(
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
-          <div className="bg-white w-full h-full md:m-4 md:rounded-2xl md:max-w-4xl md:max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
-            <div className="flex items-center justify-between p-6 border-b">
-              <h3 className="text-lg font-semibold">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="modal-backdrop absolute inset-0" onClick={closeEditor} />
+          <div className="modal-content relative w-full h-full md:h-auto md:max-w-4xl md:max-h-[95vh] overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between pb-6">
+              <h3 className="text-headline-sm font-display text-on-surface">
                 {editMode === 'create' ? 'Neues Template erstellen' : 'Template bearbeiten'}
               </h3>
-              <button onClick={closeEditor} className="p-2 hover:bg-gray-100 rounded-lg">
-                <X className="w-5 h-5" />
+              <button onClick={closeEditor} className="p-2 hover:bg-surface-container rounded-lg transition-colors">
+                <X className="w-5 h-5 text-muted" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto space-y-4">
               {error && (
-                <div className="flex items-center p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                <div className="flex items-center p-3 bg-red-50 rounded-lg text-red-700 text-sm">
                   <AlertCircle className="w-4 h-4 mr-2" />
                   {error}
                 </div>
               )}
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-label-md font-medium text-on-surface mb-2">
                   Template Name *
                 </label>
                 <input
@@ -651,12 +652,12 @@ function EmailTemplateManager() {
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   placeholder="z.B. Kundenstimmen"
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                  className="input-field"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-label-md font-medium text-on-surface mb-2">
                   E-Mail Betreff *
                 </label>
                 <input
@@ -664,7 +665,7 @@ function EmailTemplateManager() {
                   value={formBetreff}
                   onChange={(e) => setFormBetreff(e.target.value)}
                   placeholder="z.B. Erfolgsgeschichten unserer Kunden"
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                  className="input-field"
                 />
               </div>
 
@@ -906,22 +907,22 @@ function EmailTemplateManager() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 p-6 border-t bg-gray-50">
+            <div className="flex justify-end gap-3 pt-6">
               <button
                 onClick={closeEditor}
-                className="px-4 py-2.5 text-gray-700 hover:text-gray-900 font-medium"
+                className="btn-ghost"
               >
                 Abbrechen
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center px-6 py-2.5 bg-sunside-primary text-white font-medium rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                className="btn-primary flex items-center gap-2 disabled:opacity-50"
               >
                 {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
-                  <Save className="w-4 h-4 mr-2" />
+                  <Save className="w-4 h-4" />
                 )}
                 {editMode === 'create' ? 'Erstellen' : 'Speichern'}
               </button>
@@ -933,25 +934,26 @@ function EmailTemplateManager() {
 
       {/* Delete Confirmation */}
       {deleteConfirm && createPortal(
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="modal-backdrop absolute inset-0" onClick={() => setDeleteConfirm(null)} />
+          <div className="modal-content relative max-w-md w-full">
+            <h3 className="text-headline-sm font-display text-on-surface mb-2">
               Template löschen?
             </h3>
-            <p className="text-gray-500 mb-6">
-              Möchtest du das Template "{deleteConfirm.name}" wirklich löschen? 
+            <p className="text-muted mb-6">
+              Möchtest du das Template "{deleteConfirm.name}" wirklich löschen?
               Diese Aktion kann nicht rückgängig gemacht werden.
             </p>
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setDeleteConfirm(null)}
-                className="px-4 py-2 text-gray-700 hover:text-gray-900 font-medium"
+                className="btn-ghost"
               >
                 Abbrechen
               </button>
               <button
                 onClick={() => handleDelete(deleteConfirm)}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+                className="px-6 py-3 bg-red-600 text-white rounded-md font-medium hover:bg-red-700 transition-colors"
               >
                 Löschen
               </button>
