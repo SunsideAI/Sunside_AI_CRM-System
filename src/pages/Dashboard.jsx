@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { 
-  Phone, 
-  Calendar, 
-  TrendingUp, 
+import {
+  Phone,
+  Calendar,
+  TrendingUp,
   TrendingDown,
   Users,
   ArrowRight,
@@ -27,7 +27,9 @@ import {
   MapPin,
   Building2,
   FileText,
-  User
+  User,
+  CheckCircle,
+  AlertCircle
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
@@ -641,36 +643,104 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
             )}
           </div>
         ) : (
-          <div>
-            {/* Lead Rows */}
-            <div className="space-y-1 p-2">
-              {paginatedLeads.map((lead) => (
-                <div
-                  key={lead.id}
-                  onClick={() => openModal(lead)}
-                  className="table-row p-4 rounded-xl cursor-pointer bg-surface-container-lowest hover:bg-surface-container transition-colors"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-3">
-                        <span className="font-medium text-on-surface truncate">{safeString(lead.unternehmen) || 'Unbekannt'}</span>
-                        <span className={`badge ${getStatusStyle(lead.status)}`}>
-                          {lead.status || 'Unbekannt'}
-                        </span>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="bg-surface-container">
+                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
+                    Unternehmen
+                  </th>
+                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden md:table-cell">
+                    Ansprechpartner
+                  </th>
+                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
+                    Termin
+                  </th>
+                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
+                    Ort
+                  </th>
+                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
+                    Status
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {paginatedLeads.map((lead, index) => (
+                  <tr
+                    key={lead.id}
+                    onClick={() => openModal(lead)}
+                    className={`table-row cursor-pointer ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
+                  >
+                    {/* Status-Indikator */}
+                    <td className="px-4 py-4">
+                      <div
+                        className={`p-1.5 rounded-lg inline-flex ${
+                          lead.status === 'Abgeschlossen'
+                            ? 'bg-success-container text-success'
+                            : lead.status === 'Verloren'
+                            ? 'bg-error-container text-error'
+                            : lead.status === 'Angebot' || lead.status === 'Angebot versendet'
+                            ? 'bg-warning-container text-warning'
+                            : 'bg-surface-container text-outline'
+                        }`}
+                      >
+                        {lead.status === 'Abgeschlossen' ? (
+                          <CheckCircle className="w-5 h-5" />
+                        ) : lead.status === 'Verloren' ? (
+                          <AlertCircle className="w-5 h-5" />
+                        ) : lead.status === 'Angebot' || lead.status === 'Angebot versendet' ? (
+                          <FileText className="w-5 h-5" />
+                        ) : (
+                          <Calendar className="w-5 h-5" />
+                        )}
                       </div>
-                      <div className="mt-1.5 flex items-center gap-4 text-body-sm text-on-surface-variant">
-                        <span>{safeString(lead.ansprechpartnerVorname)} {safeString(lead.ansprechpartnerNachname)}</span>
-                        {lead.terminDatum && <span>{formatDate(lead.terminDatum)}</span>}
-                        {safeString(lead.ort) && <span>{safeString(lead.ort)}</span>}
-                      </div>
-                    </div>
-                    <ChevronRight className="w-5 h-5 text-outline ml-2 flex-shrink-0" />
-                  </div>
-                </div>
-              ))}
-            </div>
+                    </td>
 
-            {/* Pagination - Glass Style */}
+                    {/* Unternehmen */}
+                    <td className="px-4 py-4">
+                      <div className="font-medium text-on-surface">{safeString(lead.unternehmen) || 'Unbekannt'}</div>
+                      <div className="text-body-sm text-on-surface-variant">{lead.kategorie || 'Unternehmen'}</div>
+                    </td>
+
+                    {/* Ansprechpartner */}
+                    <td className="px-4 py-4 hidden md:table-cell">
+                      <div className="flex items-center text-on-surface-variant">
+                        <User className="w-4 h-4 mr-1.5 text-outline" />
+                        {safeString(lead.ansprechpartnerVorname)} {safeString(lead.ansprechpartnerNachname)}
+                      </div>
+                    </td>
+
+                    {/* Termin */}
+                    <td className="px-4 py-4 hidden lg:table-cell">
+                      <div className="flex items-center text-on-surface-variant">
+                        <Calendar className="w-4 h-4 mr-1.5 text-outline" />
+                        {lead.terminDatum ? formatDate(lead.terminDatum) : '—'}
+                      </div>
+                    </td>
+
+                    {/* Ort */}
+                    <td className="px-4 py-4 hidden lg:table-cell">
+                      <div className="flex items-center text-on-surface-variant">
+                        <MapPin className="w-4 h-4 mr-1.5 text-outline" />
+                        {safeString(lead.ort) || '—'}
+                      </div>
+                    </td>
+
+                    {/* Status Badge */}
+                    <td className="px-4 py-4">
+                      <span className={`badge ${getStatusStyle(lead.status)}`}>
+                        {lead.status || 'Unbekannt'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            {/* Pagination */}
             {filteredLeads.length > LEADS_PER_PAGE && (
               <div className="p-4 bg-surface-container/30 flex items-center justify-between mt-2">
                 <span className="text-body-sm text-on-surface-variant">

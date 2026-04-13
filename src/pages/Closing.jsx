@@ -1171,8 +1171,8 @@ function Closing() {
               <p className="text-outline mt-1">Alle Beratungsgespräche wurden bereits übernommen</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
-              {poolLeads.map((lead) => {
+            <div className="space-y-2 p-2">
+              {poolLeads.map((lead, index) => {
                 const terminDate = lead.terminDatum ? new Date(lead.terminDatum) : null
                 const isUpcoming = terminDate && terminDate > new Date()
                 const isPast = terminDate && terminDate < new Date()
@@ -1180,7 +1180,7 @@ function Closing() {
                 return (
                   <div
                     key={lead.id}
-                    className={`table-row p-5 rounded-lg ${isPast ? 'bg-error-container/30' : ''}`}
+                    className={`table-row p-5 rounded-xl ${isPast ? 'bg-error-container/30' : index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
                   >
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       {/* Lead-Info */}
