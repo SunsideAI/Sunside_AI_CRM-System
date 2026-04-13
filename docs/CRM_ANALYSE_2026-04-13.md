@@ -1,277 +1,295 @@
-# Sunside CRM - Systemanalyse
+# Sunside CRM - Systemanalyse (Aktualisiert)
 
 **Datum:** 2026-04-13  
 **Analysiert von:** Claude Code  
-**Branch:** claude/analyze-repo-fKMVI
+**Branch:** claude/analyze-repo-fKMVI  
+**Basiert auf:** main-Branch (Produktionsstand)
 
 ---
 
 ## 1. Zusammenfassung
 
-Das Sunside CRM ist ein vollständiges Lead-Management und Sales-Tracking System für das Vertriebsteam von Sunside AI. Die Migration von **Airtable zu Supabase** wurde im Januar 2026 abgeschlossen.
+Das Sunside CRM ist ein Lead-Management und Sales-Tracking System fuer das Vertriebsteam von Sunside AI.
 
-### Aktueller Status
-- **Datenbank:** Supabase (PostgreSQL) - AKTIV
-- **Airtable:** Legacy-Utilities noch vorhanden, aber nicht mehr primär genutzt
-- **Letzte Änderungen:** 2026-02-02 (Bugfixes)
+### WICHTIG: Aktueller Datenbank-Status
+
+| Aspekt | Status |
+|--------|--------|
+| **Aktive Datenbank** | **Airtable** (NICHT Supabase) |
+| **Supabase** | Migration war geplant, aber nicht umgesetzt |
+| **Letzte Aenderungen** | "Angebot konfigurieren" Feature (April 2026) |
+
+Die Netlify Functions kommunizieren direkt mit der Airtable API. Es gibt keinen `supabase/` Ordner auf dem main-Branch.
 
 ---
 
-## 2. Tech Stack
+## 2. Tech Stack (Aktuell)
 
 | Komponente | Technologie | Status |
 |------------|-------------|--------|
 | Frontend | React 18 + Vite + Tailwind CSS | Aktiv |
 | Backend | Netlify Functions (Serverless) | Aktiv |
-| Datenbank | Supabase (PostgreSQL) | Aktiv |
+| **Datenbank** | **Airtable** | **Aktiv** |
 | E-Mail | Resend API | Aktiv |
 | Kalender | Calendly API | Aktiv |
 | Datei-Upload | Cloudinary | Aktiv |
 | Auth | bcrypt (Passwort-Hashing) | Aktiv |
-| Legacy | Airtable | Deaktiviert |
 
 ---
 
-## 3. Datenbank-Schema (Supabase)
+## 3. Airtable Tabellen-Struktur
 
 ### Haupttabellen
 
-| Tabelle | Beschreibung | Datensätze (geschätzt) |
-|---------|--------------|------------------------|
-| `users` | Mitarbeiter/Benutzer | 10-50 |
-| `leads` | Kaltakquise-Leads | 1000+ |
-| `lead_assignments` | Lead ↔ User Zuweisungen | 1000+ |
-| `hot_leads` | Qualifizierte Leads mit Terminen | 50-200 |
-| `lead_archive` | Archivierte Lead-Daten | Variabel |
-| `email_templates` | E-Mail Vorlagen | 10-30 |
-| `lead_requests` | Lead-Anfragen | Variabel |
-| `system_messages` | In-App Benachrichtigungen | Variabel |
+| Tabelle | Beschreibung |
+|---------|--------------|
+| `User_Datenbank` | Mitarbeiter/Benutzer |
+| `Immobilienmakler_Leads` | Kaltakquise-Leads |
+| `Immobilienmakler_Hot_Leads` | Qualifizierte Leads mit Terminen |
+| `Immobilienmakler_Leads_Archiv` | Archivierte Lead-Daten |
+| `E-Mail_Templates` | E-Mail Vorlagen |
+| `Lead_Anfragen` | Lead-Anfragen |
+| `System_Messages` | In-App Benachrichtigungen |
 
-### ENUM Types
+---
 
+## 4. Hot_Leads - Neue Felder (April 2026)
+
+Diese Felder wurden fuer das **"Angebot konfigurieren"** Feature hinzugefuegt:
+
+### Neue Felder
+
+| Airtable-Feld | Frontend-Key | Typ | Beschreibung |
+|---------------|--------------|-----|--------------|
+| `Vertragsbestandteile` | vertragsbestandteile | Long Text | Individuelle Vertragsbestandteile |
+| `Paketname_Individuell` | paketname | Text | Paketname (bei Individuell) |
+| `Kurzbeschreibung` | kurzbeschreibung | Text | Kurzbeschreibung fuer E-Mail |
+| `Leistungsbeschreibung` | leistungsbeschreibung | Long Text | Detaillierte Leistungsbeschreibung |
+
+### Sichtbarkeit
+
+- **Vertragsbestandteile**: Immer sichtbar (bei allen Produkten)
+- **Paketname, Kurzbeschreibung, Leistungsbeschreibung**: Nur bei `Produkt = "Individuell"`
+
+### Relevante Commits
+
+```
+047b3da - Implement 'Angebot konfigurieren' modal with full offer configuration
+dfecf3c - Map new Airtable fields in hot-leads PATCH handler
+b17ef49 - Hide Sachverstaendige hint box when 'Individuell' product is selected
+```
+
+---
+
+## 5. Alle Hot_Leads Felder (Vollstaendige Liste)
+
+### Stammdaten (Lookups aus Immobilienmakler_Leads)
+
+| Airtable-Feld | Frontend-Key | Typ |
+|---------------|--------------|-----|
+| Unternehmen | unternehmen | Lookup |
+| Ansprechpartner_Vorname | ansprechpartnerVorname | Lookup |
+| Ansprechpartner_Nachname | ansprechpartnerNachname | Lookup |
+| Kategorie | kategorie | Lookup |
+| Mail | email | Lookup |
+| Telefonnummer | telefon | Lookup |
+| Ort | ort | Lookup |
+| Bundesland | bundesland | Lookup |
+| Website | website | Lookup |
+| Kommentar | kommentar | Lookup |
+
+### Termin-Felder
+
+| Airtable-Feld | Frontend-Key | Typ |
+|---------------|--------------|-----|
+| Termin_Beratungsgespraech | terminDatum | DateTime |
+| Terminart | terminart | Single Select (Video, Telefonisch) |
+| Meeting_Link | meetingLink | URL |
+
+### Status & Zuweisung
+
+| Airtable-Feld | Frontend-Key | Typ |
+|---------------|--------------|-----|
+| Status | status | Single Select |
+| Setter | setterId/setterName | Link |
+| Closer | closerId/closerName | Link |
+| Quelle | quelle | Single Select |
+| Prioritaet | prioritaet | Text |
+
+### Deal-Werte
+
+| Airtable-Feld | Frontend-Key | Typ |
+|---------------|--------------|-----|
+| Setup | setup | Currency |
+| Retainer | retainer | Currency |
+| Laufzeit | laufzeit | Number (Monate) |
+| Kunde_seit | kundeSeit | Date |
+| Produkt_Dienstleistung | produktDienstleistung | Multi-Select |
+
+### Angebot-Felder (NEU)
+
+| Airtable-Feld | Frontend-Key | Typ |
+|---------------|--------------|-----|
+| Vertragsbestandteile | vertragsbestandteile | Long Text |
+| Paketname_Individuell | paketname | Text |
+| Kurzbeschreibung | kurzbeschreibung | Text |
+| Leistungsbeschreibung | leistungsbeschreibung | Long Text |
+
+### Website-Metriken
+
+| Airtable-Feld | Frontend-Key | Typ |
+|---------------|--------------|-----|
+| Monatliche_Besuche | monatlicheBesuche | Number |
+| Mehrwert | mehrwert | Number |
+| Absprungrate | absprungrate | Percent |
+| Anzahl_Leads | anzahlLeads | Number |
+
+### Attachments & Links
+
+| Airtable-Feld | Frontend-Key | Typ |
+|---------------|--------------|-----|
+| Attachments | attachments | Attachment |
+| Immobilienmakler_Leads | originalLeadId | Link |
+
+---
+
+## 6. Produkt-Optionen und Preise
+
+```javascript
+const PRODUKT_PREISE = {
+  'KI-Chatbot':                         { setup: 1399, retainer: 360 },
+  'KI-Voicebot':                        { setup: 1399, retainer: 360 },
+  'SEO & KI-Chatbot':                   { setup: 2798, retainer: 360 },
+  'Website & KI-Chatbot':               { setup: 3998, retainer: 360 },
+  'KI-Voicebot & KI-Chatbot':           { setup: 2798, retainer: 612 },
+  'Website & KI-Voicebot & KI-Chatbot': { setup: 5397, retainer: 612 },
+  'SEO & KI-Voicebot & KI-Chatbot':     { setup: 4197, retainer: 612 },
+  'Individuell':                        { setup: '', retainer: '' }
+}
+```
+
+---
+
+## 7. Status-Optionen (Hot_Leads)
+
+| Status | Beschreibung | Farbe |
+|--------|--------------|-------|
+| Lead | Neuer Termin | Blau |
+| Angebot | Angebot wird erstellt | Gelb |
+| Angebot versendet | Angebot verschickt | Lila |
+| Abgeschlossen | Deal gewonnen | Gruen |
+| Termin abgesagt | Termin wurde abgesagt | Orange |
+| Termin verschoben | Termin wurde verschoben | Amber |
+| Verloren | Deal verloren | Rot |
+
+---
+
+## 8. API Endpoints (Aktuelle Implementation)
+
+### Hot Leads (hot-leads.js)
+
+| Methode | Action | Beschreibung |
+|---------|--------|--------------|
+| GET | - | Hot Leads laden mit Filter |
+| POST | - | Neuen Hot Lead erstellen |
+| POST | release-closer-leads | Alle Leads eines Closers freigeben |
+| PATCH | - | Hot Lead aktualisieren |
+
+### Erlaubte PATCH-Felder
+
+```javascript
+const allowedFields = [
+  'Status',
+  'Setup',
+  'Retainer',
+  'Laufzeit',
+  'Produkt_Dienstleistung',
+  'Kunde_seit',
+  'Prioritaet',
+  'Closer',
+  'Termin_Beratungsgespraech',
+  'Terminart',
+  'Meeting_Link',
+  'Attachments',
+  'Vertragsbestandteile',       // NEU
+  'Paketname_Individuell',      // NEU
+  'Kurzbeschreibung',           // NEU
+  'Leistungsbeschreibung',      // NEU
+]
+```
+
+---
+
+## 9. Migrations-Empfehlungen
+
+### Option A: Bei Airtable bleiben
+
+- Keine Migration erforderlich
+- Neue Felder sind bereits in Airtable aktiv
+- Nur sicherstellen, dass Felder in Airtable korrekt konfiguriert sind
+
+### Option B: Migration zu Supabase
+
+Falls eine Supabase-Migration geplant ist:
+
+1. **Schema erstellen:**
 ```sql
--- Länder
-land_type: Deutschland, Österreich, Schweiz
-
--- Lead Kategorien
-kategorie_type: Immobilienmakler, Sachverständiger
-
--- Kontakt-Ergebnis
-ergebnis_type: Beratungsgespräch, Nicht erreicht, Kein Interesse, 
-               Unterlage bereitstellen, Ungültiger Lead
-
--- Lead-Quellen
-quelle_type: E-Book, Kaltakquise, Empfehlung, Sonstige
-
--- Hot Lead Status
-hot_lead_status_type: Lead, Geplant, Im Closing, Angebot versendet, 
-                      Abgeschlossen, Verloren
-
--- Benutzer-Rollen
-rolle_type: Setter, Closer, Coldcaller, Admin
+-- Neue Felder fuer hot_leads Tabelle
+ALTER TABLE hot_leads 
+  ADD COLUMN vertragsbestandteile TEXT,
+  ADD COLUMN paketname_individuell TEXT,
+  ADD COLUMN kurzbeschreibung TEXT,
+  ADD COLUMN leistungsbeschreibung TEXT;
 ```
 
-### Views (für optimierte Abfragen)
+2. **Migrationsskript anpassen:**
+   - Felder im Mapping hinzufuegen
+   - Airtable-Daten exportieren
+   - In Supabase importieren
 
-- `leads_with_users` - Leads mit zugewiesenen Benutzern
-- `hot_leads_with_users` - Hot Leads mit Setter/Closer Namen
-- `unread_messages_count` - Ungelesene Nachrichten pro User
-
----
-
-## 4. Migrationsstatus
-
-### Abgeschlossene Migrationen
-
-| Datum | Migration | Status |
-|-------|-----------|--------|
-| 2026-01 | Airtable → Supabase (Hauptmigration) | ✅ Abgeschlossen |
-| 2026-01 | E-Book Pool Integration | ✅ Abgeschlossen |
-| 2026-01 | Lead-Anfragen System | ✅ Abgeschlossen |
-| 2026-01 | Calendly Webhook Integration | ✅ Abgeschlossen |
-| 2026-02-02 | Wiedervorlage Timestamp Fix | ✅ Abgeschlossen |
-
-### Migrationsskripte
-
-1. **`supabase/migrate-data.js`** (v1)
-   - Erste Version der Migration
-   - Basis-Funktionalität
-   - Problem: Index-basierte ID-Zuordnung
-
-2. **`supabase/migrate-data-v2.js`** (v2)
-   - Verbesserte Version
-   - Speichert Airtable-IDs für spätere Referenz
-   - Bessere Fehlerbehandlung
-   - Detailliertes Logging
-   - Einzelner Record-Insert mit Retry-Logik
-
-### SQL Migrations
-
-```
-supabase/migrations/
-├── 20260202_fix_wiedervorlage_times.sql
-└── 20260202_fix_wiedervorlage_timestamp.sql
-```
+3. **Netlify Functions umstellen:**
+   - Von Airtable API auf Supabase Client wechseln
+   - Alle Funktionen testen
 
 ---
 
-## 5. API Endpoints (Netlify Functions)
+## 10. Dateien die Hot_Leads verwenden
 
-### Authentifizierung
-- `POST /auth` - Login
-- `POST /forgot-password` - Passwort-Reset
-- `POST /change-password` - Passwort ändern
-- `POST /set-password` - Admin: Passwort setzen
-
-### Leads
-- `GET/PATCH /leads` - Lead CRUD
-- `GET/POST/PATCH /ebook-leads` - E-Book Leads
-- `GET/POST /lead-requests` - Lead-Anfragen
-
-### Hot Leads
-- `GET/POST/PATCH /hot-leads` - Hot Lead CRUD
-- `POST /archive-leads` - Archivierung
-
-### Termine & E-Mail
-- `GET/POST /calendar` - Calendly Integration
-- `POST /calendly-webhook` - Webhooks
-- `POST /send-email` - E-Mail Versand
-- `GET/POST/PATCH/DELETE /email-templates` - Templates
-
-### Admin & Analytics
-- `GET /users` - User-Liste
-- `GET /dashboard` - KPIs
-- `GET /analytics` - Statistiken
+| Datei | Funktion |
+|-------|----------|
+| `netlify/functions/hot-leads.js` | Backend API |
+| `src/pages/Closing.jsx` | Closing-Seite mit Angebot-Modal |
+| `src/pages/Dashboard.jsx` | Dashboard KPIs |
+| `src/pages/Termine.jsx` | Terminuebersicht |
+| `netlify/functions/dashboard.js` | Dashboard Analytics |
+| `netlify/functions/calendly-webhook.js` | Termin-Erstellung |
+| `netlify/functions/send-email.js` | Angebots-E-Mail |
 
 ---
 
-## 6. Airtable Legacy-Code
+## 11. Naechste Schritte
 
-### Noch vorhandene Airtable-Dateien
+1. **Airtable pruefen:**
+   - Sind alle neuen Felder korrekt angelegt?
+   - Feldtypen verifizieren
 
-| Datei | Verwendung | Aktion empfohlen |
-|-------|------------|------------------|
-| `netlify/functions/utils/airtable.js` | Rate-Limit-Handler | Kann entfernt werden |
-| `supabase/migrate-data.js` | Migration v1 | Archivieren |
-| `supabase/migrate-data-v2.js` | Migration v2 | Archivieren |
+2. **Daten-Migration planen:**
+   - Backup der aktuellen Airtable-Daten
+   - Mapping-Dokument erstellen
+   - Testmigration durchfuehren
 
-### Environment Variables (Airtable)
-
-```env
-AIRTABLE_API_KEY=pat_xxxxxxxxx  # Nicht mehr benötigt
-AIRTABLE_BASE_ID=appxxxxxxxxx  # Nicht mehr benötigt
-```
-
----
-
-## 7. Empfehlungen für neue Migration
-
-### Vor der Migration prüfen
-
-1. **Datenintegrität in Supabase:**
-   ```sql
-   -- Anzahl der Datensätze prüfen
-   SELECT 'users' as table, COUNT(*) as count FROM users
-   UNION ALL
-   SELECT 'leads', COUNT(*) FROM leads
-   UNION ALL
-   SELECT 'hot_leads', COUNT(*) FROM hot_leads
-   UNION ALL
-   SELECT 'lead_assignments', COUNT(*) FROM lead_assignments;
-   ```
-
-2. **Verwaiste Referenzen prüfen:**
-   ```sql
-   -- Leads ohne gültige User-Zuweisungen
-   SELECT la.lead_id 
-   FROM lead_assignments la
-   LEFT JOIN users u ON la.user_id = u.id
-   WHERE u.id IS NULL;
-   
-   -- Hot Leads ohne gültigen Original-Lead
-   SELECT id, unternehmen 
-   FROM hot_leads 
-   WHERE lead_id IS NOT NULL 
-   AND lead_id NOT IN (SELECT id FROM leads);
-   ```
-
-3. **Duplikate prüfen:**
-   ```sql
-   -- Doppelte E-Mails in Leads
-   SELECT mail, COUNT(*) 
-   FROM leads 
-   WHERE mail IS NOT NULL 
-   GROUP BY mail 
-   HAVING COUNT(*) > 1;
-   ```
-
-### Migrations-Checkliste
-
-- [ ] Backup der aktuellen Supabase-Datenbank erstellen
-- [ ] Airtable-Daten exportieren (falls Quelle)
-- [ ] Neue Daten validieren (Format, Typen)
-- [ ] Testmigration in Staging-Umgebung
-- [ ] ID-Mappings dokumentieren
-- [ ] Frontend-Tests durchführen
-- [ ] Rollback-Plan bereithalten
-
-### Migrations-Befehl
-
-```bash
-# Migration v2 ausführen
-node supabase/migrate-data-v2.js
-
-# Nach Migration verifizieren
-# (Die Verifizierung ist im Skript integriert)
-```
+3. **Frontend testen:**
+   - "Angebot konfigurieren" Modal testen
+   - Alle Produktoptionen durchgehen
+   - E-Mail-Versand verifizieren
 
 ---
 
-## 8. Bekannte Probleme und Fixes
+## Weitere Dokumentation
 
-### Behoben (2026-02-02)
-- "Meine Leads" Filter für Admins
-- Array-String Darstellung in Closing-Seite
-- Numerische Felder (Besucher, Mehrwert) korrekt anzeigen
-- Wiedervorlage-Zeitstempel korrigiert
-
-### Noch offen
-- E-Mail Template Attachments müssen manuell zu Supabase Storage migriert werden
-- Airtable Legacy-Code sollte entfernt werden
+- [HOT_LEADS_NEUE_FELDER.md](./HOT_LEADS_NEUE_FELDER.md) - Detaillierte Felddokumentation
+- [MIGRATION_CHECKLIST.md](./MIGRATION_CHECKLIST.md) - Migrations-Checkliste
 
 ---
 
-## 9. Nächste Schritte
-
-1. **Datenanalyse durchführen:**
-   - Aktuelle Datenmenge in Supabase prüfen
-   - Datenqualität evaluieren
-
-2. **Neue Datenquelle vorbereiten:**
-   - Datenformat definieren
-   - Mapping zu Supabase-Schema erstellen
-
-3. **Migrationsskript anpassen:**
-   - `migrate-data-v2.js` als Basis verwenden
-   - An neue Datenquelle anpassen
-
-4. **Migration ausführen:**
-   - Backup erstellen
-   - Migration in Staging testen
-   - Production-Migration durchführen
-
-5. **Cleanup:**
-   - Airtable Legacy-Code entfernen
-   - Dokumentation aktualisieren
-
----
-
-## 10. Kontakt & Support
-
-**Repository:** SunsideAI/Sunside_AI_CRM-System  
-**Tech Stack Docs:** [README.md](../README.md)  
-**Schema:** [supabase/schema.sql](../supabase/schema.sql)
-
----
-
-*Diese Analyse wurde automatisch erstellt und sollte vor kritischen Änderungen manuell verifiziert werden.*
+*Analyse erstellt am 2026-04-13 - Basiert auf main-Branch*
