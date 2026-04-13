@@ -1,11 +1,11 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { 
-  LayoutDashboard, 
-  Phone, 
+import {
+  LayoutDashboard,
+  Phone,
   Target,
   Calendar,
-  Settings, 
+  Settings,
   LogOut,
   User,
   Menu,
@@ -28,7 +28,7 @@ function Layout({ children }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [notificationCount, setNotificationCount] = useState(0)
-  
+
   const userMenuRef = useRef(null)
   const notificationRef = useRef(null)
 
@@ -38,13 +38,13 @@ function Layout({ children }) {
     if (!readNotifications.includes(notificationId)) {
       readNotifications.push(notificationId)
       localStorage.setItem('readNotifications', JSON.stringify(readNotifications))
-      
+
       // UI aktualisieren
-      setNotifications(prev => prev.map(n => 
+      setNotifications(prev => prev.map(n =>
         n.id === notificationId ? { ...n, unread: false } : n
       ))
       setNotificationCount(prev => Math.max(0, prev - 1))
-      
+
       // System Message in Airtable als gelesen markieren
       if (isSystemMessage && airtableId) {
         try {
@@ -57,13 +57,12 @@ function Layout({ children }) {
           console.error('Fehler beim Markieren der System Message:', err)
         }
       }
-      
+
       // Reminder dismisssen (für diese Session nicht mehr anzeigen)
       if (isReminder && terminId) {
-        const dismissKey = notificationId.startsWith('wiedervorlage') 
+        const dismissKey = notificationId.startsWith('wiedervorlage')
           ? `wiedervorlage-dismissed-${terminId}`
           : `termin-dismissed-${terminId}`
-        // Dismiss für 2 Stunden (nach dem Termin sollte er eh vorbei sein)
         localStorage.setItem(dismissKey, Date.now().toString())
       }
     }
@@ -74,7 +73,7 @@ function Layout({ children }) {
     const readNotifications = JSON.parse(localStorage.getItem('readNotifications') || '[]')
     const newRead = [...new Set([...readNotifications, ...notifications.map(n => n.id)])]
     localStorage.setItem('readNotifications', JSON.stringify(newRead))
-    
+
     setNotifications(prev => prev.map(n => ({ ...n, unread: false })))
     setNotificationCount(0)
   }, [notifications])
@@ -103,15 +102,14 @@ function Layout({ children }) {
         if (anfragenResponse.ok) {
           const data = await anfragenResponse.json()
           const anfragen = data.anfragen || []
-          
+
           if (isAdmin()) {
-            // Admin sieht alle Anfragen
             const anfragenNotifs = anfragen.map(a => {
               if (a.status === 'Offen') {
                 return {
                   id: a.id,
                   type: 'anfrage',
-                  title: `🙋 ${a.userName} möchte ${a.anzahl} Leads`,
+                  title: `${a.userName} möchte ${a.anzahl} Leads`,
                   message: a.nachricht || 'Neue Lead-Anfrage',
                   time: a.erstelltAm,
                   unread: !readNotifications.includes(a.id),
@@ -121,11 +119,11 @@ function Layout({ children }) {
                 return {
                   id: a.id,
                   type: a.status === 'Genehmigt' ? 'success' : a.status === 'Abgelehnt' ? 'rejected' : 'partial',
-                  title: a.status === 'Genehmigt' 
-                    ? `✅ ${a.userName}: ${a.genehmigteAnzahl || a.anzahl} Leads genehmigt`
+                  title: a.status === 'Genehmigt'
+                    ? `${a.userName}: ${a.genehmigteAnzahl || a.anzahl} Leads genehmigt`
                     : a.status === 'Teilweise_Genehmigt'
-                      ? `⚠️ ${a.userName}: ${a.genehmigteAnzahl}/${a.anzahl} Leads`
-                      : `❌ ${a.userName}: Abgelehnt`,
+                      ? `${a.userName}: ${a.genehmigteAnzahl}/${a.anzahl} Leads`
+                      : `${a.userName}: Abgelehnt`,
                   message: a.adminKommentar || '',
                   time: a.bearbeitetAm || a.erstelltAm,
                   unread: !readNotifications.includes(a.id),
@@ -135,16 +133,15 @@ function Layout({ children }) {
             })
             allNotifications = [...allNotifications, ...anfragenNotifs]
           } else {
-            // Vertriebler sehen ihre bearbeiteten Anfragen
             const bearbeiteteAnfragen = anfragen.filter(a => a.status !== 'Offen')
             const anfragenNotifs = bearbeiteteAnfragen.map(a => ({
               id: a.id,
               type: a.status === 'Genehmigt' ? 'success' : a.status === 'Abgelehnt' ? 'rejected' : 'partial',
-              title: a.status === 'Genehmigt' 
-                ? `✅ ${a.genehmigteAnzahl || a.anzahl} Leads genehmigt!`
+              title: a.status === 'Genehmigt'
+                ? `${a.genehmigteAnzahl || a.anzahl} Leads genehmigt!`
                 : a.status === 'Teilweise_Genehmigt'
-                  ? `⚠️ ${a.genehmigteAnzahl} von ${a.anzahl} Leads genehmigt`
-                  : `❌ Anfrage über ${a.anzahl} Leads abgelehnt`,
+                  ? `${a.genehmigteAnzahl} von ${a.anzahl} Leads genehmigt`
+                  : `Anfrage über ${a.anzahl} Leads abgelehnt`,
               message: a.adminKommentar || (a.status === 'Genehmigt' ? 'Deine Leads sind bereit!' : ''),
               time: a.bearbeitetAm || a.erstelltAm,
               unread: !readNotifications.includes(a.id),
@@ -153,54 +150,45 @@ function Layout({ children }) {
             allNotifications = [...allNotifications, ...anfragenNotifs]
           }
         }
-        
+
         // 2. System Messages laden
         const systemResponse = await fetch(`/.netlify/functions/system-messages?userId=${user.id}`)
         console.log('[Notifications] System Messages Response:', systemResponse.status)
         if (systemResponse.ok) {
           const systemData = await systemResponse.json()
           const systemMessages = systemData.messages || []
-          
-          // System Messages zu Notifications konvertieren
+
           const systemNotifs = systemMessages.map(msg => {
-            // Icon und Typ basierend auf Message-Typ
             let type = 'info'
-            let icon = '📬'
             let link = '/dashboard'
-            
+
             switch (msg.typ) {
               case 'Termin abgesagt':
                 type = 'rejected'
-                icon = '❌'
                 link = '/closing'
                 break
               case 'Termin verschoben':
                 type = 'warning'
-                icon = '🔄'
                 link = '/closing'
                 break
               case 'Lead gewonnen':
                 type = 'success'
-                icon = '🎉'
                 link = '/dashboard'
                 break
               case 'Lead verloren':
                 type = 'rejected'
-                icon = '😔'
                 link = '/dashboard'
                 break
               case 'Pool Update':
                 type = 'info'
-                icon = '📢'
-                // Lead-Anfragen gehen zu Einstellungen, Closer-Pool zu Closing
                 link = msg.titel?.includes('Lead-Anfrage') ? '/einstellungen?tab=anfragen' : '/closing'
                 break
             }
-            
+
             return {
               id: `sys-${msg.id}`,
               type,
-              title: `${icon} ${msg.titel}`,
+              title: msg.titel,
               message: msg.nachricht || '',
               time: msg.erstelltAm,
               unread: !msg.gelesen && !readNotifications.includes(`sys-${msg.id}`),
@@ -211,16 +199,15 @@ function Layout({ children }) {
           })
           allNotifications = [...allNotifications, ...systemNotifs]
         }
-        
-        // 3. Termin-Erinnerungen laden (Beratungsgespräche + Wiedervorlagen)
+
+        // 3. Termin-Erinnerungen laden
         const userName = user?.vor_nachname || user?.name
         if (userName) {
           try {
             const now = new Date()
             const in30Min = new Date(now.getTime() + 30 * 60 * 1000)
             const in15Min = new Date(now.getTime() + 15 * 60 * 1000)
-            
-            // Hot Leads (Beratungsgespräche) laden
+
             const [closerResponse, setterResponse] = await Promise.all([
               fetch(`/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`)
                 .then(r => r.json())
@@ -229,11 +216,10 @@ function Layout({ children }) {
                 .then(r => r.json())
                 .catch(() => ({ hotLeads: [] }))
             ])
-            
+
             const hotLeads = [...(closerResponse.hotLeads || []), ...(setterResponse.hotLeads || [])]
-              .filter((lead, idx, arr) => arr.findIndex(l => l.id === lead.id) === idx) // Duplikate entfernen
-            
-            // Wiedervorlagen laden - mit userId statt userName für korrekten Filter
+              .filter((lead, idx, arr) => arr.findIndex(l => l.id === lead.id) === idx)
+
             const wvParams = new URLSearchParams({
               wiedervorlage: 'true',
               userId: user.id
@@ -241,32 +227,29 @@ function Layout({ children }) {
             const wvResponse = await fetch(`/.netlify/functions/leads?${wvParams}`)
             const wvData = wvResponse.ok ? await wvResponse.json() : { leads: [] }
             const wiedervorlagen = wvData.leads || []
-            
-            // Beratungsgespräche prüfen (in nächsten 30 Min)
+
             hotLeads.forEach(lead => {
               if (!lead.terminDatum) return
               const terminDate = new Date(lead.terminDatum)
-              
-              // Termin in der Vergangenheit oder mehr als 30 Min entfernt? Skip
+
               if (terminDate < now || terminDate > in30Min) return
-              
-              // Bereits dismissed? Prüfen ob noch gültig (2 Stunden)
+
               const dismissKey = `termin-dismissed-${lead.id}`
               const dismissedAt = localStorage.getItem(dismissKey)
               if (dismissedAt) {
                 const dismissAge = Date.now() - parseInt(dismissedAt)
-                if (dismissAge < 2 * 60 * 60 * 1000) return // Noch dismissed
-                localStorage.removeItem(dismissKey) // Abgelaufen, entfernen
+                if (dismissAge < 2 * 60 * 60 * 1000) return
+                localStorage.removeItem(dismissKey)
               }
-              
+
               const minutesUntil = Math.round((terminDate - now) / 60000)
               const isUrgent = terminDate <= in15Min
               const isMyClosing = lead.closerName === userName
-              
+
               allNotifications.push({
                 id: `termin-${lead.id}`,
                 type: isUrgent ? 'urgent' : 'reminder',
-                title: `${isUrgent ? '🔴' : '🔔'} ${isMyClosing ? 'Closing' : 'Termin'} in ${minutesUntil} Min`,
+                title: `${isMyClosing ? 'Closing' : 'Termin'} in ${minutesUntil} Min`,
                 message: `${lead.unternehmen || 'Beratungsgespräch'}${lead.terminart ? ` (${lead.terminart})` : ''}`,
                 time: new Date().toISOString(),
                 unread: true,
@@ -275,15 +258,13 @@ function Layout({ children }) {
                 terminId: lead.id
               })
             })
-            
-            // Wiedervorlagen prüfen (in nächsten 30 Min)
+
             wiedervorlagen.forEach(lead => {
               if (!lead.wiedervorlageDatum) return
               const terminDate = new Date(lead.wiedervorlageDatum)
-              
+
               if (terminDate < now || terminDate > in30Min) return
-              
-              // Bereits dismissed? Prüfen ob noch gültig (2 Stunden)
+
               const dismissKey = `wiedervorlage-dismissed-${lead.id}`
               const dismissedAt = localStorage.getItem(dismissKey)
               if (dismissedAt) {
@@ -291,14 +272,14 @@ function Layout({ children }) {
                 if (dismissAge < 2 * 60 * 60 * 1000) return
                 localStorage.removeItem(dismissKey)
               }
-              
+
               const minutesUntil = Math.round((terminDate - now) / 60000)
               const isUrgent = terminDate <= in15Min
-              
+
               allNotifications.push({
                 id: `wiedervorlage-reminder-${lead.id}`,
                 type: isUrgent ? 'urgent' : 'reminder',
-                title: `${isUrgent ? '🔴' : '📞'} Wiedervorlage in ${minutesUntil} Min`,
+                title: `Wiedervorlage in ${minutesUntil} Min`,
                 message: lead.unternehmensname || 'Rückruf',
                 time: new Date().toISOString(),
                 unread: true,
@@ -311,13 +292,10 @@ function Layout({ children }) {
             console.warn('Termin-Erinnerungen laden fehlgeschlagen:', terminErr)
           }
         }
-        
-        // Nach Zeit sortieren (neueste zuerst), aber Reminder nach oben
+
         allNotifications.sort((a, b) => {
-          // Reminder immer oben
           if (a.isReminder && !b.isReminder) return -1
           if (!a.isReminder && b.isReminder) return 1
-          // Dann nach Zeit
           return new Date(b.time) - new Date(a.time)
         })
 
@@ -325,14 +303,14 @@ function Layout({ children }) {
 
         setNotifications(allNotifications)
         setNotificationCount(allNotifications.filter(n => n.unread).length)
-        
+
       } catch (err) {
         console.error('Fehler beim Laden der Benachrichtigungen:', err)
       }
     }
-    
+
     loadNotifications()
-    const interval = setInterval(loadNotifications, 30000) // Alle 30 Sekunden prüfen
+    const interval = setInterval(loadNotifications, 30000)
     return () => clearInterval(interval)
   }, [user?.id, isAdmin])
 
@@ -361,7 +339,7 @@ function Layout({ children }) {
     setShowLogoutConfirm(true)
   }
 
-  // Navigation Items - Einstellungen NICHT mehr hier
+  // Navigation Items
   const navItems = [
     {
       name: 'Dashboard',
@@ -397,7 +375,7 @@ function Layout({ children }) {
     const diffMins = Math.floor(diffMs / 60000)
     const diffHours = Math.floor(diffMs / 3600000)
     const diffDays = Math.floor(diffMs / 86400000)
-    
+
     if (diffMins < 1) return 'Gerade eben'
     if (diffMins < 60) return `vor ${diffMins} Min`
     if (diffHours < 24) return `vor ${diffHours} Std`
@@ -405,16 +383,16 @@ function Layout({ children }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 fixed top-0 left-0 right-0 z-50">
+    <div className="min-h-screen bg-surface">
+      {/* Header - Glassmorphism */}
+      <header className="glass-nav fixed top-0 left-0 right-0 z-50 shadow-ambient-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <span className="text-2xl font-bold text-sunside-primary">Sunside</span>
-                <span className="text-2xl font-light text-gray-600"> CRM</span>
+                <span className="text-2xl font-display font-bold gradient-text">Sunside</span>
+                <span className="text-2xl font-light text-on-surface-variant"> CRM</span>
               </div>
             </div>
 
@@ -425,10 +403,10 @@ function Layout({ children }) {
                   key={item.path}
                   to={item.path}
                   className={({ isActive }) =>
-                    `flex items-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    `flex items-center px-4 py-2.5 rounded-lg text-sm font-medium transition-all duration-250 ${
                       isActive
-                        ? 'bg-sunside-primary text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'nav-item active'
+                        : 'nav-item'
                     }`
                   }
                 >
@@ -440,16 +418,16 @@ function Layout({ children }) {
 
             {/* Right Side: Bell + User Dropdown */}
             <div className="flex items-center space-x-2">
-              
-              {/* Benachrichtigungen - für ALLE */}
+
+              {/* Benachrichtigungen */}
               <div className="relative" ref={notificationRef}>
                 <button
                   onClick={() => setNotificationOpen(!notificationOpen)}
-                  className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="relative p-2.5 rounded-lg hover:bg-surface-container transition-all duration-200"
                 >
-                  <Bell className="w-5 h-5 text-gray-600" />
+                  <Bell className="w-5 h-5 text-on-surface-variant" />
                   {notificationCount > 0 && (
-                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                    <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-gradient-primary text-white text-xs font-bold rounded-full flex items-center justify-center shadow-glow-primary">
                       {notificationCount > 9 ? '9+' : notificationCount}
                     </span>
                   )}
@@ -457,34 +435,36 @@ function Layout({ children }) {
 
                 {/* Notification Dropdown */}
                 {notificationOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
-                    <div className="p-3 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
-                      <h3 className="font-semibold text-gray-900">Benachrichtigungen</h3>
+                  <div className="absolute right-0 mt-2 w-80 bg-surface-container-lowest rounded-xl shadow-ambient-lg overflow-hidden z-50 animate-scale-in">
+                    <div className="p-4 bg-surface-container flex items-center justify-between">
+                      <h3 className="font-display font-semibold text-on-surface">Benachrichtigungen</h3>
                       {notifications.some(n => n.unread) && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
                             markAllAsRead()
                           }}
-                          className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1"
+                          className="text-xs text-primary font-medium hover:text-primary-container flex items-center gap-1 transition-colors"
                         >
-                          <CheckCheck className="w-3 h-3" />
+                          <CheckCheck className="w-3.5 h-3.5" />
                           Alle gelesen
                         </button>
                       )}
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.length === 0 ? (
-                        <div className="p-4 text-center text-gray-500">
-                          <Bell className="w-8 h-8 mx-auto mb-2 text-gray-300" />
-                          <p>Keine Benachrichtigungen</p>
+                        <div className="p-6 text-center">
+                          <div className="w-12 h-12 bg-surface-container rounded-full flex items-center justify-center mx-auto mb-3">
+                            <Bell className="w-6 h-6 text-on-surface-variant" />
+                          </div>
+                          <p className="text-on-surface-variant text-sm">Keine Benachrichtigungen</p>
                         </div>
                       ) : (
                         notifications.map(notif => (
-                          <div 
+                          <div
                             key={notif.id}
-                            className={`p-3 border-b border-gray-100 hover:bg-gray-50 cursor-pointer ${
-                              notif.unread ? (notif.type === 'urgent' ? 'bg-red-50' : 'bg-purple-50') : ''
+                            className={`p-4 hover:bg-surface-container cursor-pointer transition-colors ${
+                              notif.unread ? (notif.type === 'urgent' ? 'bg-error-container/30' : 'bg-primary-fixed/30') : ''
                             }`}
                             onClick={() => {
                               markAsRead(notif.id, notif.isSystemMessage, notif.airtableId, notif.isReminder, notif.terminId)
@@ -493,43 +473,43 @@ function Layout({ children }) {
                             }}
                           >
                             <div className="flex items-start gap-3">
-                              <div className={`p-2 rounded-full ${
-                                notif.type === 'success' ? 'bg-green-100' :
-                                notif.type === 'rejected' ? 'bg-red-100' :
-                                notif.type === 'pending' ? 'bg-amber-100' :
-                                notif.type === 'partial' ? 'bg-orange-100' :
-                                notif.type === 'warning' ? 'bg-amber-100' :
-                                notif.type === 'info' ? 'bg-blue-100' :
-                                notif.type === 'urgent' ? 'bg-red-100 animate-pulse' :
-                                notif.type === 'reminder' ? 'bg-orange-100' :
-                                'bg-purple-100'
+                              <div className={`p-2 rounded-lg ${
+                                notif.type === 'success' ? 'bg-success-container' :
+                                notif.type === 'rejected' ? 'bg-error-container' :
+                                notif.type === 'pending' ? 'bg-warning-container' :
+                                notif.type === 'partial' ? 'bg-warning-container' :
+                                notif.type === 'warning' ? 'bg-warning-container' :
+                                notif.type === 'info' ? 'bg-secondary-container' :
+                                notif.type === 'urgent' ? 'bg-error-container animate-pulse' :
+                                notif.type === 'reminder' ? 'bg-warning-container' :
+                                'bg-primary-fixed'
                               }`}>
                                 {notif.type === 'success' ? (
-                                  <Check className="w-4 h-4 text-green-600" />
+                                  <Check className="w-4 h-4 text-success" />
                                 ) : notif.type === 'rejected' ? (
-                                  <X className="w-4 h-4 text-red-600" />
+                                  <X className="w-4 h-4 text-error" />
                                 ) : notif.type === 'urgent' ? (
-                                  <Clock className="w-4 h-4 text-red-600" />
+                                  <Clock className="w-4 h-4 text-error" />
                                 ) : notif.type === 'reminder' ? (
-                                  <Bell className="w-4 h-4 text-orange-600" />
+                                  <Bell className="w-4 h-4 text-warning" />
                                 ) : notif.type === 'pending' ? (
-                                  <Clock className="w-4 h-4 text-amber-600" />
+                                  <Clock className="w-4 h-4 text-warning" />
                                 ) : notif.type === 'partial' ? (
-                                  <Check className="w-4 h-4 text-orange-600" />
+                                  <Check className="w-4 h-4 text-warning" />
                                 ) : notif.type === 'warning' ? (
-                                  <Clock className="w-4 h-4 text-amber-600" />
+                                  <Clock className="w-4 h-4 text-warning" />
                                 ) : notif.type === 'info' ? (
-                                  <Bell className="w-4 h-4 text-blue-600" />
+                                  <Bell className="w-4 h-4 text-secondary" />
                                 ) : (
-                                  <User className="w-4 h-4 text-purple-600" />
+                                  <User className="w-4 h-4 text-primary" />
                                 )}
                               </div>
                               <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 text-sm">{notif.title}</p>
+                                <p className="font-medium text-on-surface text-sm">{notif.title}</p>
                                 {notif.message && (
-                                  <p className="text-xs text-gray-500 truncate">{notif.message}</p>
+                                  <p className="text-xs text-on-surface-variant truncate mt-0.5">{notif.message}</p>
                                 )}
-                                <p className="text-xs text-gray-400 mt-1">{formatTime(notif.time)}</p>
+                                <p className="text-xs text-tertiary mt-1">{formatTime(notif.time)}</p>
                               </div>
                             </div>
                           </div>
@@ -540,9 +520,9 @@ function Layout({ children }) {
                       <NavLink
                         to="/einstellungen?tab=anfragen"
                         onClick={() => setNotificationOpen(false)}
-                        className="block p-3 text-center text-sm text-sunside-primary hover:bg-gray-50 border-t border-gray-100"
+                        className="block p-3 text-center text-sm font-medium text-primary hover:bg-surface-container transition-colors"
                       >
-                        Alle Anfragen anzeigen →
+                        Alle Anfragen anzeigen
                       </NavLink>
                     )}
                   </div>
@@ -553,21 +533,21 @@ function Layout({ children }) {
               <div className="relative hidden sm:block" ref={userMenuRef}>
                 <button
                   onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface-container transition-all duration-200"
                 >
-                  <div className="w-8 h-8 bg-sunside-primary rounded-full flex items-center justify-center text-white font-medium">
+                  <div className="w-9 h-9 bg-gradient-primary rounded-lg flex items-center justify-center text-white font-semibold shadow-glow-primary">
                     {user?.vor_nachname?.charAt(0) || 'U'}
                   </div>
-                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${userMenuOpen ? 'rotate-180' : ''}`} />
+                  <ChevronDown className={`w-4 h-4 text-on-surface-variant transition-transform duration-200 ${userMenuOpen ? 'rotate-180' : ''}`} />
                 </button>
 
                 {/* User Dropdown Menu */}
                 {userMenuOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-50">
+                  <div className="absolute right-0 mt-2 w-56 bg-surface-container-lowest rounded-xl shadow-ambient-lg overflow-hidden z-50 animate-scale-in">
                     {/* User Info */}
-                    <div className="p-4 border-b border-gray-100 bg-gray-50">
-                      <p className="font-semibold text-gray-900">{user?.vor_nachname || user?.vorname}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{user?.rolle?.join(', ')}</p>
+                    <div className="p-4 bg-surface-container">
+                      <p className="font-display font-semibold text-on-surface">{user?.vor_nachname || user?.vorname}</p>
+                      <p className="text-xs text-on-surface-variant mt-0.5">{user?.rolle?.join(', ')}</p>
                     </div>
 
                     {/* Menu Items */}
@@ -575,9 +555,9 @@ function Layout({ children }) {
                       <NavLink
                         to="/profil"
                         onClick={() => setUserMenuOpen(false)}
-                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="flex items-center px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors"
                       >
-                        <User className="w-4 h-4 mr-3 text-gray-400" />
+                        <User className="w-4 h-4 mr-3 text-on-surface-variant" />
                         Mein Profil
                       </NavLink>
 
@@ -585,19 +565,19 @@ function Layout({ children }) {
                         <NavLink
                           to="/einstellungen"
                           onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          className="flex items-center px-4 py-2.5 text-sm text-on-surface hover:bg-surface-container transition-colors"
                         >
-                          <Settings className="w-4 h-4 mr-3 text-gray-400" />
+                          <Settings className="w-4 h-4 mr-3 text-on-surface-variant" />
                           Einstellungen
                         </NavLink>
                       )}
                     </div>
 
                     {/* Logout */}
-                    <div className="border-t border-gray-100 py-2">
+                    <div className="py-2">
                       <button
                         onClick={confirmLogout}
-                        className="flex items-center w-full px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                        className="flex items-center w-full px-4 py-2.5 text-sm text-error hover:bg-error-container/30 transition-colors"
                       >
                         <LogOut className="w-4 h-4 mr-3" />
                         Logout
@@ -610,9 +590,9 @@ function Layout({ children }) {
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="md:hidden p-2 rounded-lg hover:bg-gray-100"
+                className="md:hidden p-2 rounded-lg hover:bg-surface-container transition-colors"
               >
-                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+                {mobileMenuOpen ? <X className="w-6 h-6 text-on-surface" /> : <Menu className="w-6 h-6 text-on-surface" />}
               </button>
             </div>
           </div>
@@ -620,16 +600,16 @@ function Layout({ children }) {
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 bg-white">
-            <div className="px-4 py-3 space-y-1">
+          <div className="md:hidden bg-surface-container-lowest shadow-ambient-md animate-slide-up">
+            <div className="px-4 py-4 space-y-2">
               {/* User Info Mobile */}
-              <div className="flex items-center gap-3 px-4 py-3 mb-2 bg-gray-50 rounded-lg">
-                <div className="w-10 h-10 bg-sunside-primary rounded-full flex items-center justify-center text-white font-medium">
+              <div className="flex items-center gap-3 px-4 py-3 mb-3 bg-surface-container rounded-xl">
+                <div className="w-11 h-11 bg-gradient-primary rounded-lg flex items-center justify-center text-white font-semibold shadow-glow-primary">
                   {user?.vor_nachname?.charAt(0) || 'U'}
                 </div>
                 <div>
-                  <p className="font-medium text-gray-900">{user?.vor_nachname}</p>
-                  <p className="text-xs text-gray-500">{user?.rolle?.join(', ')}</p>
+                  <p className="font-display font-semibold text-on-surface">{user?.vor_nachname}</p>
+                  <p className="text-xs text-on-surface-variant">{user?.rolle?.join(', ')}</p>
                 </div>
               </div>
 
@@ -639,10 +619,10 @@ function Layout({ children }) {
                   to={item.path}
                   onClick={() => setMobileMenuOpen(false)}
                   className={({ isActive }) =>
-                    `flex items-center px-4 py-3 rounded-lg text-sm font-medium ${
+                    `flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
                       isActive
-                        ? 'bg-sunside-primary text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                        ? 'nav-item active'
+                        : 'nav-item'
                     }`
                   }
                 >
@@ -650,17 +630,15 @@ function Layout({ children }) {
                   {item.name}
                 </NavLink>
               ))}
-              
-              <hr className="my-2" />
-              
+
+              <div className="divider-spacing" />
+
               <NavLink
                 to="/profil"
                 onClick={() => setMobileMenuOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center px-4 py-3 rounded-lg text-sm font-medium ${
-                    isActive
-                      ? 'bg-sunside-primary text-white'
-                      : 'text-gray-600 hover:bg-gray-100'
+                  `flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                    isActive ? 'nav-item active' : 'nav-item'
                   }`
                 }
               >
@@ -673,10 +651,8 @@ function Layout({ children }) {
                   to="/einstellungen"
                   onClick={() => setMobileMenuOpen(false)}
                   className={({ isActive }) =>
-                    `flex items-center px-4 py-3 rounded-lg text-sm font-medium ${
-                      isActive
-                        ? 'bg-sunside-primary text-white'
-                        : 'text-gray-600 hover:bg-gray-100'
+                    `flex items-center px-4 py-3 rounded-lg text-sm font-medium transition-all duration-200 ${
+                      isActive ? 'nav-item active' : 'nav-item'
                     }`
                   }
                 >
@@ -684,10 +660,10 @@ function Layout({ children }) {
                   Einstellungen
                 </NavLink>
               )}
-              
+
               <button
                 onClick={confirmLogout}
-                className="flex items-center w-full px-4 py-3 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+                className="flex items-center w-full px-4 py-3 text-sm font-medium text-error hover:bg-error-container/30 rounded-lg transition-colors"
               >
                 <LogOut className="w-5 h-5 mr-3" />
                 Logout
@@ -707,28 +683,28 @@ function Layout({ children }) {
       {/* Logout Bestätigung Modal */}
       {showLogoutConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+          <div
+            className="modal-backdrop absolute inset-0"
             onClick={() => setShowLogoutConfirm(false)}
           />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6">
+          <div className="modal-content relative w-full max-w-sm animate-scale-in">
             <div className="text-center">
-              <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <LogOut className="w-6 h-6 text-red-600" />
+              <div className="w-14 h-14 bg-error-container rounded-xl flex items-center justify-center mx-auto mb-5">
+                <LogOut className="w-7 h-7 text-error" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Abmelden?</h3>
-              <p className="text-gray-500 mb-6">Willst du dich wirklich abmelden?</p>
-              
+              <h3 className="text-xl font-display font-semibold text-on-surface mb-2">Abmelden?</h3>
+              <p className="text-on-surface-variant mb-6">Willst du dich wirklich abmelden?</p>
+
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowLogoutConfirm(false)}
-                  className="flex-1 px-4 py-2.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
+                  className="btn-secondary flex-1"
                 >
                   Abbrechen
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                  className="flex-1 px-6 py-3 bg-error text-white rounded-md font-medium hover:bg-error/90 transition-colors"
                 >
                   Abmelden
                 </button>
@@ -738,7 +714,7 @@ function Layout({ children }) {
         </div>
       )}
 
-      {/* Clippy - Der hilfreiche Assistent 📎 */}
+      {/* Clippy - Der hilfreiche Assistent */}
       <Clippy />
     </div>
   )

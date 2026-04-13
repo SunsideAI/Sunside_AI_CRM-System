@@ -61,13 +61,13 @@ const ERGEBNIS_OPTIONEN = [
 function getErgebnisColor(ergebnis) {
   const option = ERGEBNIS_OPTIONEN.find(o => o.value === ergebnis)
   const colors = {
-    gray: 'bg-gray-100 text-gray-700',
-    yellow: 'bg-yellow-100 text-yellow-700',
-    red: 'bg-red-100 text-red-700',
-    blue: 'bg-blue-100 text-blue-700',
-    green: 'bg-green-100 text-green-700',
-    orange: 'bg-orange-100 text-orange-700',
-    slate: 'bg-slate-200 text-slate-700'
+    gray: 'bg-surface-container text-on-surface-variant',
+    yellow: 'bg-warning-container text-warning',
+    red: 'badge-error',
+    blue: 'badge-primary',
+    green: 'badge-success',
+    orange: 'bg-warning-container text-warning',
+    slate: 'bg-tertiary-container text-tertiary'
   }
   return colors[option?.color || 'gray']
 }
@@ -679,15 +679,15 @@ function Kaltakquise() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-headline-lg font-display text-on-surface">
             {viewMode === 'ebook' ? 'E-Book Pool' : 'Kaltakquise'}
           </h1>
-          <p className="mt-1 text-gray-500">
-            {viewMode === 'ebook' 
+          <p className="mt-2 text-body-md text-on-surface-variant">
+            {viewMode === 'ebook'
               ? 'Warme Leads aus dem E-Book Funnel - noch kein Vertriebler zugewiesen'
               : `${leads.length} Leads geladen${isAdmin() && viewMode === 'all' ? ' (alle Leads)' : ''}`
             }
@@ -700,10 +700,10 @@ function Kaltakquise() {
             <button
               onClick={() => setShowAnfrageModal(true)}
               disabled={offeneAnfrage !== null}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                offeneAnfrage 
-                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  : 'bg-sunside-primary text-white hover:bg-purple-700'
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all duration-250 ${
+                offeneAnfrage
+                  ? 'bg-surface-container text-outline cursor-not-allowed'
+                  : 'btn-primary'
               }`}
             >
               <Plus className="w-4 h-4" />
@@ -711,15 +711,15 @@ function Kaltakquise() {
             </button>
           )}
 
-          {/* Tab-Navigation - für alle User */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+          {/* Tab-Navigation - Glass Style */}
+          <div className="flex items-center glass-panel p-1.5 gap-1">
             {/* Meine Leads */}
             <button
               onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setFilterVertriebler('all'); setLeads([]); }}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'own' 
-                  ? 'bg-white text-sunside-primary shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
+              className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                viewMode === 'own'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
               <UserIcon className="w-4 h-4 mr-1.5" />
@@ -729,16 +729,18 @@ function Kaltakquise() {
             {/* Pool Tab */}
             <button
               onClick={() => { setViewMode('ebook'); setOffset(null); setPageHistory([]); }}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'ebook' 
-                  ? 'bg-white text-amber-600 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
+              className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                viewMode === 'ebook'
+                  ? 'bg-warning text-white shadow-md'
+                  : 'text-on-surface-variant hover:text-warning hover:bg-warning-container/30'
               }`}
             >
               <Flame className="w-4 h-4 mr-1.5" />
               Pool
               {ebookCount > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-amber-100 text-amber-700 rounded-full">
+                <span className={`ml-1.5 px-1.5 py-0.5 text-label-sm rounded-md ${
+                  viewMode === 'ebook' ? 'bg-white/20 text-white' : 'bg-warning-container text-warning'
+                }`}>
                   {ebookCount}
                 </span>
               )}
@@ -748,10 +750,10 @@ function Kaltakquise() {
             {isAdmin() && (
               <button
                 onClick={() => { setViewMode('all'); setOffset(null); setPageHistory([]); setLeads([]); }}
-                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'all' 
-                    ? 'bg-white text-sunside-primary shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
+                className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                  viewMode === 'all'
+                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
                 <Users className="w-4 h-4 mr-1.5" />
@@ -764,15 +766,15 @@ function Kaltakquise() {
 
       {/* Offene Anfrage Banner */}
       {offeneAnfrage && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center gap-3">
-          <Clock className="w-5 h-5 text-amber-600 flex-shrink-0" />
+        <div className="ai-highlight flex items-center gap-3">
+          <Clock className="w-5 h-5 text-primary flex-shrink-0" />
           <div className="flex-1">
-            <p className="font-medium text-amber-800">
+            <p className="font-medium text-on-surface">
               Deine Anfrage über {offeneAnfrage.anzahl} Leads wird bearbeitet
             </p>
-            <p className="text-sm text-amber-600">
-              Gesendet am {new Date(offeneAnfrage.erstelltAm).toLocaleDateString('de-DE', { 
-                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+            <p className="text-body-sm text-on-surface-variant">
+              Gesendet am {new Date(offeneAnfrage.erstelltAm).toLocaleDateString('de-DE', {
+                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
               })}
             </p>
           </div>
@@ -781,27 +783,27 @@ function Kaltakquise() {
 
       {/* Filter Bar - nur bei normalen Leads (nicht E-Book Pool) */}
       {viewMode !== 'ebook' && (
-      <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-4">
+      <div className="card p-5 space-y-4">
         {/* Zeile 1: Suche */}
         <div className="flex gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-outline" />
             <input
               type="text"
               placeholder="Firma, Name, Ort suchen..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+              className="input-field pl-10"
             />
           </div>
-          
+
           {/* Refresh */}
           <button
             onClick={() => loadLeads()}
             disabled={loading}
-            className="px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
           >
-            <RefreshCw className={`w-5 h-5 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 text-on-surface-variant ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
@@ -811,7 +813,7 @@ function Kaltakquise() {
           <select
             value={filterContacted}
             onChange={(e) => { setFilterContacted(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white text-sm"
+            className="select-field text-body-sm py-2.5"
           >
             <option value="all">Alle Status</option>
             <option value="false">Nicht kontaktiert</option>
@@ -822,7 +824,7 @@ function Kaltakquise() {
           <select
             value={filterResult}
             onChange={(e) => { setFilterResult(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white text-sm"
+            className="select-field text-body-sm py-2.5"
           >
             <option value="all">Alle Ergebnisse</option>
             {ERGEBNIS_OPTIONEN.filter(o => o.value).map(option => (
@@ -834,26 +836,26 @@ function Kaltakquise() {
           <select
             value={filterLand}
             onChange={(e) => { setFilterLand(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white text-sm"
+            className="select-field text-body-sm py-2.5"
           >
-            <option value="all">🌍 Alle Länder</option>
-            <option value="Deutschland">🇩🇪 Deutschland</option>
-            <option value="Österreich">🇦🇹 Österreich</option>
-            <option value="Schweiz">🇨🇭 Schweiz</option>
+            <option value="all">Alle Länder</option>
+            <option value="Deutschland">Deutschland</option>
+            <option value="Österreich">Österreich</option>
+            <option value="Schweiz">Schweiz</option>
           </select>
 
           {/* Filter: Quelle */}
           <select
             value={filterQuelle}
             onChange={(e) => { setFilterQuelle(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-            className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white text-sm"
+            className="select-field text-body-sm py-2.5"
           >
-            <option value="all">📋 Alle Quellen</option>
-            <option value="E-Book">📚 E-Book</option>
-            <option value="Kaltakquise">📞 Kaltakquise</option>
-            <option value="Empfehlung">🤝 Empfehlung</option>
-            <option value="Website">🌐 Website</option>
-            <option value="Sonstige">📌 Sonstige</option>
+            <option value="all">Alle Quellen</option>
+            <option value="E-Book">E-Book</option>
+            <option value="Kaltakquise">Kaltakquise</option>
+            <option value="Empfehlung">Empfehlung</option>
+            <option value="Website">Website</option>
+            <option value="Sonstige">Sonstige</option>
           </select>
 
           {/* Filter: Vertriebler (nur für Admins bei "Alle Leads") */}
@@ -861,9 +863,9 @@ function Kaltakquise() {
             <select
               value={filterVertriebler}
               onChange={(e) => { setFilterVertriebler(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-              className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white text-sm"
+              className="select-field text-body-sm py-2.5"
             >
-              <option value="all">👤 Alle Vertriebler</option>
+              <option value="all">Alle Vertriebler</option>
               {users.map(u => (
                 <option key={u.id} value={u.id}>{u.name}</option>
               ))}
@@ -883,7 +885,7 @@ function Kaltakquise() {
                 setPageHistory([])
                 setLeads([])
               }}
-              className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors flex items-center gap-1"
+              className="px-3 py-2 text-body-sm text-error hover:bg-error-container rounded-lg transition-colors flex items-center gap-1"
             >
               <X className="w-4 h-4" />
               Filter zurücksetzen
@@ -895,69 +897,69 @@ function Kaltakquise() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+        <div className="bg-error-container rounded-xl p-4 text-error">
           {error}
         </div>
       )}
 
       {/* Normale Leads Tabelle - nur wenn nicht E-Book Pool */}
       {viewMode !== 'ebook' && (
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="card-elevated overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <Loader2 className="w-10 h-10 animate-spin text-sunside-primary mb-4" />
-            <p className="text-gray-500">Leads werden geladen...</p>
+            <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+            <p className="text-on-surface-variant">Leads werden geladen...</p>
           </div>
         ) : leads.length === 0 ? (
-          <div className="text-center py-12 text-gray-500">
-            <Building2 className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+          <div className="text-center py-12 text-on-surface-variant">
+            <Building2 className="w-12 h-12 mx-auto mb-4 text-outline-variant" />
             <p>Keine Leads gefunden</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                <tr className="bg-surface-container">
+                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
                     Unternehmen
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden md:table-cell">
+                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden md:table-cell">
                     Standort
                   </th>
                   {/* Vertriebler-Spalte nur bei "Alle Leads" */}
                   {isAdmin() && viewMode === 'all' && (
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
+                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
                       Vertriebler
                     </th>
                   )}
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden lg:table-cell">
+                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
                     Kontakt
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
                     Ergebnis
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider hidden xl:table-cell">
+                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden xl:table-cell">
                     Letzte Aktivität
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {leads.map((lead) => (
-                  <tr 
+              <tbody>
+                {leads.map((lead, index) => (
+                  <tr
                     key={lead.id}
                     onClick={() => openLead(lead)}
-                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    className={`table-row cursor-pointer ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
                   >
                     {/* Status-Indikator (nur Anzeige, kein Klick) */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
                       <div
-                        className={`p-1.5 rounded-full inline-flex ${
-                          lead.kontaktiert 
-                            ? 'bg-green-100 text-green-600' 
-                            : 'bg-gray-100 text-gray-400'
+                        className={`p-1.5 rounded-lg inline-flex ${
+                          lead.kontaktiert
+                            ? 'bg-success-container text-success'
+                            : 'bg-surface-container text-outline'
                         }`}
                       >
                         {lead.kontaktiert ? (
@@ -969,50 +971,50 @@ function Kaltakquise() {
                     </td>
 
                     {/* Unternehmen */}
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{lead.unternehmensname}</div>
-                      <div className="text-sm text-gray-500">{lead.kategorie}</div>
+                    <td className="px-4 py-4">
+                      <div className="font-medium text-on-surface">{lead.unternehmensname}</div>
+                      <div className="text-body-sm text-on-surface-variant">{lead.kategorie}</div>
                     </td>
 
                     {/* Standort */}
-                    <td className="px-4 py-3 hidden md:table-cell">
-                      <div className="flex items-center text-gray-600">
+                    <td className="px-4 py-4 hidden md:table-cell">
+                      <div className="flex items-center text-on-surface-variant">
                         {lead.land && (
                           <span className="mr-1.5 text-base" title={lead.land}>{getLandFlag(lead.land)}</span>
                         )}
-                        <MapPin className="w-4 h-4 mr-1.5 text-gray-400" />
+                        <MapPin className="w-4 h-4 mr-1.5 text-outline" />
                         {lead.stadt}
                       </div>
                     </td>
 
                     {/* Vertriebler - nur bei "Alle Leads" */}
                     {isAdmin() && viewMode === 'all' && (
-                      <td className="px-4 py-3 hidden lg:table-cell">
+                      <td className="px-4 py-4 hidden lg:table-cell">
                         {lead.zugewiesenAn && lead.zugewiesenAn.length > 0 ? (
-                          <div className="flex items-center text-gray-600">
-                            <UserIcon className="w-4 h-4 mr-1.5 text-gray-400" />
+                          <div className="flex items-center text-on-surface-variant">
+                            <UserIcon className="w-4 h-4 mr-1.5 text-outline" />
                             <span className="truncate max-w-[150px]">
                               {lead.zugewiesenAn.join(', ')}
                             </span>
                           </div>
                         ) : (
-                          <span className="text-gray-400 text-sm">—</span>
+                          <span className="text-outline text-body-sm">—</span>
                         )}
                       </td>
                     )}
 
                     {/* Kontakt */}
-                    <td className="px-4 py-3 hidden lg:table-cell">
+                    <td className="px-4 py-4 hidden lg:table-cell">
                       <div className="space-y-1">
                         {lead.telefon && (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Phone className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
+                          <div className="flex items-center text-body-sm text-on-surface-variant">
+                            <Phone className="w-3.5 h-3.5 mr-1.5 text-outline" />
                             {lead.telefon}
                           </div>
                         )}
                         {lead.email && (
-                          <div className="flex items-center text-sm text-gray-600">
-                            <Mail className="w-3.5 h-3.5 mr-1.5 text-gray-400" />
+                          <div className="flex items-center text-body-sm text-on-surface-variant">
+                            <Mail className="w-3.5 h-3.5 mr-1.5 text-outline" />
                             <span className="truncate max-w-[150px]">{lead.email}</span>
                           </div>
                         )}
@@ -1020,56 +1022,56 @@ function Kaltakquise() {
                     </td>
 
                     {/* Ergebnis */}
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-4">
                       {lead.ergebnis ? (
-                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-medium ${getErgebnisColor(lead.ergebnis)}`}>
+                        <span className={`badge ${getErgebnisColor(lead.ergebnis)}`}>
                           {lead.ergebnis}
                         </span>
                       ) : (
-                        <span className="text-gray-400 text-sm">—</span>
+                        <span className="text-outline text-body-sm">—</span>
                       )}
                     </td>
 
                     {/* Kommentar / Letzter Eintrag */}
-                    <td className="px-4 py-3 hidden xl:table-cell">
+                    <td className="px-4 py-4 hidden xl:table-cell">
                       {lead.kommentar ? (
                         (() => {
                           // Nur den ersten (neuesten) Eintrag anzeigen
                           const firstLine = lead.kommentar.split('\n')[0]
                           const historyMatch = firstLine.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
-                          
+
                           if (historyMatch) {
                             const [, datum, zeit, rest] = historyMatch
                             // Icon und Text extrahieren
                             const iconMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬)\s*(.+)$/)
-                            const icon = iconMatch ? iconMatch[1] : '📋'
+                            const icon = iconMatch ? iconMatch[1] : ''
                             let text = iconMatch ? iconMatch[2] : rest
                             // Username am Ende entfernen für kürzere Anzeige
                             text = text.replace(/\s*\([^)]+\)$/, '')
                             // Text kürzen
                             if (text.length > 30) text = text.substring(0, 30) + '...'
-                            
+
                             return (
-                              <div className="flex items-center gap-2 text-sm">
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 text-xs font-mono">
+                              <div className="flex items-center gap-2 text-body-sm">
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-surface-container text-on-surface-variant text-label-sm font-mono">
                                   {datum.substring(0, 6)}
                                 </span>
-                                <span>{icon}</span>
-                                <span className="text-gray-600 truncate max-w-[120px]">{text}</span>
+                                {icon && <span>{icon}</span>}
+                                <span className="text-on-surface-variant truncate max-w-[120px]">{text}</span>
                               </div>
                             )
                           } else {
                             // Alter Kommentar ohne History-Format
                             return (
-                              <div className="flex items-center text-sm text-gray-600">
-                                <MessageSquare className="w-4 h-4 mr-1.5 text-gray-400 flex-shrink-0" />
+                              <div className="flex items-center text-body-sm text-on-surface-variant">
+                                <MessageSquare className="w-4 h-4 mr-1.5 text-outline flex-shrink-0" />
                                 <span className="truncate max-w-[150px]">{firstLine}</span>
                               </div>
                             )
                           }
                         })()
                       ) : (
-                        <span className="text-gray-400 text-sm">—</span>
+                        <span className="text-outline text-body-sm">—</span>
                       )}
                     </td>
                   </tr>
@@ -1081,22 +1083,22 @@ function Kaltakquise() {
 
         {/* Pagination */}
         {(hasMore || pageHistory.length > 0) && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
+          <div className="flex items-center justify-between px-4 py-3 bg-surface-container/50">
             <button
               onClick={prevPage}
               disabled={pageHistory.length === 0}
-              className="flex items-center px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center px-3 py-1.5 text-body-sm text-on-surface-variant hover:text-on-surface disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="w-4 h-4 mr-1" />
               Zurück
             </button>
-            <span className="text-sm text-gray-500">
+            <span className="text-body-sm text-on-surface-variant">
               Seite {pageHistory.length + 1}
             </span>
             <button
               onClick={nextPage}
               disabled={!hasMore}
-              className="flex items-center px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center px-3 py-1.5 text-body-sm text-on-surface-variant hover:text-on-surface disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Weiter
               <ChevronRight className="w-4 h-4 ml-1" />
@@ -1114,18 +1116,18 @@ function Kaltakquise() {
             <button
               onClick={loadEbookLeads}
               disabled={ebookLoading}
-              className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center px-4 py-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 text-gray-600 ${ebookLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 mr-2 text-on-surface-variant ${ebookLoading ? 'animate-spin' : ''}`} />
               Aktualisieren
             </button>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="card-elevated overflow-hidden">
             {ebookLoading ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-amber-600" />
-                <span className="ml-3 text-gray-600">Pool wird geladen...</span>
+                <Loader2 className="w-8 h-8 animate-spin text-warning" />
+                <span className="ml-3 text-on-surface-variant">Pool wird geladen...</span>
               </div>
             ) : ebookLeads.length === 0 ? (
               <div className="p-12 text-center">

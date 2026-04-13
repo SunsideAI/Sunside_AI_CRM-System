@@ -319,26 +319,26 @@ function Termine() {
   }
 
   return (
-    <div className="p-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6">
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-headline-lg font-display text-on-surface">
             {viewMode === 'all' ? 'Alle Termine' : 'Meine Termine'}
           </h1>
-          <p className="text-gray-500 text-sm">{getHeaderDateText()}</p>
+          <p className="text-body-md text-on-surface-variant mt-2">{getHeaderDateText()}</p>
         </div>
-        
+
         <div className="flex flex-wrap items-center gap-3">
           {/* View Mode Toggle - nur für Admins */}
           {isAdmin() && (
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            <div className="flex items-center glass-panel p-1.5 gap-1">
               <button
                 onClick={() => setViewMode('own')}
-                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'own' 
-                    ? 'bg-white text-purple-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
+                className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                  viewMode === 'own'
+                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
                 <User className="w-4 h-4 mr-1.5" />
@@ -346,10 +346,10 @@ function Termine() {
               </button>
               <button
                 onClick={() => setViewMode('all')}
-                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'all' 
-                    ? 'bg-white text-purple-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
+                className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                  viewMode === 'all'
+                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
                 <Users className="w-4 h-4 mr-1.5" />
@@ -359,13 +359,13 @@ function Termine() {
           )}
 
           {/* Calendar Mode Toggle */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+          <div className="flex items-center glass-panel p-1.5 gap-1">
             <button
               onClick={() => setCalendarMode('week')}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                calendarMode === 'week' 
-                  ? 'bg-white text-purple-600 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
+              className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                calendarMode === 'week'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
               <CalendarRange className="w-4 h-4 mr-1.5" />
@@ -373,10 +373,10 @@ function Termine() {
             </button>
             <button
               onClick={() => setCalendarMode('month')}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                calendarMode === 'month' 
-                  ? 'bg-white text-purple-600 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
+              className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                calendarMode === 'month'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
               <CalendarDays className="w-4 h-4 mr-1.5" />
@@ -388,22 +388,22 @@ function Termine() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentDate(new Date())}
-              className="px-3 py-2 text-sm border border-gray-300 rounded-lg hover:bg-gray-50"
+              className="px-3 py-2 text-label-md bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
             >
               Heute
             </button>
-            <div className="flex items-center border border-gray-300 rounded-lg">
-              <button onClick={() => navigate(-1)} className="p-2 hover:bg-gray-50 rounded-l-lg">
-                <ChevronLeft className="w-5 h-5" />
+            <div className="flex items-center bg-surface-container-lowest rounded-lg shadow-ambient-sm">
+              <button onClick={() => navigate(-1)} className="p-2 hover:bg-surface-container rounded-l-lg transition-colors">
+                <ChevronLeft className="w-5 h-5 text-on-surface-variant" />
               </button>
-              <button onClick={() => navigate(1)} className="p-2 hover:bg-gray-50 rounded-r-lg">
-                <ChevronRight className="w-5 h-5" />
+              <button onClick={() => navigate(1)} className="p-2 hover:bg-surface-container rounded-r-lg transition-colors">
+                <ChevronRight className="w-5 h-5 text-on-surface-variant" />
               </button>
             </div>
             <button
               onClick={loadTermine}
               disabled={loading}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="p-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors"
             >
               <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
             </button>
@@ -412,17 +412,17 @@ function Termine() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 text-red-700">
+        <div className="bg-error-container rounded-xl p-4 text-error">
           {error}
         </div>
       )}
 
       {/* Kalender */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="card-elevated overflow-hidden">
         {/* Wochentage Header */}
-        <div className="grid grid-cols-7 border-b border-gray-200 bg-gray-50">
+        <div className="grid grid-cols-7 bg-surface-container">
           {['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'].map((day, idx) => (
-            <div key={idx} className="p-3 text-center text-xs font-medium text-gray-500 uppercase border-r last:border-r-0">
+            <div key={idx} className="p-3 text-center text-label-sm font-medium text-on-surface-variant uppercase">
               {day}
             </div>
           ))}

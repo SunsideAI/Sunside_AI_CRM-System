@@ -80,13 +80,13 @@ const PAKET_OPTIONS = [
 
 // Status-Optionen für Dropdown
 const STATUS_OPTIONS = [
-  { value: 'Lead', label: 'Lead', color: 'bg-blue-100 text-blue-700' },
-  { value: 'Angebot', label: 'Angebot', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'Angebot versendet', label: 'Angebot versendet', color: 'bg-purple-100 text-purple-700' },
-  { value: 'Abgeschlossen', label: 'Abgeschlossen', color: 'bg-green-100 text-green-700' },
-  { value: 'Termin abgesagt', label: 'Termin abgesagt', color: 'bg-orange-100 text-orange-700' },
-  { value: 'Termin verschoben', label: 'Termin verschoben', color: 'bg-amber-100 text-amber-700' },
-  { value: 'Verloren', label: 'Verloren', color: 'bg-red-100 text-red-700' }
+  { value: 'Lead', label: 'Lead', color: 'badge-primary' },
+  { value: 'Angebot', label: 'Angebot', color: 'badge-warning' },
+  { value: 'Angebot versendet', label: 'Angebot versendet', color: 'badge-secondary' },
+  { value: 'Abgeschlossen', label: 'Abgeschlossen', color: 'badge-success' },
+  { value: 'Termin abgesagt', label: 'Termin abgesagt', color: 'bg-warning-container text-warning' },
+  { value: 'Termin verschoben', label: 'Termin verschoben', color: 'bg-warning-container text-warning' },
+  { value: 'Verloren', label: 'Verloren', color: 'badge-error' }
 ]
 
 function Closing() {
@@ -972,36 +972,36 @@ function Closing() {
   if (loading && viewMode !== 'pool') {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
-        <span className="ml-3 text-gray-600">Leads werden geladen...</span>
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <span className="ml-3 text-on-surface-variant">Leads werden geladen...</span>
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Toast Notification - wie in LeadAnfragenVerwaltung */}
+    <div className="space-y-8">
+      {/* Toast Notification */}
       {toast && (
         <div className="fixed top-4 right-4 z-50">
-          <div className={`flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg ${
-            toast.type === 'success' 
-              ? 'bg-green-50 border border-green-200' 
-              : 'bg-red-50 border border-red-200'
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-ambient-lg ${
+            toast.type === 'success'
+              ? 'bg-success-container'
+              : 'bg-error-container'
           }`}>
             {toast.type === 'success' ? (
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+              <CheckCircle className="w-5 h-5 text-success flex-shrink-0" />
             ) : (
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-error flex-shrink-0" />
             )}
             <span className={`font-medium ${
-              toast.type === 'success' ? 'text-green-800' : 'text-red-800'
+              toast.type === 'success' ? 'text-success' : 'text-error'
             }`}>{toast.message}</span>
-            <button 
+            <button
               onClick={() => setToast(null)}
               className={`ml-2 ${
-                toast.type === 'success' 
-                  ? 'text-green-600 hover:text-green-800' 
-                  : 'text-red-600 hover:text-red-800'
+                toast.type === 'success'
+                  ? 'text-success hover:text-success/80'
+                  : 'text-error hover:text-error/80'
               }`}
             >
               <X className="w-4 h-4" />
@@ -1013,29 +1013,29 @@ function Closing() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-headline-lg font-display text-on-surface">
             {viewMode === 'pool' ? 'Closer-Pool' : 'Closing'}
             {isAdmin() && viewMode === 'all' && ' (alle Leads)'}
           </h1>
-          <p className="mt-1 text-gray-500">
-            {viewMode === 'pool' 
+          <p className="mt-2 text-body-md text-on-surface-variant">
+            {viewMode === 'pool'
               ? 'Offene Beratungsgespräche - noch kein Closer zugewiesen'
-              : viewMode === 'own' 
-                ? 'Deine Leads im Closing-Prozess' 
+              : viewMode === 'own'
+                ? 'Deine Leads im Closing-Prozess'
                 : 'Alle Leads im Closing-Prozess'
             }
           </p>
         </div>
-        
+
         <div className="flex items-center gap-3">
-          {/* Toggle: Meine Leads / Pool / Alle (für Admins) */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+          {/* Toggle: Meine Leads / Pool / Alle (für Admins) - Glass Style */}
+          <div className="flex items-center glass-panel p-1.5 gap-1">
             <button
               onClick={() => { setViewMode('own'); setCurrentPage(1); }}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'own' 
-                  ? 'bg-white text-purple-600 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
+              className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                viewMode === 'own'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
               <UserIcon className="w-4 h-4 mr-1.5" />
@@ -1043,16 +1043,18 @@ function Closing() {
             </button>
             <button
               onClick={() => { setViewMode('pool'); setCurrentPage(1); }}
-              className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'pool' 
-                  ? 'bg-white text-blue-600 shadow-sm' 
-                  : 'text-gray-600 hover:text-gray-900'
+              className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                viewMode === 'pool'
+                  ? 'bg-secondary text-white shadow-glow-secondary'
+                  : 'text-on-surface-variant hover:text-secondary hover:bg-secondary-container/30'
               }`}
             >
               <Calendar className="w-4 h-4 mr-1.5" />
               Pool
               {poolLeads.length > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+                <span className={`ml-1.5 px-1.5 py-0.5 text-label-sm rounded-md ${
+                  viewMode === 'pool' ? 'bg-white/20 text-white' : 'bg-secondary-container text-secondary'
+                }`}>
                   {poolLeads.length}
                 </span>
               )}
@@ -1060,10 +1062,10 @@ function Closing() {
             {isAdmin() && (
               <button
                 onClick={() => { setViewMode('all'); setCurrentPage(1); }}
-                className={`flex items-center px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  viewMode === 'all' 
-                    ? 'bg-white text-purple-600 shadow-sm' 
-                    : 'text-gray-600 hover:text-gray-900'
+                className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                  viewMode === 'all'
+                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
                 <Users className="w-4 h-4 mr-1.5" />
@@ -1075,7 +1077,7 @@ function Closing() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-error-container text-error px-4 py-3 rounded-xl">
           {error}
         </div>
       )}
@@ -1088,56 +1090,56 @@ function Closing() {
             <button
               onClick={handleRefresh}
               disabled={refreshing || loadingPool}
-              className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              className="flex items-center px-4 py-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
             >
-              <RefreshCw className={`w-4 h-4 mr-2 text-gray-600 ${(refreshing || loadingPool) ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 mr-2 text-on-surface-variant ${(refreshing || loadingPool) ? 'animate-spin' : ''}`} />
               Aktualisieren
             </button>
           </div>
 
-          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+          <div className="card-elevated overflow-hidden">
             {loadingPool ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-              <span className="ml-3 text-gray-600">Pool wird geladen...</span>
+              <Loader2 className="w-8 h-8 animate-spin text-secondary" />
+              <span className="ml-3 text-on-surface-variant">Pool wird geladen...</span>
             </div>
           ) : poolLeads.length === 0 ? (
             <div className="p-12 text-center">
-              <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500 text-lg">Keine offenen Termine im Pool</p>
-              <p className="text-gray-400 mt-1">Alle Beratungsgespräche wurden bereits übernommen</p>
+              <Calendar className="w-16 h-16 text-outline-variant mx-auto mb-4" />
+              <p className="text-on-surface-variant text-title-md">Keine offenen Termine im Pool</p>
+              <p className="text-outline mt-1">Alle Beratungsgespräche wurden bereits übernommen</p>
             </div>
           ) : (
-            <div className="divide-y divide-gray-100">
+            <div className="space-y-1 p-2">
               {poolLeads.map((lead) => {
                 const terminDate = lead.terminDatum ? new Date(lead.terminDatum) : null
                 const isUpcoming = terminDate && terminDate > new Date()
                 const isPast = terminDate && terminDate < new Date()
-                
+
                 return (
-                  <div 
+                  <div
                     key={lead.id}
-                    className={`p-5 hover:bg-gray-50 transition-colors ${isPast ? 'bg-red-50' : ''}`}
+                    className={`table-row p-5 rounded-lg ${isPast ? 'bg-error-container/30' : ''}`}
                   >
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       {/* Lead-Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-gray-900 truncate">
+                          <h3 className="font-medium text-on-surface truncate">
                             {lead.unternehmen || 'Unbekannt'}
                           </h3>
                           {lead.terminart && (
-                            <span className={`px-2 py-0.5 text-xs rounded-full ${
-                              lead.terminart === 'Video' 
-                                ? 'bg-purple-100 text-purple-700' 
-                                : 'bg-blue-100 text-blue-700'
+                            <span className={`badge ${
+                              lead.terminart === 'Video'
+                                ? 'badge-secondary'
+                                : 'badge-primary'
                             }`}>
-                              {lead.terminart === 'Video' ? '📹 Video' : '📞 Telefon'}
+                              {lead.terminart === 'Video' ? 'Video' : 'Telefon'}
                             </span>
                           )}
                         </div>
-                        
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
+
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-body-sm text-on-surface-variant">
                           {(lead.ansprechpartnerVorname || lead.ansprechpartnerNachname) && (
                             <span className="flex items-center gap-1">
                               <UserIcon className="w-3.5 h-3.5" />
@@ -1151,7 +1153,7 @@ function Closing() {
                             </span>
                           )}
                           {lead.setterName && (
-                            <span className="flex items-center gap-1 text-gray-400">
+                            <span className="flex items-center gap-1 text-outline">
                               Gebucht von: {lead.setterName}
                             </span>
                           )}
@@ -1159,8 +1161,8 @@ function Closing() {
 
                         {/* Problemstellung / Infos aus Kommentar */}
                         {lead.kommentar && (
-                          <p className="mt-2 text-sm text-gray-600 line-clamp-2">
-                            💬 {lead.kommentar}
+                          <p className="mt-2 text-body-sm text-on-surface-variant line-clamp-2">
+                            {lead.kommentar}
                           </p>
                         )}
                       </div>
@@ -1168,22 +1170,22 @@ function Closing() {
                       {/* Termin & Action */}
                       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                         {/* Termin-Datum */}
-                        <div className={`text-center px-4 py-2 rounded-lg ${
-                          isPast 
-                            ? 'bg-red-100 text-red-700' 
-                            : 'bg-blue-50 text-blue-700'
+                        <div className={`text-center px-4 py-2 rounded-xl ${
+                          isPast
+                            ? 'bg-error-container text-error'
+                            : 'bg-secondary-container text-secondary'
                         }`}>
-                          <div className="text-xs font-medium uppercase">
+                          <div className="text-label-sm font-medium uppercase">
                             {terminDate?.toLocaleDateString('de-DE', { weekday: 'short', timeZone: 'Europe/Berlin' })}
                           </div>
-                          <div className="text-lg font-bold">
+                          <div className="text-title-lg font-display">
                             {terminDate?.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Berlin' })}
                           </div>
-                          <div className="text-sm font-medium">
+                          <div className="text-body-sm font-medium">
                             {terminDate?.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr
                           </div>
                           {isPast && (
-                            <div className="text-xs mt-1">⚠️ Verpasst</div>
+                            <div className="text-label-sm mt-1">Verpasst</div>
                           )}
                         </div>
 
@@ -1191,7 +1193,7 @@ function Closing() {
                         <button
                           onClick={() => claimLead(lead)}
                           disabled={claimingLead === lead.id}
-                          className="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                          className="btn-primary flex items-center justify-center whitespace-nowrap disabled:opacity-50"
                         >
                           {claimingLead === lead.id ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -1215,23 +1217,23 @@ function Closing() {
         /* ==================== NORMALE CLOSING-ANSICHT ==================== */
         <>
           {/* Filter & Suche */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="card p-5">
         <div className="flex flex-col sm:flex-row gap-4">
           {/* Suche */}
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-outline" />
             <input
               type="text"
               placeholder="Firma, Name, Ort suchen..."
               value={searchTerm}
               onChange={handleSearchChange}
-              className="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+              className="input-field pl-10 pr-10"
             />
             {searchTerm && (
               <button
                 type="button"
                 onClick={() => { setSearchTerm(''); setCurrentPage(1); }}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1240,11 +1242,11 @@ function Closing() {
 
           {/* Status-Filter */}
           <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
             <select
               value={statusFilter}
               onChange={handleStatusFilterChange}
-              className="pl-10 pr-8 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none bg-white appearance-none min-w-[180px]"
+              className="select-field pl-10 min-w-[180px]"
             >
               <option value="all">Alle Status</option>
               {STATUS_OPTIONS.map(option => (
@@ -1257,41 +1259,41 @@ function Closing() {
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
           >
-            <RefreshCw className={`w-5 h-5 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
       {/* Lead-Liste */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden min-h-[600px]">
+      <div className="card-elevated overflow-hidden min-h-[600px]">
         <div>
           {paginatedLeads.length === 0 ? (
             <div className="p-12 text-center">
-              <Target className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <Target className="w-16 h-16 text-outline-variant mx-auto mb-4" />
               {searchTerm || statusFilter !== 'all' ? (
                 <div>
-                  <p className="text-gray-500 text-lg">Keine Leads gefunden</p>
-                  <button 
+                  <p className="text-on-surface-variant text-title-md">Keine Leads gefunden</p>
+                  <button
                     type="button"
                     onClick={() => { setSearchTerm(''); setStatusFilter('all'); setCurrentPage(1); }}
-                    className="text-purple-600 hover:text-purple-700 mt-2"
+                    className="text-primary hover:text-primary-container mt-2 transition-colors"
                   >
                     Filter zurücksetzen
                   </button>
                 </div>
               ) : (
                 <div>
-                  <p className="text-gray-500 text-lg">Noch keine Leads im Closing</p>
-                  <p className="text-gray-400 mt-1">Leads erscheinen hier sobald Termine gebucht werden</p>
+                  <p className="text-on-surface-variant text-title-md">Noch keine Leads im Closing</p>
+                  <p className="text-outline mt-1">Leads erscheinen hier sobald Termine gebucht werden</p>
                 </div>
               )}
             </div>
           ) : (
             <div>
               {/* Tabellen-Header */}
-              <div className="hidden md:grid md:grid-cols-12 gap-4 px-6 py-3 bg-gray-50 border-b border-gray-200 text-sm font-medium text-gray-500">
+              <div className="hidden md:grid md:grid-cols-12 gap-4 px-6 py-3.5 bg-surface-container text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
                 <div className={isAdmin() && viewMode === 'all' ? 'col-span-3' : 'col-span-3'}>Unternehmen</div>
                 <div className="col-span-2">Ansprechpartner</div>
                 <div className="col-span-2">Termin</div>
@@ -1307,38 +1309,38 @@ function Closing() {
                 <div className="col-span-1"></div>
               </div>
 
-              {/* Lead Rows */}
-              <div className="divide-y divide-gray-100">
-                {paginatedLeads.map((lead) => (
-                  <div 
-                    key={lead.id} 
+              {/* Lead Rows - No dividers */}
+              <div className="space-y-1 p-2">
+                {paginatedLeads.map((lead, index) => (
+                  <div
+                    key={lead.id}
                     onClick={() => openModal(lead)}
-                    className="px-6 py-4 hover:bg-gray-50 cursor-pointer"
+                    className={`table-row px-6 py-4 rounded-lg cursor-pointer ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
                   >
                     <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
                       {/* Unternehmen */}
                       <div className="col-span-3">
-                        <p className="font-medium text-gray-900">{safeString(lead.unternehmen) || 'Unbekannt'}</p>
-                        <p className="text-sm text-gray-500 md:hidden mt-1">
+                        <p className="font-medium text-on-surface">{safeString(lead.unternehmen) || 'Unbekannt'}</p>
+                        <p className="text-body-sm text-on-surface-variant md:hidden mt-1">
                           {safeString(lead.ansprechpartnerVorname)} {safeString(lead.ansprechpartnerNachname)}
                         </p>
                       </div>
 
                       {/* Ansprechpartner */}
                       <div className="col-span-2 hidden md:block">
-                        <p className="text-gray-700">
+                        <p className="text-on-surface-variant">
                           {safeString(lead.ansprechpartnerVorname)} {safeString(lead.ansprechpartnerNachname)}
                         </p>
                       </div>
 
                       {/* Termin */}
                       <div className="col-span-2 hidden md:block">
-                        <p className="text-gray-600 text-sm">{formatDate(lead.terminDatum)}</p>
+                        <p className="text-body-sm text-on-surface-variant">{formatDate(lead.terminDatum)}</p>
                       </div>
 
                       {/* Status */}
                       <div className="col-span-2 mt-2 md:mt-0">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${getStatusStyle(lead.status)}`}>
+                        <span className={`badge ${getStatusStyle(lead.status)}`}>
                           {lead.status || 'Unbekannt'}
                         </span>
                       </div>
@@ -1346,18 +1348,18 @@ function Closing() {
                       {/* Closer - nur bei "Alle Leads" für Admins */}
                       {isAdmin() && viewMode === 'all' && (
                         <div className="col-span-1 hidden md:block">
-                          <p className="text-gray-600 text-sm">{safeString(lead.closerName) || '-'}</p>
+                          <p className="text-body-sm text-on-surface-variant">{safeString(lead.closerName) || '-'}</p>
                         </div>
                       )}
 
                       {/* Coldcaller */}
                       <div className={`hidden md:block ${isAdmin() && viewMode === 'all' ? 'col-span-1' : 'col-span-2'}`}>
-                        <p className="text-gray-600 text-sm">{safeString(lead.setterName) || '-'}</p>
+                        <p className="text-body-sm text-on-surface-variant">{safeString(lead.setterName) || '-'}</p>
                       </div>
 
                       {/* Pfeil */}
                       <div className="col-span-1 hidden md:flex justify-end">
-                        <ChevronRight className="w-5 h-5 text-gray-400" />
+                        <ChevronRight className="w-5 h-5 text-outline" />
                       </div>
                     </div>
                   </div>
@@ -1366,8 +1368,8 @@ function Closing() {
 
               {/* Pagination */}
               {filteredLeads.length > LEADS_PER_PAGE && (
-                <div className="px-6 py-4 border-t border-gray-100 flex items-center justify-between">
-                  <span className="text-sm text-gray-500">
+                <div className="px-6 py-4 bg-surface-container/50 flex items-center justify-between">
+                  <span className="text-body-sm text-on-surface-variant">
                     {startIndex + 1}-{Math.min(startIndex + LEADS_PER_PAGE, filteredLeads.length)} von {filteredLeads.length} Leads
                   </span>
                   <div className="flex items-center gap-2">
@@ -1375,20 +1377,20 @@ function Closing() {
                       type="button"
                       onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                       disabled={safeCurrentPage === 1}
-                      className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                      className="p-2 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50"
                     >
-                      <ChevronLeft className="w-4 h-4" />
+                      <ChevronLeft className="w-4 h-4 text-on-surface-variant" />
                     </button>
-                    <span className="text-sm text-gray-700 px-3">
+                    <span className="text-body-sm text-on-surface px-3">
                       Seite {safeCurrentPage} von {totalPages}
                     </span>
                     <button
                       type="button"
                       onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                       disabled={safeCurrentPage === totalPages}
-                      className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                      className="p-2 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50"
                     >
-                      <ChevronRight className="w-4 h-4" />
+                      <ChevronRight className="w-4 h-4 text-on-surface-variant" />
                     </button>
                   </div>
                 </div>
@@ -1402,28 +1404,30 @@ function Closing() {
       {selectedLead && createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50"
+          <div
+            className="modal-backdrop fixed inset-0"
             onClick={closeModal}
           />
 
           {/* Modal Content */}
-          <div className="relative bg-white rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="modal-content relative max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
             {/* Header */}
-            <div className="bg-white px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+            <div className="pb-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Building2 className="w-6 h-6 text-purple-600" />
+                <div className="p-2 bg-gradient-primary rounded-lg">
+                  <Building2 className="w-5 h-5 text-white" />
+                </div>
                 <div>
-                  <h3 className="text-lg font-semibold text-gray-900">
+                  <h3 className="text-headline-sm font-display text-on-surface">
                     {safeString(selectedLead.unternehmen) || 'Lead Details'}
                   </h3>
-                  <p className="text-sm text-gray-500">{selectedLead.kategorie || 'Immobilienmakler'}</p>
+                  <p className="text-body-sm text-on-surface-variant">{selectedLead.kategorie || 'Immobilienmakler'}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="p-2 hover:bg-surface-container rounded-lg transition-colors"
               >
                 <X className="w-5 h-5 text-gray-500" />
               </button>

@@ -78,53 +78,53 @@ function Dashboard() {
   const showClosingTab = isCloser() || isAdmin()
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header mit Toggle */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="mt-1 text-gray-500">
+          <h1 className="text-headline-lg font-display text-on-surface">Dashboard</h1>
+          <p className="mt-2 text-body-md text-on-surface-variant">
             {activeView === 'uebersicht' && 'Hier ist dein Überblick für heute.'}
             {activeView === 'kaltakquise' && 'Kaltakquise Performance-Analyse'}
             {activeView === 'closing' && 'Closing Performance-Analyse'}
           </p>
         </div>
 
-        {/* Toggle Buttons */}
-        <div className="flex items-center bg-gray-100 rounded-lg p-1">
+        {/* Toggle Buttons - Glass Style */}
+        <div className="flex items-center glass-panel p-1.5 gap-1">
           <button
             onClick={() => setActiveView('uebersicht')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all duration-250 ${
               activeView === 'uebersicht'
-                ? 'bg-white text-purple-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-gradient-primary text-white shadow-glow-primary'
+                : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
             }`}
           >
             <LayoutDashboard className="h-4 w-4" />
             Übersicht
           </button>
-          
+
           {showKaltakquiseTab && (
             <button
               onClick={() => setActiveView('kaltakquise')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all duration-250 ${
                 activeView === 'kaltakquise'
-                  ? 'bg-white text-purple-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
               <Phone className="h-4 w-4" />
               Kaltakquise
             </button>
           )}
-          
+
           {showClosingTab && (
             <button
               onClick={() => setActiveView('closing')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all duration-250 ${
                 activeView === 'closing'
-                  ? 'bg-white text-purple-600 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
               <Target className="h-4 w-4" />
@@ -272,44 +272,54 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       {/* Begrüßung */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900">
-            Hallo, {user?.vorname || 'User'}! 👋
+          <h2 className="text-headline-sm font-display text-on-surface">
+            Hallo, {user?.vorname || 'User'}!
           </h2>
         </div>
         <button
           onClick={() => loadData(true)}
           disabled={loading}
-          className="flex items-center px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+          className="flex items-center p-2.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-all duration-250"
           title="Daten aktualisieren"
         >
           <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
-      {/* Statistiken */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stats.map((stat) => (
+      {/* Statistiken - Metric Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat, index) => (
           <div
             key={stat.name}
-            className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow"
+            className={`relative overflow-hidden rounded-xl p-6 transition-all duration-250 ${
+              index === 0
+                ? 'metric-card-primary'
+                : 'metric-card hover:shadow-card-hover'
+            }`}
           >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">{stat.name}</p>
-                <p className="mt-1 text-3xl font-bold text-gray-900">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <p className={`text-label-md ${index === 0 ? 'text-white/80' : 'text-on-surface-variant'}`}>
+                  {stat.name}
+                </p>
+                <p className={`mt-2 text-display-sm font-display ${index === 0 ? 'text-white' : 'text-on-surface'}`}>
                   {initialLoading ? (
                     <span className="inline-block w-8 h-8">
-                      <Loader2 className="w-6 h-6 animate-spin text-gray-300" />
+                      <Loader2 className={`w-6 h-6 animate-spin ${index === 0 ? 'text-white/50' : 'text-primary/30'}`} />
                     </span>
                   ) : (
                     stat.value
                   )}
                 </p>
               </div>
-              <div className={`p-3 rounded-lg ${stat.color}`}>
-                <stat.icon className="w-6 h-6 text-white" />
+              <div className={`p-3 rounded-lg ${index === 0 ? 'bg-white/20' : 'bg-secondary-container'}`}>
+                <stat.icon className={`w-5 h-5 ${index === 0 ? 'text-white' : 'text-primary'}`} />
               </div>
             </div>
+            {/* Decorative gradient overlay for hero card */}
+            {index === 0 && (
+              <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-white/10 blur-xl" />
+            )}
           </div>
         ))}
       </div>
@@ -317,24 +327,24 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       {/* Quick Actions */}
       {quickActions.length > 0 && (
         <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Schnellzugriff</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <h2 className="text-title-lg font-display text-on-surface mb-4">Schnellzugriff</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
             {quickActions.map((action) => (
               <Link
                 key={action.path}
                 to={action.path}
-                className="flex items-center justify-between p-6 bg-white rounded-xl border border-gray-200 hover:border-purple-500 hover:shadow-md transition-all group"
+                className="flex items-center justify-between p-6 card hover:shadow-ambient-md transition-all duration-250 group"
               >
                 <div className="flex items-center">
-                  <div className={`p-3 rounded-lg ${action.color}`}>
-                    <action.icon className="w-6 h-6" />
+                  <div className="p-3 rounded-lg bg-secondary-container">
+                    <action.icon className="w-6 h-6 text-primary" />
                   </div>
                   <div className="ml-4">
-                    <h3 className="font-medium text-gray-900">{action.name}</h3>
-                    <p className="text-sm text-gray-500">{action.description}</p>
+                    <h3 className="font-medium text-on-surface">{action.name}</h3>
+                    <p className="text-body-sm text-on-surface-variant">{action.description}</p>
                   </div>
                 </div>
-                <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-purple-500 group-hover:translate-x-1 transition-all" />
+                <ArrowRight className="w-5 h-5 text-outline group-hover:text-primary group-hover:translate-x-1 transition-all duration-250" />
               </Link>
             ))}
           </div>
@@ -524,14 +534,14 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
   const getStatusStyle = (status) => {
     switch (status) {
-      case 'Lead': return 'bg-blue-100 text-blue-700'
-      case 'Angebot': return 'bg-yellow-100 text-yellow-700'
-      case 'Angebot versendet': return 'bg-purple-100 text-purple-700'
-      case 'Abgeschlossen': return 'bg-green-100 text-green-700'
-      case 'Termin abgesagt': return 'bg-orange-100 text-orange-700'
-      case 'Termin verschoben': return 'bg-amber-100 text-amber-700'
-      case 'Verloren': return 'bg-red-100 text-red-700'
-      default: return 'bg-gray-100 text-gray-700'
+      case 'Lead': return 'badge-primary'
+      case 'Angebot': return 'badge-warning'
+      case 'Angebot versendet': return 'badge-secondary'
+      case 'Abgeschlossen': return 'badge-success'
+      case 'Termin abgesagt': return 'bg-warning-container text-warning'
+      case 'Termin verschoben': return 'bg-warning-container text-warning'
+      case 'Verloren': return 'badge-error'
+      default: return 'bg-surface-container text-on-surface-variant'
     }
   }
 
@@ -544,62 +554,62 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="card p-6">
         <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
-          <span className="ml-2 text-gray-500">Lade Hot Leads...</span>
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          <span className="ml-2 text-on-surface-variant">Lade Hot Leads...</span>
         </div>
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 overflow-hidden min-h-[600px]">
+    <div className="card-elevated overflow-hidden min-h-[600px]">
       {/* Header */}
-      <div className="p-6 border-b border-gray-100">
-        <div className="flex items-center justify-between mb-4">
+      <div className="p-6 bg-surface-container/50">
+        <div className="flex items-center justify-between mb-5">
           <div className="flex items-center">
-            <div className="p-2 bg-orange-100 rounded-lg mr-3">
-              <Target className="w-5 h-5 text-orange-600" />
+            <div className="p-2.5 bg-gradient-primary rounded-lg mr-3 shadow-glow-primary">
+              <Target className="w-5 h-5 text-white" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Meine Leads im Closing</h2>
-              <p className="text-sm text-gray-500">{hotLeads.length} Leads im Closing-Prozess</p>
+              <h2 className="text-title-lg font-display text-on-surface">Meine Leads im Closing</h2>
+              <p className="text-body-sm text-on-surface-variant">{hotLeads.length} Leads im Closing-Prozess</p>
             </div>
           </div>
-          
-          {/* Mini-Stats */}
-          <div className="flex gap-4 text-sm">
-            <div className="text-center">
-              <span className="block text-lg font-bold text-blue-600">{stats.lead}</span>
-              <span className="text-gray-500">Offen</span>
+
+          {/* Mini-Stats - Glass Cards */}
+          <div className="flex gap-3">
+            <div className="glass-panel px-4 py-2 text-center">
+              <span className="block text-title-lg font-display text-secondary">{stats.lead}</span>
+              <span className="text-label-sm text-on-surface-variant">Offen</span>
             </div>
-            <div className="text-center">
-              <span className="block text-lg font-bold text-purple-600">{stats.angebot}</span>
-              <span className="text-gray-500">Angebot</span>
+            <div className="glass-panel px-4 py-2 text-center">
+              <span className="block text-title-lg font-display text-primary">{stats.angebot}</span>
+              <span className="text-label-sm text-on-surface-variant">Angebot</span>
             </div>
-            <div className="text-center">
-              <span className="block text-lg font-bold text-green-600">{stats.gewonnen}</span>
-              <span className="text-gray-500">Gewonnen</span>
+            <div className="glass-panel px-4 py-2 text-center">
+              <span className="block text-title-lg font-display text-success">{stats.gewonnen}</span>
+              <span className="text-label-sm text-on-surface-variant">Gewonnen</span>
             </div>
           </div>
         </div>
 
-        {/* Suchleiste - immer anzeigen */}
+        {/* Suchleiste - Ghost Style */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
           <input
             type="text"
             placeholder="Lead suchen..."
             value={searchTerm}
             onChange={handleSearchChange}
-            className="w-full pl-10 pr-10 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            className="input-field pl-10 pr-10"
           />
           {searchTerm && (
             <button
               type="button"
               onClick={clearSearch}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors"
             >
               <X className="w-4 h-4" />
             </button>
@@ -611,59 +621,59 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
       <div className="min-h-[400px]">
         {paginatedLeads.length === 0 ? (
           <div className="p-8 text-center">
-            <Target className="w-12 h-12 text-gray-300 mx-auto mb-4" />
+            <Target className="w-12 h-12 text-outline-variant mx-auto mb-4" />
             {searchTerm ? (
               <div>
-                <p className="text-gray-500">Keine Leads gefunden</p>
-                <button 
+                <p className="text-on-surface-variant">Keine Leads gefunden</p>
+                <button
                   type="button"
                   onClick={clearSearch}
-                  className="text-purple-600 hover:text-purple-700 text-sm mt-2"
+                  className="text-primary hover:text-primary-container text-body-sm mt-2 transition-colors"
                 >
                   Suche zurücksetzen
                 </button>
               </div>
             ) : (
               <div>
-                <p className="text-gray-500">Noch keine Leads im Closing</p>
-                <p className="text-sm text-gray-400 mt-1">Buche Termine um Leads hierhin zu bringen</p>
+                <p className="text-on-surface-variant">Noch keine Leads im Closing</p>
+                <p className="text-body-sm text-outline mt-1">Buche Termine um Leads hierhin zu bringen</p>
               </div>
             )}
           </div>
         ) : (
           <div>
-            {/* Lead Rows */}
-            <div className="divide-y divide-gray-100">
+            {/* Lead Rows - No dividers, use spacing */}
+            <div className="space-y-1 p-2">
               {paginatedLeads.map((lead) => (
-                <div 
-                  key={lead.id} 
+                <div
+                  key={lead.id}
                   onClick={() => openModal(lead)}
-                  className="p-4 hover:bg-gray-50 cursor-pointer"
+                  className="table-row p-4 rounded-lg cursor-pointer"
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3">
-                        <span className="font-medium text-gray-900 truncate">{safeString(lead.unternehmen) || 'Unbekannt'}</span>
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusStyle(lead.status)}`}>
+                        <span className="font-medium text-on-surface truncate">{safeString(lead.unternehmen) || 'Unbekannt'}</span>
+                        <span className={`badge ${getStatusStyle(lead.status)}`}>
                           {lead.status || 'Unbekannt'}
                         </span>
                       </div>
-                      <div className="mt-1 flex items-center gap-4 text-sm text-gray-500">
+                      <div className="mt-1.5 flex items-center gap-4 text-body-sm text-on-surface-variant">
                         <span>{safeString(lead.ansprechpartnerVorname)} {safeString(lead.ansprechpartnerNachname)}</span>
                         {lead.terminDatum && <span>{formatDate(lead.terminDatum)}</span>}
                         {safeString(lead.ort) && <span>{safeString(lead.ort)}</span>}
                       </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400 ml-2 flex-shrink-0" />
+                    <ChevronRight className="w-5 h-5 text-outline ml-2 flex-shrink-0" />
                   </div>
                 </div>
               ))}
             </div>
 
-            {/* Pagination */}
+            {/* Pagination - Glass Style */}
             {filteredLeads.length > LEADS_PER_PAGE && (
-              <div className="p-4 border-t border-gray-100 flex items-center justify-between">
-                <span className="text-sm text-gray-500">
+              <div className="p-4 bg-surface-container/30 flex items-center justify-between mt-2">
+                <span className="text-body-sm text-on-surface-variant">
                   {startIndex + 1}-{Math.min(startIndex + LEADS_PER_PAGE, filteredLeads.length)} von {filteredLeads.length}
                 </span>
                 <div className="flex items-center gap-2">
@@ -671,25 +681,25 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                     type="button"
                     onClick={goToPreviousPage}
                     disabled={safeCurrentPage === 1}
-                  className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-sm text-gray-700 px-2">
-                  {safeCurrentPage} / {totalPages}
-                </span>
-                <button
-                  type="button"
-                  onClick={goToNextPage}
-                  disabled={safeCurrentPage === totalPages}
-                  className="p-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+                    className="p-2 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50"
+                  >
+                    <ChevronLeft className="w-4 h-4 text-on-surface-variant" />
+                  </button>
+                  <span className="text-body-sm text-on-surface px-2">
+                    {safeCurrentPage} / {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={goToNextPage}
+                    disabled={safeCurrentPage === totalPages}
+                    className="p-2 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50"
+                  >
+                    <ChevronRight className="w-4 h-4 text-on-surface-variant" />
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -697,42 +707,42 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
       {selectedLead && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/50"
+          <div
+            className="modal-backdrop absolute inset-0"
             onClick={closeModal}
           />
 
           {/* Modal Content */}
-          <div className="relative bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+          <div className="modal-content relative max-w-2xl w-full max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+            <div className="flex items-center justify-between pb-6 flex-shrink-0">
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">{selectedLead.unternehmen || 'Lead Details'}</h2>
-                <p className="text-sm text-gray-500">{selectedLead.kategorie || 'Hot Lead'}</p>
+                <h2 className="text-headline-sm font-display text-on-surface">{selectedLead.unternehmen || 'Lead Details'}</h2>
+                <p className="text-body-sm text-on-surface-variant mt-1">{selectedLead.kategorie || 'Hot Lead'}</p>
               </div>
               <button
                 onClick={closeModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-surface-container rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5 text-on-surface-variant" />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="px-6 py-4 overflow-y-auto flex-1">
+            <div className="overflow-y-auto flex-1">
               {/* Kontaktdaten Grid */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {/* Telefon */}
                 {safeString(selectedLead.telefon) ? (
-                  <a 
+                  <a
                     href={`tel:${safeString(selectedLead.telefon)}`}
-                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex items-center p-3 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
                   >
-                    <Phone className="w-5 h-5 text-purple-600 mr-3" />
-                    <span className="text-gray-900">{safeString(selectedLead.telefon)}</span>
+                    <Phone className="w-5 h-5 text-primary mr-3" />
+                    <span className="text-on-surface">{safeString(selectedLead.telefon)}</span>
                   </a>
                 ) : (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
+                  <div className="flex items-center p-3 bg-surface-container rounded-lg text-outline">
                     <Phone className="w-5 h-5 mr-3" />
                     <span>Keine Telefonnummer</span>
                   </div>
@@ -740,15 +750,15 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
                 {/* E-Mail */}
                 {safeString(selectedLead.email) ? (
-                  <a 
+                  <a
                     href={`mailto:${safeString(selectedLead.email)}`}
-                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex items-center p-3 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
                   >
-                    <Mail className="w-5 h-5 text-purple-600 mr-3" />
-                    <span className="text-gray-900 truncate">{safeString(selectedLead.email)}</span>
+                    <Mail className="w-5 h-5 text-primary mr-3" />
+                    <span className="text-on-surface truncate">{safeString(selectedLead.email)}</span>
                   </a>
                 ) : (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
+                  <div className="flex items-center p-3 bg-surface-container rounded-lg text-outline">
                     <Mail className="w-5 h-5 mr-3" />
                     <span>Keine E-Mail</span>
                   </div>
@@ -756,71 +766,71 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
                 {/* Website */}
                 {safeString(selectedLead.website) ? (
-                  <a 
+                  <a
                     href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex items-center p-3 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
                   >
-                    <Globe className="w-5 h-5 text-purple-600 mr-3" />
-                    <span className="text-gray-900 truncate">{safeString(selectedLead.website)}</span>
+                    <Globe className="w-5 h-5 text-primary mr-3" />
+                    <span className="text-on-surface truncate">{safeString(selectedLead.website)}</span>
                   </a>
                 ) : (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
+                  <div className="flex items-center p-3 bg-surface-container rounded-lg text-outline">
                     <Globe className="w-5 h-5 mr-3" />
                     <span>Keine Website</span>
                   </div>
                 )}
 
                 {/* Standort */}
-                <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                  <MapPin className="w-5 h-5 text-purple-600 mr-3" />
-                  <span className="text-gray-900">
+                <div className="flex items-center p-3 bg-surface-container rounded-lg">
+                  <MapPin className="w-5 h-5 text-primary mr-3" />
+                  <span className="text-on-surface">
                     {[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ') || 'Kein Standort'}
                   </span>
                 </div>
 
                 {/* Ansprechpartner */}
                 {(safeString(selectedLead.ansprechpartnerVorname) || safeString(selectedLead.ansprechpartnerNachname)) && (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                    <User className="w-5 h-5 text-purple-600 mr-3" />
+                  <div className="flex items-center p-3 bg-surface-container rounded-lg">
+                    <User className="w-5 h-5 text-primary mr-3" />
                     <div>
-                      <span className="text-xs text-gray-400">Ansprechpartner</span>
-                      <p className="text-gray-900">{safeString(selectedLead.ansprechpartnerVorname)} {safeString(selectedLead.ansprechpartnerNachname)}</p>
+                      <span className="text-label-sm text-on-surface-variant">Ansprechpartner</span>
+                      <p className="text-on-surface">{safeString(selectedLead.ansprechpartnerVorname)} {safeString(selectedLead.ansprechpartnerNachname)}</p>
                     </div>
                   </div>
                 )}
 
                 {/* Termin */}
                 {selectedLead.terminDatum && (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                    <Calendar className="w-5 h-5 text-purple-600 mr-3" />
+                  <div className="flex items-center p-3 bg-surface-container rounded-lg">
+                    <Calendar className="w-5 h-5 text-primary mr-3" />
                     <div>
-                      <span className="text-xs text-gray-400">Termin</span>
-                      <p className="text-gray-900">{formatDate(selectedLead.terminDatum)}</p>
+                      <span className="text-label-sm text-on-surface-variant">Termin</span>
+                      <p className="text-on-surface">{formatDate(selectedLead.terminDatum)}</p>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Zuständig Box */}
+              {/* Zuständig Box - AI Highlight Style */}
               {(selectedLead.setterName || selectedLead.closerName) && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                    <Users className="w-4 h-4 mr-2 text-purple-600" />
+                <div className="ai-highlight mb-6">
+                  <h4 className="text-label-lg text-on-surface mb-3 flex items-center">
+                    <Users className="w-4 h-4 mr-2 text-primary" />
                     Zuständig
                   </h4>
                   <div className="grid grid-cols-2 gap-4">
                     {selectedLead.setterName && (
-                      <div className="bg-white p-3 rounded-lg shadow-sm">
-                        <p className="text-xs text-gray-500">Coldcaller</p>
-                        <p className="text-sm font-semibold text-gray-900">{selectedLead.setterName}</p>
+                      <div className="bg-surface-container-lowest p-3 rounded-lg shadow-ambient-sm">
+                        <p className="text-label-sm text-on-surface-variant">Coldcaller</p>
+                        <p className="text-body-md font-medium text-on-surface">{selectedLead.setterName}</p>
                       </div>
                     )}
                     {selectedLead.closerName && (
-                      <div className="bg-white p-3 rounded-lg shadow-sm">
-                        <p className="text-xs text-gray-500">Closer</p>
-                        <p className="text-sm font-semibold text-gray-900">{selectedLead.closerName}</p>
+                      <div className="bg-surface-container-lowest p-3 rounded-lg shadow-ambient-sm">
+                        <p className="text-label-sm text-on-surface-variant">Closer</p>
+                        <p className="text-body-md font-medium text-on-surface">{selectedLead.closerName}</p>
                       </div>
                     )}
                   </div>
@@ -829,27 +839,27 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
               {/* Deal-Werte */}
               {(selectedLead.setup > 0 || selectedLead.retainer > 0) && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                    <DollarSign className="w-4 h-4 mr-2 text-green-600" />
+                <div className="mb-6 p-4 bg-success-container/50 rounded-xl">
+                  <h4 className="text-label-lg text-on-surface mb-3 flex items-center">
+                    <DollarSign className="w-4 h-4 mr-2 text-success" />
                     Deal-Details
                   </h4>
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                      <p className="text-xs text-gray-500">Setup</p>
-                      <p className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</p>
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="bg-surface-container-lowest p-3 rounded-lg shadow-ambient-sm">
+                      <p className="text-label-sm text-on-surface-variant">Setup</p>
+                      <p className="text-title-md font-display text-on-surface">{formatMoney(selectedLead.setup)}</p>
                     </div>
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                      <p className="text-xs text-gray-500">Retainer</p>
-                      <p className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/M</p>
+                    <div className="bg-surface-container-lowest p-3 rounded-lg shadow-ambient-sm">
+                      <p className="text-label-sm text-on-surface-variant">Retainer</p>
+                      <p className="text-title-md font-display text-on-surface">{formatMoney(selectedLead.retainer)}/M</p>
                     </div>
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                      <p className="text-xs text-gray-500">Laufzeit</p>
-                      <p className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || '-'} Mon</p>
+                    <div className="bg-surface-container-lowest p-3 rounded-lg shadow-ambient-sm">
+                      <p className="text-label-sm text-on-surface-variant">Laufzeit</p>
+                      <p className="text-title-md font-display text-on-surface">{selectedLead.laufzeit || '-'} Mon</p>
                     </div>
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                      <p className="text-xs text-gray-500">Gesamt</p>
-                      <p className="text-lg font-semibold text-green-600">
+                    <div className="bg-surface-container-lowest p-3 rounded-lg shadow-ambient-sm">
+                      <p className="text-label-sm text-on-surface-variant">Gesamt</p>
+                      <p className="text-title-md font-display text-success">
                         {formatMoney((selectedLead.setup || 0) + (selectedLead.retainer || 0) * (selectedLead.laufzeit || 1))}
                       </p>
                     </div>
@@ -859,15 +869,15 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
               {/* Status & Notizen */}
               <div className="space-y-4">
-                <h3 className="font-medium text-gray-900">Status & Notizen</h3>
-                
+                <h3 className="text-title-md font-display text-on-surface">Status & Notizen</h3>
+
                 {/* Status Badge */}
                 <div className="flex items-center gap-2">
-                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusStyle(selectedLead.status)}`}>
+                  <span className={`badge ${getStatusStyle(selectedLead.status)}`}>
                     {selectedLead.status || 'Unbekannt'}
                   </span>
                   {selectedLead.terminart && (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-700">
+                    <span className="badge badge-primary">
                       {selectedLead.terminart}
                     </span>
                   )}
@@ -875,20 +885,20 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
                 {/* Notizen */}
                 {selectedLead.kommentar ? (
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
+                  <div className="bg-surface-container rounded-xl p-4">
+                    <p className="text-body-md text-on-surface whitespace-pre-wrap">{selectedLead.kommentar}</p>
                   </div>
                 ) : (
-                  <p className="text-gray-400 text-sm italic">Noch keine Notizen vorhanden</p>
+                  <p className="text-outline text-body-sm italic">Noch keine Notizen vorhanden</p>
                 )}
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 flex-shrink-0">
+            <div className="pt-6 flex-shrink-0">
               <button
                 onClick={closeModal}
-                className="w-full px-4 py-3 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
+                className="btn-primary w-full"
               >
                 Schließen
               </button>
@@ -1071,85 +1081,81 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   if (loading && !refreshing) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Filter Bar - Erweitert für Admins */}
+      {/* Filter Bar - Glass Style */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <p className="text-sm text-gray-500">
-          {isAdmin() 
+        <p className="text-body-md text-on-surface-variant">
+          {isAdmin()
             ? (selectedUser === 'all' ? 'Übersicht aller Vertriebler' : `Performance: ${selectedUser}`)
             : 'Deine Kaltakquise Performance'
           }
         </p>
 
         <div className="flex flex-wrap items-center gap-3">
-          {/* NEU: Vertriebler-Filter für Admins */}
+          {/* Vertriebler-Filter für Admins */}
           {isAdmin() && vertriebler.length > 0 && (
             <div className="relative">
               <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                <Filter className="h-4 w-4 text-gray-400" />
+                <Filter className="h-4 w-4 text-outline" />
               </div>
               <select
                 value={selectedUser}
                 onChange={(e) => setSelectedUser(e.target.value)}
-                className="appearance-none bg-white border border-gray-300 rounded-lg pl-9 pr-10 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="select-field pl-9 pr-10 py-2.5"
               >
                 <option value="all">Alle Vertriebler</option>
                 {vertriebler.map((v) => (
                   <option key={v.id || v.name} value={v.name}>{v.name}</option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
             </div>
           )}
 
-          {/* Zeitraum-Filter - Erweitert */}
-          <div className="relative">
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              <optgroup label="Tage">
-                <option value="today">Heute</option>
-                <option value="yesterday">Gestern</option>
-                <option value="7days">Letzte 7 Tage</option>
-                <option value="14days">Letzte 14 Tage</option>
-                <option value="30days">Letzte 30 Tage</option>
-              </optgroup>
-              <optgroup label="Wochen">
-                <option value="thisWeek">Diese Woche</option>
-                <option value="lastWeek">Letzte Woche</option>
-              </optgroup>
-              <optgroup label="Monate">
-                <option value="thisMonth">Dieser Monat</option>
-                <option value="lastMonth">Letzter Monat</option>
-                <option value="3months">Letzte 3 Monate</option>
-              </optgroup>
-              <optgroup label="Gesamt">
-                <option value="all">Gesamter Zeitraum</option>
-              </optgroup>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-          </div>
+          {/* Zeitraum-Filter */}
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="select-field py-2.5"
+          >
+            <optgroup label="Tage">
+              <option value="today">Heute</option>
+              <option value="yesterday">Gestern</option>
+              <option value="7days">Letzte 7 Tage</option>
+              <option value="14days">Letzte 14 Tage</option>
+              <option value="30days">Letzte 30 Tage</option>
+            </optgroup>
+            <optgroup label="Wochen">
+              <option value="thisWeek">Diese Woche</option>
+              <option value="lastWeek">Letzte Woche</option>
+            </optgroup>
+            <optgroup label="Monate">
+              <option value="thisMonth">Dieser Monat</option>
+              <option value="lastMonth">Letzter Monat</option>
+              <option value="3months">Letzte 3 Monate</option>
+            </optgroup>
+            <optgroup label="Gesamt">
+              <option value="all">Gesamter Zeitraum</option>
+            </optgroup>
+          </select>
 
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50 shadow-ambient-sm"
           >
-            <RefreshCw className={`h-5 w-5 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-5 w-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-error-container text-error px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
@@ -1168,11 +1174,11 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           {/* Charts Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Conversion Funnel */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Ergebnisse in Zahlen</h3>
+            <div className="card p-6">
+              <h3 className="text-label-lg text-on-surface mb-4">Ergebnisse in Zahlen</h3>
               {(stats.summary?.einwahlen || 0) > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
-                  <BarChart 
+                  <BarChart
                     data={[
                       { name: 'Einwahlen', value: stats.summary?.einwahlen || 0 },
                       { name: 'Erreicht', value: stats.summary?.erreicht || 0 },
@@ -1181,20 +1187,20 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                     ]}
                     layout="vertical"
                   >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={100} />
-                    <Tooltip />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                      <Cell fill="#7C3AED" />
-                      <Cell fill="#6366F1" />
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E1E2EC" />
+                    <XAxis type="number" tick={{ fill: '#44474F' }} />
+                    <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#44474F' }} />
+                    <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
+                    <Bar dataKey="value" radius={[0, 8, 8, 0]}>
+                      <Cell fill="#460E74" />
+                      <Cell fill="#5E2C8C" />
                       <Cell fill="#10B981" />
                       <Cell fill="#F59E0B" />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[250px] text-gray-400">
+                <div className="flex items-center justify-center h-[250px] text-outline">
                   <div className="text-center">
                     <BarChart3 className="h-12 w-12 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">Keine Einwahlen im Zeitraum</p>
@@ -1204,8 +1210,8 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
             </div>
 
             {/* Ergebnis Verteilung Pie */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Prozentuale Ergebnisse</h3>
+            <div className="card p-6">
+              <h3 className="text-label-lg text-on-surface mb-4">Prozentuale Ergebnisse</h3>
               {((stats.summary?.beratungsgespraech || 0) + (stats.summary?.unterlagen || 0) + (stats.summary?.keinInteresse || 0)) > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
@@ -1222,14 +1228,14 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                       <Cell fill={RESULT_COLORS.unterlagen} />
                       <Cell fill={RESULT_COLORS.keinInteresse} />
                     </Pie>
-                    <Tooltip />
+                    <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[250px] text-gray-400">
+                <div className="flex items-center justify-center h-[250px] text-outline">
                   <div className="text-center">
                     <Target className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Keine Ergebnisse im Zeitraum</p>
+                    <p className="text-body-sm">Keine Ergebnisse im Zeitraum</p>
                   </div>
                 </div>
               )}
@@ -1237,24 +1243,24 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           </div>
 
           {/* Aktivität Zeitverlauf */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <h3 className="text-sm font-medium text-gray-700 mb-4">Einwahlen im Zeitverlauf</h3>
+          <div className="card p-6">
+            <h3 className="text-label-lg text-on-surface mb-4">Einwahlen im Zeitverlauf</h3>
             {stats.zeitverlauf?.length > 0 && stats.zeitverlauf.some(z => (z.count || 0) > 0) ? (
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={stats.zeitverlauf}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                  <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                  <YAxis tick={{ fontSize: 12 }} />
-                  <Tooltip />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#E1E2EC" />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#44474F' }} />
+                  <YAxis tick={{ fontSize: 12, fill: '#44474F' }} />
+                  <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
                   <Legend />
-                  <Line type="monotone" dataKey="count" name="Einwahlen" stroke="#7C3AED" strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                  <Line type="monotone" dataKey="count" name="Einwahlen" stroke="#460E74" strokeWidth={2} dot={{ r: 4, fill: '#460E74' }} activeDot={{ r: 6, fill: '#5E2C8C' }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="flex items-center justify-center h-[250px] text-gray-400">
+              <div className="flex items-center justify-center h-[250px] text-outline">
                 <div className="text-center">
                   <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">Keine Aktivität im Zeitraum</p>
+                  <p className="text-body-sm">Keine Aktivität im Zeitraum</p>
                 </div>
               </div>
             )}
@@ -1262,32 +1268,33 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
           {/* Gestapeltes Balkendiagramm - Performance pro Vertriebler (Admin only) */}
           {isAdmin() && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">
+            <div className="card p-6">
+              <h3 className="text-label-lg text-on-surface mb-4">
                 {selectedUser === 'all' ? 'Ergebnisse pro Vertriebler (gestapelt)' : `Ergebnisse: ${selectedUser}`}
               </h3>
               {(() => {
                 const perUserData = stats.perUser || []
-                const chartData = selectedUser === 'all' 
+                const chartData = selectedUser === 'all'
                   ? perUserData.slice(0, 20)
                   : perUserData.filter(u => u.name === selectedUser)
-                
+
                 return chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={selectedUser === 'all' ? Math.max(400, perUserData.length * 50) : 120}>
-                    <BarChart 
-                      data={chartData} 
+                    <BarChart
+                      data={chartData}
                       layout="vertical"
                       margin={{ left: 20, right: 20 }}
                     >
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                      <XAxis type="number" />
-                      <YAxis 
-                        dataKey="name" 
-                        type="category" 
-                        width={140} 
-                        tick={{ fontSize: 12 }}
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E1E2EC" />
+                      <XAxis type="number" tick={{ fill: '#44474F' }} />
+                      <YAxis
+                        dataKey="name"
+                        type="category"
+                        width={140}
+                        tick={{ fontSize: 12, fill: '#44474F' }}
                       />
-                      <Tooltip 
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }}
                         formatter={(value, name) => {
                           const labels = {
                             beratungsgespraech: 'Beratungsgespräch',
@@ -1297,7 +1304,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                           return [value, labels[name] || name]
                         }}
                       />
-                      <Legend 
+                      <Legend
                         formatter={(value) => {
                           const labels = {
                             beratungsgespraech: 'Beratungsgespräch',
@@ -1307,16 +1314,16 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                           return labels[value] || value
                         }}
                       />
-                      <Bar dataKey="beratungsgespraech" stackId="a" fill={RESULT_COLORS.beratungsgespraech} name="beratungsgespraech" />
+                      <Bar dataKey="beratungsgespraech" stackId="a" fill={RESULT_COLORS.beratungsgespraech} name="beratungsgespraech" radius={[0, 4, 4, 0]} />
                       <Bar dataKey="unterlagen" stackId="a" fill={RESULT_COLORS.unterlagen} name="unterlagen" />
-                      <Bar dataKey="keinInteresse" stackId="a" fill={RESULT_COLORS.keinInteresse} name="keinInteresse" />
+                      <Bar dataKey="keinInteresse" stackId="a" fill={RESULT_COLORS.keinInteresse} name="keinInteresse" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-[150px] text-gray-400">
+                  <div className="flex items-center justify-center h-[150px] text-outline">
                     <div className="text-center">
                       <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Keine Daten im ausgewählten Zeitraum</p>
+                      <p className="text-body-sm">Keine Daten im ausgewählten Zeitraum</p>
                     </div>
                   </div>
                 )
@@ -1326,33 +1333,33 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
           {/* Einwahlen pro Vertriebler (Admin only) */}
           {isAdmin() && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">
+            <div className="card p-6">
+              <h3 className="text-label-lg text-on-surface mb-4">
                 {selectedUser === 'all' ? 'Einwahlen & Beratungsgespräche pro Vertriebler' : `Einwahlen & Beratungsgespräche: ${selectedUser}`}
               </h3>
               {(() => {
                 const perUserData = stats.perUser || []
-                const chartData = selectedUser === 'all' 
+                const chartData = selectedUser === 'all'
                   ? perUserData.slice(0, 15)
                   : perUserData.filter(u => u.name === selectedUser)
-                
+
                 return chartData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={selectedUser === 'all' ? Math.max(300, perUserData.length * 40) : 100}>
                     <BarChart data={chartData} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                      <XAxis type="number" />
-                      <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                      <Tooltip />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E1E2EC" />
+                      <XAxis type="number" tick={{ fill: '#44474F' }} />
+                      <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12, fill: '#44474F' }} />
+                      <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
                       <Legend />
-                      <Bar dataKey="einwahlen" name="Einwahlen" fill="#7C3AED" />
-                      <Bar dataKey="beratungsgespraech" name="Beratungsgespräch" fill="#10B981" />
+                      <Bar dataKey="einwahlen" name="Einwahlen" fill="#460E74" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="beratungsgespraech" name="Beratungsgespräch" fill="#10B981" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
-                  <div className="flex items-center justify-center h-[150px] text-gray-400">
+                  <div className="flex items-center justify-center h-[150px] text-outline">
                     <div className="text-center">
                       <Phone className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">Keine Einwahlen im ausgewählten Zeitraum</p>
+                      <p className="text-body-sm">Keine Einwahlen im ausgewählten Zeitraum</p>
                     </div>
                   </div>
                 )
@@ -1364,9 +1371,9 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
       {!stats && !loading && (
         <div className="text-center py-12">
-          <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Keine Daten verfügbar</h3>
-          <p className="text-gray-500">Es gibt noch keine Kaltakquise-Daten für den ausgewählten Zeitraum.</p>
+          <BarChart3 className="h-12 w-12 text-outline mx-auto mb-4" />
+          <h3 className="text-title-lg font-display text-on-surface mb-2">Keine Daten verfügbar</h3>
+          <p className="text-on-surface-variant">Es gibt noch keine Kaltakquise-Daten für den ausgewählten Zeitraum.</p>
         </div>
       )}
     </div>
@@ -1493,7 +1500,7 @@ function ClosingAnalytics({ user, isAdmin }) {
   if (loading && !refreshing) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     )
   }
@@ -1502,40 +1509,37 @@ function ClosingAnalytics({ user, isAdmin }) {
     <div className="space-y-6">
       {/* Filter Bar */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-gray-500">
+        <p className="text-body-md text-on-surface-variant">
           {isAdmin() ? 'Übersicht aller Closer' : 'Deine Closing Performance'}
         </p>
 
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <select
-              value={dateRange}
-              onChange={(e) => setDateRange(e.target.value)}
-              className="appearance-none bg-white border border-gray-300 rounded-lg px-4 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-            >
-              <option value="7days">Letzte 7 Tage</option>
-              <option value="14days">Letzte 14 Tage</option>
-              <option value="30days">Letzte 30 Tage</option>
-              <option value="thisMonth">Dieser Monat</option>
-              <option value="3months">Letzte 3 Monate</option>
-              <option value="year">Letztes Jahr</option>
-              <option value="all">Gesamt</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-          </div>
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="select-field py-2.5"
+          >
+            <option value="7days">Letzte 7 Tage</option>
+            <option value="14days">Letzte 14 Tage</option>
+            <option value="30days">Letzte 30 Tage</option>
+            <option value="thisMonth">Dieser Monat</option>
+            <option value="3months">Letzte 3 Monate</option>
+            <option value="year">Letztes Jahr</option>
+            <option value="all">Gesamt</option>
+          </select>
 
           <button
             onClick={handleRefresh}
             disabled={refreshing}
-            className="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50 shadow-ambient-sm"
           >
-            <RefreshCw className={`h-5 w-5 text-gray-600 ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-5 w-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+        <div className="bg-error-container text-error px-4 py-3 rounded-lg">
           {error}
         </div>
       )}
@@ -1556,41 +1560,42 @@ function ClosingAnalytics({ user, isAdmin }) {
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Umsatz Zeitverlauf */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Umsatz & Closings im Zeitverlauf</h3>
+            <div className="card p-6">
+              <h3 className="text-label-lg text-on-surface mb-4">Umsatz & Closings im Zeitverlauf</h3>
               {stats.zeitverlauf?.length > 0 && stats.zeitverlauf.some(d => (d.umsatz || 0) > 0 || (d.count || 0) > 0) ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={stats.zeitverlauf}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-                    <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
-                    <Tooltip 
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E1E2EC" />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#44474F' }} />
+                    <YAxis yAxisId="left" tick={{ fontSize: 12, fill: '#44474F' }} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12, fill: '#44474F' }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }}
                       formatter={(value, name) => {
                         if (name === 'umsatz' || name === 'Umsatz') {
                           return [formatCurrency(value), 'Umsatz']
                         }
                         return [value, 'Abschlüsse']
-                      }} 
+                      }}
                     />
                     <Legend />
-                    <Bar yAxisId="left" dataKey="umsatz" name="Umsatz" fill="#7C3AED" radius={[4, 4, 0, 0]} />
-                    <Bar yAxisId="right" dataKey="count" name="Abschlüsse" fill="#10B981" radius={[4, 4, 0, 0]} />
+                    <Bar yAxisId="left" dataKey="umsatz" name="Umsatz" fill="#460E74" radius={[8, 8, 0, 0]} />
+                    <Bar yAxisId="right" dataKey="count" name="Abschlüsse" fill="#10B981" radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[250px] text-gray-400">
+                <div className="flex items-center justify-center h-[250px] text-outline">
                   <div className="text-center">
                     <DollarSign className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Keine Abschlüsse im ausgewählten Zeitraum</p>
+                    <p className="text-body-sm">Keine Abschlüsse im ausgewählten Zeitraum</p>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Status Verteilung */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Status Verteilung</h3>
+            <div className="card p-6">
+              <h3 className="text-label-lg text-on-surface mb-4">Status Verteilung</h3>
               {((stats.summary?.gewonnen || 0) > 0 || (stats.summary?.verloren || 0) > 0 || (stats.summary?.offen || 0) > 0) ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
@@ -1606,14 +1611,14 @@ function ClosingAnalytics({ user, isAdmin }) {
                     >
                       {COLORS.map((color, index) => (<Cell key={`cell-${index}`} fill={color} />))}
                     </Pie>
-                    <Tooltip />
+                    <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[250px] text-gray-400">
+                <div className="flex items-center justify-center h-[250px] text-outline">
                   <div className="text-center">
                     <Target className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Keine Deals im ausgewählten Zeitraum</p>
+                    <p className="text-body-sm">Keine Deals im ausgewählten Zeitraum</p>
                   </div>
                 </div>
               )}
@@ -1622,15 +1627,16 @@ function ClosingAnalytics({ user, isAdmin }) {
 
           {/* Per Closer Stats (Admin only) */}
           {isAdmin() && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-4">Performance pro Closer</h3>
+            <div className="card p-6">
+              <h3 className="text-label-lg text-on-surface mb-4">Performance pro Closer</h3>
               {stats.perUser && stats.perUser.length > 0 ? (
                 <ResponsiveContainer width="100%" height={Math.max(200, stats.perUser.length * 50)}>
                   <BarChart data={stats.perUser.slice(0, 10)} layout="vertical">
-                    <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-                    <XAxis type="number" />
-                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12 }} />
-                    <Tooltip 
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E1E2EC" />
+                    <XAxis type="number" tick={{ fill: '#44474F' }} />
+                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12, fill: '#44474F' }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }}
                       formatter={(value, name) => {
                         const labels = {
                           offen: 'Offen',
@@ -1641,19 +1647,19 @@ function ClosingAnalytics({ user, isAdmin }) {
                         const label = labels[name] || name
                         const displayValue = name === 'umsatz' ? formatCurrency(value) : value
                         return [displayValue, label]
-                      }} 
+                      }}
                     />
                     <Legend />
-                    <Bar dataKey="offen" name="Offen" fill="#6B7280" stackId="a" />
-                    <Bar dataKey="gewonnen" name="Gewonnen" fill="#10B981" stackId="a" />
-                    <Bar dataKey="verloren" name="Verloren" fill="#EF4444" stackId="a" />
+                    <Bar dataKey="offen" name="Offen" fill="#7C7C8A" stackId="a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="gewonnen" name="Gewonnen" fill="#10B981" stackId="a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="verloren" name="Verloren" fill="#EF4444" stackId="a" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="flex items-center justify-center h-[150px] text-gray-400">
+                <div className="flex items-center justify-center h-[150px] text-outline">
                   <div className="text-center">
                     <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
-                    <p className="text-sm">Keine Closer-Daten im ausgewählten Zeitraum</p>
+                    <p className="text-body-sm">Keine Closer-Daten im ausgewählten Zeitraum</p>
                   </div>
                 </div>
               )}
@@ -1664,9 +1670,9 @@ function ClosingAnalytics({ user, isAdmin }) {
 
       {!stats && !loading && (
         <div className="text-center py-12">
-          <BarChart3 className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Keine Daten verfügbar</h3>
-          <p className="text-gray-500">Es gibt noch keine Closing-Daten für den ausgewählten Zeitraum.</p>
+          <BarChart3 className="h-12 w-12 text-outline mx-auto mb-4" />
+          <h3 className="text-title-lg font-display text-on-surface mb-2">Keine Daten verfügbar</h3>
+          <p className="text-on-surface-variant">Es gibt noch keine Closing-Daten für den ausgewählten Zeitraum.</p>
         </div>
       )}
     </div>
@@ -1678,24 +1684,24 @@ function ClosingAnalytics({ user, isAdmin }) {
 // ==========================================
 function KPICard({ title, value, icon: Icon, color, subtitle }) {
   const colorClasses = {
-    purple: 'bg-purple-50 text-purple-600',
-    green: 'bg-green-50 text-green-600',
-    blue: 'bg-blue-50 text-blue-600',
-    red: 'bg-red-50 text-red-600',
-    yellow: 'bg-yellow-50 text-yellow-600',
-    gray: 'bg-gray-50 text-gray-600'
+    purple: 'bg-primary-fixed text-primary',
+    green: 'bg-success-container text-success',
+    blue: 'bg-secondary-container text-secondary',
+    red: 'bg-error-container text-error',
+    yellow: 'bg-warning-container text-warning',
+    gray: 'bg-surface-container text-on-surface-variant'
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+    <div className="metric-card">
       <div className="flex items-center gap-3">
-        <div className={`p-2 rounded-lg ${colorClasses[color]} flex-shrink-0`}>
+        <div className={`p-2.5 rounded-lg ${colorClasses[color]} flex-shrink-0`}>
           <Icon className="h-5 w-5" />
         </div>
         <div className="min-w-0">
-          <p className="text-xs text-gray-500 leading-tight">{title}</p>
-          <p className="text-xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="text-xs text-gray-400">{subtitle}</p>}
+          <p className="text-label-sm text-on-surface-variant leading-tight">{title}</p>
+          <p className="text-title-lg font-display text-on-surface">{value}</p>
+          {subtitle && <p className="text-label-sm text-outline">{subtitle}</p>}
         </div>
       </div>
     </div>

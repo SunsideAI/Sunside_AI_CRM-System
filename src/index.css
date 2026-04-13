@@ -2,27 +2,414 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom Styles */
-body {
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: #F9FAFB;
+/* ================================================
+   CRM INTELLIGENCE EDITORIAL - Design System
+   ================================================ */
+
+/* Google Fonts Import */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+
+/* ================================================
+   BASE LAYER
+   ================================================ */
+@layer base {
+  :root {
+    /* Primary */
+    --color-primary: 70 14 116;           /* #460E74 */
+    --color-primary-container: 94 44 140; /* #5E2C8C */
+    --color-primary-fixed: 240 219 255;   /* #F0DBFF */
+
+    /* Secondary */
+    --color-secondary: 129 39 207;        /* #8127CF */
+    --color-secondary-container: 232 213 249; /* #E8D5F9 */
+
+    /* Surface */
+    --color-surface: 249 249 255;         /* #F9F9FF */
+    --color-surface-container: 240 243 255; /* #F0F3FF */
+    --color-surface-container-lowest: 255 255 255; /* #FFFFFF */
+
+    /* On-colors */
+    --color-on-surface: 21 28 39;         /* #151C27 */
+    --color-on-primary: 255 255 255;
+
+    /* Outline */
+    --color-outline-variant: 202 196 208; /* #CAC4D0 */
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background-color: #F9F9FF;
+    color: #151C27;
+    line-height: 1.6;
+  }
+
+  /* Display/Headline Typography - Manrope */
+  h1, h2, h3, .font-display {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+
+  /* Remove default focus outline, we'll add custom ones */
+  *:focus {
+    outline: none;
+  }
+
+  /* Custom focus-visible for accessibility */
+  *:focus-visible {
+    outline: 2px solid rgba(70, 14, 116, 0.5);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
 }
 
-/* Scrollbar Styling */
+/* ================================================
+   COMPONENT LAYER
+   ================================================ */
+@layer components {
+  /* Primary Button with Gradient */
+  .btn-primary {
+    @apply px-6 py-3 rounded-md font-medium text-white transition-all duration-250;
+    background: linear-gradient(135deg, #460E74 0%, #5E2C8C 100%);
+    box-shadow: 0 4px 20px rgba(70, 14, 116, 0.2);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 30px rgba(70, 14, 116, 0.3);
+  }
+
+  .btn-primary:active {
+    transform: translateY(0);
+  }
+
+  /* Secondary Button */
+  .btn-secondary {
+    @apply px-6 py-3 rounded-md font-medium transition-all duration-250;
+    background-color: #E8D5F9;
+    color: #460E74;
+  }
+
+  .btn-secondary:hover {
+    background-color: #D4BBEB;
+  }
+
+  /* Ghost Button */
+  .btn-ghost {
+    @apply px-6 py-3 rounded-md font-medium transition-all duration-250;
+    background-color: transparent;
+    color: #460E74;
+  }
+
+  .btn-ghost:hover {
+    background-color: rgba(70, 14, 116, 0.08);
+  }
+
+  /* Card - No borders, ambient shadow */
+  .card {
+    @apply rounded-xl p-6 transition-all duration-250;
+    background-color: #FFFFFF;
+    box-shadow: 0 4px 24px rgba(21, 28, 39, 0.04);
+  }
+
+  .card:hover {
+    box-shadow: 0 8px 32px rgba(21, 28, 39, 0.06);
+  }
+
+  /* Card on Surface Container */
+  .card-elevated {
+    @apply rounded-xl p-6;
+    background-color: #FFFFFF;
+    box-shadow: 0 8px 40px rgba(21, 28, 39, 0.05);
+  }
+
+  /* Metric Card */
+  .metric-card {
+    @apply rounded-xl p-6 relative overflow-hidden;
+    background: linear-gradient(135deg, #FFFFFF 0%, #F9F9FF 100%);
+    box-shadow: 0 4px 24px rgba(21, 28, 39, 0.04);
+  }
+
+  /* Metric Card with Primary Gradient (Hero) */
+  .metric-card-primary {
+    @apply rounded-xl p-6 relative overflow-hidden text-white;
+    background: linear-gradient(135deg, #460E74 0%, #5E2C8C 100%);
+    box-shadow: 0 8px 40px rgba(70, 14, 116, 0.25);
+  }
+
+  /* Glass Panel (Glassmorphism) */
+  .glass-panel {
+    @apply rounded-xl p-4;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* Glass Navigation */
+  .glass-nav {
+    background: rgba(240, 243, 255, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Input Field - Ghost Border */
+  .input-field {
+    @apply w-full px-4 py-3 rounded-md transition-all duration-250 text-body-md;
+    background-color: #F0F3FF;
+    border: 1px solid rgba(202, 196, 208, 0.15);
+    color: #151C27;
+  }
+
+  .input-field::placeholder {
+    color: #79747E;
+  }
+
+  .input-field:focus {
+    background-color: #FFFFFF;
+    border-color: transparent;
+    border-bottom: 2px solid #460E74;
+    box-shadow: 0 0 0 4px rgba(70, 14, 116, 0.1);
+  }
+
+  /* Select Field */
+  .select-field {
+    @apply w-full px-4 py-3 rounded-md transition-all duration-250 appearance-none cursor-pointer;
+    background-color: #F0F3FF;
+    border: 1px solid rgba(202, 196, 208, 0.15);
+    color: #151C27;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2379747E'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 20px;
+    padding-right: 44px;
+  }
+
+  .select-field:focus {
+    background-color: #FFFFFF;
+    border-color: #460E74;
+    box-shadow: 0 0 0 4px rgba(70, 14, 116, 0.1);
+  }
+
+  /* Status Badges */
+  .badge {
+    @apply px-3 py-1 rounded-md text-label-md font-medium inline-flex items-center gap-1;
+  }
+
+  .badge-success {
+    background-color: #D1FAE5;
+    color: #065F46;
+  }
+
+  .badge-warning {
+    background-color: #FEF3C7;
+    color: #92400E;
+  }
+
+  .badge-error {
+    background-color: #FEE2E2;
+    color: #991B1B;
+  }
+
+  .badge-primary {
+    background-color: #F0DBFF;
+    color: #460E74;
+  }
+
+  .badge-secondary {
+    background-color: #E8D5F9;
+    color: #5E2C8C;
+  }
+
+  /* Table Row - No dividers, use spacing */
+  .table-row {
+    @apply transition-all duration-200;
+  }
+
+  .table-row:hover {
+    background-color: #F0F3FF;
+  }
+
+  /* Chip / Tag */
+  .chip {
+    @apply px-3 py-1.5 rounded-md text-label-md font-medium inline-flex items-center gap-1.5;
+    background-color: #E8D5F9;
+    color: #460E74;
+  }
+
+  .chip-active {
+    background: linear-gradient(135deg, #460E74 0%, #5E2C8C 100%);
+    color: white;
+  }
+
+  /* Sidebar Navigation Item */
+  .nav-item {
+    @apply flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 text-body-md font-medium;
+    color: #44474F;
+  }
+
+  .nav-item:hover {
+    background-color: rgba(70, 14, 116, 0.08);
+    color: #460E74;
+  }
+
+  .nav-item.active {
+    background: linear-gradient(135deg, #460E74 0%, #5E2C8C 100%);
+    color: white;
+    box-shadow: 0 4px 20px rgba(70, 14, 116, 0.25);
+  }
+
+  /* AI Suggestion Highlight */
+  .ai-highlight {
+    @apply rounded-lg p-4;
+    background-color: #F0DBFF;
+    border-left: 3px solid #460E74;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    @apply rounded-md px-3 py-2 text-label-md;
+    background-color: #FFFFFF;
+    color: #151C27;
+    box-shadow: 0 8px 40px rgba(21, 28, 39, 0.1);
+  }
+
+  /* Modal Backdrop */
+  .modal-backdrop {
+    background: rgba(21, 28, 39, 0.4);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+
+  /* Modal Content */
+  .modal-content {
+    @apply rounded-2xl p-8;
+    background-color: #FFFFFF;
+    box-shadow: 0 20px 80px rgba(21, 28, 39, 0.15);
+  }
+}
+
+/* ================================================
+   UTILITY LAYER
+   ================================================ */
+@layer utilities {
+  /* Text Colors */
+  .text-primary {
+    color: #460E74;
+  }
+
+  .text-secondary {
+    color: #8127CF;
+  }
+
+  .text-muted {
+    color: #79747E;
+  }
+
+  .text-on-surface {
+    color: #151C27;
+  }
+
+  /* Background Utilities */
+  .bg-surface {
+    background-color: #F9F9FF;
+  }
+
+  .bg-surface-container {
+    background-color: #F0F3FF;
+  }
+
+  .bg-surface-container-lowest {
+    background-color: #FFFFFF;
+  }
+
+  /* Gradient Text */
+  .gradient-text {
+    background: linear-gradient(135deg, #460E74 0%, #8127CF 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* No-Line Divider (use spacing instead) */
+  .divider-spacing {
+    @apply my-6;
+  }
+
+  /* Ghost Border (15% opacity) */
+  .ghost-border {
+    border: 1px solid rgba(202, 196, 208, 0.15);
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ================================================
+   SCROLLBAR STYLING
+   ================================================ */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #F3F4F6;
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #D1D5DB;
-  border-radius: 4px;
+  background: rgba(70, 14, 116, 0.2);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9CA3AF;
+  background: rgba(70, 14, 116, 0.35);
+}
+
+/* ================================================
+   ANIMATIONS
+   ================================================ */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, #F0F3FF 25%, #FFFFFF 50%, #F0F3FF 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ================================================
+   PRINT STYLES
+   ================================================ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+  }
+
+  .card, .metric-card {
+    box-shadow: none;
+    border: 1px solid #E1E2EC;
+  }
 }
