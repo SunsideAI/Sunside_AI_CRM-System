@@ -1352,80 +1352,142 @@ function Closing() {
               )}
             </div>
           ) : (
-            <div>
-              {/* Tabellen-Header */}
-              <div className="hidden md:grid md:grid-cols-12 gap-4 px-6 py-3.5 bg-surface-container text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
-                <div className={isAdmin() && viewMode === 'all' ? 'col-span-3' : 'col-span-3'}>Unternehmen</div>
-                <div className="col-span-2">Ansprechpartner</div>
-                <div className="col-span-2">Termin</div>
-                <div className="col-span-2">Status</div>
-                {isAdmin() && viewMode === 'all' ? (
-                  <>
-                    <div className="col-span-1">Closer</div>
-                    <div className="col-span-1">Coldcaller</div>
-                  </>
-                ) : (
-                  <div className="col-span-2">Coldcaller</div>
-                )}
-                <div className="col-span-1"></div>
-              </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="bg-surface-container">
+                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
+                      Unternehmen
+                    </th>
+                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden md:table-cell">
+                      Ansprechpartner
+                    </th>
+                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
+                      Termin
+                    </th>
+                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
+                      Status
+                    </th>
+                    {/* Closer-Spalte nur bei "Alle Leads" für Admins */}
+                    {isAdmin() && viewMode === 'all' && (
+                      <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
+                        Closer
+                      </th>
+                    )}
+                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
+                      Coldcaller
+                    </th>
+                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden xl:table-cell">
+                      Kontakt
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedLeads.map((lead, index) => (
+                    <tr
+                      key={lead.id}
+                      onClick={() => openModal(lead)}
+                      className={`table-row cursor-pointer ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
+                    >
+                      {/* Status-Indikator */}
+                      <td className="px-4 py-4">
+                        <div
+                          className={`p-1.5 rounded-lg inline-flex ${
+                            lead.status === 'Abgeschlossen'
+                              ? 'bg-success-container text-success'
+                              : lead.status === 'Verloren'
+                              ? 'bg-error-container text-error'
+                              : lead.status === 'Angebot' || lead.status === 'Angebot versendet'
+                              ? 'bg-warning-container text-warning'
+                              : 'bg-surface-container text-outline'
+                          }`}
+                        >
+                          {lead.status === 'Abgeschlossen' ? (
+                            <CheckCircle className="w-5 h-5" />
+                          ) : lead.status === 'Verloren' ? (
+                            <AlertCircle className="w-5 h-5" />
+                          ) : lead.status === 'Angebot' || lead.status === 'Angebot versendet' ? (
+                            <FileText className="w-5 h-5" />
+                          ) : (
+                            <Calendar className="w-5 h-5" />
+                          )}
+                        </div>
+                      </td>
 
-              {/* Lead Rows */}
-              <div className="space-y-1 p-2">
-                {paginatedLeads.map((lead, index) => (
-                  <div
-                    key={lead.id}
-                    onClick={() => openModal(lead)}
-                    className="table-row px-6 py-4 rounded-xl cursor-pointer bg-surface-container-lowest hover:bg-surface-container transition-colors"
-                  >
-                    <div className="md:grid md:grid-cols-12 md:gap-4 md:items-center">
                       {/* Unternehmen */}
-                      <div className="col-span-3">
-                        <p className="font-medium text-on-surface">{safeString(lead.unternehmen) || 'Unbekannt'}</p>
-                        <p className="text-body-sm text-on-surface-variant md:hidden mt-1">
-                          {safeString(lead.ansprechpartnerVorname)} {safeString(lead.ansprechpartnerNachname)}
-                        </p>
-                      </div>
+                      <td className="px-4 py-4">
+                        <div className="font-medium text-on-surface">{safeString(lead.unternehmen) || 'Unbekannt'}</div>
+                        <div className="text-body-sm text-on-surface-variant">{lead.kategorie || 'Unternehmen'}</div>
+                      </td>
 
                       {/* Ansprechpartner */}
-                      <div className="col-span-2 hidden md:block">
-                        <p className="text-on-surface-variant">
+                      <td className="px-4 py-4 hidden md:table-cell">
+                        <div className="flex items-center text-on-surface-variant">
+                          <UserIcon className="w-4 h-4 mr-1.5 text-outline" />
                           {safeString(lead.ansprechpartnerVorname)} {safeString(lead.ansprechpartnerNachname)}
-                        </p>
-                      </div>
+                        </div>
+                      </td>
 
                       {/* Termin */}
-                      <div className="col-span-2 hidden md:block">
-                        <p className="text-body-sm text-on-surface-variant">{formatDate(lead.terminDatum)}</p>
-                      </div>
+                      <td className="px-4 py-4 hidden lg:table-cell">
+                        <div className="flex items-center text-on-surface-variant">
+                          <Calendar className="w-4 h-4 mr-1.5 text-outline" />
+                          {formatDate(lead.terminDatum)}
+                        </div>
+                      </td>
 
-                      {/* Status */}
-                      <div className="col-span-2 mt-2 md:mt-0">
+                      {/* Status Badge */}
+                      <td className="px-4 py-4">
                         <span className={`badge ${getStatusStyle(lead.status)}`}>
                           {lead.status || 'Unbekannt'}
                         </span>
-                      </div>
+                      </td>
 
                       {/* Closer - nur bei "Alle Leads" für Admins */}
                       {isAdmin() && viewMode === 'all' && (
-                        <div className="col-span-1 hidden md:block">
-                          <p className="text-body-sm text-on-surface-variant">{safeString(lead.closerName) || '-'}</p>
-                        </div>
+                        <td className="px-4 py-4 hidden lg:table-cell">
+                          <div className="flex items-center text-on-surface-variant">
+                            <UserIcon className="w-4 h-4 mr-1.5 text-outline" />
+                            <span className="truncate max-w-[100px]">{safeString(lead.closerName) || '—'}</span>
+                          </div>
+                        </td>
                       )}
 
                       {/* Coldcaller */}
-                      <div className={`hidden md:block ${isAdmin() && viewMode === 'all' ? 'col-span-1' : 'col-span-2'}`}>
-                        <p className="text-body-sm text-on-surface-variant">{safeString(lead.setterName) || '-'}</p>
-                      </div>
+                      <td className="px-4 py-4 hidden lg:table-cell">
+                        <div className="flex items-center text-on-surface-variant">
+                          <Phone className="w-4 h-4 mr-1.5 text-outline" />
+                          <span className="truncate max-w-[100px]">{safeString(lead.setterName) || '—'}</span>
+                        </div>
+                      </td>
 
-                      {/* Pfeil */}
-                      <div className="col-span-1 hidden md:flex justify-end">
-                        <ChevronRight className="w-5 h-5 text-outline" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      {/* Kontakt */}
+                      <td className="px-4 py-4 hidden xl:table-cell">
+                        <div className="space-y-1">
+                          {lead.telefon && (
+                            <div className="flex items-center text-body-sm text-on-surface-variant">
+                              <Phone className="w-3.5 h-3.5 mr-1.5 text-outline" />
+                              {lead.telefon}
+                            </div>
+                          )}
+                          {lead.email && (
+                            <div className="flex items-center text-body-sm text-on-surface-variant">
+                              <Mail className="w-3.5 h-3.5 mr-1.5 text-outline" />
+                              <span className="truncate max-w-[150px]">{lead.email}</span>
+                            </div>
+                          )}
+                          {!lead.telefon && !lead.email && (
+                            <span className="text-outline text-body-sm">—</span>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
 
               {/* Pagination */}
               {filteredLeads.length > LEADS_PER_PAGE && (
