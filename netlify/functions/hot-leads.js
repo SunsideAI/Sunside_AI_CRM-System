@@ -618,7 +618,14 @@ export async function handler(event) {
         .from('hot_leads')
         .update(fields)
         .eq('id', hotLeadId)
-        .select('*, closer:users!hot_leads_closer_id_fkey(vor_nachname)')
+        .select(`
+          *,
+          closer:users!hot_leads_closer_id_fkey(vor_nachname),
+          original_lead:leads!hot_leads_lead_id_fkey(
+            unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname,
+            kategorie, mail, telefonnummer
+          )
+        `)
         .single()
 
       if (error) {
@@ -629,22 +636,25 @@ export async function handler(event) {
       // Zapier-Webhook für Angebotsversand (wenn Status auf 'Angebot' gesetzt wird)
       if (fields.status === 'Angebot' && data) {
         try {
+          // Kontaktdaten aus hot_leads ODER aus verknüpftem original_lead
+          const lead = data.original_lead || {}
+
           const zapierPayload = {
             // Status für Zapier-Filter
             Status: 'Angebot',
-            // Kontaktdaten
-            name: arrayToString(data.ansprechpartner_nachname) || '',
-            vorname: arrayToString(data.ansprechpartner_vorname) || '',
-            unternehmensname: arrayToString(data.unternehmen) || '',
-            telefonnummer: arrayToString(data.telefon) || '',
-            email: arrayToString(data.email) || '',
+            // Kontaktdaten (aus hot_leads oder original_lead)
+            name: arrayToString(data.ansprechpartner_nachname) || arrayToString(lead.ansprechpartner_nachname) || '',
+            vorname: arrayToString(data.ansprechpartner_vorname) || arrayToString(lead.ansprechpartner_vorname) || '',
+            unternehmensname: arrayToString(data.unternehmen) || arrayToString(lead.unternehmensname) || '',
+            telefonnummer: arrayToString(data.telefonnummer) || arrayToString(lead.telefonnummer) || '',
+            email: arrayToString(data.mail) || arrayToString(lead.mail) || '',
             // Bearbeiter
             Bearbeiter: data.closer?.vor_nachname || '',
             // Angebotsdaten
             retainer: data.retainer || 0,
             setup: data.setup || 0,
             laufzeit: data.laufzeit || 12,
-            kategorie: arrayToString(data.kategorie) || '',
+            kategorie: arrayToString(data.kategorie) || arrayToString(lead.kategorie) || '',
             paket: Array.isArray(data.produkt_dienstleistung)
               ? data.produkt_dienstleistung[0] || ''
               : data.produkt_dienstleistung || '',
