@@ -1266,10 +1266,10 @@ function Closing() {
       ) : (
         /* ==================== NORMALE CLOSING-ANSICHT ==================== */
         <>
-          {/* Filter & Suche */}
-      <div className="card p-5">
-        <div className="flex flex-col sm:flex-row gap-4">
-          {/* Suche */}
+          {/* Filter & Suche - gleiches Layout wie Kaltakquise */}
+      <div className="card p-5 space-y-4">
+        {/* Zeile 1: Suche + Refresh */}
+        <div className="flex gap-4">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-outline" />
             <input
@@ -1290,21 +1290,6 @@ function Closing() {
             )}
           </div>
 
-          {/* Status-Filter */}
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
-            <select
-              value={statusFilter}
-              onChange={handleStatusFilterChange}
-              className="select-field pl-10 min-w-[180px]"
-            >
-              <option value="all">Alle Status</option>
-              {STATUS_OPTIONS.map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          </div>
-
           {/* Aktualisieren */}
           <button
             onClick={handleRefresh}
@@ -1313,6 +1298,21 @@ function Closing() {
           >
             <RefreshCw className={`w-5 h-5 text-on-surface-variant ${(refreshing || loading) ? 'animate-spin' : ''}`} />
           </button>
+        </div>
+
+        {/* Zeile 2: Filter */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Status-Filter */}
+          <select
+            value={statusFilter}
+            onChange={handleStatusFilterChange}
+            className="select-field w-auto min-w-[140px] text-body-sm py-2.5"
+          >
+            <option value="all">Alle Status</option>
+            {STATUS_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
         </div>
       </div>
 
