@@ -34,8 +34,8 @@ function Einstellungen() {
       {/* Header mit Tabs */}
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Einstellungen</h1>
-          <p className="mt-1 text-gray-500">
+          <h1 className="text-headline-lg font-display text-on-surface">Einstellungen</h1>
+          <p className="mt-2 text-body-md text-on-surface-variant">
             {activeTab === 'mitarbeiter' && 'Mitarbeiter verwalten und Onboarding'}
             {activeTab === 'anfragen' && 'Lead-Anfragen der Vertriebler bearbeiten'}
             {activeTab === 'system' && 'Systemkonfiguration und Verwaltung'}
@@ -43,37 +43,37 @@ function Einstellungen() {
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex items-center bg-gray-100 rounded-lg p-1">
+        <div className="flex items-center bg-surface-container rounded-lg p-1">
           <button
             onClick={() => setActiveTab('mitarbeiter')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all ${
               activeTab === 'mitarbeiter'
-                ? 'bg-white text-purple-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-gradient-primary text-white shadow-glow-primary'
+                : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
             }`}
           >
             <UserCog className="h-4 w-4" />
             Mitarbeiter
           </button>
-          
+
           <button
             onClick={() => setActiveTab('anfragen')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all ${
               activeTab === 'anfragen'
-                ? 'bg-white text-purple-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-gradient-primary text-white shadow-glow-primary'
+                : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
             }`}
           >
             <Inbox className="h-4 w-4" />
             Lead-Anfragen
           </button>
-          
+
           <button
             onClick={() => setActiveTab('system')}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all ${
               activeTab === 'system'
-                ? 'bg-white text-purple-600 shadow-sm'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'bg-gradient-primary text-white shadow-glow-primary'
+                : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
             }`}
           >
             <Settings className="h-4 w-4" />
@@ -103,12 +103,14 @@ function SystemeinstellungenContent({ user }) {
   return (
     <div className="space-y-6">
       {/* Admin Info */}
-      <div className="bg-purple-50 border border-purple-200 rounded-xl p-6">
+      <div className="ai-highlight">
         <div className="flex items-center">
-          <Shield className="w-8 h-8 text-purple-600 mr-4" />
+          <div className="p-2 bg-gradient-primary rounded-lg mr-4">
+            <Shield className="w-6 h-6 text-white" />
+          </div>
           <div>
-            <h3 className="font-medium text-purple-900">Admin-Bereich</h3>
-            <p className="text-sm text-purple-700">
+            <h3 className="font-medium text-on-surface">Admin-Bereich</h3>
+            <p className="text-body-sm text-on-surface-variant">
               Du bist als Admin angemeldet: {user?.vor_nachname || user?.vorname}
             </p>
           </div>
@@ -119,7 +121,7 @@ function SystemeinstellungenContent({ user }) {
       <PasswordManager />
 
       {/* E-Mail Templates */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="card">
         <EmailTemplateManager />
       </div>
 
@@ -141,21 +143,21 @@ function SystemeinstellungenContent({ user }) {
         ].map((group) => (
           <div
             key={group.title}
-            className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-md transition-shadow cursor-pointer relative overflow-hidden opacity-60"
+            className="card relative overflow-hidden opacity-60"
           >
             <div className="absolute top-3 right-3">
-              <span className="px-2 py-1 bg-gray-100 text-gray-500 text-xs rounded-full">
+              <span className="badge badge-secondary text-label-sm">
                 Coming Soon
               </span>
             </div>
-            
+
             <div className="flex items-start">
-              <div className="p-3 bg-gray-100 rounded-lg">
-                <group.icon className="w-6 h-6 text-gray-600" />
+              <div className="p-3 bg-surface-container rounded-lg">
+                <group.icon className="w-6 h-6 text-on-surface-variant" />
               </div>
               <div className="ml-4">
-                <h3 className="font-medium text-gray-900">{group.title}</h3>
-                <p className="mt-1 text-sm text-gray-500">{group.description}</p>
+                <h3 className="font-medium text-on-surface">{group.title}</h3>
+                <p className="mt-1 text-body-sm text-on-surface-variant">{group.description}</p>
               </div>
             </div>
           </div>
@@ -163,28 +165,28 @@ function SystemeinstellungenContent({ user }) {
       </div>
 
       {/* System Info */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="font-medium text-gray-900 mb-4">System-Informationen</h3>
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between py-2 border-b border-gray-100">
-            <span className="text-gray-500">Version</span>
-            <span className="text-gray-900 font-medium">1.0.0 (MVP)</span>
+      <div className="card">
+        <h3 className="font-medium text-on-surface mb-4">System-Informationen</h3>
+        <div className="space-y-3 text-body-sm">
+          <div className="flex justify-between py-2 border-b border-outline-variant/15">
+            <span className="text-on-surface-variant">Version</span>
+            <span className="text-on-surface font-medium">1.0.0 (MVP)</span>
           </div>
-          <div className="flex justify-between py-2 border-b border-gray-100">
-            <span className="text-gray-500">Datenbank</span>
-            <span className="text-gray-900 font-medium">Airtable</span>
+          <div className="flex justify-between py-2 border-b border-outline-variant/15">
+            <span className="text-on-surface-variant">Datenbank</span>
+            <span className="text-on-surface font-medium">Supabase</span>
           </div>
-          <div className="flex justify-between py-2 border-b border-gray-100">
-            <span className="text-gray-500">Passwort-Sicherheit</span>
-            <span className="text-green-600 font-medium">bcrypt (gehasht)</span>
+          <div className="flex justify-between py-2 border-b border-outline-variant/15">
+            <span className="text-on-surface-variant">Passwort-Sicherheit</span>
+            <span className="text-success font-medium">bcrypt (gehasht)</span>
           </div>
-          <div className="flex justify-between py-2 border-b border-gray-100">
-            <span className="text-gray-500">Hot Leads</span>
-            <span className="text-gray-900 font-medium">Notion (MVP)</span>
+          <div className="flex justify-between py-2 border-b border-outline-variant/15">
+            <span className="text-on-surface-variant">Hot Leads</span>
+            <span className="text-on-surface font-medium">Notion (MVP)</span>
           </div>
           <div className="flex justify-between py-2">
-            <span className="text-gray-500">Hosting</span>
-            <span className="text-gray-900 font-medium">Netlify</span>
+            <span className="text-on-surface-variant">Hosting</span>
+            <span className="text-on-surface font-medium">Netlify</span>
           </div>
         </div>
       </div>

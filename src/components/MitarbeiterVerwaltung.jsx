@@ -441,9 +441,9 @@ function MitarbeiterVerwaltung() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+      <div className="bg-white rounded-xl border border-outline-variant/15 p-12 text-center">
         <Loader2 className="w-8 h-8 animate-spin text-purple-600 mx-auto mb-4" />
-        <p className="text-gray-500">Lade Mitarbeiter...</p>
+        <p className="text-on-surface-variant">Lade Mitarbeiter...</p>
       </div>
     )
   }
@@ -453,14 +453,14 @@ function MitarbeiterVerwaltung() {
       {/* Erfolg/Fehler Messages */}
       {success && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center">
-          <Check className="w-5 h-5 text-green-600 mr-3" />
+          <Check className="w-5 h-5 text-success mr-3" />
           <span className="text-green-700">{success}</span>
         </div>
       )}
       
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-center">
-          <AlertCircle className="w-5 h-5 text-red-600 mr-3" />
+          <AlertCircle className="w-5 h-5 text-error mr-3" />
           <span className="text-red-700">{error}</span>
           <button onClick={() => setError('')} className="ml-auto">
             <X className="w-4 h-4 text-red-400" />
@@ -469,35 +469,35 @@ function MitarbeiterVerwaltung() {
       )}
 
       {/* Header mit Suche und Aktionen */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="bg-white rounded-xl border border-outline-variant/15 p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="p-3 bg-purple-100 rounded-lg">
               <Users className="w-6 h-6 text-purple-600" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Mitarbeiterverwaltung</h2>
-              <p className="text-sm text-gray-500">{activeUsers.length} aktive Mitarbeiter</p>
+              <h2 className="text-lg font-semibold text-on-surface">Mitarbeiterverwaltung</h2>
+              <p className="text-sm text-on-surface-variant">{activeUsers.length} aktive Mitarbeiter</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
             {/* Suche */}
             <div className="relative flex-1 sm:flex-none">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-outline" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Suchen..."
-                className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent w-full sm:w-48"
+                className="pl-10 pr-4 py-2 border border-outline-variant/30 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent w-full sm:w-48"
               />
             </div>
 
             {/* Refresh */}
             <button
               onClick={loadUsers}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+              className="p-2 text-on-surface-variant hover:bg-surface-container rounded-lg"
               title="Aktualisieren"
             >
               <RefreshCw className="w-5 h-5" />
@@ -519,22 +519,22 @@ function MitarbeiterVerwaltung() {
       </div>
 
       {/* Mitarbeiter-Liste */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-xl border border-outline-variant/15 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-surface-container border-b border-outline-variant/15">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kontakt</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Adresse</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rolle</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Aktionen</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase">Name</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase">Kontakt</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase">Adresse</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase">Rolle</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-on-surface-variant uppercase">Status</th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-on-surface-variant uppercase">Aktionen</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {activeUsers.map((user) => (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr key={user.id} className="hover:bg-surface-container">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-3">
@@ -543,21 +543,21 @@ function MitarbeiterVerwaltung() {
                         </span>
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900">{user.vor_nachname}</div>
+                        <div className="font-medium text-on-surface">{user.vor_nachname}</div>
                         {user.hasPassword && (
-                          <span className="text-xs text-green-600">✓ Passwort gesetzt</span>
+                          <span className="text-xs text-success">✓ Passwort gesetzt</span>
                         )}
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm">
-                      <div className="flex items-center text-gray-600">
+                      <div className="flex items-center text-on-surface-variant">
                         <Mail className="w-3 h-3 mr-1" />
                         {user.email}
                       </div>
                       {user.telefon && (
-                        <div className="flex items-center text-gray-500 mt-1">
+                        <div className="flex items-center text-on-surface-variant mt-1">
                           <Phone className="w-3 h-3 mr-1" />
                           {user.telefon}
                         </div>
@@ -566,12 +566,12 @@ function MitarbeiterVerwaltung() {
                   </td>
                   <td className="px-6 py-4">
                     {formatAdresse(user) ? (
-                      <span className="flex items-start text-sm text-gray-600">
+                      <span className="flex items-start text-sm text-on-surface-variant">
                         <MapPin className="w-3 h-3 mr-1 mt-0.5 flex-shrink-0" />
                         <span>{formatAdresse(user)}</span>
                       </span>
                     ) : (
-                      <span className="text-gray-400 text-sm">-</span>
+                      <span className="text-outline text-sm">-</span>
                     )}
                   </td>
                   <td className="px-6 py-4">
@@ -581,7 +581,7 @@ function MitarbeiterVerwaltung() {
                           key={rolle}
                           className={`px-2 py-0.5 text-xs rounded-full ${
                             rolle === 'Admin' ? 'bg-purple-100 text-purple-700' :
-                            rolle === 'Closer' ? 'bg-green-100 text-green-700' :
+                            rolle === 'Closer' ? 'bg-success-container text-green-700' :
                             'bg-blue-100 text-blue-700'
                           }`}
                         >
@@ -591,7 +591,7 @@ function MitarbeiterVerwaltung() {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="flex items-center text-sm text-green-600">
+                    <span className="flex items-center text-sm text-success">
                       <UserCheck className="w-4 h-4 mr-1" /> Aktiv
                     </span>
                   </td>
@@ -599,7 +599,7 @@ function MitarbeiterVerwaltung() {
                     <div className="flex items-center justify-end">
                       <button
                         onClick={() => openEditModal(user)}
-                        className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg"
+                        className="p-2 text-on-surface-variant hover:bg-surface-container rounded-lg"
                         title="Bearbeiten"
                       >
                         <Pencil className="w-4 h-4" />
@@ -611,7 +611,7 @@ function MitarbeiterVerwaltung() {
               
               {activeUsers.length === 0 && (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="6" className="px-6 py-12 text-center text-on-surface-variant">
                     Keine Mitarbeiter gefunden
                   </td>
                 </tr>
@@ -623,22 +623,22 @@ function MitarbeiterVerwaltung() {
 
       {/* Inaktive Mitarbeiter (eingeklappt) */}
       {inactiveUsers.length > 0 && (
-        <details className="bg-white rounded-xl border border-gray-200">
-          <summary className="px-6 py-4 cursor-pointer text-gray-600 hover:text-gray-900">
+        <details className="bg-white rounded-xl border border-outline-variant/15">
+          <summary className="px-6 py-4 cursor-pointer text-on-surface-variant hover:text-on-surface">
             <span className="font-medium">Inaktive Mitarbeiter ({inactiveUsers.length})</span>
           </summary>
-          <div className="border-t border-gray-200">
+          <div className="border-t border-outline-variant/15">
             <table className="w-full">
               <tbody className="divide-y divide-gray-200">
                 {inactiveUsers.map((user) => (
-                  <tr key={user.id} className="bg-gray-50 opacity-60">
+                  <tr key={user.id} className="bg-surface-container opacity-60">
                     <td className="px-6 py-3">
-                      <span className="text-gray-600">{user.vor_nachname}</span>
+                      <span className="text-on-surface-variant">{user.vor_nachname}</span>
                     </td>
-                    <td className="px-6 py-3 text-sm text-gray-500">{user.email}</td>
+                    <td className="px-6 py-3 text-sm text-on-surface-variant">{user.email}</td>
                     <td className="px-6 py-3">
                       {user.rolle?.map(rolle => (
-                        <span key={rolle} className="px-2 py-0.5 text-xs bg-gray-200 text-gray-600 rounded-full mr-1">
+                        <span key={rolle} className="px-2 py-0.5 text-xs bg-gray-200 text-on-surface-variant rounded-full mr-1">
                           {rolle}
                         </span>
                       ))}
@@ -683,33 +683,33 @@ function MitarbeiterVerwaltung() {
             {/* Zeile 1: Vorname + Nachname + Telefon */}
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vorname *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Vorname *</label>
                 <input
                   type="text"
                   value={formData.vorname}
                   onChange={(e) => setFormData({ ...formData, vorname: e.target.value })}
                   placeholder="Max"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nachname *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Nachname *</label>
                 <input
                   type="text"
                   value={formData.nachname}
                   onChange={(e) => setFormData({ ...formData, nachname: e.target.value })}
                   placeholder="Mustermann"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Telefon *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Telefon *</label>
                 <input
                   type="tel"
                   value={formData.telefon}
                   onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
                   placeholder="+49 176 12345678"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
             </div>
@@ -717,23 +717,23 @@ function MitarbeiterVerwaltung() {
             {/* Zeile 2: E-Mails */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Private E-Mail *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Private E-Mail *</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="max@beispiel.de"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Geschäftliche E-Mail *</label>
                 <input
                   type="email"
                   value={formData.email_geschaeftlich}
                   onChange={(e) => setFormData({ ...formData, email_geschaeftlich: e.target.value })}
                   placeholder="max@sunsideai.de"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
             </div>
@@ -741,33 +741,33 @@ function MitarbeiterVerwaltung() {
             {/* Zeile 3: Adresse komplett */}
             <div className="grid grid-cols-6 gap-4">
               <div className="col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Straße + Hausnr. *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Straße + Hausnr. *</label>
                 <input
                   type="text"
                   value={formData.strasse}
                   onChange={(e) => setFormData({ ...formData, strasse: e.target.value })}
                   placeholder="Musterstraße 1"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">PLZ *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">PLZ *</label>
                 <input
                   type="text"
                   value={formData.plz}
                   onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
                   placeholder="12345"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ort *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Ort *</label>
                 <input
                   type="text"
                   value={formData.ort}
                   onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
                   placeholder="Berlin"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
             </div>
@@ -775,11 +775,11 @@ function MitarbeiterVerwaltung() {
             {/* Zeile 4: Bundesland + Rollen */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Bundesland *</label>
                 <select
                   value={formData.bundesland}
                   onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Bitte auswählen...</option>
                   {BUNDESLAENDER.map(bl => (
@@ -788,7 +788,7 @@ function MitarbeiterVerwaltung() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rollen *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Rollen *</label>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {ROLLEN.map(rolle => (
                     <button
@@ -798,7 +798,7 @@ function MitarbeiterVerwaltung() {
                       className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                         formData.rolle.includes(rolle)
                           ? 'bg-purple-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          : 'bg-surface-container text-on-surface hover:bg-gray-200'
                       }`}
                     >
                       {rolle}
@@ -852,30 +852,30 @@ function MitarbeiterVerwaltung() {
             {/* Zeile 1: Vorname + Nachname + Telefon */}
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Vorname *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Vorname *</label>
                 <input
                   type="text"
                   value={formData.vorname}
                   onChange={(e) => setFormData({ ...formData, vorname: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Nachname *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Nachname *</label>
                 <input
                   type="text"
                   value={formData.nachname}
                   onChange={(e) => setFormData({ ...formData, nachname: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Telefon *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Telefon *</label>
                 <input
                   type="tel"
                   value={formData.telefon}
                   onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
             </div>
@@ -883,21 +883,21 @@ function MitarbeiterVerwaltung() {
             {/* Zeile 2: E-Mails */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Private E-Mail *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Private E-Mail *</label>
                 <input
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Geschäftliche E-Mail *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Geschäftliche E-Mail *</label>
                 <input
                   type="email"
                   value={formData.email_geschaeftlich}
                   onChange={(e) => setFormData({ ...formData, email_geschaeftlich: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
             </div>
@@ -905,33 +905,33 @@ function MitarbeiterVerwaltung() {
             {/* Zeile 3: Adresse komplett */}
             <div className="grid grid-cols-6 gap-4">
               <div className="col-span-3">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Straße + Hausnr. *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Straße + Hausnr. *</label>
                 <input
                   type="text"
                   value={formData.strasse}
                   onChange={(e) => setFormData({ ...formData, strasse: e.target.value })}
                   placeholder="Musterstraße 1"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">PLZ *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">PLZ *</label>
                 <input
                   type="text"
                   value={formData.plz}
                   onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
                   placeholder="12345"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ort *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Ort *</label>
                 <input
                   type="text"
                   value={formData.ort}
                   onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
                   placeholder="Berlin"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 />
               </div>
             </div>
@@ -939,11 +939,11 @@ function MitarbeiterVerwaltung() {
             {/* Zeile 4: Bundesland + Rollen */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bundesland *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Bundesland *</label>
                 <select
                   value={formData.bundesland}
                   onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
                 >
                   <option value="">Bitte auswählen...</option>
                   {BUNDESLAENDER.map(bl => (
@@ -952,7 +952,7 @@ function MitarbeiterVerwaltung() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Rollen *</label>
+                <label className="block text-sm font-medium text-on-surface mb-1">Rollen *</label>
                 <div className="flex flex-wrap gap-2 mt-1">
                   {ROLLEN.map(rolle => (
                     <button
@@ -962,7 +962,7 @@ function MitarbeiterVerwaltung() {
                       className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                         formData.rolle.includes(rolle)
                           ? 'bg-purple-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          : 'bg-surface-container text-on-surface hover:bg-gray-200'
                       }`}
                     >
                       {rolle}
@@ -977,7 +977,7 @@ function MitarbeiterVerwaltung() {
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-start">
-                    <Target className="w-5 h-5 text-green-600 mr-3 mt-0.5" />
+                    <Target className="w-5 h-5 text-success mr-3 mt-0.5" />
                     <div className="text-sm text-green-700">
                       <p className="font-medium">Closer-Pfad bereitstellen</p>
                       <p className="mt-1">Startet das Closer-Onboarding für diesen Mitarbeiter.</p>
@@ -996,11 +996,11 @@ function MitarbeiterVerwaltung() {
 
             {/* Onboarding Status anzeigen */}
             {selectedUser?.onboarding && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <p className="text-sm text-gray-600">
+              <div className="bg-surface-container border border-outline-variant/15 rounded-lg p-4">
+                <p className="text-sm text-on-surface-variant">
                   <span className="font-medium">Aktueller Onboarding-Status:</span>{' '}
                   <span className={`px-2 py-0.5 rounded-full text-xs ${
-                    selectedUser.onboarding.includes('Closer') ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                    selectedUser.onboarding.includes('Closer') ? 'bg-success-container text-green-700' : 'bg-blue-100 text-blue-700'
                   }`}>
                     {selectedUser.onboarding}
                   </span>
@@ -1009,11 +1009,11 @@ function MitarbeiterVerwaltung() {
             )}
           </div>
 
-          <div className="p-6 border-t border-gray-200 flex justify-between">
+          <div className="p-6 border-t border-outline-variant/15 flex justify-between">
             {/* Deaktivieren Button links */}
             <button
               onClick={() => setShowDeleteModal(true)}
-              className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg"
+              className="flex items-center gap-2 px-4 py-2 text-error hover:bg-red-50 rounded-lg"
             >
               <UserX className="w-4 h-4" />
               Deaktivieren
@@ -1042,8 +1042,8 @@ function MitarbeiterVerwaltung() {
       {/* Delete Confirmation Modal */}
       <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
         <div className="max-w-md w-full">
-          <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-4">
-            <UserX className="w-6 h-6 text-red-600" />
+          <div className="flex items-center justify-center w-12 h-12 bg-error-container rounded-full mx-auto mb-4">
+            <UserX className="w-6 h-6 text-error" />
           </div>
           <h3 className="text-headline-sm font-display text-on-surface text-center mb-2">Mitarbeiter deaktivieren?</h3>
           <p className="text-muted text-center mb-4">

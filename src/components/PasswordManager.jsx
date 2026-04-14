@@ -101,7 +101,7 @@ function PasswordManager() {
     <div className="bg-white rounded-xl border border-gray-200 p-6">
       <div className="flex items-center mb-6">
         <Key className="w-6 h-6 text-sunside-primary mr-3" />
-        <h2 className="text-lg font-semibold text-gray-900">Passwort-Verwaltung</h2>
+        <h2 className="text-lg font-semibold text-on-surface">Passwort-Verwaltung</h2>
       </div>
 
       {/* Message */}
@@ -123,11 +123,11 @@ function PasswordManager() {
       <form onSubmit={handleSubmit} className="space-y-6">
         {/* User Dropdown */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-on-surface mb-2">
             User auswählen
           </label>
           {loadingUsers ? (
-            <div className="flex items-center text-gray-500">
+            <div className="flex items-center text-on-surface-variant">
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Lade User...
             </div>
@@ -135,7 +135,7 @@ function PasswordManager() {
             <select
               value={selectedUser}
               onChange={(e) => setSelectedUser(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+              className="w-full px-4 py-3 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
             >
               <option value="">-- User wählen --</option>
               {users.map((u) => (
@@ -176,7 +176,7 @@ function PasswordManager() {
 
         {/* Passwort */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-on-surface mb-2">
             Neues Passwort
           </label>
           <div className="relative">
@@ -185,7 +185,7 @@ function PasswordManager() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Mindestens 8 Zeichen"
-              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+              className="w-full px-4 py-3 pr-12 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
             />
             <button
               type="button"
@@ -199,7 +199,7 @@ function PasswordManager() {
 
         {/* Passwort bestätigen */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-on-surface mb-2">
             Passwort bestätigen
           </label>
           <input
@@ -207,7 +207,7 @@ function PasswordManager() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Passwort wiederholen"
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+            className="w-full px-4 py-3 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
           />
         </div>
 
@@ -230,7 +230,7 @@ function PasswordManager() {
 
       {/* User Liste mit Status */}
       <div className="mt-8 pt-6 border-t border-gray-200">
-        <h3 className="text-sm font-medium text-gray-700 mb-4">Passwort-Status aller User</h3>
+        <h3 className="text-sm font-medium text-on-surface mb-4">Passwort-Status aller User</h3>
         <div className="space-y-2 max-h-64 overflow-y-auto">
           {users.map((u) => (
             <div 
@@ -243,7 +243,7 @@ function PasswordManager() {
                 ) : (
                   <ShieldX className="w-4 h-4 text-yellow-500 mr-2" />
                 )}
-                <span className="text-sm text-gray-700">{u.vor_nachname}</span>
+                <span className="text-sm text-on-surface">{u.vor_nachname}</span>
               </div>
               <span className={`text-xs px-2 py-1 rounded-full ${
                 u.hasPassword 

@@ -132,7 +132,7 @@ function LeadAnfragenVerwaltung() {
       'Abgelehnt': 'Abgelehnt'
     }
     return (
-      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-gray-100 text-gray-700'}`}>
+      <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${styles[status] || 'bg-surface-container text-gray-700'}`}>
         {labels[status] || status}
       </span>
     )
@@ -161,7 +161,7 @@ function LeadAnfragenVerwaltung() {
       {/* Header mit Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-gray-900">Lead-Anfragen</h2>
+          <h2 className="text-lg font-semibold text-on-surface">Lead-Anfragen</h2>
           {offeneCount > 0 && (
             <span className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
               {offeneCount} offen
@@ -208,9 +208,9 @@ function LeadAnfragenVerwaltung() {
 
       {/* Keine Anfragen */}
       {!loading && anfragen.length === 0 && (
-        <div className="text-center py-12 bg-white rounded-xl border border-gray-200">
+        <div className="text-center py-12 bg-white rounded-xl border border-outline-variant/15">
           <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <p className="text-gray-500">
+          <p className="text-on-surface-variant">
             {filterStatus === 'Offen' ? 'Keine offenen Anfragen' : 'Keine Anfragen gefunden'}
           </p>
         </div>
@@ -218,7 +218,7 @@ function LeadAnfragenVerwaltung() {
 
       {/* Anfragen Liste */}
       {!loading && anfragen.length > 0 && (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+        <div className="bg-white rounded-xl border border-outline-variant/15 overflow-hidden">
           <div className="divide-y divide-gray-200">
             {anfragen.map(anfrage => (
               <div key={anfrage.id} className="p-4">
@@ -232,8 +232,8 @@ function LeadAnfragenVerwaltung() {
                       <Users className="w-5 h-5 text-purple-600" />
                     </div>
                     <div>
-                      <p className="font-medium text-gray-900">{anfrage.userName}</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="font-medium text-on-surface">{anfrage.userName}</p>
+                      <p className="text-sm text-on-surface-variant">
                         {new Date(anfrage.erstelltAm).toLocaleDateString('de-DE', {
                           day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
                         })}
@@ -243,9 +243,9 @@ function LeadAnfragenVerwaltung() {
                   
                   <div className="flex items-center gap-4">
                     <div className="text-right">
-                      <p className="font-semibold text-gray-900">{anfrage.anzahl} Leads</p>
+                      <p className="font-semibold text-on-surface">{anfrage.anzahl} Leads</p>
                       {anfrage.genehmigteAnzahl !== null && anfrage.genehmigteAnzahl !== anfrage.anzahl && (
-                        <p className="text-sm text-gray-500">→ {anfrage.genehmigteAnzahl} genehmigt</p>
+                        <p className="text-sm text-on-surface-variant">→ {anfrage.genehmigteAnzahl} genehmigt</p>
                       )}
                     </div>
                     {getStatusBadge(anfrage.status)}
@@ -325,7 +325,7 @@ function LeadAnfragenVerwaltung() {
 
                 {/* Bearbeitet Info */}
                 {anfrage.status !== 'Offen' && anfrage.bearbeitetVonName && (
-                  <div className="mt-3 ml-14 text-sm text-gray-500">
+                  <div className="mt-3 ml-14 text-sm text-on-surface-variant">
                     Bearbeitet von {anfrage.bearbeitetVonName} am {new Date(anfrage.bearbeitetAm).toLocaleDateString('de-DE')}
                     {anfrage.adminKommentar && (
                       <span className="ml-2">• {anfrage.adminKommentar}</span>

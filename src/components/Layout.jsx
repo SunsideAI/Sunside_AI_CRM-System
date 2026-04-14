@@ -698,13 +698,13 @@ function Layout({ children }) {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowLogoutConfirm(false)}
-                  className="btn-secondary flex-1"
+                  className="flex-1 px-6 py-3 text-on-surface-variant hover:bg-surface-container rounded-xl font-medium transition-colors"
                 >
                   Abbrechen
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="flex-1 px-6 py-3 bg-error text-white rounded-md font-medium hover:bg-error/90 transition-colors"
+                  className="btn-primary flex-1"
                 >
                   Abmelden
                 </button>
