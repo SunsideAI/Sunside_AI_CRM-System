@@ -29,7 +29,10 @@ import {
   FileText,
   User,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Sparkles,
+  Lightbulb,
+  TrendingUp as TrendUp
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
@@ -1098,6 +1101,9 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   const [selectedUser, setSelectedUser] = useState('all') // NEU: Vertriebler-Filter
   const [vertriebler, setVertriebler] = useState([]) // NEU: Liste aller Vertriebler
   const [refreshing, setRefreshing] = useState(false)
+  const [aiAnalysis, setAiAnalysis] = useState(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState(null)
 
   // Cache Key
   const getCacheKey = () => {
@@ -1245,6 +1251,61 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   const handleRefresh = () => {
     setRefreshing(true)
     loadStats(true)
+  }
+
+  // AI-Analyse laden
+  const fetchAiAnalysis = async () => {
+    if (!stats?.summary) return
+
+    setAiLoading(true)
+    setAiError(null)
+    setAiAnalysis(null)
+
+    try {
+      const dateRangeLabels = {
+        'today': 'Heute',
+        'yesterday': 'Gestern',
+        '7days': 'Letzte 7 Tage',
+        '14days': 'Letzte 14 Tage',
+        '30days': 'Letzte 30 Tage',
+        'thisWeek': 'Diese Woche',
+        'lastWeek': 'Letzte Woche',
+        'thisMonth': 'Dieser Monat',
+        'lastMonth': 'Letzter Monat',
+        '3months': 'Letzte 3 Monate',
+        'all': 'Gesamter Zeitraum'
+      }
+
+      const response = await fetch('/.netlify/functions/ai-analysis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stats: {
+            einwahlen: stats.summary?.einwahlen || 0,
+            erreicht: stats.summary?.erreicht || 0,
+            beratungsgespraech: stats.summary?.beratungsgespraech || 0,
+            unterlagen: stats.summary?.unterlagen || 0,
+            keinInteresse: stats.summary?.keinInteresse || 0,
+            erreichtQuote: stats.summary?.erreichQuote || 0,
+            beratungsgespraechQuote: stats.summary?.beratungsgespraechQuote || 0,
+            unterlagenQuote: stats.summary?.unterlagenQuote || 0
+          },
+          dateRange: dateRangeLabels[dateRange] || dateRange
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Fehler bei der AI-Analyse')
+      }
+
+      const data = await response.json()
+      setAiAnalysis(data.analysis)
+    } catch (err) {
+      console.error('AI Analysis Error:', err)
+      setAiError(err.message || 'Fehler bei der AI-Analyse')
+    } finally {
+      setAiLoading(false)
+    }
   }
 
   const formatPercent = (value) => `${value.toFixed(1)}%`
@@ -1432,6 +1493,127 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
               )
               })()}
             </div>
+          </div>
+
+          {/* KI-Analyse Section */}
+          <div className="card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5 text-primary" />
+                <h3 className="text-label-lg text-on-surface">KI-Analyse</h3>
+              </div>
+              <button
+                onClick={fetchAiAnalysis}
+                disabled={aiLoading || !stats?.summary}
+                className="btn-secondary text-sm px-4 py-2 flex items-center gap-2 disabled:opacity-50"
+              >
+                {aiLoading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Analysiere...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    Analyse generieren
+                  </>
+                )}
+              </button>
+            </div>
+
+            {aiLoading && (
+              <div className="flex flex-col items-center justify-center py-12">
+                <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+                <p className="text-on-surface-variant">KI analysiert die Daten...</p>
+                <p className="text-sm text-outline mt-1">Dies kann einige Sekunden dauern</p>
+              </div>
+            )}
+
+            {aiError && (
+              <div className="bg-error-container text-error px-4 py-3 rounded-lg">
+                {aiError}
+              </div>
+            )}
+
+            {!aiLoading && !aiAnalysis && !aiError && (
+              <div className="flex flex-col items-center justify-center py-12 text-outline">
+                <Sparkles className="h-12 w-12 mb-3 opacity-50" />
+                <p className="text-body-md">Klicke auf "Analyse generieren" für KI-Insights</p>
+                <p className="text-sm mt-1">Basierend auf deinen aktuellen Statistiken</p>
+              </div>
+            )}
+
+            {aiAnalysis && !aiLoading && (
+              <div className="space-y-6">
+                {/* Zusammenfassung */}
+                <div className="bg-primary-container/30 rounded-lg p-4">
+                  <p className="text-on-surface font-medium">{aiAnalysis.zusammenfassung}</p>
+                </div>
+
+                {/* Insights */}
+                {aiAnalysis.insights?.length > 0 && (
+                  <div>
+                    <h4 className="text-label-md text-on-surface mb-3 flex items-center gap-2">
+                      <Lightbulb className="h-4 w-4 text-yellow-500" />
+                      Erkenntnisse
+                    </h4>
+                    <div className="space-y-3">
+                      {aiAnalysis.insights.map((insight, idx) => (
+                        <div
+                          key={idx}
+                          className={`rounded-lg p-4 border-l-4 ${
+                            insight.typ === 'positiv'
+                              ? 'bg-green-50 border-green-500'
+                              : insight.typ === 'negativ'
+                              ? 'bg-red-50 border-red-500'
+                              : 'bg-gray-50 border-gray-400'
+                          }`}
+                        >
+                          <p className="font-medium text-on-surface">{insight.titel}</p>
+                          <p className="text-sm text-on-surface-variant mt-1">{insight.beschreibung}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Prognosen */}
+                {aiAnalysis.prognosen?.length > 0 && (
+                  <div>
+                    <h4 className="text-label-md text-on-surface mb-3 flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-primary" />
+                      Prognosen
+                    </h4>
+                    <div className="space-y-3">
+                      {aiAnalysis.prognosen.map((prognose, idx) => (
+                        <div key={idx} className="bg-surface-container rounded-lg p-4">
+                          <p className="font-medium text-on-surface">{prognose.titel}</p>
+                          <p className="text-sm text-on-surface-variant mt-1">{prognose.beschreibung}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Empfehlungen */}
+                {aiAnalysis.empfehlungen?.length > 0 && (
+                  <div>
+                    <h4 className="text-label-md text-on-surface mb-3 flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      Handlungsempfehlungen
+                    </h4>
+                    <ul className="space-y-2">
+                      {aiAnalysis.empfehlungen.map((empfehlung, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-on-surface-variant">
+                          <ArrowRight className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
+                          <span>{empfehlung}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Aktivität Zeitverlauf */}
