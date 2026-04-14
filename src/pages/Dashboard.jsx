@@ -1115,6 +1115,13 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     loadStats()
   }, [dateRange, selectedUser])
 
+  // Auto-trigger AI analysis when stats are loaded
+  useEffect(() => {
+    if (stats?.summary && !aiAnalysis && !aiLoading) {
+      fetchAiAnalysis()
+    }
+  }, [stats])
+
   // Erweiterte Zeitraum-Optionen
   const getDateRange = () => {
     const now = new Date()
@@ -1505,7 +1512,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
               <button
                 onClick={fetchAiAnalysis}
                 disabled={aiLoading || !stats?.summary}
-                className="btn-secondary text-sm px-4 py-2 flex items-center gap-2 disabled:opacity-50"
+                className="btn-primary text-sm px-4 py-2 flex items-center gap-2 disabled:opacity-50"
               >
                 {aiLoading ? (
                   <>
