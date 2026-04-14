@@ -1870,8 +1870,8 @@ function Closing() {
                     
                     return (
                       <div className="flex items-center gap-3 mb-6">
-                        <div className="p-3 bg-orange-100 rounded-xl">
-                          <CalendarPlus className="w-6 h-6 text-orange-600" />
+                        <div className="p-3 bg-primary-container rounded-xl">
+                          <CalendarPlus className="w-6 h-6 text-primary" />
                         </div>
                         <div>
                           <h3 className="text-xl font-semibold text-gray-900">{headerText}</h3>
@@ -1923,7 +1923,7 @@ function Closing() {
                           <button
                             type="button"
                             onClick={() => setShowTerminPicker(true)}
-                            className="w-full flex items-center justify-center px-4 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                            className="w-full flex items-center justify-center px-4 py-3 bg-primary text-on-primary rounded-xl hover:bg-primary/90 transition-colors"
                           >
                             <CalendarPlus className="w-5 h-5 mr-2" />
                             {isInPast || isAbgesagt ? 'Neuen Termin buchen' : 'Termin verschieben'}
@@ -1935,7 +1935,7 @@ function Closing() {
                         <button
                           type="button"
                           onClick={() => setShowAngebotView(true)}
-                          className="flex items-center justify-center px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                          className="btn-primary flex items-center justify-center"
                         >
                           <Send className="w-4 h-4 mr-2" />
                           {selectedLead.status === 'Lead' ? 'Angebot versenden' : 'Neues Angebot'}
@@ -1943,7 +1943,7 @@ function Closing() {
                         <button
                           type="button"
                           onClick={() => setShowEmailComposer(true)}
-                          className="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                          className="flex items-center justify-center px-4 py-2.5 bg-secondary text-on-secondary rounded-xl hover:bg-secondary/90 transition-colors"
                         >
                           <Paperclip className="w-4 h-4 mr-2" />
                           Unterlagen versenden
@@ -2241,12 +2241,52 @@ function Closing() {
 
                   {/* Notizen / History - immer read-only */}
                   <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-3">Notizen & Verlauf</h4>
-                    <div className="bg-gray-50 rounded-lg p-4 max-h-[200px] overflow-y-auto">
+                    <h4 className="text-label-md text-on-surface-variant mb-3">Notizen & Verlauf</h4>
+                    <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[250px] overflow-y-auto">
                       {selectedLead.kommentar ? (
-                        <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedLead.kommentar}</p>
+                        <div className="space-y-3">
+                          {selectedLead.kommentar.split('\n').filter(line => line.trim()).map((line, index) => {
+                            // Parse history format: [DD.MM.YYYY, HH:MM] EMOJI Text (Username)
+                            const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
+
+                            if (historyMatch) {
+                              const [, datum, zeit, rest] = historyMatch
+                              // Extract emoji and text
+                              const emojiMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬|🎯|📞|❌|✉️|📄)\s*(.+)$/)
+                              const emoji = emojiMatch ? emojiMatch[1] : '📋'
+                              let text = emojiMatch ? emojiMatch[2] : rest
+                              // Extract username at end
+                              const userMatch = text.match(/\(([^)]+)\)$/)
+                              const userName = userMatch ? userMatch[1] : null
+                              if (userMatch) text = text.replace(/\s*\([^)]+\)$/, '')
+
+                              return (
+                                <div key={index} className="flex items-start gap-3 p-2 rounded-lg hover:bg-surface-container transition-colors">
+                                  <span className="text-lg flex-shrink-0">{emoji}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-body-sm text-on-surface">{text}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-label-sm text-outline">{datum}, {zeit}</span>
+                                      {userName && (
+                                        <span className="text-label-sm text-on-surface-variant">• {userName}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            } else {
+                              // Plain text note without history format
+                              return (
+                                <div key={index} className="flex items-start gap-3 p-2">
+                                  <span className="text-lg flex-shrink-0">💬</span>
+                                  <p className="text-body-sm text-on-surface">{line}</p>
+                                </div>
+                              )
+                            }
+                          })}
+                        </div>
                       ) : (
-                        <p className="text-sm text-gray-400 italic">Keine Notizen vorhanden</p>
+                        <p className="text-body-sm text-outline italic">Keine Notizen vorhanden</p>
                       )}
                     </div>
                   </div>
@@ -2445,7 +2485,7 @@ function Closing() {
                     type="button"
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex items-center px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="flex items-center px-6 py-2 bg-primary text-on-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {saving ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -2470,7 +2510,7 @@ function Closing() {
                     <button
                       type="button"
                       onClick={() => setShowReleaseConfirm(true)}
-                      className="flex items-center px-4 py-2 text-orange-600 border border-orange-300 rounded-lg hover:bg-orange-50 transition-colors"
+                      className="flex items-center px-4 py-2 text-warning border border-warning/30 rounded-xl hover:bg-warning-container transition-colors"
                     >
                       <UserMinus className="w-4 h-4 mr-2" />
                       An Pool freigeben
@@ -2479,7 +2519,7 @@ function Closing() {
                   <button
                     type="button"
                     onClick={() => setEditMode(true)}
-                    className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                    className="flex items-center px-4 py-2 bg-primary text-on-primary rounded-xl hover:bg-primary/90 transition-colors"
                   >
                     <Edit3 className="w-4 h-4 mr-2" />
                     Bearbeiten
@@ -2494,8 +2534,8 @@ function Closing() {
               <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 rounded-2xl">
                 <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
-                      <UserMinus className="w-5 h-5 text-orange-600" />
+                    <div className="w-10 h-10 bg-warning-container rounded-full flex items-center justify-center">
+                      <UserMinus className="w-5 h-5 text-warning" />
                     </div>
                     <div>
                       <h3 className="text-lg font-semibold text-gray-900">Lead freigeben?</h3>
@@ -2516,7 +2556,7 @@ function Closing() {
                       onChange={(e) => setReleaseReason(e.target.value)}
                       rows={2}
                       placeholder="z.B. Urlaub, Krankheit, Kapazität..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent outline-none resize-none"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warning focus:border-transparent outline-none resize-none"
                     />
                   </div>
                   
@@ -2531,7 +2571,7 @@ function Closing() {
                     <button
                       onClick={releaseLead}
                       disabled={releasing}
-                      className="flex-1 flex items-center justify-center px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                      className="flex-1 flex items-center justify-center px-4 py-2 bg-warning text-white rounded-xl hover:bg-warning/90 disabled:opacity-50 transition-colors"
                     >
                       {releasing ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
