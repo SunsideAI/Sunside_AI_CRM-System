@@ -1360,21 +1360,24 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
             {/* Ergebnis Verteilung Pie */}
             <div className="card p-6">
               <h3 className="text-label-lg text-on-surface mb-4">Prozentuale Ergebnisse</h3>
-              {((stats.summary?.beratungsgespraech || 0) + (stats.summary?.unterlagen || 0) + (stats.summary?.keinInteresse || 0)) > 0 ? (
+              {(() => {
+                const pieData = [
+                  { name: 'Beratungsgespräch', value: stats.summary?.beratungsgespraech || 0, color: CHART_COLORS.beratungsgespraech },
+                  { name: 'Unterlage/WV', value: stats.summary?.unterlagen || 0, color: CHART_COLORS.unterlagen },
+                  { name: 'Kein Interesse', value: stats.summary?.keinInteresse || 0, color: CHART_COLORS.keinInteresse }
+                ].filter(d => d.value > 0)
+
+                return pieData.length > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
                     <Pie
-                      data={[
-                        { name: 'Beratungsgespräch', value: stats.summary?.beratungsgespraech || 0 },
-                        { name: 'Unterlage/WV', value: stats.summary?.unterlagen || 0 },
-                        { name: 'Kein Interesse', value: stats.summary?.keinInteresse || 0 }
-                      ].filter(d => d.value > 0)}
+                      data={pieData}
                       cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                     >
-                      <Cell fill={CHART_COLORS.beratungsgespraech} />
-                      <Cell fill={CHART_COLORS.unterlagen} />
-                      <Cell fill={CHART_COLORS.keinInteresse} />
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
                     </Pie>
                     <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
                   </PieChart>
@@ -1386,7 +1389,8 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                     <p className="text-body-sm">Keine Ergebnisse im Zeitraum</p>
                   </div>
                 </div>
-              )}
+              )
+              })()}
             </div>
           </div>
 
