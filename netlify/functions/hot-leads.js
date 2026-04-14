@@ -618,12 +618,58 @@ export async function handler(event) {
         .from('hot_leads')
         .update(fields)
         .eq('id', hotLeadId)
-        .select()
+        .select('*, closer:users!hot_leads_closer_id_fkey(vor_nachname)')
         .single()
 
       if (error) {
         console.error('Update Hot Lead Error:', error)
         throw new Error(error.message || 'Hot Lead konnte nicht aktualisiert werden')
+      }
+
+      // Zapier-Webhook für Angebotsversand (wenn Status auf 'Angebot' gesetzt wird)
+      if (fields.status === 'Angebot' && data) {
+        try {
+          const zapierPayload = {
+            // Kontaktdaten
+            name: arrayToString(data.ansprechpartner_nachname) || '',
+            vorname: arrayToString(data.ansprechpartner_vorname) || '',
+            unternehmensname: arrayToString(data.unternehmen) || '',
+            telefonnummer: arrayToString(data.telefon) || '',
+            email: arrayToString(data.email) || '',
+            // Bearbeiter
+            Bearbeiter: data.closer?.vor_nachname || '',
+            // Angebotsdaten
+            retainer: data.retainer || 0,
+            setup: data.setup || 0,
+            laufzeit: data.laufzeit || 12,
+            kategorie: arrayToString(data.kategorie) || '',
+            paket: Array.isArray(data.produkt_dienstleistung)
+              ? data.produkt_dienstleistung[0] || ''
+              : data.produkt_dienstleistung || '',
+            vertragsbestandteile: data.vertragsbestandteile || '',
+            // Individuelle Felder
+            paketname: data.paketname_individuell || '',
+            leistungsbeschreibung: data.leistungsbeschreibung || '',
+            kurzbeschreibung: data.kurzbeschreibung || ''
+          }
+
+          console.log('Sende Angebot an Zapier:', zapierPayload)
+
+          const zapierResponse = await fetch('https://hooks.zapier.com/hooks/catch/21938164/ub2g9ge/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(zapierPayload)
+          })
+
+          if (zapierResponse.ok) {
+            console.log('Zapier Webhook erfolgreich')
+          } else {
+            console.warn('Zapier Webhook Fehler:', zapierResponse.status)
+          }
+        } catch (zapierErr) {
+          console.warn('Zapier Webhook fehlgeschlagen:', zapierErr)
+          // Nicht abbrechen - Hot Lead wurde bereits aktualisiert
+        }
       }
 
       return {
