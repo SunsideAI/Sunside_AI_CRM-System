@@ -201,13 +201,17 @@ exports.handler = async (event) => {
           slotsUrl.searchParams.append('start_time', start.toISOString())
           slotsUrl.searchParams.append('end_time', end.toISOString())
 
+          console.log('Calendly API Request:', slotsUrl.toString())
+
           const slotsResponse = await fetch(slotsUrl.toString(), {
             headers: calendlyHeaders
           })
           const slotsData = await slotsResponse.json()
 
           if (!slotsResponse.ok) {
-            throw new Error(slotsData.message || 'Calendly Slots-Fehler')
+            console.error('Calendly API Error:', JSON.stringify(slotsData, null, 2))
+            const errorMsg = slotsData.message || slotsData.details || JSON.stringify(slotsData)
+            throw new Error(errorMsg)
           }
 
           // Nur verfügbare Slots
@@ -230,10 +234,16 @@ exports.handler = async (event) => {
             })
           }
         } catch (err) {
+          console.error('Calendly Slots Error:', err.message)
           return {
             statusCode: 500,
             headers: corsHeaders,
-            body: JSON.stringify({ error: 'Calendly Slots-Fehler', details: err.message })
+            body: JSON.stringify({
+              error: 'Calendly Slots-Fehler',
+              details: err.message,
+              eventTypeUri,
+              dateString: dateString || null
+            })
           }
         }
       }
