@@ -411,10 +411,12 @@ export async function handler(event) {
         const timestamp = now.toLocaleDateString('de-DE', {
           day: '2-digit',
           month: '2-digit',
-          year: 'numeric'
+          year: 'numeric',
+          timeZone: 'Europe/Berlin'
         }) + ', ' + now.toLocaleTimeString('de-DE', {
           hour: '2-digit',
-          minute: '2-digit'
+          minute: '2-digit',
+          timeZone: 'Europe/Berlin'
         })
 
         const icons = {

@@ -194,7 +194,8 @@ async function updateLeadHistory({ leadId, action, details, userName, attachment
   const now = new Date()
   const timestamp = now.toLocaleDateString('de-DE', {
     day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'Europe/Berlin'
   })
   const icon = action === 'email' ? '📧' : action === 'call' ? '📞' : '📋'
   const attachmentInfo = attachmentCount > 0 ? ' (' + attachmentCount + ' Anhaenge)' : ''

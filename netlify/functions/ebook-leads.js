@@ -244,7 +244,7 @@ export async function handler(event) {
 
       // Neuen Lead erstellen
       const now = new Date()
-      const timestamp = now.toLocaleDateString('de-DE') + ', ' + now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+      const timestamp = now.toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' }) + ', ' + now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })
 
       const { data: newLead, error } = await supabase
         .from('leads')
@@ -340,7 +340,7 @@ export async function handler(event) {
 
       const currentKommentar = leadData?.kommentar || ''
       const now = new Date()
-      const timestamp = now.toLocaleDateString('de-DE') + ', ' + now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+      const timestamp = now.toLocaleDateString('de-DE', { timeZone: 'Europe/Berlin' }) + ', ' + now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })
       const newEntry = `[${timestamp}] Lead aus E-Book Pool uebernommen von ${vertrieblerName}`
 
       await supabase

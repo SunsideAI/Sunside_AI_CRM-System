@@ -24,7 +24,8 @@ function formatDate(isoString) {
     month: '2-digit',
     year: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'Europe/Berlin'
   })
 }
 
@@ -345,7 +346,8 @@ async function updateOriginalLeadKommentar(leadId, neuerKommentar) {
   const now = new Date()
   const timestamp = now.toLocaleDateString('de-DE', {
     day: '2-digit', month: '2-digit', year: 'numeric',
-    hour: '2-digit', minute: '2-digit'
+    hour: '2-digit', minute: '2-digit',
+    timeZone: 'Europe/Berlin'
   })
 
   const newEntry = `[${timestamp}] ${neuerKommentar}`
