@@ -574,7 +574,7 @@ function Termine() {
       {/* Termin-Detail Modal */}
       {selectedEvent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="modal-backdrop absolute inset-0" onClick={() => setSelectedEvent(null)} />
+          <div className="modal-backdrop fixed inset-0" onClick={() => setSelectedEvent(null)} />
           <div className="modal-content relative max-w-md w-full max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-start mb-4">
                 <div>

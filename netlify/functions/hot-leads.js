@@ -442,7 +442,8 @@ export async function handler(event) {
         terminDatum,
         terminart,
         quelle,
-        meetingLink
+        meetingLink,
+        infosErstgespraech
       } = body
 
       console.log('Hot Lead POST - Input:', {
@@ -519,6 +520,7 @@ export async function handler(event) {
 
       if (terminart) hotLeadData.terminart = terminart
       if (meetingLink) hotLeadData.meeting_link = meetingLink
+      if (infosErstgespraech) hotLeadData.kommentar = infosErstgespraech
 
       console.log('Creating Hot Lead:', hotLeadData)
 
