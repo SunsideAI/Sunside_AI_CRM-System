@@ -235,8 +235,27 @@ exports.handler = async (event) => {
 
           if (!slotsResponse.ok) {
             console.error('Calendly API Error:', JSON.stringify(slotsData, null, 2))
-            const errorMsg = slotsData.message || slotsData.details || JSON.stringify(slotsData)
-            throw new Error(errorMsg)
+            console.error('Request was:', {
+              url: slotsUrl.toString(),
+              start: start.toISOString(),
+              end: end.toISOString()
+            })
+            // Detaillierte Fehlermeldung zurückgeben
+            return {
+              statusCode: slotsResponse.status,
+              headers: corsHeaders,
+              body: JSON.stringify({
+                error: 'Calendly API Fehler',
+                details: slotsData.message || slotsData.title || JSON.stringify(slotsData),
+                calendlyError: slotsData,
+                requestParams: {
+                  eventTypeUri,
+                  startTime: start.toISOString(),
+                  endTime: end.toISOString(),
+                  dateString: dateString || null
+                }
+              })
+            }
           }
 
           // Nur verfügbare Slots
