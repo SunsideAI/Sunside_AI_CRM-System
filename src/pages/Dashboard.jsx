@@ -1575,8 +1575,13 @@ function ClosingAnalytics({ user, isAdmin }) {
   const formatPercent = (value) => `${value.toFixed(1)}%`
 
   // CI-konforme Closing Farben (passend zu Primary #460E74)
-  // Reihenfolge: Gewonnen, Verloren, Offen, No-Show
-  const CLOSING_CHART_COLORS = ['#10B981', '#EC4899', '#8B8B9A', '#F59E0B']
+  // Map für korrekte Zuweisung nach Kategorie-Name
+  const CLOSING_COLOR_MAP = {
+    'Gewonnen': '#10B981',  // Emerald - Erfolg
+    'Verloren': '#EC4899',  // Pink - komplementär zu Lila
+    'Offen': '#8B8B9A',     // Neutral Grau
+    'No-Show': '#F59E0B'    // Amber - Warnung
+  }
 
   if (loading && !refreshing) {
     return (
@@ -1690,7 +1695,14 @@ function ClosingAnalytics({ user, isAdmin }) {
                       cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                     >
-                      {CLOSING_CHART_COLORS.map((color, index) => (<Cell key={`cell-${index}`} fill={color} />))}
+                      {[
+                        { name: 'Gewonnen', value: stats.summary?.gewonnen || 0 },
+                        { name: 'Verloren', value: stats.summary?.verloren || 0 },
+                        { name: 'Offen', value: stats.summary?.offen || 0 },
+                        { name: 'No-Show', value: stats.summary?.noShow || 0 }
+                      ].filter(d => d.value > 0).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={CLOSING_COLOR_MAP[entry.name]} />
+                      ))}
                     </Pie>
                     <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
                   </PieChart>
@@ -1774,15 +1786,15 @@ function KPICard({ title, value, icon: Icon, color, subtitle }) {
   }
 
   return (
-    <div className="metric-card">
+    <div className="metric-card p-4">
       <div className="flex items-center gap-3">
-        <div className={`p-2.5 rounded-lg ${colorClasses[color]} flex-shrink-0`}>
+        <div className={`p-2.5 rounded-xl ${colorClasses[color]} flex-shrink-0`}>
           <Icon className="h-5 w-5" />
         </div>
-        <div className="min-w-0">
-          <p className="text-label-sm text-on-surface-variant leading-tight">{title}</p>
-          <p className="text-title-lg font-display text-on-surface">{value}</p>
-          {subtitle && <p className="text-label-sm text-outline">{subtitle}</p>}
+        <div className="min-w-0 flex-1 overflow-hidden">
+          <p className="text-label-sm text-on-surface-variant leading-tight truncate">{title}</p>
+          <p className="text-title-md font-display text-on-surface truncate">{value}</p>
+          {subtitle && <p className="text-label-sm text-outline truncate">{subtitle}</p>}
         </div>
       </div>
     </div>
