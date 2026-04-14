@@ -67,30 +67,47 @@ async function notifyVertrieblers(vertriebler, leadData) {
 
   const emailAddresses = vertriebler.map(v => v.email)
 
-  const htmlContent = `
-<!DOCTYPE html>
+  const htmlContent = `<!DOCTYPE html>
 <html>
 <head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; background-color: #F3F4F6; margin: 0; padding: 20px;">
-  <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden;">
-    <div style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); padding: 30px; text-align: center;">
-      <h1 style="color: #ffffff; margin: 0; font-size: 24px;">Neuer E-Book Lead!</h1>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 10px;">📚</div>
+      <h1 style="color: white; margin: 0; font-size: 24px;">Neuer E-Book Lead!</h1>
     </div>
-    <div style="padding: 30px;">
-      <p>Ein neuer Lead hat sich ueber das E-Book angemeldet!</p>
-      <div style="background-color: #FEF3C7; border-radius: 8px; padding: 20px; margin: 20px 0;">
-        <table style="width: 100%;">
-          <tr><td style="padding: 8px 0; color: #666;">Name:</td><td style="font-weight: bold;">${leadData.vorname} ${leadData.nachname}</td></tr>
-          <tr><td style="padding: 8px 0; color: #666;">Unternehmen:</td><td style="font-weight: bold;">${leadData.unternehmen || '-'}</td></tr>
-          <tr><td style="padding: 8px 0; color: #666;">E-Mail:</td><td style="font-weight: bold;">${leadData.email}</td></tr>
-          <tr><td style="padding: 8px 0; color: #666;">Telefon:</td><td style="font-weight: bold;">${leadData.telefon || '-'}</td></tr>
+    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
+        Ein neuer Lead hat sich ueber das E-Book angemeldet:
+      </p>
+      <div style="background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid #F59E0B;">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #6B7280; font-size: 14px; width: 120px;">Name:</td>
+            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${leadData.vorname} ${leadData.nachname}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Unternehmen:</td>
+            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${leadData.unternehmen || '-'}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">E-Mail:</td>
+            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${leadData.email}</td>
+          </tr>
+          <tr>
+            <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Telefon:</td>
+            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${leadData.telefon || '-'}</td>
+          </tr>
         </table>
       </div>
-      <div style="text-align: center; margin-top: 20px;">
-        <a href="https://crm.sunside.ai/kaltakquise" style="display: inline-block; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+      <div style="text-align: center; margin-top: 25px;">
+        <a href="https://crm.sunside.ai/kaltakquise" style="display: inline-block; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Jetzt im E-Book Pool uebernehmen
         </a>
       </div>
+      <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 30px; margin-bottom: 0;">
+        Sunside AI CRM System
+      </p>
     </div>
   </div>
 </body>

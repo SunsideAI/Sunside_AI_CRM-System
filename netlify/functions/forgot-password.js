@@ -138,34 +138,44 @@ export async function handler(event) {
           from: 'Sunside CRM <noreply@sunsideai.de>',
           to: [userEmail],
           subject: 'Dein neues Passwort - Sunside CRM',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background: linear-gradient(135deg, #1a1a2e 0%, #7C3AED 100%); padding: 40px; text-align: center;">
-                <h1 style="color: white; margin: 0;">Sunside CRM</h1>
-              </div>
-              <div style="padding: 40px; background: #ffffff;">
-                <h2 style="color: #1a1a2e; margin-top: 0;">Hallo ${userName}!</h2>
-                <p style="color: #4a5568; line-height: 1.6;">
-                  Du hast ein neues Passwort für dein Sunside CRM Konto angefordert.
-                </p>
-                <div style="background: #f7f7f7; border-radius: 8px; padding: 20px; margin: 24px 0; text-align: center;">
-                  <p style="color: #718096; margin: 0 0 8px 0; font-size: 14px;">Dein neues Passwort:</p>
-                  <p style="color: #1a1a2e; font-size: 24px; font-weight: bold; margin: 0; letter-spacing: 2px;">${tempPassword}</p>
-                </div>
-                <p style="color: #4a5568; line-height: 1.6;">
-                  Bitte ändere dein Passwort nach dem Login in deinen Profileinstellungen.
-                </p>
-                <p style="color: #718096; font-size: 14px; margin-top: 32px;">
-                  Falls du kein neues Passwort angefordert hast, kontaktiere bitte deinen Admin.
-                </p>
-              </div>
-              <div style="background: #f7f7f7; padding: 20px; text-align: center;">
-                <p style="color: #a0aec0; font-size: 12px; margin: 0;">
-                  © ${new Date().getFullYear()} Sunside AI
-                </p>
-              </div>
-            </div>
-          `
+          html: `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 10px;">🔐</div>
+      <h1 style="color: white; margin: 0; font-size: 24px;">Neues Passwort</h1>
+    </div>
+    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
+        Hallo ${userName},
+      </p>
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+        Du hast ein neues Passwort fuer dein Sunside CRM Konto angefordert.
+      </p>
+      <div style="background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%); border-radius: 12px; padding: 25px; margin: 25px 0; text-align: center; border-left: 4px solid #7C3AED;">
+        <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Dein neues Passwort:</p>
+        <p style="color: #1F2937; font-size: 28px; font-weight: bold; margin: 0; letter-spacing: 3px; font-family: monospace;">${tempPassword}</p>
+      </div>
+      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
+        Bitte aendere dein Passwort nach dem Login in deinen Profileinstellungen.
+      </p>
+      <div style="text-align: center; margin-top: 25px;">
+        <a href="https://crm.sunside.ai/login" style="display: inline-block; background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+          Zum Login
+        </a>
+      </div>
+      <p style="color: #9CA3AF; font-size: 13px; margin-top: 30px; line-height: 1.5;">
+        Falls du kein neues Passwort angefordert hast, kontaktiere bitte deinen Admin.
+      </p>
+      <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 20px; margin-bottom: 0;">
+        Sunside AI CRM System
+      </p>
+    </div>
+  </div>
+</body>
+</html>`
         })
       })
 
