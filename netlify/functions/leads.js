@@ -144,18 +144,32 @@ export async function handler(event) {
       const needsUserFilter = userRole !== 'Admin' || view === 'own' || wiedervorlage === 'true'
 
       // User-Filter: Filtere nach lead_assignments für diesen User
+      // Mit Pagination um > 1000 Assignments zu unterstützen
       if (needsUserFilter && userId) {
-        const { data: assignments, error: assignError } = await supabase
-          .from('lead_assignments')
-          .select('lead_id')
-          .eq('user_id', userId)
+        let allAssignments = []
+        let assignOffset = 0
+        const assignPageSize = 1000
 
-        if (assignError) {
-          console.error('[Leads] Assignment query error:', assignError.message)
+        while (true) {
+          const { data: batch, error: assignError } = await supabase
+            .from('lead_assignments')
+            .select('lead_id')
+            .eq('user_id', userId)
+            .range(assignOffset, assignOffset + assignPageSize - 1)
+
+          if (assignError) {
+            console.error('[Leads] Assignment query error:', assignError.message)
+            break
+          }
+
+          if (!batch || batch.length === 0) break
+          allAssignments = allAssignments.concat(batch)
+          if (batch.length < assignPageSize) break
+          assignOffset += assignPageSize
         }
 
-        if (assignments && assignments.length > 0) {
-          const leadIds = assignments.map(a => a.lead_id)
+        if (allAssignments.length > 0) {
+          const leadIds = allAssignments.map(a => a.lead_id)
           query = query.in('id', leadIds)
         } else {
           // Keine Leads zugewiesen
@@ -173,14 +187,27 @@ export async function handler(event) {
       }
 
       // Vertriebler-Filter (für Admins)
+      // Mit Pagination um > 1000 Assignments zu unterstützen
       if (vertriebler && vertriebler !== 'all') {
-        const { data: assignments } = await supabase
-          .from('lead_assignments')
-          .select('lead_id')
-          .eq('user_id', vertriebler)
+        let vertrAssignments = []
+        let vertrOffset = 0
+        const vertrPageSize = 1000
 
-        if (assignments && assignments.length > 0) {
-          const leadIds = assignments.map(a => a.lead_id)
+        while (true) {
+          const { data: batch } = await supabase
+            .from('lead_assignments')
+            .select('lead_id')
+            .eq('user_id', vertriebler)
+            .range(vertrOffset, vertrOffset + vertrPageSize - 1)
+
+          if (!batch || batch.length === 0) break
+          vertrAssignments = vertrAssignments.concat(batch)
+          if (batch.length < vertrPageSize) break
+          vertrOffset += vertrPageSize
+        }
+
+        if (vertrAssignments.length > 0) {
+          const leadIds = vertrAssignments.map(a => a.lead_id)
           query = query.in('id', leadIds)
         }
       }

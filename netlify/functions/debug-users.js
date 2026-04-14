@@ -23,10 +23,24 @@ export async function handler(event) {
       .select('id, vor_nachname, email, email_geschaeftlich')
       .order('vor_nachname')
 
-    // 2. Alle einzigartigen user_ids aus lead_assignments
-    const { data: assignments } = await supabase
-      .from('lead_assignments')
-      .select('user_id')
+    // 2. Alle einzigartigen user_ids aus lead_assignments (mit Pagination für > 1000)
+    let allAssignments = []
+    let offset = 0
+    const pageSize = 1000
+
+    while (true) {
+      const { data: batch, error } = await supabase
+        .from('lead_assignments')
+        .select('user_id')
+        .range(offset, offset + pageSize - 1)
+
+      if (error || !batch || batch.length === 0) break
+      allAssignments = allAssignments.concat(batch)
+      if (batch.length < pageSize) break
+      offset += pageSize
+    }
+
+    const assignments = allAssignments
 
     const assignmentUserIds = [...new Set((assignments || []).map(a => a.user_id))]
 
