@@ -1140,18 +1140,18 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
   const formatPercent = (value) => `${value.toFixed(1)}%`
 
-  // CI-konformes Farbschema basierend auf Primary #460E74
-  // Harmonische Farben die zur CI passen
+  // Chart-Farben = exakt gleich wie KPICard Icon-Bubbles
+  // Damit man die Zuordnung sofort erkennt
   const CHART_COLORS = {
-    // Kaltakquise Ergebnisse
-    beratungsgespraech: '#10B981', // Emerald (Tertiary) - Positiv/Erfolg
-    unterlagen: '#6366F1',         // Indigo (Secondary Blue) - Neutral-positiv
-    keinInteresse: '#EC4899',      // Pink - Negativ (komplementär zu Lila)
-    nichtErreicht: '#8B8B9A',      // Neutral Grau mit Lila-Unterton
+    // Funnel (Bar Chart)
+    einwahlen: '#7C3AED',          // Purple - wie KPICard color="purple"
+    erreicht: '#3B82F6',           // Blue - wie KPICard color="blue"
 
-    // Funnel Stufen (Lila-Abstufungen + Akzente)
-    einwahlen: '#7C3AED',          // Vivid Purple - Primary Aktion
-    erreicht: '#8B5CF6',           // Purple 500 - Abstufung
+    // Ergebnisse (Pie Chart)
+    beratungsgespraech: '#10B981', // Green - wie KPICard color="green"
+    unterlagen: '#F59E0B',         // Yellow/Amber - wie KPICard color="yellow"
+    keinInteresse: '#EF4444',      // Red - wie KPICard color="red"
+    nichtErreicht: '#8B8B9A',      // Gray - neutral
   }
 
   // Closing Farben
@@ -1574,13 +1574,12 @@ function ClosingAnalytics({ user, isAdmin }) {
 
   const formatPercent = (value) => `${value.toFixed(1)}%`
 
-  // CI-konforme Closing Farben (passend zu Primary #460E74)
-  // Map für korrekte Zuweisung nach Kategorie-Name
+  // Closing Chart-Farben = exakt gleich wie KPICard Icon-Bubbles
   const CLOSING_COLOR_MAP = {
-    'Gewonnen': '#10B981',  // Emerald - Erfolg
-    'Verloren': '#EC4899',  // Pink - komplementär zu Lila
-    'Offen': '#8B8B9A',     // Neutral Grau
-    'No-Show': '#F59E0B'    // Amber - Warnung
+    'Gewonnen': '#10B981',  // Green - wie KPICard color="green"
+    'Verloren': '#EF4444',  // Red - wie KPICard color="red"
+    'No-Show': '#F59E0B',   // Yellow - wie KPICard color="yellow"
+    'Offen': '#9CA3AF'      // Gray - wie KPICard color="gray"
   }
 
   if (loading && !refreshing) {
@@ -1743,9 +1742,9 @@ function ClosingAnalytics({ user, isAdmin }) {
                       }}
                     />
                     <Legend />
-                    <Bar dataKey="offen" name="Offen" fill="#8B8B9A" stackId="a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="offen" name="Offen" fill="#9CA3AF" stackId="a" radius={[0, 0, 0, 0]} />
                     <Bar dataKey="gewonnen" name="Gewonnen" fill="#10B981" stackId="a" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="verloren" name="Verloren" fill="#EC4899" stackId="a" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="verloren" name="Verloren" fill="#EF4444" stackId="a" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
