@@ -1030,15 +1030,6 @@ function Closing() {
     }
   }
 
-  if (loading && viewMode !== 'pool') {
-    return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-        <span className="ml-3 text-on-surface-variant">Leads werden geladen...</span>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-8">
       {/* Toast Notification */}
@@ -1317,10 +1308,10 @@ function Closing() {
           {/* Aktualisieren */}
           <button
             onClick={handleRefresh}
-            disabled={refreshing}
+            disabled={refreshing || loading}
             className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
           >
-            <RefreshCw className={`w-5 h-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-5 h-5 text-on-surface-variant ${(refreshing || loading) ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -1328,7 +1319,12 @@ function Closing() {
       {/* Lead-Liste */}
       <div className="card-elevated overflow-hidden min-h-[600px]">
         <div>
-          {paginatedLeads.length === 0 ? (
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+              <p className="text-on-surface-variant">Leads werden geladen...</p>
+            </div>
+          ) : paginatedLeads.length === 0 ? (
             <div className="p-12 text-center">
               <Target className="w-16 h-16 text-outline-variant mx-auto mb-4" />
               {searchTerm || statusFilter !== 'all' ? (
