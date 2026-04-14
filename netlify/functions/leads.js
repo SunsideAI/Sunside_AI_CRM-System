@@ -146,6 +146,8 @@ export async function handler(event) {
       // User-Filter: Filtere nach lead_assignments für diesen User
       // Mit Pagination um > 1000 Assignments zu unterstützen
       if (needsUserFilter && userId) {
+        console.log('[Leads] Filtering for userId:', userId, 'view:', view, 'userRole:', userRole)
+
         let allAssignments = []
         let assignOffset = 0
         const assignPageSize = 1000
@@ -168,11 +170,20 @@ export async function handler(event) {
           assignOffset += assignPageSize
         }
 
+        console.log('[Leads] Found', allAssignments.length, 'assignments for user', userId)
+
         if (allAssignments.length > 0) {
           const leadIds = allAssignments.map(a => a.lead_id)
           query = query.in('id', leadIds)
         } else {
-          // Keine Leads zugewiesen
+          // Keine Leads zugewiesen - Debug: Prüfe ob User-ID in Tabelle existiert
+          const { data: sampleAssignments } = await supabase
+            .from('lead_assignments')
+            .select('user_id')
+            .limit(5)
+          console.log('[Leads] Sample user_ids in lead_assignments:', sampleAssignments?.map(a => a.user_id))
+          console.log('[Leads] Requested userId:', userId)
+
           return {
             statusCode: 200,
             headers,
@@ -180,7 +191,11 @@ export async function handler(event) {
               leads: [],
               users: Object.entries(userMap).map(([id, name]) => ({ id, name })),
               offset: null,
-              hasMore: false
+              hasMore: false,
+              debug: {
+                requestedUserId: userId,
+                sampleUserIds: sampleAssignments?.map(a => a.user_id) || []
+              }
             })
           }
         }
