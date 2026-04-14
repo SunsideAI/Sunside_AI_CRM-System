@@ -235,6 +235,48 @@ async function updateUser(data) {
     throw new Error(error.message || 'User konnte nicht aktualisiert werden')
   }
 
+  // Zapier-Webhook für Closer-Pfad bereitstellen
+  if (updateData.onboarding === 'Closer-Pfad bereitstellen') {
+    try {
+      const zapierPayload = {
+        // User ID für Supabase-Update am Ende
+        userId: updatedUser.id,
+        // Persönliche Daten für PDF-Vertrag
+        Vorname: updatedUser.vorname || '',
+        Name: updatedUser.nachname || '',
+        Strasse: updatedUser.strasse || '',
+        PLZ: updatedUser.plz || '',
+        Ort: updatedUser.ort || '',
+        Bundesland: updatedUser.bundesland || '',
+        // Kontakt
+        Email: updatedUser.email || '',
+        EmailGeschaeftlich: updatedUser.email_geschaeftlich || '',
+        Telefon: updatedUser.telefon || '',
+        // Rolle
+        Rolle: Array.isArray(updatedUser.rollen) ? updatedUser.rollen.join(', ') : '',
+        // Status für Zapier-Filter
+        Onboarding: 'Closer-Pfad bereitstellen'
+      }
+
+      console.log('Sende Closer-Onboarding an Zapier:', zapierPayload)
+
+      const zapierResponse = await fetch('https://hooks.zapier.com/hooks/catch/21938164/ufw92b0/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(zapierPayload)
+      })
+
+      if (zapierResponse.ok) {
+        console.log('Zapier Closer-Webhook erfolgreich')
+      } else {
+        console.warn('Zapier Closer-Webhook Fehler:', zapierResponse.status)
+      }
+    } catch (zapierErr) {
+      console.warn('Zapier Closer-Webhook fehlgeschlagen:', zapierErr)
+      // Nicht abbrechen - User wurde bereits aktualisiert
+    }
+  }
+
   return {
     statusCode: 200,
     headers: corsHeaders,
