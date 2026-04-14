@@ -805,19 +805,19 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
             {/* Modal Content */}
             <div className="overflow-y-auto flex-1">
-              {/* Kontaktdaten Grid */}
+              {/* Kontaktdaten Grid - CI Style */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {/* Telefon */}
                 {safeString(selectedLead.telefon) ? (
                   <a
                     href={`tel:${safeString(selectedLead.telefon)}`}
-                    className="flex items-center p-3 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                   >
-                    <Phone className="w-5 h-5 text-primary mr-3" />
-                    <span className="text-on-surface">{safeString(selectedLead.telefon)}</span>
+                    <Phone className="w-5 h-5 text-purple-600 mr-3" />
+                    <span className="text-gray-900">{safeString(selectedLead.telefon)}</span>
                   </a>
                 ) : (
-                  <div className="flex items-center p-3 bg-surface-container rounded-lg text-outline">
+                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
                     <Phone className="w-5 h-5 mr-3" />
                     <span>Keine Telefonnummer</span>
                   </div>
@@ -827,13 +827,13 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                 {safeString(selectedLead.email) ? (
                   <a
                     href={`mailto:${safeString(selectedLead.email)}`}
-                    className="flex items-center p-3 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                   >
-                    <Mail className="w-5 h-5 text-primary mr-3" />
-                    <span className="text-on-surface truncate">{safeString(selectedLead.email)}</span>
+                    <Mail className="w-5 h-5 text-purple-600 mr-3" />
+                    <span className="text-gray-900 truncate">{safeString(selectedLead.email)}</span>
                   </a>
                 ) : (
-                  <div className="flex items-center p-3 bg-surface-container rounded-lg text-outline">
+                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
                     <Mail className="w-5 h-5 mr-3" />
                     <span>Keine E-Mail</span>
                   </div>
@@ -845,96 +845,96 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                     href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center p-3 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                   >
-                    <Globe className="w-5 h-5 text-primary mr-3" />
-                    <span className="text-on-surface truncate">{safeString(selectedLead.website)}</span>
+                    <Globe className="w-5 h-5 text-purple-600 mr-3" />
+                    <span className="text-gray-900 truncate">{safeString(selectedLead.website)}</span>
                   </a>
                 ) : (
-                  <div className="flex items-center p-3 bg-surface-container rounded-lg text-outline">
+                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
                     <Globe className="w-5 h-5 mr-3" />
                     <span>Keine Website</span>
                   </div>
                 )}
 
                 {/* Standort */}
-                <div className="flex items-center p-3 bg-surface-container rounded-lg">
-                  <MapPin className="w-5 h-5 text-primary mr-3" />
-                  <span className="text-on-surface">
+                <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                  <MapPin className="w-5 h-5 text-purple-600 mr-3" />
+                  <span className="text-gray-900">
                     {[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ') || 'Kein Standort'}
                   </span>
                 </div>
 
                 {/* Ansprechpartner */}
                 {(safeString(selectedLead.ansprechpartnerVorname) || safeString(selectedLead.ansprechpartnerNachname)) && (
-                  <div className="flex items-center p-3 bg-surface-container rounded-lg">
-                    <User className="w-5 h-5 text-primary mr-3" />
+                  <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                    <User className="w-5 h-5 text-purple-600 mr-3" />
                     <div>
-                      <span className="text-label-sm text-on-surface-variant">Ansprechpartner</span>
-                      <p className="text-on-surface">{safeString(selectedLead.ansprechpartnerVorname)} {safeString(selectedLead.ansprechpartnerNachname)}</p>
+                      <span className="text-xs text-gray-500">Ansprechpartner</span>
+                      <p className="text-gray-900">{safeString(selectedLead.ansprechpartnerVorname)} {safeString(selectedLead.ansprechpartnerNachname)}</p>
                     </div>
                   </div>
                 )}
 
                 {/* Termin */}
                 {selectedLead.terminDatum && (
-                  <div className="flex items-center p-3 bg-surface-container rounded-lg">
-                    <Calendar className="w-5 h-5 text-primary mr-3" />
+                  <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                    <Calendar className="w-5 h-5 text-purple-600 mr-3" />
                     <div>
-                      <span className="text-label-sm text-on-surface-variant">Termin</span>
-                      <p className="text-on-surface">{formatDate(selectedLead.terminDatum)}</p>
+                      <span className="text-xs text-gray-500">Termin</span>
+                      <p className="text-gray-900">{formatDate(selectedLead.terminDatum)}</p>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Zuständig Box - AI Highlight Style */}
+              {/* Zuständig Box - CI Gradient Style */}
               {(selectedLead.setterName || selectedLead.closerName) && (
-                <div className="ai-highlight mb-6">
-                  <h4 className="text-label-lg text-on-surface mb-3 flex items-center">
-                    <Users className="w-4 h-4 mr-2 text-primary" />
+                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-100">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                    <Users className="w-4 h-4 mr-2 text-purple-600" />
                     Zuständig
                   </h4>
                   <div className="grid grid-cols-2 gap-4">
                     {selectedLead.setterName && (
-                      <div className="bg-surface-container-lowest p-3 rounded-lg shadow-ambient-sm">
-                        <p className="text-label-sm text-on-surface-variant">Coldcaller</p>
-                        <p className="text-body-md font-medium text-on-surface">{selectedLead.setterName}</p>
+                      <div className="bg-white p-3 rounded-lg shadow-sm">
+                        <p className="text-xs text-gray-500">Coldcaller</p>
+                        <p className="text-sm font-semibold text-gray-900">{selectedLead.setterName}</p>
                       </div>
                     )}
                     {selectedLead.closerName && (
-                      <div className="bg-surface-container-lowest p-3 rounded-lg shadow-ambient-sm">
-                        <p className="text-label-sm text-on-surface-variant">Closer</p>
-                        <p className="text-body-md font-medium text-on-surface">{selectedLead.closerName}</p>
+                      <div className="bg-white p-3 rounded-lg shadow-sm">
+                        <p className="text-xs text-gray-500">Closer</p>
+                        <p className="text-sm font-semibold text-gray-900">{selectedLead.closerName}</p>
                       </div>
                     )}
                   </div>
                 </div>
               )}
 
-              {/* Deal-Werte */}
+              {/* Deal-Werte - CI Gradient Style */}
               {(selectedLead.setup > 0 || selectedLead.retainer > 0) && (
-                <div className="mb-6 p-4 bg-success-container/50 rounded-xl">
-                  <h4 className="text-label-lg text-on-surface mb-3 flex items-center">
-                    <DollarSign className="w-4 h-4 mr-2 text-success" />
+                <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+                    <DollarSign className="w-4 h-4 mr-2 text-green-600" />
                     Deal-Details
                   </h4>
                   <div className="grid grid-cols-4 gap-3">
-                    <div className="bg-surface-container-lowest p-3 rounded-lg shadow-ambient-sm">
-                      <p className="text-label-sm text-on-surface-variant">Setup</p>
-                      <p className="text-title-md font-display text-on-surface">{formatMoney(selectedLead.setup)}</p>
+                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                      <p className="text-xs text-gray-500">Setup</p>
+                      <p className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</p>
                     </div>
-                    <div className="bg-surface-container-lowest p-3 rounded-lg shadow-ambient-sm">
-                      <p className="text-label-sm text-on-surface-variant">Retainer</p>
-                      <p className="text-title-md font-display text-on-surface">{formatMoney(selectedLead.retainer)}/M</p>
+                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                      <p className="text-xs text-gray-500">Retainer</p>
+                      <p className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/M</p>
                     </div>
-                    <div className="bg-surface-container-lowest p-3 rounded-lg shadow-ambient-sm">
-                      <p className="text-label-sm text-on-surface-variant">Laufzeit</p>
-                      <p className="text-title-md font-display text-on-surface">{selectedLead.laufzeit || '-'} Mon</p>
+                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                      <p className="text-xs text-gray-500">Laufzeit</p>
+                      <p className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || '-'} Mon</p>
                     </div>
-                    <div className="bg-surface-container-lowest p-3 rounded-lg shadow-ambient-sm">
-                      <p className="text-label-sm text-on-surface-variant">Gesamt</p>
-                      <p className="text-title-md font-display text-success">
+                    <div className="bg-white p-3 rounded-lg shadow-sm">
+                      <p className="text-xs text-gray-500">Gesamt</p>
+                      <p className="text-lg font-semibold text-green-600">
                         {formatMoney((selectedLead.setup || 0) + (selectedLead.retainer || 0) * (selectedLead.laufzeit || 1))}
                       </p>
                     </div>
