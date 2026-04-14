@@ -315,11 +315,12 @@ async function assignLeadsToUserFallback(userId, anzahl) {
   const neededLeads = anzahl
 
   while (freeLeads.length < neededLeads) {
+    // WICHTIG: .neq() schließt NULL-Werte aus! Daher .or() mit is.null verwenden
     const { data: leadsData, error: leadsError } = await supabase
       .from('leads')
       .select('id')
       .or('bereits_kontaktiert.is.null,bereits_kontaktiert.eq.false')
-      .neq('ergebnis', 'Ungültiger Lead')
+      .or('ergebnis.is.null,ergebnis.neq.Ungültiger Lead')
       .range(leadPage * pageSize, (leadPage + 1) * pageSize - 1)
 
     if (leadsError) {
