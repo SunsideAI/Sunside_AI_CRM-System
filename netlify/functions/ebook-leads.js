@@ -150,12 +150,18 @@ export async function handler(event) {
     // GET: E-Book Pool Leads laden (ohne Vertriebler zugewiesen)
     if (event.httpMethod === 'GET') {
       // E-Book Leads ohne Assignment laden (kein 1000er Limit!)
-      const { data: assignments } = await supabase
+      const { data: assignments, error: assignError } = await supabase
         .from('lead_assignments')
         .select('lead_id')
         .limit(100000)
 
+      if (assignError) {
+        console.error('Assignment Query Error:', assignError)
+      }
+
       const assignedLeadIds = (assignments || []).map(a => a.lead_id)
+
+      console.log(`E-Book Pool: ${assignedLeadIds.length} Assignments geladen`)
 
       let query = supabase
         .from('leads')
@@ -167,9 +173,17 @@ export async function handler(event) {
 
       if (error) throw new Error(error.message)
 
+      console.log(`E-Book Pool: ${leads?.length || 0} E-Book Leads gefunden`)
+
       // Im Code filtern: Nur Leads ohne Assignment
       const poolLeads = (leads || [])
-        .filter(lead => !assignedLeadIds.includes(lead.id))
+        .filter(lead => {
+          const isAssigned = assignedLeadIds.includes(lead.id)
+          if (!isAssigned && lead.unternehmensname) {
+            console.log(`E-Book Pool: Lead "${lead.unternehmensname}" (${lead.id}) hat KEIN Assignment`)
+          }
+          return !isAssigned
+        })
         .map(record => ({
           id: record.id,
           unternehmensname: arrayToString(record.unternehmensname) || '',
