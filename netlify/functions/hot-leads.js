@@ -640,6 +640,8 @@ export async function handler(event) {
           const lead = data.original_lead || {}
 
           const zapierPayload = {
+            // Record ID für Supabase-Update nach Versand
+            hotLeadId: data.id,
             // Status für Zapier-Filter
             Status: 'Angebot',
             // Kontaktdaten (aus hot_leads oder original_lead)
