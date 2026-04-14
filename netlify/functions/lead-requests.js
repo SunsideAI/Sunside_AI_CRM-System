@@ -152,37 +152,8 @@ export async function handler(event) {
 
       console.log('[Lead-Requests POST] Created request:', anfrageId, 'by', userName)
 
-      // System Messages an alle Admins senden
-      try {
-        const { data: admins } = await supabase
-          .from('users')
-          .select('id, vor_nachname')
-          .eq('status', true)
-          .contains('rollen', ['Admin'])
-
-        if (admins && admins.length > 0) {
-          const messagePromises = admins.map(async (admin) => {
-            const messageId = `MSG-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-            try {
-              await supabase.from('system_messages').insert({
-                message_id: messageId,
-                empfaenger_id: admin.id,
-                typ: 'Pool Update',
-                titel: `Lead-Anfrage: ${userName} möchte ${anzahl} Leads`,
-                nachricht: nachricht || `${userName} hat ${anzahl} neue Leads angefordert.`,
-                gelesen: false
-              })
-            } catch (err) {
-              console.error('System Message für Admin fehlgeschlagen:', admin.id, err)
-            }
-          })
-          await Promise.all(messagePromises)
-          console.log(`[Lead-Requests POST] ${admins.length} Admin-Benachrichtigungen gesendet`)
-        }
-      } catch (notifyErr) {
-        console.error('Admin-Benachrichtigungen fehlgeschlagen:', notifyErr)
-        // Kein Fehler werfen - Anfrage wurde trotzdem erstellt
-      }
+      // System Messages sind nicht mehr nötig - die Anfrage selbst erscheint als Benachrichtigung
+      // im Layout.jsx (lädt lead_requests mit status='Offen' für Admins)
 
       return {
         statusCode: 201,
