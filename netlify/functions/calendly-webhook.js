@@ -147,9 +147,21 @@ export async function handler(event) {
         }
 
         if (hotLead) {
+          console.log('Hot Lead gefunden für Verschiebung:', {
+            id: hotLead.id,
+            unternehmen: hotLead.unternehmen,
+            setterId: hotLead.setterId,
+            closerId: hotLead.closerId
+          })
           await updateHotLeadTermin(hotLead.id, newScheduledTime, hotLead.originalLeadId, hotLead.termin)
           await sendNotifications(hotLead, 'verschiebung', { neuerTermin: newScheduledTime, alterTermin: hotLead.termin })
-          console.log('Hot Lead Termin aktualisiert:', hotLead.id)
+          console.log('Hot Lead Termin aktualisiert und Benachrichtigungen gesendet:', hotLead.id)
+        } else {
+          console.error('WARNUNG: Kein Hot Lead gefunden für Verschiebung!', {
+            email: inviteeEmail,
+            oldTime: oldScheduledTime,
+            unternehmen
+          })
         }
 
         return {
@@ -432,23 +444,35 @@ async function sendNotifications(hotLead, eventType, details) {
 
   // System-Message + E-Mail an Setter
   if (setterId) {
+    console.log('Sende Benachrichtigung an Setter:', setterId)
     await createSystemMessage(setterId, titel, nachricht, typ, hotLead.id)
     const setterUser = usersData.find(u => u.id === setterId)
     if (setterUser) {
+      console.log('Setter gefunden:', setterUser.vor_nachname, setterUser.email_geschaeftlich || setterUser.email)
       await sendNotificationEmail(setterUser, titel, nachricht, typ, emailIcon, emailColor, details, unternehmen)
+    } else {
+      console.error('Setter nicht in usersData gefunden:', setterId)
     }
+  } else {
+    console.log('Kein Setter zugewiesen - keine Setter-Benachrichtigung')
   }
 
   // System-Message + E-Mail an Closer
   if (closerId) {
+    console.log('Sende Benachrichtigung an Closer:', closerId)
     await createSystemMessage(closerId, titel, nachricht, typ, hotLead.id)
     const closerUser = usersData.find(u => u.id === closerId)
     if (closerUser) {
+      console.log('Closer gefunden:', closerUser.vor_nachname, closerUser.email_geschaeftlich || closerUser.email)
       await sendNotificationEmail(closerUser, titel, nachricht, typ, emailIcon, emailColor, details, unternehmen)
+    } else {
+      console.error('Closer nicht in usersData gefunden:', closerId)
     }
+  } else {
+    console.log('Kein Closer zugewiesen - keine Closer-Benachrichtigung')
   }
 
-  console.log('Benachrichtigungen gesendet (System Messages + E-Mails)')
+  console.log('Benachrichtigungen verarbeitet')
 }
 
 // E-Mail-Benachrichtigung senden

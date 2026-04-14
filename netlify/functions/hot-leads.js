@@ -144,7 +144,8 @@ export async function handler(event) {
           closer:users!hot_leads_closer_id_fkey(id, vor_nachname),
           original_lead:leads!hot_leads_lead_id_fkey(
             id, unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname,
-            kategorie, mail, telefonnummer, stadt, website, kommentar
+            kategorie, mail, telefonnummer, stadt, website, kommentar,
+            monatliche_besuche, mehrwert, absprungrate, anzahl_leads
           )
         `)
 
