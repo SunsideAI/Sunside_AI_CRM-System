@@ -158,7 +158,7 @@ async function createUser(data) {
         Telefon: telefon || '',
         // Rolle für Filter
         Rolle: rollen.join(', '),
-        Onboarding: 'Akquise Pfad bereitstellen'
+        Onboarding: 'Akquise-Pfad bereitstellen'
       }
 
       console.log('Sende Coldcaller-Onboarding an Zapier:', zapierPayload)
