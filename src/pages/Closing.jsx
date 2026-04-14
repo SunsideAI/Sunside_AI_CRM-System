@@ -39,7 +39,7 @@ import {
   File
 } from 'lucide-react'
 
-// Paket-Optionen für Angebot (erweitert um Airtable-Produkte)
+// Paket-Optionen für Angebot
 const PRODUKT_OPTIONS = [
   { value: 'KI-Chatbot', label: 'KI-Chatbot' },
   { value: 'KI-Voicebot', label: 'KI-Voicebot' },
@@ -48,10 +48,6 @@ const PRODUKT_OPTIONS = [
   { value: 'KI-Voicebot & KI-Chatbot', label: 'KI-Voicebot & KI-Chatbot' },
   { value: 'Website & KI-Voicebot & KI-Chatbot', label: 'Website & KI-Voicebot & KI-Chatbot' },
   { value: 'SEO & KI-Voicebot & KI-Chatbot', label: 'SEO & KI-Voicebot & KI-Chatbot' },
-  // Airtable-Original-Produkte
-  { value: 'Marketing', label: 'Marketing' },
-  { value: 'Automatisierung', label: 'Automatisierung' },
-  { value: 'Website', label: 'Website' },
   { value: 'Individuell', label: 'Individuell' },
 ]
 
@@ -64,9 +60,6 @@ const PRODUKT_PREISE = {
   'KI-Voicebot & KI-Chatbot':           { setup: 2798, retainer: 612 },
   'Website & KI-Voicebot & KI-Chatbot': { setup: 5397, retainer: 612 },
   'SEO & KI-Voicebot & KI-Chatbot':     { setup: 4197, retainer: 612 },
-  'Marketing':                          { setup: '', retainer: '' },
-  'Automatisierung':                    { setup: '', retainer: '' },
-  'Website':                            { setup: '', retainer: '' },
   'Individuell':                        { setup: '', retainer: '' },
 }
 
@@ -74,7 +67,6 @@ const PRODUKT_PREISE = {
 const PRODUKTE_MIT_WEBSITE_SETUP = [
   'Website & KI-Chatbot',
   'Website & KI-Voicebot & KI-Chatbot',
-  'Website'
 ]
 
 // Standard-Vertragsbestandteile (dynamisch mit Laufzeit)
