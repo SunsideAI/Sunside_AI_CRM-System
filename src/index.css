@@ -170,9 +170,8 @@
 
   .input-field:focus {
     background-color: #FFFFFF;
-    border-color: transparent;
-    border-bottom: 2px solid #460E74;
-    box-shadow: 0 0 0 4px rgba(70, 14, 116, 0.1);
+    border-color: rgba(70, 14, 116, 0.3);
+    box-shadow: 0 0 0 3px rgba(70, 14, 116, 0.08);
   }
 
   /* Select Field */

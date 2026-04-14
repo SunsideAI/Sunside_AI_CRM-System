@@ -1112,13 +1112,11 @@ function Closing() {
             >
               <Calendar className="w-4 h-4 mr-1.5" />
               Pool
-              {poolLeads.length > 0 && (
-                <span className={`ml-1.5 px-1.5 py-0.5 text-label-sm rounded-md ${
-                  viewMode === 'pool' ? 'bg-white/20 text-white' : 'bg-secondary-container text-secondary'
-                }`}>
-                  {poolLeads.length}
-                </span>
-              )}
+              <span className={`ml-1.5 min-w-[24px] text-center px-1.5 py-0.5 text-label-sm rounded-md ${
+                viewMode === 'pool' ? 'bg-white/20 text-white' : 'bg-secondary-container text-secondary'
+              }`}>
+                {poolLeads.length}
+              </span>
             </button>
             {isAdmin() && (
               <button

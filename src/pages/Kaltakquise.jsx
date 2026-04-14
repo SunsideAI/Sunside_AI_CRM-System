@@ -737,13 +737,11 @@ function Kaltakquise() {
             >
               <Flame className="w-4 h-4 mr-1.5" />
               Pool
-              {ebookCount > 0 && (
-                <span className={`ml-1.5 px-1.5 py-0.5 text-label-sm rounded-md ${
-                  viewMode === 'ebook' ? 'bg-white/20 text-white' : 'bg-warning-container text-warning'
-                }`}>
-                  {ebookCount}
-                </span>
-              )}
+              <span className={`ml-1.5 min-w-[24px] text-center px-1.5 py-0.5 text-label-sm rounded-md ${
+                viewMode === 'ebook' ? 'bg-white/20 text-white' : 'bg-warning-container text-warning'
+              }`}>
+                {ebookCount}
+              </span>
             </button>
 
             {/* Alle Leads - nur für Admins */}
