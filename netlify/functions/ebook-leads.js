@@ -159,9 +159,12 @@ export async function handler(event) {
         console.error('Assignment Query Error:', assignError)
       }
 
-      const assignedLeadIds = (assignments || []).map(a => a.lead_id)
+      // Set für schnelleren Lookup (als Strings für sicheren Vergleich)
+      const assignedLeadIdSet = new Set(
+        (assignments || []).map(a => String(a.lead_id))
+      )
 
-      console.log(`E-Book Pool: ${assignedLeadIds.length} Assignments geladen`)
+      console.log(`E-Book Pool: ${assignedLeadIdSet.size} Assignments geladen`)
 
       let query = supabase
         .from('leads')
@@ -175,12 +178,13 @@ export async function handler(event) {
 
       console.log(`E-Book Pool: ${leads?.length || 0} E-Book Leads gefunden`)
 
-      // Im Code filtern: Nur Leads ohne Assignment
+      // Im Code filtern: Nur Leads ohne Assignment (String-Vergleich für UUID-Sicherheit)
       const poolLeads = (leads || [])
         .filter(lead => {
-          const isAssigned = assignedLeadIds.includes(lead.id)
-          if (!isAssigned && lead.unternehmensname) {
-            console.log(`E-Book Pool: Lead "${lead.unternehmensname}" (${lead.id}) hat KEIN Assignment`)
+          const leadIdStr = String(lead.id)
+          const isAssigned = assignedLeadIdSet.has(leadIdStr)
+          if (!isAssigned) {
+            console.log(`E-Book Pool: Lead "${lead.unternehmensname}" (${leadIdStr}) ist NICHT zugewiesen`)
           }
           return !isAssigned
         })
