@@ -923,7 +923,53 @@ function Kaltakquise() {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {/* Mobile Card View */}
+            <div className="block md:hidden divide-y divide-outline-variant">
+              {leads.map((lead) => (
+                <div
+                  key={lead.id}
+                  onClick={() => openLead(lead)}
+                  className="p-4 cursor-pointer hover:bg-surface-container active:bg-surface-container-high transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-start gap-3 flex-1 min-w-0">
+                      <div
+                        className={`p-1.5 rounded-lg flex-shrink-0 ${
+                          lead.kontaktiert
+                            ? 'bg-success-container text-success'
+                            : 'bg-surface-container text-outline'
+                        }`}
+                      >
+                        {lead.kontaktiert ? (
+                          <CheckCircle2 className="w-4 h-4" />
+                        ) : (
+                          <Phone className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-medium text-on-surface truncate">{lead.unternehmensname}</h3>
+                        <p className="text-body-sm text-on-surface-variant truncate">{lead.kategorie}</p>
+                        {lead.stadt && (
+                          <p className="text-body-sm text-outline mt-0.5 flex items-center gap-1">
+                            {lead.land && <span>{getLandFlag(lead.land)}</span>}
+                            {lead.stadt}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {lead.ergebnis && (
+                      <span className={`badge flex-shrink-0 text-xs ${getErgebnisColor(lead.ergebnis)}`}>
+                        {lead.ergebnis}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-surface-container">
@@ -1085,7 +1131,8 @@ function Kaltakquise() {
                 ))}
               </tbody>
             </table>
-          </div>
+            </div>
+          </>
         )}
 
         {/* Pagination */}

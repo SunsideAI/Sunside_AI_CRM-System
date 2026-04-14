@@ -649,7 +649,40 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
             )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            {/* Mobile Card View */}
+            <div className="block md:hidden divide-y divide-outline-variant">
+              {paginatedLeads.map((lead) => (
+                <div
+                  key={lead.id}
+                  onClick={() => openModal(lead)}
+                  className="p-4 cursor-pointer hover:bg-surface-container active:bg-surface-container-high transition-colors"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-on-surface truncate">
+                        {safeString(lead.unternehmen) || 'Unbekannt'}
+                      </h3>
+                      <p className="text-body-sm text-on-surface-variant truncate">
+                        {lead.kategorie || 'Unternehmen'}
+                      </p>
+                      {lead.terminDatum && (
+                        <p className="text-body-sm text-outline mt-1 flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          {formatDate(lead.terminDatum)}
+                        </p>
+                      )}
+                    </div>
+                    <span className={`badge flex-shrink-0 ${getStatusStyle(lead.status)}`}>
+                      {lead.status || 'Neu'}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
                 <tr className="bg-surface-container">
@@ -745,14 +778,15 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                 ))}
               </tbody>
             </table>
+            </div>
 
-            {/* Pagination */}
+            {/* Pagination - shared for both views */}
             {filteredLeads.length > LEADS_PER_PAGE && (
-              <div className="p-4 bg-surface-container/30 flex items-center justify-between mt-2">
+              <div className="p-3 md:p-4 bg-surface-container/30 flex items-center justify-between">
                 <span className="text-body-sm text-on-surface-variant">
                   {startIndex + 1}-{Math.min(startIndex + LEADS_PER_PAGE, filteredLeads.length)} von {filteredLeads.length}
                 </span>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 md:gap-2">
                   <button
                     type="button"
                     onClick={goToPreviousPage}
@@ -775,7 +809,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                 </div>
               </div>
             )}
-          </div>
+          </>
         )}
       </div>
 
