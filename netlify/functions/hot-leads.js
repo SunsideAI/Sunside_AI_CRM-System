@@ -134,64 +134,78 @@ export async function handler(event) {
       // User-Map laden
       const userMap = await loadUserMap()
 
-      // Basis-Query mit Joins zu users und leads
+      // Hot Leads mit Pagination laden (Supabase 1000er Server-Limit!)
       // Hinweis: Attachments werden jetzt aus dem JSONB-Feld 'attachments' gelesen, nicht aus separater Tabelle
-      let query = supabase
-        .from('hot_leads')
-        .select(`
-          *,
-          setter:users!hot_leads_setter_id_fkey(id, vor_nachname),
-          closer:users!hot_leads_closer_id_fkey(id, vor_nachname),
-          original_lead:leads!hot_leads_lead_id_fkey(
-            id, unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname,
-            kategorie, mail, telefonnummer, stadt, website, kommentar,
-            monatliche_besuche, mehrwert, absprungrate, anzahl_leads
-          )
-        `)
+      let hotLeadsData = []
+      const pageSize = 1000
+      let page = 0
+      const maxLimit = limit ? parseInt(limit) : 10000
 
-      // Pool-Filter: Termine ohne Closer (offene Termine für Closer-Pool)
-      if (pool === 'true') {
-        query = query.is('closer_id', null)
+      // Filter-Werte vorberechnen
+      let setterIdFilter = setterId
+      let closerIdFilter = closerId
+
+      if (!setterIdFilter && setterName) {
+        setterIdFilter = await getUserIdByName(setterName)
+      }
+      if (!closerIdFilter && closerName) {
+        closerIdFilter = await getUserIdByName(closerName)
       }
 
-      // Setter-Filter
-      if (setterId) {
-        query = query.eq('setter_id', setterId)
-      } else if (setterName) {
-        const sid = await getUserIdByName(setterName)
-        if (sid) query = query.eq('setter_id', sid)
+      while (hotLeadsData.length < maxLimit) {
+        let query = supabase
+          .from('hot_leads')
+          .select(`
+            *,
+            setter:users!hot_leads_setter_id_fkey(id, vor_nachname),
+            closer:users!hot_leads_closer_id_fkey(id, vor_nachname),
+            original_lead:leads!hot_leads_lead_id_fkey(
+              id, unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname,
+              kategorie, mail, telefonnummer, stadt, website, kommentar,
+              monatliche_besuche, mehrwert, absprungrate, anzahl_leads
+            )
+          `)
+
+        // Pool-Filter: Termine ohne Closer (offene Termine für Closer-Pool)
+        if (pool === 'true') {
+          query = query.is('closer_id', null)
+        }
+
+        // Setter-Filter
+        if (setterIdFilter) {
+          query = query.eq('setter_id', setterIdFilter)
+        }
+
+        // Closer-Filter
+        if (closerIdFilter) {
+          query = query.eq('closer_id', closerIdFilter)
+        }
+
+        // Status-Filter
+        if (status) {
+          const statusList = status.split(',').map(s => s.trim())
+          query = query.in('status', statusList)
+        }
+
+        // Sortierung und Pagination
+        query = query.order('unternehmen', { ascending: true })
+        query = query.range(page * pageSize, (page + 1) * pageSize - 1)
+
+        const { data, error } = await query
+
+        if (error) {
+          console.error('Hot Leads GET Error:', error)
+          throw new Error(error.message || 'Fehler beim Laden der Hot Leads')
+        }
+
+        if (!data || data.length === 0) break
+
+        hotLeadsData = hotLeadsData.concat(data)
+        page++
+        if (data.length < pageSize) break
       }
 
-      // Closer-Filter
-      if (closerId) {
-        query = query.eq('closer_id', closerId)
-      } else if (closerName) {
-        const cid = await getUserIdByName(closerName)
-        if (cid) query = query.eq('closer_id', cid)
-      }
-
-      // Status-Filter
-      if (status) {
-        const statusList = status.split(',').map(s => s.trim())
-        query = query.in('status', statusList)
-      }
-
-      // Sortierung
-      query = query.order('unternehmen', { ascending: true })
-
-      // Limit (Standard: 10000 um 1000er-Supabase-Limit zu umgehen)
-      if (limit) {
-        query = query.limit(parseInt(limit))
-      } else {
-        query = query.limit(10000)
-      }
-
-      const { data: hotLeadsData, error } = await query
-
-      if (error) {
-        console.error('Hot Leads GET Error:', error)
-        throw new Error(error.message || 'Fehler beim Laden der Hot Leads')
-      }
+      console.log(`Hot Leads: ${hotLeadsData.length} Einträge geladen (${page} Seiten)`)
 
       // Records formatieren
       const hotLeads = hotLeadsData.map(record => {
@@ -292,18 +306,30 @@ export async function handler(event) {
 
         console.log('Target Closer:', { targetCloserId, targetCloserName })
 
-        // Hot Leads des Closers finden (kein 1000er Limit!)
-        const { data: closerLeads, error: findError } = await supabase
-          .from('hot_leads')
-          .select('id, unternehmen, termin_beratungsgespraech')
-          .eq('closer_id', targetCloserId)
-          .limit(10000)
+        // Hot Leads des Closers finden (mit Pagination - Supabase 1000er Server-Limit!)
+        let closerLeads = []
+        const closerPageSize = 1000
+        let closerPage = 0
 
-        if (findError) {
-          throw new Error(findError.message)
+        while (true) {
+          const { data, error: findError } = await supabase
+            .from('hot_leads')
+            .select('id, unternehmen, termin_beratungsgespraech')
+            .eq('closer_id', targetCloserId)
+            .range(closerPage * closerPageSize, (closerPage + 1) * closerPageSize - 1)
+
+          if (findError) {
+            throw new Error(findError.message)
+          }
+
+          if (!data || data.length === 0) break
+
+          closerLeads = closerLeads.concat(data)
+          closerPage++
+          if (data.length < closerPageSize) break
         }
 
-        if (!closerLeads || closerLeads.length === 0) {
+        if (closerLeads.length === 0) {
           return {
             statusCode: 200,
             headers: corsHeaders,

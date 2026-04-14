@@ -30,16 +30,27 @@ export async function handler(event) {
         .select('id, vor_nachname, email')
         .order('vor_nachname')
 
-      // Zähle Assignments pro User (kein 1000er Limit!)
-      const { data: assignments } = await supabase
-        .from('lead_assignments')
-        .select('user_id')
-        .limit(100000)
-
+      // Zähle Assignments pro User (mit Pagination - Supabase 1000er Server-Limit!)
       const assignmentCounts = {}
-      assignments?.forEach(a => {
-        assignmentCounts[a.user_id] = (assignmentCounts[a.user_id] || 0) + 1
-      })
+      const pageSize = 1000
+      let page = 0
+      let totalAssignments = 0
+
+      while (true) {
+        const { data: assignments, error } = await supabase
+          .from('lead_assignments')
+          .select('user_id')
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+
+        if (error || !assignments || assignments.length === 0) break
+
+        assignments.forEach(a => {
+          assignmentCounts[a.user_id] = (assignmentCounts[a.user_id] || 0) + 1
+        })
+        totalAssignments += assignments.length
+        page++
+        if (assignments.length < pageSize) break
+      }
 
       const usersWithCounts = users?.map(u => ({
         ...u,
@@ -67,7 +78,7 @@ export async function handler(event) {
         body: JSON.stringify({
           users: usersWithCounts,
           userLeads,
-          totalAssignments: assignments?.length || 0
+          totalAssignments
         }, null, 2)
       }
     }
@@ -109,14 +120,25 @@ export async function handler(event) {
           .select('id')
           .limit(limit || 100)
 
-        // Alle existierenden Assignments laden (kein 1000er Limit!)
-        const { data: existingAssignments } = await supabase
-          .from('lead_assignments')
-          .select('lead_id')
-          .limit(100000)
+        // Alle existierenden Assignments laden (mit Pagination - Supabase 1000er Server-Limit!)
+        const assignedLeadIds = new Set()
+        let assignPage = 0
+        const assignPageSize = 1000
 
-        const assignedLeadIds = new Set(existingAssignments?.map(a => a.lead_id) || [])
-        leadsToAssign = allLeads?.filter(l => !assignedLeadIds.has(l.id)).map(l => l.id) || []
+        while (true) {
+          const { data: existingAssignments, error } = await supabase
+            .from('lead_assignments')
+            .select('lead_id')
+            .range(assignPage * assignPageSize, (assignPage + 1) * assignPageSize - 1)
+
+          if (error || !existingAssignments || existingAssignments.length === 0) break
+
+          existingAssignments.forEach(a => assignedLeadIds.add(String(a.lead_id)))
+          assignPage++
+          if (existingAssignments.length < assignPageSize) break
+        }
+
+        leadsToAssign = allLeads?.filter(l => !assignedLeadIds.has(String(l.id))).map(l => l.id) || []
       } else if (leadIds && leadIds.length > 0) {
         leadsToAssign = leadIds
       } else {

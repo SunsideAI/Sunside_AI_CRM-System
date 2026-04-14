@@ -224,13 +224,24 @@ export async function handler(event) {
     let zugewieseneHotLeads = 0
 
     try {
-      // Hot Leads laden (kein 1000er Limit!)
-      const { data: hotLeadsData } = await supabase
-        .from('hot_leads')
-        .select('id, status, kunde_seit, closer_id, setter_id, termin_beratungsgespraech')
-        .limit(10000)
+      // Hot Leads laden (mit Pagination - Supabase 1000er Server-Limit!)
+      let hotLeadsData = []
+      let hotLeadsPage = 0
 
-      if (hotLeadsData) {
+      while (true) {
+        const { data } = await supabase
+          .from('hot_leads')
+          .select('id, status, kunde_seit, closer_id, setter_id, termin_beratungsgespraech')
+          .range(hotLeadsPage * pageSize, (hotLeadsPage + 1) * pageSize - 1)
+
+        if (!data || data.length === 0) break
+
+        hotLeadsData = hotLeadsData.concat(data)
+        hotLeadsPage++
+        if (data.length < pageSize) break
+      }
+
+      if (hotLeadsData.length > 0) {
         // Abschlüsse diesen Monat (global oder für User)
         const abschlussLeads = hotLeadsData.filter(hl => {
           if (hl.status !== 'Abgeschlossen') return false

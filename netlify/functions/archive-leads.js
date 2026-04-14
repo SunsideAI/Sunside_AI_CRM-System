@@ -63,18 +63,28 @@ export async function handler(event) {
 
     const vertrieblerName = vertrieblerData.vor_nachname || 'Unbekannt'
 
-    // 2. Alle Lead-Assignments für diesen User laden (kein 1000er Limit!)
-    const { data: assignments, error: assignError } = await supabase
-      .from('lead_assignments')
-      .select('lead_id')
-      .eq('user_id', vertriebId)
-      .limit(50000)
+    // 2. Alle Lead-Assignments für diesen User laden (mit Pagination - Supabase 1000er Server-Limit!)
+    const leadIds = []
+    const pageSize = 1000
+    let page = 0
 
-    if (assignError) {
-      throw new Error('Fehler beim Laden der Assignments')
+    while (true) {
+      const { data: assignments, error: assignError } = await supabase
+        .from('lead_assignments')
+        .select('lead_id')
+        .eq('user_id', vertriebId)
+        .range(page * pageSize, (page + 1) * pageSize - 1)
+
+      if (assignError) {
+        throw new Error('Fehler beim Laden der Assignments')
+      }
+
+      if (!assignments || assignments.length === 0) break
+
+      assignments.forEach(a => leadIds.push(a.lead_id))
+      page++
+      if (assignments.length < pageSize) break
     }
-
-    const leadIds = (assignments || []).map(a => a.lead_id)
 
     console.log(`${leadIds.length} Leads insgesamt zugewiesen an ${vertrieblerName}`)
 
