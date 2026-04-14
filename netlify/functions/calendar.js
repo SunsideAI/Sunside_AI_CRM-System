@@ -158,16 +158,16 @@ exports.handler = async (event) => {
 
         try {
           let start, end
-          
+
           if (dateString) {
             // NEU: Datum als String empfangen, deutsche Zeitzone anwenden
             // So ist es unabhängig von der Browser-Zeitzone des Vertrieblers
             // Format: "2025-01-15" → "2025-01-15T00:00:00+01:00" (deutsche Zeit)
-            
+
             // Deutsche Zeitzone: Im Winter UTC+1, im Sommer UTC+2
             // Wir nutzen eine einfache Berechnung für CET/CEST
             const [year, month, day] = dateString.split('-').map(Number)
-            
+
             // Prüfen ob Sommerzeit (vereinfacht: letzter Sonntag März bis letzter Sonntag Oktober)
             const testDate = new Date(year, month - 1, day)
             const isSummerTime = (() => {
@@ -177,18 +177,43 @@ exports.handler = async (event) => {
               // Letzter Sonntag im Oktober
               const octoberLast = new Date(year, 9, 31)
               while (octoberLast.getDay() !== 0) octoberLast.setDate(octoberLast.getDate() - 1)
-              
+
               return testDate >= marchLast && testDate < octoberLast
             })()
-            
+
             const offsetHours = isSummerTime ? 2 : 1  // CEST = +2, CET = +1
-            
+
             // Start: 00:00 deutsche Zeit → UTC
             start = new Date(Date.UTC(year, month - 1, day, 0 - offsetHours, 0, 0))
             // Ende: 23:59 deutsche Zeit → UTC
             end = new Date(Date.UTC(year, month - 1, day, 23 - offsetHours, 59, 59))
-            
+
+            // WICHTIG: Calendly API erlaubt keine Anfragen für vergangene Zeiten
+            // Wenn start in der Vergangenheit liegt, auf aktuelle Zeit setzen
+            const now = new Date()
+            if (start < now) {
+              start = now
+              console.log(`Start-Zeit auf jetzt angepasst (war in Vergangenheit): ${start.toISOString()}`)
+            }
+
             console.log(`Slots für ${dateString} (DE): ${start.toISOString()} - ${end.toISOString()}`)
+
+            // Wenn Start >= Ende (Tag bereits vorbei), leere Slots zurückgeben
+            if (start >= end) {
+              console.log('Tag bereits vorbei, keine Slots verfügbar')
+              return {
+                statusCode: 200,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                  success: true,
+                  eventTypeUri,
+                  dateString,
+                  startDate: start.toISOString(),
+                  endDate: end.toISOString(),
+                  slots: []
+                })
+              }
+            }
           } else {
             // Fallback: alte Logik mit startDate/endDate Parametern
             const now = new Date()
