@@ -538,6 +538,7 @@ export async function handler(event) {
         'kundeSeit': 'kunde_seit',
         'prioritaet': 'prioritaet',
         'closerId': 'closer_id',
+        'closerName': 'closer_id',  // Wird im Spezialcode zu closer_id aufgelöst
         'terminDatum': 'termin_beratungsgespraech',
         'terminart': 'terminart',
         'meetingLink': 'meeting_link',
