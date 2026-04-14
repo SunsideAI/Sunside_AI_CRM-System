@@ -134,7 +134,8 @@ export async function handler(event) {
     const startOfToday = new Date(heute.getFullYear(), heute.getMonth(), heute.getDate())
 
     const startOfWeek = new Date(heute)
-    startOfWeek.setDate(heute.getDate() - heute.getDay() + 1) // Montag
+    const dayOfWeek = heute.getDay() || 7 // Sonntag = 7 statt 0
+    startOfWeek.setDate(heute.getDate() - dayOfWeek + 1) // Montag dieser Woche
     startOfWeek.setHours(0, 0, 0, 0)
 
     const startOfMonth = new Date(heute.getFullYear(), heute.getMonth(), 1)

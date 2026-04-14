@@ -1098,11 +1098,13 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         }
       case 'thisWeek':
         startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - startDate.getDay() + 1) // Montag
+        const dayOfWeek = startDate.getDay() || 7 // Sonntag = 7 statt 0
+        startDate.setDate(startDate.getDate() - dayOfWeek + 1) // Montag dieser Woche
         break
       case 'lastWeek':
         const lastWeekEnd = new Date(today)
-        lastWeekEnd.setDate(lastWeekEnd.getDate() - lastWeekEnd.getDay()) // Letzter Sonntag
+        const lastWeekDayOfWeek = lastWeekEnd.getDay() || 7 // Sonntag = 7 statt 0
+        lastWeekEnd.setDate(lastWeekEnd.getDate() - lastWeekDayOfWeek) // Letzter Sonntag
         const lastWeekStart = new Date(lastWeekEnd)
         lastWeekStart.setDate(lastWeekStart.getDate() - 6)
         return {
