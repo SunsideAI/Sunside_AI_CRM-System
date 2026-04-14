@@ -92,47 +92,51 @@ function Dashboard() {
           </p>
         </div>
 
-        {/* Toggle Buttons */}
-        <div className="flex items-center bg-gray-100 rounded-lg p-1">
-          <button
-            onClick={() => setActiveView('uebersicht')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all duration-250 ${
-              activeView === 'uebersicht'
-                ? 'bg-gradient-primary text-white shadow-glow-primary'
-                : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
-            }`}
-          >
-            <LayoutDashboard className="h-4 w-4" />
-            Übersicht
-          </button>
-
-          {showKaltakquiseTab && (
+        {/* Toggle Buttons - scrollable on mobile */}
+        <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="flex items-center bg-gray-100 rounded-lg p-1 min-w-max">
             <button
-              onClick={() => setActiveView('kaltakquise')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all duration-250 ${
-                activeView === 'kaltakquise'
+              onClick={() => setActiveView('uebersicht')}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                activeView === 'uebersicht'
                   ? 'bg-gradient-primary text-white shadow-glow-primary'
                   : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
-              <Phone className="h-4 w-4" />
-              Kaltakquise
+              <LayoutDashboard className="h-4 w-4" />
+              <span className="hidden xs:inline">Übersicht</span>
+              <span className="xs:hidden">Start</span>
             </button>
-          )}
 
-          {showClosingTab && (
-            <button
-              onClick={() => setActiveView('closing')}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all duration-250 ${
-                activeView === 'closing'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
-                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
-              }`}
-            >
-              <Target className="h-4 w-4" />
-              Closing
-            </button>
-          )}
+            {showKaltakquiseTab && (
+              <button
+                onClick={() => setActiveView('kaltakquise')}
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                  activeView === 'kaltakquise'
+                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+                }`}
+              >
+                <Phone className="h-4 w-4" />
+                <span className="hidden sm:inline">Kaltakquise</span>
+                <span className="sm:hidden">Akquise</span>
+              </button>
+            )}
+
+            {showClosingTab && (
+              <button
+                onClick={() => setActiveView('closing')}
+                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                  activeView === 'closing'
+                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+                }`}
+              >
+                <Target className="h-4 w-4" />
+                Closing
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -921,7 +925,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                     <DollarSign className="w-4 h-4 mr-2 text-green-600" />
                     Deal-Details
                   </h4>
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="bg-white p-3 rounded-lg shadow-sm">
                       <p className="text-xs text-gray-500">Setup</p>
                       <p className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</p>

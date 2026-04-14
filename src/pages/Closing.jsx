@@ -1070,23 +1070,24 @@ function Closing() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Toggle: Meine Leads / Pool / Alle (für Admins) */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+        {/* Toggle: Meine Leads / Pool / Alle (für Admins) - scrollable on mobile */}
+        <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="flex items-center bg-gray-100 rounded-lg p-1 min-w-max">
             <button
               onClick={() => { setViewMode('own'); setCurrentPage(1); }}
-              className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+              className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
                 viewMode === 'own'
                   ? 'bg-gradient-primary text-white shadow-glow-primary'
                   : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
               <UserIcon className="w-4 h-4 mr-1.5" />
-              Meine Leads
+              <span className="hidden sm:inline">Meine Leads</span>
+              <span className="sm:hidden">Meine</span>
             </button>
             <button
               onClick={() => { setViewMode('pool'); setCurrentPage(1); }}
-              className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+              className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
                 viewMode === 'pool'
                   ? 'bg-secondary text-white shadow-glow-secondary'
                   : 'text-on-surface-variant hover:text-secondary hover:bg-secondary-container/30'
@@ -1103,7 +1104,7 @@ function Closing() {
             {isAdmin() && (
               <button
                 onClick={() => { setViewMode('all'); setCurrentPage(1); }}
-                className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
                   viewMode === 'all'
                     ? 'bg-gradient-primary text-white shadow-glow-primary'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
@@ -1292,12 +1293,12 @@ function Closing() {
         </div>
 
         {/* Zeile 2: Filter */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Status-Filter */}
           <select
             value={statusFilter}
             onChange={handleStatusFilterChange}
-            className="select-field w-auto min-w-[140px] text-body-sm py-2.5"
+            className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
           >
             <option value="all">Alle Status</option>
             {STATUS_OPTIONS.map(option => (
@@ -1845,27 +1846,27 @@ function Closing() {
                           )}
                         </p>
                       )}
-                      <div className={`grid ${angebotData.websiteSetup ? 'grid-cols-4' : 'grid-cols-3'} gap-4 mb-4`}>
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <p className="text-sm text-gray-500 mb-1">Setup-Gebühr</p>
-                          <p className="text-2xl font-bold text-gray-900">{parseFloat(angebotData.setup).toLocaleString('de-DE')} €</p>
+                      <div className={`grid grid-cols-2 ${angebotData.websiteSetup ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-3 sm:gap-4 mb-4`}>
+                        <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
+                          <p className="text-xs sm:text-sm text-gray-500 mb-1">Setup-Gebühr</p>
+                          <p className="text-lg sm:text-2xl font-bold text-gray-900">{parseFloat(angebotData.setup).toLocaleString('de-DE')} €</p>
                           <p className="text-xs text-gray-400">einmalig, netto</p>
                         </div>
                         {angebotData.websiteSetup && (
-                          <div className="bg-white rounded-lg p-4 text-center">
-                            <p className="text-sm text-gray-500 mb-1">Website-Setup</p>
-                            <p className="text-2xl font-bold text-purple-600">{parseFloat(angebotData.websiteSetup).toLocaleString('de-DE')} €</p>
+                          <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
+                            <p className="text-xs sm:text-sm text-gray-500 mb-1">Website-Setup</p>
+                            <p className="text-lg sm:text-2xl font-bold text-purple-600">{parseFloat(angebotData.websiteSetup).toLocaleString('de-DE')} €</p>
                             <p className="text-xs text-gray-400">einmalig, netto</p>
                           </div>
                         )}
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <p className="text-sm text-gray-500 mb-1">Monatlicher Retainer</p>
-                          <p className="text-2xl font-bold text-gray-900">{parseFloat(angebotData.retainer).toLocaleString('de-DE')} €</p>
+                        <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
+                          <p className="text-xs sm:text-sm text-gray-500 mb-1">Monatl. Retainer</p>
+                          <p className="text-lg sm:text-2xl font-bold text-gray-900">{parseFloat(angebotData.retainer).toLocaleString('de-DE')} €</p>
                           <p className="text-xs text-gray-400">pro Monat, netto</p>
                         </div>
-                        <div className="bg-white rounded-lg p-4 text-center">
-                          <p className="text-sm text-gray-500 mb-1">Laufzeit</p>
-                          <p className="text-2xl font-bold text-gray-900">{angebotData.laufzeit}</p>
+                        <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
+                          <p className="text-xs sm:text-sm text-gray-500 mb-1">Laufzeit</p>
+                          <p className="text-lg sm:text-2xl font-bold text-gray-900">{angebotData.laufzeit}</p>
                           <p className="text-xs text-gray-400">Monate</p>
                         </div>
                       </div>
@@ -2149,18 +2150,18 @@ function Closing() {
                         <BarChart3 className="w-4 h-4 mr-2 text-purple-600" />
                         Website-Statistiken
                       </h4>
-                      <div className="grid grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                         <div className="bg-white p-3 rounded-lg shadow-sm">
                           <p className="text-xs text-gray-500">Besucher/Monat</p>
-                          <p className="text-lg font-semibold text-gray-900">
-                            {selectedLead.monatlicheBesuche 
+                          <p className="text-base sm:text-lg font-semibold text-gray-900">
+                            {selectedLead.monatlicheBesuche
                               ? selectedLead.monatlicheBesuche.toLocaleString('de-DE')
                               : '-'}
                           </p>
                         </div>
                         <div className="bg-white p-3 rounded-lg shadow-sm">
                           <p className="text-xs text-gray-500">Absprungrate</p>
-                          <p className="text-lg font-semibold text-gray-900">
+                          <p className="text-base sm:text-lg font-semibold text-gray-900">
                             {selectedLead.absprungrate !== null && selectedLead.absprungrate !== undefined
                               ? `${Math.round(selectedLead.absprungrate * 100)}%`
                               : '-'}
@@ -2168,7 +2169,7 @@ function Closing() {
                         </div>
                         <div className="bg-white p-3 rounded-lg shadow-sm">
                           <p className="text-xs text-gray-500">Leads/Monat</p>
-                          <p className="text-lg font-semibold text-gray-900">
+                          <p className="text-base sm:text-lg font-semibold text-gray-900">
                             {selectedLead.anzahlLeads !== null && selectedLead.anzahlLeads !== undefined
                               ? selectedLead.anzahlLeads
                               : '-'}
@@ -2176,8 +2177,8 @@ function Closing() {
                         </div>
                         <div className="bg-white p-3 rounded-lg shadow-sm">
                           <p className="text-xs text-gray-500">Mehrwert</p>
-                          <p className="text-lg font-semibold text-green-600">
-                            {selectedLead.mehrwert 
+                          <p className="text-base sm:text-lg font-semibold text-green-600">
+                            {selectedLead.mehrwert
                               ? `${selectedLead.mehrwert.toLocaleString('de-DE')} €`
                               : '-'}
                           </p>
@@ -2193,25 +2194,25 @@ function Closing() {
                           <Euro className="w-4 h-4 mr-2 text-green-600" />
                           Deal-Details
                         </h4>
-                        <div className="grid grid-cols-4 gap-4">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
                           <div className="bg-white p-3 rounded-lg shadow-sm">
                             <p className="text-xs text-gray-500">Setup</p>
-                            <p className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</p>
+                            <p className="text-base sm:text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</p>
                           </div>
                           <div className="bg-white p-3 rounded-lg shadow-sm">
                             <p className="text-xs text-gray-500">Retainer</p>
-                            <p className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/Mon</p>
+                            <p className="text-base sm:text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/Mon</p>
                           </div>
                           <div className="bg-white p-3 rounded-lg shadow-sm">
                             <p className="text-xs text-gray-500">Laufzeit</p>
-                            <p className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || 12} Mon</p>
+                            <p className="text-base sm:text-lg font-semibold text-gray-900">{selectedLead.laufzeit || 12} Mon</p>
                           </div>
                           <div className="bg-white p-3 rounded-lg shadow-sm">
                             <p className="text-xs text-gray-500">Gesamtwert</p>
-                            <p className="text-lg font-semibold text-green-600">
+                            <p className="text-base sm:text-lg font-semibold text-green-600">
                               {formatMoney(
-                                (selectedLead.setup || 0) + 
-                                (selectedLead.retainer || 0) * 
+                                (selectedLead.setup || 0) +
+                                (selectedLead.retainer || 0) *
                                 (selectedLead.laufzeit || 12)
                               )}
                             </p>

@@ -694,70 +694,74 @@ function Kaltakquise() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           {/* Leads anfordern Button (für alle außer Admins optional) - nicht im E-Book Pool */}
           {!isAdmin() && viewMode !== 'ebook' && (
             <button
               onClick={() => setShowAnfrageModal(true)}
               disabled={offeneAnfrage !== null}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all duration-250 ${
+              className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all duration-250 ${
                 offeneAnfrage
                   ? 'bg-surface-container text-outline cursor-not-allowed'
                   : 'btn-primary'
               }`}
             >
               <Plus className="w-4 h-4" />
-              Leads anfordern
+              <span className="hidden sm:inline">Leads anfordern</span>
+              <span className="sm:hidden">Anfordern</span>
             </button>
           )}
 
-          {/* Tab-Navigation */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
-            {/* Meine Leads */}
-            <button
-              onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setFilterVertriebler('all'); setLeads([]); }}
-              className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
-                viewMode === 'own'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
-                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
-              }`}
-            >
-              <UserIcon className="w-4 h-4 mr-1.5" />
-              Meine Leads
-            </button>
-
-            {/* Pool Tab */}
-            <button
-              onClick={() => { setViewMode('ebook'); setOffset(null); setPageHistory([]); }}
-              className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
-                viewMode === 'ebook'
-                  ? 'bg-warning text-white shadow-md'
-                  : 'text-on-surface-variant hover:text-warning hover:bg-warning-container/30'
-              }`}
-            >
-              <Flame className="w-4 h-4 mr-1.5" />
-              Pool
-              <span className={`ml-1.5 min-w-[24px] text-center px-1.5 py-0.5 text-label-sm rounded-md ${
-                viewMode === 'ebook' ? 'bg-white/20 text-white' : 'bg-warning-container text-warning'
-              }`}>
-                {ebookCount}
-              </span>
-            </button>
-
-            {/* Alle Leads - nur für Admins */}
-            {isAdmin() && (
+          {/* Tab-Navigation - scrollable on mobile */}
+          <div className="w-full sm:w-auto overflow-x-auto">
+            <div className="flex items-center bg-gray-100 rounded-lg p-1 min-w-max">
+              {/* Meine Leads */}
               <button
-                onClick={() => { setViewMode('all'); setOffset(null); setPageHistory([]); setLeads([]); }}
-                className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
-                  viewMode === 'all'
+                onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setFilterVertriebler('all'); setLeads([]); }}
+                className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                  viewMode === 'own'
                     ? 'bg-gradient-primary text-white shadow-glow-primary'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
-                <Users className="w-4 h-4 mr-1.5" />
-                Alle
+                <UserIcon className="w-4 h-4 mr-1.5" />
+                <span className="hidden sm:inline">Meine Leads</span>
+                <span className="sm:hidden">Meine</span>
               </button>
-            )}
+
+              {/* Pool Tab */}
+              <button
+                onClick={() => { setViewMode('ebook'); setOffset(null); setPageHistory([]); }}
+                className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                  viewMode === 'ebook'
+                    ? 'bg-warning text-white shadow-md'
+                    : 'text-on-surface-variant hover:text-warning hover:bg-warning-container/30'
+                }`}
+              >
+                <Flame className="w-4 h-4 mr-1.5" />
+                Pool
+                <span className={`ml-1.5 min-w-[24px] text-center px-1.5 py-0.5 text-label-sm rounded-md ${
+                  viewMode === 'ebook' ? 'bg-white/20 text-white' : 'bg-warning-container text-warning'
+                }`}>
+                  {ebookCount}
+                </span>
+              </button>
+
+              {/* Alle Leads - nur für Admins */}
+              {isAdmin() && (
+                <button
+                  onClick={() => { setViewMode('all'); setOffset(null); setPageHistory([]); setLeads([]); }}
+                  className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                    viewMode === 'all'
+                      ? 'bg-gradient-primary text-white shadow-glow-primary'
+                      : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+                  }`}
+                >
+                  <Users className="w-4 h-4 mr-1.5" />
+                  Alle
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -805,26 +809,26 @@ function Kaltakquise() {
           </button>
         </div>
 
-        {/* Zeile 2: Filter */}
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Zeile 2: Filter - responsive grid on mobile */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3">
           {/* Filter: Kontaktiert */}
           <select
             value={filterContacted}
             onChange={(e) => { setFilterContacted(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-            className="select-field w-auto min-w-[140px] text-body-sm py-2.5"
+            className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
           >
             <option value="all">Alle Status</option>
             <option value="false">Nicht kontaktiert</option>
-            <option value="true">Bereits kontaktiert</option>
+            <option value="true">Kontaktiert</option>
           </select>
 
           {/* Filter: Ergebnis */}
           <select
             value={filterResult}
             onChange={(e) => { setFilterResult(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-            className="select-field w-auto min-w-[160px] text-body-sm py-2.5"
+            className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
           >
-            <option value="all">Alle Ergebnisse</option>
+            <option value="all">Ergebnis</option>
             {ERGEBNIS_OPTIONEN.filter(o => o.value).map(option => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
@@ -834,21 +838,21 @@ function Kaltakquise() {
           <select
             value={filterLand}
             onChange={(e) => { setFilterLand(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-            className="select-field w-auto min-w-[140px] text-body-sm py-2.5"
+            className="select-field w-full sm:w-auto sm:min-w-[120px] text-body-sm py-2.5"
           >
-            <option value="all">Alle Länder</option>
-            <option value="Deutschland">Deutschland</option>
-            <option value="Österreich">Österreich</option>
-            <option value="Schweiz">Schweiz</option>
+            <option value="all">Land</option>
+            <option value="Deutschland">DE</option>
+            <option value="Österreich">AT</option>
+            <option value="Schweiz">CH</option>
           </select>
 
           {/* Filter: Quelle */}
           <select
             value={filterQuelle}
             onChange={(e) => { setFilterQuelle(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-            className="select-field w-auto min-w-[140px] text-body-sm py-2.5"
+            className="select-field w-full sm:w-auto sm:min-w-[120px] text-body-sm py-2.5"
           >
-            <option value="all">Alle Quellen</option>
+            <option value="all">Quelle</option>
             <option value="E-Book">E-Book</option>
             <option value="Kaltakquise">Kaltakquise</option>
             <option value="Empfehlung">Empfehlung</option>
@@ -861,9 +865,9 @@ function Kaltakquise() {
             <select
               value={filterVertriebler}
               onChange={(e) => { setFilterVertriebler(e.target.value); setOffset(null); setPageHistory([]); setLeads([]); }}
-              className="select-field w-auto min-w-[160px] text-body-sm py-2.5"
+              className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5 col-span-2 sm:col-span-1"
             >
-              <option value="all">Alle Vertriebler</option>
+              <option value="all">Vertriebler</option>
               {users.map(u => (
                 <option key={u.id} value={u.id}>{u.name}</option>
               ))}
