@@ -222,6 +222,11 @@
     color: #5E2C8C;
   }
 
+  .badge-info {
+    background-color: #DBEAFE;
+    color: #1E40AF;
+  }
+
   /* Table Row - No dividers, use spacing */
   .table-row {
     @apply transition-all duration-200;

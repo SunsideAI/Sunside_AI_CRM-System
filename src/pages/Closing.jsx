@@ -39,63 +39,96 @@ import {
   File
 } from 'lucide-react'
 
-// Produkt-Optionen für Angebot (entspricht Airtable-Produkten)
+// Produkt-Optionen für Angebot (entspricht Airtable-Produkten + neue Voicebot-Produkte)
 const PRODUKT_OPTIONS = [
   {
     value: 'KI-Chatbot',
     label: 'KI-Chatbot',
     setup: 1399,
     retainer: 360,
-    description: '1.399 € Setup + 360 €/Monat'
+    description: '1.399 € Setup + 360 €/Monat',
+    needsWebsiteSetup: false
   },
   {
     value: 'KI-Voicebot',
     label: 'KI-Voicebot',
     setup: 1399,
     retainer: 360,
-    description: '1.399 € Setup + 360 €/Monat'
+    description: '1.399 € Setup + 360 €/Monat',
+    needsWebsiteSetup: false
   },
   {
     value: 'SEO & KI-Chatbot',
     label: 'SEO & KI-Chatbot',
     setup: 2798,
     retainer: 360,
-    description: '2.798 € Setup + 360 €/Monat'
+    description: '2.798 € Setup + 360 €/Monat',
+    needsWebsiteSetup: false
   },
   {
     value: 'Website & KI-Chatbot',
     label: 'Website & KI-Chatbot',
     setup: 3998,
     retainer: 360,
-    description: '3.998 € Setup + 360 €/Monat'
+    description: '3.998 € Setup + 360 €/Monat',
+    needsWebsiteSetup: true
   },
   {
     value: 'KI-Voicebot & KI-Chatbot',
     label: 'KI-Voicebot & KI-Chatbot',
     setup: 2798,
     retainer: 612,
-    description: '2.798 € Setup + 612 €/Monat'
+    description: '2.798 € Setup + 612 €/Monat',
+    needsWebsiteSetup: false
   },
   {
     value: 'Website & KI-Voicebot & KI-Chatbot',
     label: 'Website & KI-Voicebot & KI-Chatbot',
     setup: 5397,
     retainer: 612,
-    description: '5.397 € Setup + 612 €/Monat'
+    description: '5.397 € Setup + 612 €/Monat',
+    needsWebsiteSetup: true
   },
   {
     value: 'SEO & KI-Voicebot & KI-Chatbot',
     label: 'SEO & KI-Voicebot & KI-Chatbot',
     setup: 4197,
     retainer: 612,
-    description: '4.197 € Setup + 612 €/Monat'
+    description: '4.197 € Setup + 612 €/Monat',
+    needsWebsiteSetup: false
+  },
+  // Airtable-Original-Produkte (ohne Voicebot)
+  {
+    value: 'Marketing',
+    label: 'Marketing',
+    setup: null,
+    retainer: null,
+    description: 'Setup & Retainer individuell',
+    needsWebsiteSetup: false
+  },
+  {
+    value: 'Automatisierung',
+    label: 'Automatisierung',
+    setup: null,
+    retainer: null,
+    description: 'Setup & Retainer individuell',
+    needsWebsiteSetup: false
+  },
+  {
+    value: 'Website',
+    label: 'Website',
+    setup: null,
+    retainer: null,
+    description: 'Website-Einmalpreis (individuell)',
+    needsWebsiteSetup: true
   },
   {
     value: 'Individuell',
     label: 'Individuelles Angebot',
     setup: null,
     retainer: null,
-    description: 'Setup & Retainer manuell eingeben'
+    description: 'Setup & Retainer manuell eingeben',
+    needsWebsiteSetup: false
   }
 ]
 
@@ -105,9 +138,11 @@ Mindestvertragslaufzeit: 12 Monate
 Kündigungsfrist: 3 Monate zum Vertragsende
 Zahlungsweise: Monatlich im Voraus`
 
-// Status-Optionen für Dropdown
+// Status-Optionen für Dropdown (alle DB-Enum-Werte: hot_lead_status_type)
 const STATUS_OPTIONS = [
   { value: 'Lead', label: 'Lead', color: 'badge-primary' },
+  { value: 'Geplant', label: 'Geplant', color: 'badge-info' },
+  { value: 'Im Closing', label: 'Im Closing', color: 'badge-primary' },
   { value: 'Angebot', label: 'Angebot', color: 'badge-warning' },
   { value: 'Angebot versendet', label: 'Angebot versendet', color: 'badge-secondary' },
   { value: 'Abgeschlossen', label: 'Abgeschlossen', color: 'badge-success' },
@@ -143,7 +178,8 @@ function Closing() {
     produkt: '',
     setup: '',
     retainer: '',
-    laufzeit: 12,  // Default 12 Monate
+    websiteSetup: '',        // Separater Setup-Betrag für Website-Komponente
+    laufzeit: 12,            // Default 12 Monate
     vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE,
     paketname: '',           // Nur bei Individuell
     kurzbeschreibung: '',    // Nur bei Individuell
@@ -337,28 +373,32 @@ function Closing() {
   const handleProduktChange = (produktValue) => {
     const produkt = PRODUKT_OPTIONS.find(p => p.value === produktValue)
     if (produkt) {
-      if (produkt.value === 'Individuell') {
-        setAngebotData(prev => ({
-          ...prev,
-          produkt: produktValue,
-          setup: '',
-          retainer: '',
-          paketname: '',
-          kurzbeschreibung: '',
-          leistungsbeschreibung: ''
-        }))
-      } else {
-        setAngebotData(prev => ({
-          ...prev,
-          produkt: produktValue,
-          setup: produkt.setup,
-          retainer: produkt.retainer,
-          paketname: '',
-          kurzbeschreibung: '',
-          leistungsbeschreibung: ''
-        }))
-      }
+      // Produkte ohne feste Preise (Individuell, Marketing, Automatisierung, Website)
+      const needsManualPricing = produkt.setup === null
+
+      setAngebotData(prev => ({
+        ...prev,
+        produkt: produktValue,
+        setup: needsManualPricing ? '' : produkt.setup,
+        retainer: needsManualPricing ? '' : produkt.retainer,
+        websiteSetup: '', // Reset bei Produktwechsel
+        paketname: produktValue === 'Individuell' ? '' : prev.paketname,
+        kurzbeschreibung: produktValue === 'Individuell' ? '' : prev.kurzbeschreibung,
+        leistungsbeschreibung: produktValue === 'Individuell' ? '' : prev.leistungsbeschreibung
+      }))
     }
+  }
+
+  // Prüfen ob aktuelles Produkt Website-Setup-Feld benötigt
+  const currentProduktNeedsWebsiteSetup = () => {
+    const produkt = PRODUKT_OPTIONS.find(p => p.value === angebotData.produkt)
+    return produkt?.needsWebsiteSetup || false
+  }
+
+  // Prüfen ob aktuelles Produkt manuelle Preiseingabe benötigt
+  const currentProduktNeedsManualPricing = () => {
+    const produkt = PRODUKT_OPTIONS.find(p => p.value === angebotData.produkt)
+    return produkt?.setup === null
   }
 
   // Setup ändern bei individuellem Preis
@@ -397,6 +437,11 @@ function Closing() {
         status: 'Angebot'  // Zapier sendet dann das Angebot und setzt auf "Angebot versendet"
       }
 
+      // Website-Setup nur bei Website-Produkten
+      if (currentProduktNeedsWebsiteSetup() && angebotData.websiteSetup) {
+        updates.websiteSetup = parseFloat(angebotData.websiteSetup)
+      }
+
       // Individuelle Felder nur bei Individuell-Produkt
       if (angebotData.produkt === 'Individuell') {
         updates.paketname = angebotData.paketname
@@ -422,7 +467,8 @@ function Closing() {
       console.log('Original Lead ID:', selectedLead.originalLeadId)
       if (selectedLead.originalLeadId) {
         const produktInfo = angebotData.produkt || 'Individuell'
-        const kommentarText = `Angebot versendet - ${produktInfo}: Setup ${angebotData.setup}€, Retainer ${angebotData.retainer}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
+        const websiteSetupInfo = angebotData.websiteSetup ? `, Website-Setup ${angebotData.websiteSetup}€` : ''
+        const kommentarText = `Angebot versendet - ${produktInfo}: Setup ${angebotData.setup}€${websiteSetupInfo}, Retainer ${angebotData.retainer}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
         const userName = user?.vor_nachname || user?.name || 'Closer'
         
         try {
@@ -459,6 +505,7 @@ function Closing() {
               ...lead,
               setup: parseFloat(angebotData.setup),
               retainer: parseFloat(angebotData.retainer),
+              websiteSetup: angebotData.websiteSetup ? parseFloat(angebotData.websiteSetup) : 0,
               laufzeit: parseInt(angebotData.laufzeit) || 12,
               produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
               vertragsbestandteile: angebotData.vertragsbestandteile,
@@ -472,6 +519,7 @@ function Closing() {
         ...prev,
         setup: parseFloat(angebotData.setup),
         retainer: parseFloat(angebotData.retainer),
+        websiteSetup: angebotData.websiteSetup ? parseFloat(angebotData.websiteSetup) : 0,
         laufzeit: parseInt(angebotData.laufzeit) || 12,
         produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
         vertragsbestandteile: angebotData.vertragsbestandteile,
@@ -823,7 +871,17 @@ function Closing() {
     setEditMode(false)
     setEditData({})
     setShowAngebotView(false)
-    setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
+    setAngebotData({
+      produkt: '',
+      setup: '',
+      retainer: '',
+      websiteSetup: '',
+      laufzeit: 12,
+      vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE,
+      paketname: '',
+      kurzbeschreibung: '',
+      leistungsbeschreibung: ''
+    })
     setAngebotSuccess(false)
     setShowEmailComposer(false)
     setShowTerminPicker(false)
@@ -1603,6 +1661,7 @@ function Closing() {
                         produkt: '',
                         setup: '',
                         retainer: '',
+                        websiteSetup: '',
                         laufzeit: 12,
                         vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE,
                         paketname: '',
@@ -1670,54 +1729,61 @@ function Closing() {
                     ))}
                   </div>
 
-                  {/* Individuelle Preiseingabe & Felder */}
-                  {angebotData.produkt === 'Individuell' && (
+                  {/* Individuelle Preiseingabe & Felder - für alle Produkte mit manueller Preiseingabe */}
+                  {currentProduktNeedsManualPricing() && (
                     <div className="bg-gray-50 rounded-xl p-5 mb-6 space-y-4">
-                      <h4 className="font-medium text-gray-900">Individuelles Angebot konfigurieren</h4>
+                      <h4 className="font-medium text-gray-900">
+                        {angebotData.produkt === 'Individuell' ? 'Individuelles Angebot konfigurieren' : `${angebotData.produkt} - Preise konfigurieren`}
+                      </h4>
 
-                      {/* Paketname */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Paketname <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={angebotData.paketname}
-                          onChange={(e) => setAngebotData(prev => ({ ...prev, paketname: e.target.value }))}
-                          placeholder="z.B. KI-Chatbot, WhatsApp-Assistent"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                        />
-                      </div>
+                      {/* Nur bei Individuell: Paketname, Kurzbeschreibung, Leistungsbeschreibung */}
+                      {angebotData.produkt === 'Individuell' && (
+                        <>
+                          {/* Paketname */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Paketname <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={angebotData.paketname}
+                              onChange={(e) => setAngebotData(prev => ({ ...prev, paketname: e.target.value }))}
+                              placeholder="z.B. KI-Chatbot, WhatsApp-Assistent"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                            />
+                          </div>
 
-                      {/* Kurzbeschreibung */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Kurzbeschreibung <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          value={angebotData.kurzbeschreibung}
-                          onChange={(e) => setAngebotData(prev => ({ ...prev, kurzbeschreibung: e.target.value }))}
-                          placeholder="z.B. Aufbau & Betrieb Ihrer individuellen KI-Vertriebsassistenz"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">Wird in der Angebots-E-Mail verwendet</p>
-                      </div>
+                          {/* Kurzbeschreibung */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Kurzbeschreibung <span className="text-red-500">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              value={angebotData.kurzbeschreibung}
+                              onChange={(e) => setAngebotData(prev => ({ ...prev, kurzbeschreibung: e.target.value }))}
+                              placeholder="z.B. Aufbau & Betrieb Ihrer individuellen KI-Vertriebsassistenz"
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Wird in der Angebots-E-Mail verwendet</p>
+                          </div>
 
-                      {/* Leistungsbeschreibung */}
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Leistungsbeschreibung <span className="text-red-500">*</span>
-                        </label>
-                        <textarea
-                          value={angebotData.leistungsbeschreibung}
-                          onChange={(e) => setAngebotData(prev => ({ ...prev, leistungsbeschreibung: e.target.value }))}
-                          placeholder="Detaillierte Beschreibung der Leistungen..."
-                          rows={5}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none"
-                        />
-                        <p className="text-xs text-gray-400 mt-1">Verwende Überschriften und Spiegelstriche für Struktur</p>
-                      </div>
+                          {/* Leistungsbeschreibung */}
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Leistungsbeschreibung <span className="text-red-500">*</span>
+                            </label>
+                            <textarea
+                              value={angebotData.leistungsbeschreibung}
+                              onChange={(e) => setAngebotData(prev => ({ ...prev, leistungsbeschreibung: e.target.value }))}
+                              placeholder="Detaillierte Beschreibung der Leistungen..."
+                              rows={5}
+                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none"
+                            />
+                            <p className="text-xs text-gray-400 mt-1">Verwende Überschriften und Spiegelstriche für Struktur</p>
+                          </div>
+                        </>
+                      )}
 
                       {/* Setup-Gebühr */}
                       <div>
@@ -1744,6 +1810,29 @@ function Closing() {
                           </p>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* Website-Setup Feld (nur für Website-Produkte) */}
+                  {currentProduktNeedsWebsiteSetup() && (
+                    <div className="bg-purple-50 rounded-xl p-5 mb-6">
+                      <h4 className="font-medium text-purple-900 mb-4">Website-Komponente</h4>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Website Setup-Gebühr (netto)
+                        </label>
+                        <div className="relative">
+                          <input
+                            type="number"
+                            value={angebotData.websiteSetup}
+                            onChange={(e) => setAngebotData(prev => ({ ...prev, websiteSetup: e.target.value }))}
+                            placeholder="z.B. 2500"
+                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                          />
+                          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">Separater Setup-Betrag für die Website-Erstellung</p>
+                      </div>
                     </div>
                   )}
 
@@ -1814,15 +1903,22 @@ function Closing() {
                           )}
                         </p>
                       )}
-                      <div className="grid grid-cols-3 gap-4 mb-4">
+                      <div className={`grid ${angebotData.websiteSetup ? 'grid-cols-4' : 'grid-cols-3'} gap-4 mb-4`}>
                         <div className="bg-white rounded-lg p-4 text-center">
                           <p className="text-sm text-gray-500 mb-1">Setup-Gebühr</p>
                           <p className="text-2xl font-bold text-gray-900">{parseFloat(angebotData.setup).toLocaleString('de-DE')} €</p>
                           <p className="text-xs text-gray-400">einmalig, netto</p>
                         </div>
+                        {angebotData.websiteSetup && (
+                          <div className="bg-white rounded-lg p-4 text-center">
+                            <p className="text-sm text-gray-500 mb-1">Website-Setup</p>
+                            <p className="text-2xl font-bold text-purple-600">{parseFloat(angebotData.websiteSetup).toLocaleString('de-DE')} €</p>
+                            <p className="text-xs text-gray-400">einmalig, netto</p>
+                          </div>
+                        )}
                         <div className="bg-white rounded-lg p-4 text-center">
                           <p className="text-sm text-gray-500 mb-1">Monatlicher Retainer</p>
-                          <p className="text-2xl font-bold text-gray-900">{angebotData.retainer} €</p>
+                          <p className="text-2xl font-bold text-gray-900">{parseFloat(angebotData.retainer).toLocaleString('de-DE')} €</p>
                           <p className="text-xs text-gray-400">pro Monat, netto</p>
                         </div>
                         <div className="bg-white rounded-lg p-4 text-center">
@@ -1834,7 +1930,11 @@ function Closing() {
                       <div className="bg-white rounded-lg p-4 text-center">
                         <p className="text-sm text-gray-500 mb-1">Gesamtwert ({angebotData.laufzeit} Monate)</p>
                         <p className="text-3xl font-bold text-green-600">
-                          {(parseFloat(angebotData.setup) + parseFloat(angebotData.retainer) * angebotData.laufzeit).toLocaleString('de-DE')} €
+                          {(
+                            parseFloat(angebotData.setup) +
+                            (parseFloat(angebotData.websiteSetup) || 0) +
+                            parseFloat(angebotData.retainer) * angebotData.laufzeit
+                          ).toLocaleString('de-DE')} €
                         </p>
                       </div>
                     </div>
@@ -2468,7 +2568,17 @@ function Closing() {
                       type="button"
                       onClick={() => {
                         setShowAngebotView(false)
-                        setAngebotData({ paket: '', setup: '', retainer: '', laufzeit: 12 })
+                        setAngebotData({
+                          produkt: '',
+                          setup: '',
+                          retainer: '',
+                          websiteSetup: '',
+                          laufzeit: 12,
+                          vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE,
+                          paketname: '',
+                          kurzbeschreibung: '',
+                          leistungsbeschreibung: ''
+                        })
                       }}
                       disabled={sendingAngebot}
                       className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
