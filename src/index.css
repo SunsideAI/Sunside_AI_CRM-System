@@ -73,36 +73,34 @@
    COMPONENT LAYER
    ================================================ */
 @layer components {
-  /* Primary Button with Gradient */
+  /* Primary Button - Solid (kein Gradient für bessere Konsistenz) */
   .btn-primary {
-    @apply px-6 py-3 rounded-md font-medium text-white transition-all duration-250;
-    background: linear-gradient(135deg, #460E74 0%, #5E2C8C 100%);
-    box-shadow: 0 4px 20px rgba(70, 14, 116, 0.2);
+    @apply px-5 py-2.5 rounded-xl font-medium text-white transition-all duration-200;
+    background-color: #460E74;
   }
 
   .btn-primary:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 8px 30px rgba(70, 14, 116, 0.3);
+    background-color: #5E2C8C;
   }
 
   .btn-primary:active {
-    transform: translateY(0);
+    background-color: #3A0B5F;
   }
 
   /* Secondary Button */
   .btn-secondary {
-    @apply px-6 py-3 rounded-md font-medium transition-all duration-250;
-    background-color: #E8D5F9;
-    color: #460E74;
+    @apply px-5 py-2.5 rounded-xl font-medium transition-all duration-200;
+    background-color: #3B82F6;
+    color: white;
   }
 
   .btn-secondary:hover {
-    background-color: #D4BBEB;
+    background-color: #2563EB;
   }
 
   /* Ghost Button */
   .btn-ghost {
-    @apply px-6 py-3 rounded-md font-medium transition-all duration-250;
+    @apply px-5 py-2.5 rounded-xl font-medium transition-all duration-200;
     background-color: transparent;
     color: #460E74;
   }

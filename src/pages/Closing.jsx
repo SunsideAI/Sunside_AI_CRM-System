@@ -1943,7 +1943,7 @@ function Closing() {
                         <button
                           type="button"
                           onClick={() => setShowEmailComposer(true)}
-                          className="flex items-center justify-center px-4 py-2.5 bg-secondary text-on-secondary rounded-xl hover:bg-secondary/90 transition-colors"
+                          className="btn-secondary flex items-center justify-center"
                         >
                           <Paperclip className="w-4 h-4 mr-2" />
                           Unterlagen versenden
