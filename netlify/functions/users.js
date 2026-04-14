@@ -139,6 +139,47 @@ async function createUser(data) {
     throw new Error(error.message || 'User konnte nicht erstellt werden')
   }
 
+  // Zapier-Webhook für Coldcaller Onboarding (Akquisepfad bereitstellen)
+  const rollen = rolle || []
+  if (rollen.includes('Coldcaller') || rollen.includes('Setter')) {
+    try {
+      const zapierPayload = {
+        // User ID für Supabase-Update
+        userId: newUser.id,
+        // Persönliche Daten für PDF-Vertrag
+        Vorname: vorname || '',
+        Name: nachname || '',
+        Strasse: strasse || '',
+        PLZ: plz || '',
+        Ort: ort || '',
+        // Kontakt
+        Email: email || '',
+        EmailGeschaeftlich: email_geschaeftlich || '',
+        Telefon: telefon || '',
+        // Rolle für Filter
+        Rolle: rollen.join(', '),
+        Onboarding: 'Coldcaller'
+      }
+
+      console.log('Sende Coldcaller-Onboarding an Zapier:', zapierPayload)
+
+      const zapierResponse = await fetch('https://hooks.zapier.com/hooks/catch/21938164/ufwy4t3/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(zapierPayload)
+      })
+
+      if (zapierResponse.ok) {
+        console.log('Zapier Coldcaller-Webhook erfolgreich')
+      } else {
+        console.warn('Zapier Coldcaller-Webhook Fehler:', zapierResponse.status)
+      }
+    } catch (zapierErr) {
+      console.warn('Zapier Coldcaller-Webhook fehlgeschlagen:', zapierErr)
+      // Nicht abbrechen - User wurde bereits erstellt
+    }
+  }
+
   return {
     statusCode: 201,
     headers: corsHeaders,
