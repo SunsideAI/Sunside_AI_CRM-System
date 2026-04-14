@@ -391,14 +391,16 @@ function Closing() {
 
   // Prüfen ob aktuelles Produkt Website-Setup-Feld benötigt
   const currentProduktNeedsWebsiteSetup = () => {
+    if (!angebotData?.produkt) return false
     const produkt = PRODUKT_OPTIONS.find(p => p.value === angebotData.produkt)
-    return produkt?.needsWebsiteSetup || false
+    return produkt?.needsWebsiteSetup === true
   }
 
   // Prüfen ob aktuelles Produkt manuelle Preiseingabe benötigt
   const currentProduktNeedsManualPricing = () => {
+    if (!angebotData?.produkt) return false
     const produkt = PRODUKT_OPTIONS.find(p => p.value === angebotData.produkt)
-    return produkt?.setup === null
+    return produkt?.setup === null && produkt !== undefined
   }
 
   // Setup ändern bei individuellem Preis
