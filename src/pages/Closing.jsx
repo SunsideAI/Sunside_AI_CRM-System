@@ -445,7 +445,49 @@ function Closing() {
         vertragsbestandteile: angebotData.vertragsbestandteile,
         status: 'Angebot'
       }))
-      
+
+      // Zapier-Webhook für Angebotsversand triggern
+      try {
+        const zapierPayload = {
+          // Kontaktdaten
+          name: selectedLead.ansprechpartnerNachname || '',
+          vorname: selectedLead.ansprechpartnerVorname || '',
+          unternehmensname: selectedLead.unternehmen || '',
+          telefonnummer: selectedLead.telefon || '',
+          email: selectedLead.email || '',
+          // Bearbeiter
+          Bearbeiter: user?.vor_nachname || user?.name || 'Closer',
+          // Angebotsdaten
+          retainer: parseFloat(angebotData.retainer),
+          setup: parseFloat(angebotData.setup),
+          laufzeit: parseInt(angebotData.laufzeit) || 12,
+          kategorie: selectedLead.kategorie || '',
+          paket: angebotData.produkt || '',
+          vertragsbestandteile: angebotData.vertragsbestandteile || '',
+          // Individuelle Felder
+          paketname: angebotData.paketname || '',
+          leistungsbeschreibung: angebotData.leistungsbeschreibung || '',
+          kurzbeschreibung: angebotData.kurzbeschreibung || ''
+        }
+
+        console.log('Sende Angebot an Zapier:', zapierPayload)
+
+        const zapierResponse = await fetch('https://hooks.zapier.com/hooks/catch/21938164/ub2g9ge/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(zapierPayload)
+        })
+
+        if (zapierResponse.ok) {
+          console.log('Zapier Webhook erfolgreich')
+        } else {
+          console.warn('Zapier Webhook Fehler:', zapierResponse.status)
+        }
+      } catch (zapierErr) {
+        console.warn('Zapier Webhook fehlgeschlagen:', zapierErr)
+        // Nicht abbrechen - Hot Lead wurde bereits aktualisiert
+      }
+
       // Erfolgs-Ansicht im Modal zeigen
       setAngebotSuccess(true)
       
