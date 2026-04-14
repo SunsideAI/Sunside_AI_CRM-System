@@ -224,9 +224,11 @@ export async function handler(event) {
     let zugewieseneHotLeads = 0
 
     try {
+      // Hot Leads laden (kein 1000er Limit!)
       const { data: hotLeadsData } = await supabase
         .from('hot_leads')
         .select('id, status, kunde_seit, closer_id, setter_id, termin_beratungsgespraech')
+        .limit(10000)
 
       if (hotLeadsData) {
         // Abschlüsse diesen Monat (global oder für User)

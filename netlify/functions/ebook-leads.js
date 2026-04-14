@@ -149,10 +149,11 @@ export async function handler(event) {
   try {
     // GET: E-Book Pool Leads laden (ohne Vertriebler zugewiesen)
     if (event.httpMethod === 'GET') {
-      // E-Book Leads ohne Assignment laden
+      // E-Book Leads ohne Assignment laden (kein 1000er Limit!)
       const { data: assignments } = await supabase
         .from('lead_assignments')
         .select('lead_id')
+        .limit(100000)
 
       const assignedLeadIds = (assignments || []).map(a => a.lead_id)
 

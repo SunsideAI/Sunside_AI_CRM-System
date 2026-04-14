@@ -30,10 +30,11 @@ export async function handler(event) {
         .select('id, vor_nachname, email')
         .order('vor_nachname')
 
-      // Zähle Assignments pro User
+      // Zähle Assignments pro User (kein 1000er Limit!)
       const { data: assignments } = await supabase
         .from('lead_assignments')
         .select('user_id')
+        .limit(100000)
 
       const assignmentCounts = {}
       assignments?.forEach(a => {
@@ -108,9 +109,11 @@ export async function handler(event) {
           .select('id')
           .limit(limit || 100)
 
+        // Alle existierenden Assignments laden (kein 1000er Limit!)
         const { data: existingAssignments } = await supabase
           .from('lead_assignments')
           .select('lead_id')
+          .limit(100000)
 
         const assignedLeadIds = new Set(existingAssignments?.map(a => a.lead_id) || [])
         leadsToAssign = allLeads?.filter(l => !assignedLeadIds.has(l.id)).map(l => l.id) || []

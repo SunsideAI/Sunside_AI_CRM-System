@@ -63,11 +63,12 @@ export async function handler(event) {
 
     const vertrieblerName = vertrieblerData.vor_nachname || 'Unbekannt'
 
-    // 2. Alle Lead-Assignments für diesen User laden
+    // 2. Alle Lead-Assignments für diesen User laden (kein 1000er Limit!)
     const { data: assignments, error: assignError } = await supabase
       .from('lead_assignments')
       .select('lead_id')
       .eq('user_id', vertriebId)
+      .limit(50000)
 
     if (assignError) {
       throw new Error('Fehler beim Laden der Assignments')

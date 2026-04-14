@@ -179,9 +179,11 @@ export async function handler(event) {
       // Sortierung
       query = query.order('unternehmen', { ascending: true })
 
-      // Limit
+      // Limit (Standard: 10000 um 1000er-Supabase-Limit zu umgehen)
       if (limit) {
         query = query.limit(parseInt(limit))
+      } else {
+        query = query.limit(10000)
       }
 
       const { data: hotLeadsData, error } = await query
@@ -290,11 +292,12 @@ export async function handler(event) {
 
         console.log('Target Closer:', { targetCloserId, targetCloserName })
 
-        // Hot Leads des Closers finden
+        // Hot Leads des Closers finden (kein 1000er Limit!)
         const { data: closerLeads, error: findError } = await supabase
           .from('hot_leads')
           .select('id, unternehmen, termin_beratungsgespraech')
           .eq('closer_id', targetCloserId)
+          .limit(10000)
 
         if (findError) {
           throw new Error(findError.message)
