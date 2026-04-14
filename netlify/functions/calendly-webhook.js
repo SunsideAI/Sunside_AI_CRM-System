@@ -101,7 +101,7 @@ export async function handler(event) {
 
         await updateHotLeadAbsage(hotLead.id, hotLead.originalLeadId, grund)
         await sendNotifications(hotLead, 'absage', { grund })
-        console.log('Hot Lead Termin geloescht:', hotLead.id)
+        console.log('Hot Lead Status auf abgesagt geaendert:', hotLead.id)
       }
 
       return {
@@ -322,13 +322,14 @@ async function findHotLeadByEmail(email) {
   return null
 }
 
-// Hot Lead bei Absage aktualisieren
+// Hot Lead bei Absage aktualisieren - NUR Status ändern, Termin behalten für Referenz
 async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
   console.log('Aktualisiere Hot Lead Absage:', { hotLeadId, originalLeadId })
 
+  // Nur Status ändern - termin_beratungsgespraech bleibt erhalten für Referenz
   const { error } = await supabase
     .from('hot_leads')
-    .update({ termin_beratungsgespraech: null, status: 'Termin abgesagt' })
+    .update({ status: 'Termin abgesagt' })
     .eq('id', hotLeadId)
 
   if (error) {
