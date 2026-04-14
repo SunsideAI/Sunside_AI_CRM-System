@@ -630,6 +630,8 @@ export async function handler(event) {
       if (fields.status === 'Angebot' && data) {
         try {
           const zapierPayload = {
+            // Status für Zapier-Filter
+            Status: 'Angebot',
             // Kontaktdaten
             name: arrayToString(data.ansprechpartner_nachname) || '',
             vorname: arrayToString(data.ansprechpartner_vorname) || '',
