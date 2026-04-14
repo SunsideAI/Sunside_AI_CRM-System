@@ -1140,21 +1140,26 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
   const formatPercent = (value) => `${value.toFixed(1)}%`
 
-  // Farben für Charts (weiche Container-Farben)
-  const RESULT_COLORS = {
-    beratungsgespraech: '#86EFAC', // green-300
-    unterlagen: '#FDE047',    // yellow-300
-    keinInteresse: '#FCA5A5', // red-300
-    nichtErreicht: '#D1D5DB'  // gray-300
+  // CI-konformes Farbschema basierend auf Primary #460E74
+  // Harmonische Farben die zur CI passen
+  const CHART_COLORS = {
+    // Kaltakquise Ergebnisse
+    beratungsgespraech: '#10B981', // Emerald (Tertiary) - Positiv/Erfolg
+    unterlagen: '#6366F1',         // Indigo (Secondary Blue) - Neutral-positiv
+    keinInteresse: '#EC4899',      // Pink - Negativ (komplementär zu Lila)
+    nichtErreicht: '#8B8B9A',      // Neutral Grau mit Lila-Unterton
+
+    // Funnel Stufen (Lila-Abstufungen + Akzente)
+    einwahlen: '#7C3AED',          // Vivid Purple - Primary Aktion
+    erreicht: '#8B5CF6',           // Purple 500 - Abstufung
   }
 
-  // Bar-Farben (etwas kräftiger für bessere Lesbarkeit)
-  const BAR_COLORS = {
-    einwahlen: '#C4B5FD', // purple-300
-    erreicht: '#93C5FD',  // blue-300
-    beratungsgespraech: '#86EFAC', // green-300
-    unterlagen: '#FDE047', // yellow-300
-    keinInteresse: '#FCA5A5' // red-300
+  // Closing Farben
+  const CLOSING_COLORS = {
+    gewonnen: '#10B981',   // Emerald - Erfolg
+    verloren: '#EC4899',   // Pink - komplementär zu Lila
+    offen: '#8B8B9A',      // Neutral
+    noShow: '#F59E0B'      // Amber - Warnung
   }
 
   if (loading && !refreshing) {
@@ -1266,10 +1271,10 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                     <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#44474F' }} />
                     <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
                     <Bar dataKey="value" radius={[0, 8, 8, 0]}>
-                      <Cell fill={BAR_COLORS.einwahlen} />
-                      <Cell fill={BAR_COLORS.erreicht} />
-                      <Cell fill={BAR_COLORS.beratungsgespraech} />
-                      <Cell fill={BAR_COLORS.unterlagen} />
+                      <Cell fill={CHART_COLORS.einwahlen} />
+                      <Cell fill={CHART_COLORS.erreicht} />
+                      <Cell fill={CHART_COLORS.beratungsgespraech} />
+                      <Cell fill={CHART_COLORS.unterlagen} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -1298,9 +1303,9 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                       cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                     >
-                      <Cell fill={RESULT_COLORS.beratungsgespraech} />
-                      <Cell fill={RESULT_COLORS.unterlagen} />
-                      <Cell fill={RESULT_COLORS.keinInteresse} />
+                      <Cell fill={CHART_COLORS.beratungsgespraech} />
+                      <Cell fill={CHART_COLORS.unterlagen} />
+                      <Cell fill={CHART_COLORS.keinInteresse} />
                     </Pie>
                     <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
                   </PieChart>
@@ -1388,9 +1393,9 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                           return labels[value] || value
                         }}
                       />
-                      <Bar dataKey="beratungsgespraech" stackId="a" fill={RESULT_COLORS.beratungsgespraech} name="beratungsgespraech" radius={[0, 4, 4, 0]} />
-                      <Bar dataKey="unterlagen" stackId="a" fill={RESULT_COLORS.unterlagen} name="unterlagen" />
-                      <Bar dataKey="keinInteresse" stackId="a" fill={RESULT_COLORS.keinInteresse} name="keinInteresse" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="beratungsgespraech" stackId="a" fill={CHART_COLORS.beratungsgespraech} name="beratungsgespraech" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="unterlagen" stackId="a" fill={CHART_COLORS.unterlagen} name="unterlagen" />
+                      <Bar dataKey="keinInteresse" stackId="a" fill={CHART_COLORS.keinInteresse} name="keinInteresse" radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -1569,8 +1574,9 @@ function ClosingAnalytics({ user, isAdmin }) {
 
   const formatPercent = (value) => `${value.toFixed(1)}%`
 
-  // Weiche Farben für Closing Charts (green-300, red-300, gray-300, yellow-300)
-  const CLOSING_COLORS = ['#86EFAC', '#FCA5A5', '#D1D5DB', '#FDE047']
+  // CI-konforme Closing Farben (passend zu Primary #460E74)
+  // Reihenfolge: Gewonnen, Verloren, Offen, No-Show
+  const CLOSING_CHART_COLORS = ['#10B981', '#EC4899', '#8B8B9A', '#F59E0B']
 
   if (loading && !refreshing) {
     return (
@@ -1684,7 +1690,7 @@ function ClosingAnalytics({ user, isAdmin }) {
                       cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                     >
-                      {CLOSING_COLORS.map((color, index) => (<Cell key={`cell-${index}`} fill={color} />))}
+                      {CLOSING_CHART_COLORS.map((color, index) => (<Cell key={`cell-${index}`} fill={color} />))}
                     </Pie>
                     <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
                   </PieChart>
@@ -1725,9 +1731,9 @@ function ClosingAnalytics({ user, isAdmin }) {
                       }}
                     />
                     <Legend />
-                    <Bar dataKey="offen" name="Offen" fill="#D1D5DB" stackId="a" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="gewonnen" name="Gewonnen" fill="#86EFAC" stackId="a" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="verloren" name="Verloren" fill="#FCA5A5" stackId="a" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="offen" name="Offen" fill="#8B8B9A" stackId="a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="gewonnen" name="Gewonnen" fill="#10B981" stackId="a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="verloren" name="Verloren" fill="#EC4899" stackId="a" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
