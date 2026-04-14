@@ -785,10 +785,15 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
           {/* Modal Content */}
           <div className="modal-content relative max-w-2xl w-full max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between pb-6 flex-shrink-0">
-              <div>
-                <h2 className="text-headline-sm font-display text-on-surface">{selectedLead.unternehmen || 'Lead Details'}</h2>
-                <p className="text-body-sm text-on-surface-variant mt-1">{selectedLead.kategorie || 'Hot Lead'}</p>
+            <div className="flex items-center justify-between pb-4 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-primary rounded-lg">
+                  <Building2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-headline-sm font-display text-on-surface">{selectedLead.unternehmen || 'Lead Details'}</h2>
+                  <p className="text-body-sm text-on-surface-variant">{selectedLead.kategorie || 'Hot Lead'}</p>
+                </div>
               </div>
               <button
                 onClick={closeModal}

@@ -1231,15 +1231,20 @@ function Kaltakquise() {
           <div className="modal-content relative max-w-2xl w-full max-h-[90vh] flex flex-col">
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-4 flex-shrink-0">
-              <div>
-                <h2 className="text-headline-sm font-display text-on-surface">{selectedLead.unternehmensname}</h2>
-                <p className="text-body-sm text-muted">{selectedLead.kategorie}</p>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-gradient-primary rounded-lg">
+                  <Building2 className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-headline-sm font-display text-on-surface">{selectedLead.unternehmensname}</h2>
+                  <p className="text-body-sm text-on-surface-variant">{selectedLead.kategorie}</p>
+                </div>
               </div>
               <button
                 onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
                 className="p-2 hover:bg-surface-container rounded-lg transition-colors"
               >
-                <X className="w-5 h-5 text-muted" />
+                <X className="w-5 h-5 text-on-surface-variant" />
               </button>
             </div>
 
@@ -1338,26 +1343,26 @@ function Kaltakquise() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {/* Telefon */}
                 {editMode ? (
-                  <div className="flex items-center p-3 bg-white border-2 border-sunside-primary/30 rounded-lg">
-                    <Phone className="w-5 h-5 text-sunside-primary mr-3" />
+                  <div className="flex items-center p-3 bg-surface-container-lowest border-2 border-primary/30 rounded-lg">
+                    <Phone className="w-5 h-5 text-primary mr-3" />
                     <input
                       type="tel"
                       value={editForm.telefon}
                       onChange={(e) => setEditForm(prev => ({ ...prev, telefon: e.target.value }))}
                       placeholder="Telefonnummer eingeben..."
-                      className="flex-1 bg-transparent outline-none text-gray-900"
+                      className="flex-1 bg-transparent outline-none text-on-surface"
                     />
                   </div>
                 ) : selectedLead.telefon ? (
-                  <a 
+                  <a
                     href={`tel:${selectedLead.telefon}`}
-                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex items-center p-3 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
                   >
-                    <Phone className="w-5 h-5 text-sunside-primary mr-3" />
-                    <span className="text-gray-900">{selectedLead.telefon}</span>
+                    <Phone className="w-5 h-5 text-primary mr-3" />
+                    <span className="text-on-surface">{selectedLead.telefon}</span>
                   </a>
                 ) : (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
+                  <div className="flex items-center p-3 bg-surface-container rounded-lg text-outline">
                     <Phone className="w-5 h-5 mr-3" />
                     <span>Keine Telefonnummer</span>
                   </div>
@@ -1365,26 +1370,26 @@ function Kaltakquise() {
 
                 {/* E-Mail */}
                 {editMode ? (
-                  <div className="flex items-center p-3 bg-white border-2 border-sunside-primary/30 rounded-lg">
-                    <Mail className="w-5 h-5 text-sunside-primary mr-3" />
+                  <div className="flex items-center p-3 bg-surface-container-lowest border-2 border-primary/30 rounded-lg">
+                    <Mail className="w-5 h-5 text-primary mr-3" />
                     <input
                       type="email"
                       value={editForm.email}
                       onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
                       placeholder="E-Mail eingeben..."
-                      className="flex-1 bg-transparent outline-none text-gray-900"
+                      className="flex-1 bg-transparent outline-none text-on-surface"
                     />
                   </div>
                 ) : selectedLead.email ? (
-                  <a 
+                  <a
                     href={`mailto:${selectedLead.email}`}
-                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex items-center p-3 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
                   >
-                    <Mail className="w-5 h-5 text-sunside-primary mr-3" />
-                    <span className="text-gray-900 truncate">{selectedLead.email}</span>
+                    <Mail className="w-5 h-5 text-primary mr-3" />
+                    <span className="text-on-surface truncate">{selectedLead.email}</span>
                   </a>
                 ) : (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
+                  <div className="flex items-center p-3 bg-surface-container rounded-lg text-outline">
                     <Mail className="w-5 h-5 mr-3" />
                     <span>Keine E-Mail</span>
                   </div>
@@ -1392,91 +1397,91 @@ function Kaltakquise() {
 
                 {/* Website */}
                 {editMode ? (
-                  <div className="flex items-center p-3 bg-white border-2 border-sunside-primary/30 rounded-lg">
-                    <Globe className="w-5 h-5 text-sunside-primary mr-3" />
+                  <div className="flex items-center p-3 bg-surface-container-lowest border-2 border-primary/30 rounded-lg">
+                    <Globe className="w-5 h-5 text-primary mr-3" />
                     <input
                       type="url"
                       value={editForm.website}
                       onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
                       placeholder="Website eingeben..."
-                      className="flex-1 bg-transparent outline-none text-gray-900"
+                      className="flex-1 bg-transparent outline-none text-on-surface"
                     />
                   </div>
                 ) : selectedLead.website ? (
-                  <a 
+                  <a
                     href={selectedLead.website.startsWith('http') ? selectedLead.website : `https://${selectedLead.website}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    className="flex items-center p-3 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
                   >
-                    <Globe className="w-5 h-5 text-sunside-primary mr-3" />
-                    <span className="text-gray-900 truncate">{selectedLead.website}</span>
+                    <Globe className="w-5 h-5 text-primary mr-3" />
+                    <span className="text-on-surface truncate">{selectedLead.website}</span>
                   </a>
                 ) : (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
+                  <div className="flex items-center p-3 bg-surface-container rounded-lg text-outline">
                     <Globe className="w-5 h-5 mr-3" />
                     <span>Keine Website</span>
                   </div>
                 )}
 
                 {/* Standort - nicht editierbar */}
-                <div className="flex items-center p-3 bg-gray-50 rounded-lg">
+                <div className="flex items-center p-3 bg-surface-container rounded-lg">
                   {selectedLead.land && (
                     <span className="text-xl mr-2" title={selectedLead.land}>{getLandFlag(selectedLead.land)}</span>
                   )}
-                  <MapPin className="w-5 h-5 text-sunside-primary mr-3" />
-                  <span className="text-gray-900">{selectedLead.stadt}</span>
+                  <MapPin className="w-5 h-5 text-primary mr-3" />
+                  <span className="text-on-surface">{selectedLead.stadt}</span>
                 </div>
                 {/* Vertriebler anzeigen wenn vorhanden */}
                 {selectedLead.zugewiesenAn && selectedLead.zugewiesenAn.length > 0 && (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                    <UserIcon className="w-5 h-5 text-sunside-primary mr-3" />
+                  <div className="flex items-center p-3 bg-surface-container rounded-lg">
+                    <UserIcon className="w-5 h-5 text-primary mr-3" />
                     <div>
-                      <span className="text-xs text-gray-400">Zugewiesen an</span>
-                      <p className="text-gray-900">{selectedLead.zugewiesenAn.join(', ')}</p>
+                      <span className="text-label-sm text-on-surface-variant">Zugewiesen an</span>
+                      <p className="text-on-surface">{selectedLead.zugewiesenAn.join(', ')}</p>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Website-Statistiken - immer anzeigen */}
-              <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
-                <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                  <Building2 className="w-4 h-4 mr-2 text-purple-600" />
+              <div className="mb-6 p-4 ai-highlight rounded-xl">
+                <h4 className="text-label-lg text-on-surface mb-3 flex items-center">
+                  <Building2 className="w-4 h-4 mr-2 text-primary" />
                   Website-Statistiken
                 </h4>
                 <div className="grid grid-cols-4 gap-4">
-                  <div className="bg-white p-3 rounded-lg shadow-sm">
-                    <p className="text-xs text-gray-500">Besucher/Monat</p>
-                    <p className="text-lg font-semibold text-gray-900">
+                  <div className="bg-surface-container-lowest p-3 rounded-lg">
+                    <p className="text-label-sm text-on-surface-variant">Besucher/Monat</p>
+                    <p className="text-title-md font-display text-on-surface">
                       {selectedLead.monatlicheBesuche !== null && selectedLead.monatlicheBesuche !== undefined
                         ? selectedLead.monatlicheBesuche.toLocaleString('de-DE')
                         : '-'}
                     </p>
                   </div>
-                  <div className="bg-white p-3 rounded-lg shadow-sm">
-                    <p className="text-xs text-gray-500">Mehrwert</p>
-                    <p className="text-lg font-semibold text-green-600">
+                  <div className="bg-surface-container-lowest p-3 rounded-lg">
+                    <p className="text-label-sm text-on-surface-variant">Mehrwert</p>
+                    <p className="text-title-md font-display text-success">
                       {selectedLead.mehrwert !== null && selectedLead.mehrwert !== undefined
                         ? `${selectedLead.mehrwert.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €`
                         : '-'}
                     </p>
                   </div>
-                  <div className="bg-white p-3 rounded-lg shadow-sm">
-                    <p className="text-xs text-gray-500">Absprungrate</p>
-                    <p className={`text-lg font-semibold ${
-                      selectedLead.absprungrate === null || selectedLead.absprungrate === undefined ? 'text-gray-400' :
-                      (parseFloat(selectedLead.absprungrate) * 100) > 60 ? 'text-red-600' : 
-                      (parseFloat(selectedLead.absprungrate) * 100) > 40 ? 'text-amber-600' : 'text-green-600'
+                  <div className="bg-surface-container-lowest p-3 rounded-lg">
+                    <p className="text-label-sm text-on-surface-variant">Absprungrate</p>
+                    <p className={`text-title-md font-display ${
+                      selectedLead.absprungrate === null || selectedLead.absprungrate === undefined ? 'text-outline' :
+                      (parseFloat(selectedLead.absprungrate) * 100) > 60 ? 'text-error' :
+                      (parseFloat(selectedLead.absprungrate) * 100) > 40 ? 'text-warning' : 'text-success'
                     }`}>
                       {selectedLead.absprungrate !== null && selectedLead.absprungrate !== undefined
                         ? `${Math.round(parseFloat(selectedLead.absprungrate) * 100)}%`
                         : '-'}
                     </p>
                   </div>
-                  <div className="bg-white p-3 rounded-lg shadow-sm">
-                    <p className="text-xs text-gray-500">Leads/Monat</p>
-                    <p className="text-lg font-semibold text-blue-600">
+                  <div className="bg-surface-container-lowest p-3 rounded-lg">
+                    <p className="text-label-sm text-on-surface-variant">Leads/Monat</p>
+                    <p className="text-title-md font-display text-secondary">
                       {selectedLead.anzahlLeads !== null && selectedLead.anzahlLeads !== undefined
                         ? selectedLead.anzahlLeads
                         : '-'}
@@ -1487,14 +1492,14 @@ function Kaltakquise() {
 
               {/* Status & Bearbeitung */}
               <div className="space-y-4">
-                <h3 className="font-medium text-gray-900">Status & Notizen</h3>
+                <h3 className="text-title-md font-display text-on-surface">Status & Notizen</h3>
 
                 {editMode ? (
                   // Bearbeitungsmodus
                   <div className="space-y-4">
                     {/* Ergebnis - setzt automatisch kontaktiert: true (außer bei Ungültiger Lead) */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Ergebnis</label>
+                      <label className="block text-label-md text-on-surface-variant mb-1">Ergebnis</label>
                       <select
                         value={editForm.ergebnis}
                         onChange={(e) => {
@@ -1511,7 +1516,7 @@ function Kaltakquise() {
                             wiedervorlageDatum: neuesErgebnis === 'Wiedervorlage' ? prev.wiedervorlageDatum : ''
                           }))
                         }}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                        className="w-full px-4 py-2.5 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                       >
                         {ERGEBNIS_OPTIONEN.map(option => (
                           <option key={option.value} value={option.value}>{option.label}</option>
@@ -1521,7 +1526,7 @@ function Kaltakquise() {
                       {/* Wiedervorlage DateTime-Picker */}
                       {editForm.ergebnis === 'Wiedervorlage' && (
                         <div className="mt-3">
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-label-md text-on-surface-variant mb-1">
                             Wiedervorlage am <span className="text-red-500">*</span>
                           </label>
                           <input
@@ -1529,7 +1534,7 @@ function Kaltakquise() {
                             value={editForm.wiedervorlageDatum || ''}
                             onChange={(e) => setEditForm(prev => ({ ...prev, wiedervorlageDatum: e.target.value }))}
                             min={toLocalDateTimeString(new Date())}
-                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+                            className="w-full px-4 py-2.5 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                           />
                           <p className="text-xs text-gray-500 mt-1">Wann soll der Lead erneut kontaktiert werden?</p>
                         </div>
@@ -1538,7 +1543,7 @@ function Kaltakquise() {
 
                     {/* Ansprechpartner - PFLICHTFELD (vor den Buttons!) */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                      <label className="block text-label-md text-on-surface-variant mb-1">
                         Ansprechpartner <span className="text-red-500">*</span>
                         {autoSaving && (
                           <span className="ml-2 text-xs text-gray-400 font-normal">
@@ -1556,7 +1561,7 @@ function Kaltakquise() {
                             setEditForm(prev => ({ ...prev, ansprechpartnerValidation: false }))
                           }}
                           placeholder="Vorname *"
-                          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
+                          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none ${
                             editForm.ansprechpartnerValidation && !editForm.ansprechpartnerVorname 
                               ? 'border-red-500 bg-red-50' 
                               : 'border-gray-300'
@@ -1570,7 +1575,7 @@ function Kaltakquise() {
                             setEditForm(prev => ({ ...prev, ansprechpartnerValidation: false }))
                           }}
                           placeholder="Nachname *"
-                          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none ${
+                          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none ${
                             editForm.ansprechpartnerValidation && !editForm.ansprechpartnerNachname 
                               ? 'border-red-500 bg-red-50' 
                               : 'border-gray-300'
@@ -1616,13 +1621,13 @@ function Kaltakquise() {
 
                     {/* Neuer Kommentar */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Neuer Kommentar hinzufügen</label>
+                      <label className="block text-label-md text-on-surface-variant mb-1">Neuer Kommentar hinzufügen</label>
                       <textarea
                         value={editForm.neuerKommentar}
                         onChange={(e) => setEditForm(prev => ({ ...prev, neuerKommentar: e.target.value }))}
                         rows={2}
                         placeholder="Notiz hinzufügen..."
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none resize-none"
+                        className="w-full px-4 py-2.5 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
                       />
                     </div>
                   </div>
@@ -1656,57 +1661,83 @@ function Kaltakquise() {
 
                     {(selectedLead.ansprechpartnerVorname || selectedLead.ansprechpartnerNachname) && (
                       <div className="flex items-center">
-                        <UserIcon className="w-5 h-5 text-gray-400 mr-2" />
-                        <span className="text-gray-700">
+                        <UserIcon className="w-5 h-5 text-on-surface-variant mr-2" />
+                        <span className="text-on-surface">
                           {[selectedLead.ansprechpartnerVorname, selectedLead.ansprechpartnerNachname].filter(Boolean).join(' ')}
                         </span>
                       </div>
                     )}
 
                     {/* History / Kommentar Anzeige */}
-                    {selectedLead.kommentar && (
-                      <div className="mt-4 pt-4 border-t border-gray-100">
-                        <h4 className="text-sm font-medium text-gray-500 mb-3 flex items-center">
-                          <MessageSquare className="w-4 h-4 mr-1" />
-                          Verlauf
-                        </h4>
-                        <div className="space-y-2 max-h-64 overflow-y-auto">
-                          {selectedLead.kommentar.split('\n').filter(line => line.trim()).map((line, index) => {
-                            // Parse History-Eintrag: [DD.MM.YYYY, HH:MM] ICON Text (Username)
-                            const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
-                            
-                            if (historyMatch) {
-                              const [, datum, zeit, rest] = historyMatch
-                              // Icon und Text extrahieren
-                              const iconMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬)\s*(.+)$/)
-                              const icon = iconMatch ? iconMatch[1] : '📋'
-                              const text = iconMatch ? iconMatch[2] : rest
-                              
-                              return (
-                                <div key={index} className="flex items-start gap-2 text-sm">
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded bg-gray-100 text-gray-500 text-xs font-mono whitespace-nowrap">
-                                    {datum}, {zeit}
-                                  </span>
-                                  <span className="text-base">{icon}</span>
-                                  <span className="text-gray-700 flex-1">{text}</span>
-                                </div>
-                              )
-                            } else {
-                              // Alter Kommentar ohne History-Format
-                              return (
-                                <div key={index} className="flex items-start gap-2 text-sm">
-                                  <span className="text-gray-600">{line}</span>
-                                </div>
-                              )
-                            }
-                          })}
-                        </div>
-                      </div>
-                    )}
+                    <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[200px] overflow-y-auto">
+                      {selectedLead.kommentar ? (
+                        <div className="space-y-3">
+                          {(() => {
+                            const lines = selectedLead.kommentar.split('\n').filter(line => line.trim())
+                            const groups = []
+                            let currentPlainGroup = []
 
-                    {!selectedLead.kontaktiert && !selectedLead.ergebnis && !selectedLead.kommentar && (
-                      <p className="text-gray-400 italic">Noch keine Notizen vorhanden</p>
-                    )}
+                            lines.forEach((line) => {
+                              const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
+
+                              if (historyMatch) {
+                                if (currentPlainGroup.length > 0) {
+                                  groups.push({ type: 'plain', lines: currentPlainGroup })
+                                  currentPlainGroup = []
+                                }
+                                groups.push({ type: 'history', match: historyMatch, line })
+                              } else {
+                                currentPlainGroup.push(line)
+                              }
+                            })
+
+                            if (currentPlainGroup.length > 0) {
+                              groups.push({ type: 'plain', lines: currentPlainGroup })
+                            }
+
+                            return groups.map((group, index) => {
+                              if (group.type === 'history') {
+                                const [, datum, zeit, rest] = group.match
+                                const emojiMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬|🎯|📞|❌|✉️|📄)\s*(.+)$/)
+                                const emoji = emojiMatch ? emojiMatch[1] : '📋'
+                                let text = emojiMatch ? emojiMatch[2] : rest
+                                const userMatch = text.match(/\(([^)]+)\)$/)
+                                const userName = userMatch ? userMatch[1] : null
+                                if (userMatch) text = text.replace(/\s*\([^)]+\)$/, '')
+
+                                return (
+                                  <div key={index} className="flex items-start gap-3 p-2 rounded-lg hover:bg-surface-container transition-colors">
+                                    <span className="text-lg flex-shrink-0">{emoji}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-body-sm text-on-surface">{text}</p>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-label-sm text-outline">{datum}, {zeit}</span>
+                                        {userName && (
+                                          <span className="text-label-sm text-on-surface-variant">• {userName}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              } else {
+                                return (
+                                  <div key={index} className="flex items-start gap-3 p-2">
+                                    <span className="text-lg flex-shrink-0">💬</span>
+                                    <div className="text-body-sm text-on-surface space-y-1">
+                                      {group.lines.map((line, lineIdx) => (
+                                        <p key={lineIdx}>{line}</p>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )
+                              }
+                            })
+                          })()}
+                        </div>
+                      ) : (
+                        <p className="text-body-sm text-outline italic">Noch keine Notizen vorhanden</p>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -1716,25 +1747,25 @@ function Kaltakquise() {
 
             {/* Modal Footer - nur zeigen wenn weder TerminPicker noch EmailComposer */}
             {!showTerminPicker && !showEmailComposer && (
-            <div className="border-t border-gray-200 bg-gray-50 flex-shrink-0 rounded-b-2xl">
+            <div className="pt-4 border-t border-outline-variant/15 flex-shrink-0 rounded-b-2xl">
                 {kommentarOnlyMode ? (
                   /* Kommentar-Only Modus für gesperrte Leads */
                   <div className="px-6 py-4 space-y-3">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Kommentar hinzufügen</label>
+                      <label className="block text-label-md text-on-surface-variant mb-1">Kommentar hinzufügen</label>
                       <textarea
                         value={editForm.neuerKommentar}
                         onChange={(e) => setEditForm(prev => ({ ...prev, neuerKommentar: e.target.value }))}
                         rows={3}
                         autoFocus
                         placeholder="Notiz hinzufügen..."
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                        className="w-full px-4 py-2.5 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
                       />
                     </div>
                     <div className="flex items-center justify-end gap-3">
                       <button
                         onClick={() => { setKommentarOnlyMode(false); setEditForm(prev => ({ ...prev, neuerKommentar: '' })); }}
-                        className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                        className="px-4 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors"
                       >
                         Abbrechen
                       </button>
@@ -1765,7 +1796,7 @@ function Kaltakquise() {
                       <>
                         <button
                           onClick={() => setEditMode(false)}
-                          className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                          className="px-4 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors"
                         >
                           Abbrechen
                         </button>
@@ -1784,7 +1815,7 @@ function Kaltakquise() {
                       <>
                         <button
                           onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
-                          className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                          className="px-4 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors"
                         >
                           Schließen
                         </button>
