@@ -39,116 +39,66 @@ import {
   File
 } from 'lucide-react'
 
-// Produkt-Optionen für Angebot (entspricht Airtable-Produkten + neue Voicebot-Produkte)
+// Paket-Optionen für Angebot (erweitert um Airtable-Produkte)
 const PRODUKT_OPTIONS = [
-  {
-    value: 'KI-Chatbot',
-    label: 'KI-Chatbot',
-    setup: 1399,
-    retainer: 360,
-    description: '1.399 € Setup + 360 €/Monat',
-    needsWebsiteSetup: false
-  },
-  {
-    value: 'KI-Voicebot',
-    label: 'KI-Voicebot',
-    setup: 1399,
-    retainer: 360,
-    description: '1.399 € Setup + 360 €/Monat',
-    needsWebsiteSetup: false
-  },
-  {
-    value: 'SEO & KI-Chatbot',
-    label: 'SEO & KI-Chatbot',
-    setup: 2798,
-    retainer: 360,
-    description: '2.798 € Setup + 360 €/Monat',
-    needsWebsiteSetup: false
-  },
-  {
-    value: 'Website & KI-Chatbot',
-    label: 'Website & KI-Chatbot',
-    setup: 3998,
-    retainer: 360,
-    description: '3.998 € Setup + 360 €/Monat',
-    needsWebsiteSetup: true
-  },
-  {
-    value: 'KI-Voicebot & KI-Chatbot',
-    label: 'KI-Voicebot & KI-Chatbot',
-    setup: 2798,
-    retainer: 612,
-    description: '2.798 € Setup + 612 €/Monat',
-    needsWebsiteSetup: false
-  },
-  {
-    value: 'Website & KI-Voicebot & KI-Chatbot',
-    label: 'Website & KI-Voicebot & KI-Chatbot',
-    setup: 5397,
-    retainer: 612,
-    description: '5.397 € Setup + 612 €/Monat',
-    needsWebsiteSetup: true
-  },
-  {
-    value: 'SEO & KI-Voicebot & KI-Chatbot',
-    label: 'SEO & KI-Voicebot & KI-Chatbot',
-    setup: 4197,
-    retainer: 612,
-    description: '4.197 € Setup + 612 €/Monat',
-    needsWebsiteSetup: false
-  },
-  // Airtable-Original-Produkte (ohne Voicebot)
-  {
-    value: 'Marketing',
-    label: 'Marketing',
-    setup: null,
-    retainer: null,
-    description: 'Setup & Retainer individuell',
-    needsWebsiteSetup: false
-  },
-  {
-    value: 'Automatisierung',
-    label: 'Automatisierung',
-    setup: null,
-    retainer: null,
-    description: 'Setup & Retainer individuell',
-    needsWebsiteSetup: false
-  },
-  {
-    value: 'Website',
-    label: 'Website',
-    setup: null,
-    retainer: null,
-    description: 'Website-Einmalpreis (individuell)',
-    needsWebsiteSetup: true
-  },
-  {
-    value: 'Individuell',
-    label: 'Individuelles Angebot',
-    setup: null,
-    retainer: null,
-    description: 'Setup & Retainer manuell eingeben',
-    needsWebsiteSetup: false
-  }
+  { value: 'KI-Chatbot', label: 'KI-Chatbot' },
+  { value: 'KI-Voicebot', label: 'KI-Voicebot' },
+  { value: 'SEO & KI-Chatbot', label: 'SEO & KI-Chatbot' },
+  { value: 'Website & KI-Chatbot', label: 'Website & KI-Chatbot' },
+  { value: 'KI-Voicebot & KI-Chatbot', label: 'KI-Voicebot & KI-Chatbot' },
+  { value: 'Website & KI-Voicebot & KI-Chatbot', label: 'Website & KI-Voicebot & KI-Chatbot' },
+  { value: 'SEO & KI-Voicebot & KI-Chatbot', label: 'SEO & KI-Voicebot & KI-Chatbot' },
+  // Airtable-Original-Produkte
+  { value: 'Marketing', label: 'Marketing' },
+  { value: 'Automatisierung', label: 'Automatisierung' },
+  { value: 'Website', label: 'Website' },
+  { value: 'Individuell', label: 'Individuell' },
 ]
 
-// Standard-Vertragsbestandteile
-const DEFAULT_VERTRAGSBESTANDTEILE = `Alle Preise verstehen sich zzgl. der gesetzlichen Umsatzsteuer von derzeit 19%.
-Mindestvertragslaufzeit: 12 Monate
-Kündigungsfrist: 3 Monate zum Vertragsende
-Zahlungsweise: Monatlich im Voraus`
+// Preise pro Produkt (leer = manuell eingeben)
+const PRODUKT_PREISE = {
+  'KI-Chatbot':                         { setup: 1399, retainer: 360 },
+  'KI-Voicebot':                        { setup: 1399, retainer: 360 },
+  'SEO & KI-Chatbot':                   { setup: 2798, retainer: 360 },
+  'Website & KI-Chatbot':               { setup: 3998, retainer: 360 },
+  'KI-Voicebot & KI-Chatbot':           { setup: 2798, retainer: 612 },
+  'Website & KI-Voicebot & KI-Chatbot': { setup: 5397, retainer: 612 },
+  'SEO & KI-Voicebot & KI-Chatbot':     { setup: 4197, retainer: 612 },
+  'Marketing':                          { setup: '', retainer: '' },
+  'Automatisierung':                    { setup: '', retainer: '' },
+  'Website':                            { setup: '', retainer: '' },
+  'Individuell':                        { setup: '', retainer: '' },
+}
+
+// Produkte die Website-Setup-Feld benötigen
+const PRODUKTE_MIT_WEBSITE_SETUP = [
+  'Website & KI-Chatbot',
+  'Website & KI-Voicebot & KI-Chatbot',
+  'Website'
+]
+
+// Standard-Vertragsbestandteile (dynamisch mit Laufzeit)
+const DEFAULT_VERTRAGSBESTANDTEILE = (laufzeit = 12) =>
+  `* Alle Preise verstehen sich zzgl. 19 % Umsatzsteuer und basieren auf einer Vertragslaufzeit von ${laufzeit} Monaten. Die Abrechnung der einmaligen Leistungen erfolgt bei Auftragserteilung. Die Abrechnung der regelmäßigen Leistungen erfolgt monatlich im Voraus. Der Vertrag verlängert sich automatisch um jeweils 3 Monate, wenn er nicht mit einer Frist von 3 Monaten zum Laufzeitende in Textform gekündigt wird. Das Recht zur außerordentlichen Kündigung bleibt unberührt.`
+
+// Textbausteine zum Kopieren
+const TEXTBAUSTEINE = [
+  'Die ersten zwei Monate sind kostenfrei; die Abrechnung der regelmäßigen Leistungen beginnt ab dem dritten Monat der Vertragslaufzeit.',
+  'Der Vertragsbeginn ist der [DATUM]. Die Vertragslaufzeit beginnt ab diesem Datum.',
+  'Die Setup-Gebühr wird in zwei Raten abgerechnet: 50 % bei Auftragserteilung, 50 % nach Livegang.',
+]
 
 // Status-Optionen für Dropdown (alle DB-Enum-Werte: hot_lead_status_type)
 const STATUS_OPTIONS = [
-  { value: 'Lead', label: 'Lead', color: 'badge-primary' },
-  { value: 'Geplant', label: 'Geplant', color: 'badge-info' },
-  { value: 'Im Closing', label: 'Im Closing', color: 'badge-primary' },
-  { value: 'Angebot', label: 'Angebot', color: 'badge-warning' },
-  { value: 'Angebot versendet', label: 'Angebot versendet', color: 'badge-secondary' },
-  { value: 'Abgeschlossen', label: 'Abgeschlossen', color: 'badge-success' },
-  { value: 'Termin abgesagt', label: 'Termin abgesagt', color: 'bg-warning-container text-warning' },
-  { value: 'Termin verschoben', label: 'Termin verschoben', color: 'bg-warning-container text-warning' },
-  { value: 'Verloren', label: 'Verloren', color: 'badge-error' }
+  { value: 'Lead', label: 'Lead', color: 'bg-blue-100 text-blue-700' },
+  { value: 'Geplant', label: 'Geplant', color: 'bg-cyan-100 text-cyan-700' },
+  { value: 'Im Closing', label: 'Im Closing', color: 'bg-indigo-100 text-indigo-700' },
+  { value: 'Angebot', label: 'Angebot', color: 'bg-yellow-100 text-yellow-700' },
+  { value: 'Angebot versendet', label: 'Angebot versendet', color: 'bg-purple-100 text-purple-700' },
+  { value: 'Abgeschlossen', label: 'Abgeschlossen', color: 'bg-green-100 text-green-700' },
+  { value: 'Termin abgesagt', label: 'Termin abgesagt', color: 'bg-orange-100 text-orange-700' },
+  { value: 'Termin verschoben', label: 'Termin verschoben', color: 'bg-amber-100 text-amber-700' },
+  { value: 'Verloren', label: 'Verloren', color: 'bg-red-100 text-red-700' }
 ]
 
 function Closing() {
@@ -180,7 +130,7 @@ function Closing() {
     retainer: '',
     websiteSetup: '',        // Separater Setup-Betrag für Website-Komponente
     laufzeit: 12,            // Default 12 Monate
-    vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE,
+    vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12),
     paketname: '',           // Nur bei Individuell
     kurzbeschreibung: '',    // Nur bei Individuell
     leistungsbeschreibung: '' // Nur bei Individuell
@@ -356,62 +306,30 @@ function Closing() {
     return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
   }
 
-  // Retainer aus Setup berechnen (Setup / 2.75, abgerundet auf gerade Beträge, max 10% nach unten)
-  const calculateRetainer = (setup) => {
-    if (!setup || isNaN(setup)) return ''
-    const rawRetainer = setup / 2.75
-    const evenRetainer = Math.floor(rawRetainer / 10) * 10 // Auf 10er abrunden
-    const minRetainer = rawRetainer * 0.9 // Max 10% weniger
-    // Wenn zu viel abgerundet, auf nächsten 10er aufrunden
-    if (evenRetainer < minRetainer) {
-      return Math.ceil(rawRetainer / 10) * 10
-    }
-    return evenRetainer
-  }
-
-  // Produkt-Auswahl Handler
+  // Produkt-Auswahl Handler – füllt Setup/Retainer automatisch aus Preistabelle
   const handleProduktChange = (produktValue) => {
-    const produkt = PRODUKT_OPTIONS.find(p => p.value === produktValue)
-    if (produkt) {
-      // Produkte ohne feste Preise (Individuell, Marketing, Automatisierung, Website)
-      const needsManualPricing = produkt.setup === null
-
-      setAngebotData(prev => ({
-        ...prev,
-        produkt: produktValue,
-        setup: needsManualPricing ? '' : produkt.setup,
-        retainer: needsManualPricing ? '' : produkt.retainer,
-        websiteSetup: '', // Reset bei Produktwechsel
-        paketname: produktValue === 'Individuell' ? '' : prev.paketname,
-        kurzbeschreibung: produktValue === 'Individuell' ? '' : prev.kurzbeschreibung,
-        leistungsbeschreibung: produktValue === 'Individuell' ? '' : prev.leistungsbeschreibung
-      }))
-    }
-  }
-
-  // Prüfen ob aktuelles Produkt Website-Setup-Feld benötigt
-  const currentProduktNeedsWebsiteSetup = () => {
-    if (!angebotData?.produkt) return false
-    const produkt = PRODUKT_OPTIONS.find(p => p.value === angebotData.produkt)
-    return produkt?.needsWebsiteSetup === true
-  }
-
-  // Prüfen ob aktuelles Produkt manuelle Preiseingabe benötigt
-  const currentProduktNeedsManualPricing = () => {
-    if (!angebotData?.produkt) return false
-    const produkt = PRODUKT_OPTIONS.find(p => p.value === angebotData.produkt)
-    return produkt?.setup === null && produkt !== undefined
-  }
-
-  // Setup ändern bei individuellem Preis
-  const handleSetupChange = (value) => {
-    const setup = parseFloat(value) || ''
-    const retainer = setup ? calculateRetainer(setup) : ''
+    const preise = PRODUKT_PREISE[produktValue] || { setup: '', retainer: '' }
     setAngebotData(prev => ({
       ...prev,
-      setup,
-      retainer
+      produkt: produktValue,
+      setup: preise.setup,
+      retainer: preise.retainer,
+      websiteSetup: '', // Reset bei Produktwechsel
+      paketname: '',
+      kurzbeschreibung: '',
+      leistungsbeschreibung: '',
     }))
+  }
+
+  // Laufzeit-Handler – aktualisiert auch den Vertragstext automatisch
+  const handleLaufzeitChange = (newLaufzeit) => {
+    setAngebotData(prev => {
+      const updatedText = prev.vertragsbestandteile.replace(
+        /Vertragslaufzeit von \d+ Monaten/,
+        `Vertragslaufzeit von ${newLaufzeit} Monaten`
+      )
+      return { ...prev, laufzeit: newLaufzeit, vertragsbestandteile: updatedText }
+    })
   }
 
   // Angebot absenden
@@ -440,7 +358,7 @@ function Closing() {
       }
 
       // Website-Setup nur bei Website-Produkten
-      if (currentProduktNeedsWebsiteSetup() && angebotData.websiteSetup) {
+      if (PRODUKTE_MIT_WEBSITE_SETUP.includes(angebotData.produkt) && angebotData.websiteSetup) {
         updates.websiteSetup = parseFloat(angebotData.websiteSetup)
       }
 
@@ -879,7 +797,7 @@ function Closing() {
       retainer: '',
       websiteSetup: '',
       laufzeit: 12,
-      vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE,
+      vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12),
       paketname: '',
       kurzbeschreibung: '',
       leistungsbeschreibung: ''
@@ -1665,7 +1583,7 @@ function Closing() {
                         retainer: '',
                         websiteSetup: '',
                         laufzeit: 12,
-                        vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE,
+                        vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12),
                         paketname: '',
                         kurzbeschreibung: '',
                         leistungsbeschreibung: ''
@@ -1688,213 +1606,217 @@ function Closing() {
                     </div>
                   </div>
 
-                  {/* Produkt-Auswahl als Cards */}
-                  <div className="space-y-3 mb-6">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Produkt auswählen</label>
-                    {PRODUKT_OPTIONS.map(option => (
-                      <button
-                        key={option.value}
-                        type="button"
-                        onClick={() => handleProduktChange(option.value)}
-                        className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                          angebotData.produkt === option.value
-                            ? 'border-green-500 bg-green-50'
-                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                        }`}
+                  <div className="space-y-5">
+                    {/* Produkt-Auswahl Dropdown */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Produkt <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        value={angebotData.produkt}
+                        onChange={(e) => handleProduktChange(e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white text-gray-900 appearance-none cursor-pointer"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                              angebotData.produkt === option.value
-                                ? 'border-green-500 bg-green-500'
-                                : 'border-gray-300'
-                            }`}>
-                              {angebotData.produkt === option.value && (
-                                <div className="w-2 h-2 bg-white rounded-full" />
-                              )}
-                            </div>
-                            <div>
-                              <p className="font-medium text-gray-900">{option.label}</p>
-                              {option.setup !== null && (
-                                <p className="text-sm text-gray-500">{option.description}</p>
-                              )}
-                            </div>
-                          </div>
-                          {option.setup !== null && (
-                            <div className="text-right">
-                              <p className="font-bold text-gray-900">{option.setup.toLocaleString('de-DE')} €</p>
-                              <p className="text-sm text-gray-500">+ {option.retainer} €/Mon</p>
-                            </div>
-                          )}
-                          {option.setup === null && (
-                            <div className="text-right">
-                              <p className="text-sm text-gray-500 italic">{option.description}</p>
-                            </div>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+                        <option value="">Produkt auswählen...</option>
+                        {PRODUKT_OPTIONS.map(option => (
+                          <option key={option.value} value={option.value}>{option.label}</option>
+                        ))}
+                      </select>
+                    </div>
 
-                  {/* Individuelle Preiseingabe & Felder - für alle Produkte mit manueller Preiseingabe */}
-                  {currentProduktNeedsManualPricing() && (
-                    <div className="bg-gray-50 rounded-xl p-5 mb-6 space-y-4">
-                      <h4 className="font-medium text-gray-900">
-                        {angebotData.produkt === 'Individuell' ? 'Individuelles Angebot konfigurieren' : `${angebotData.produkt} - Preise konfigurieren`}
-                      </h4>
+                    {/* Sachverständigen-Hinweis – nur wenn kein individuelles Angebot */}
+                    {angebotData.produkt !== 'Individuell' && angebotData.produkt && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                        <p className="text-sm text-amber-800">
+                          Für Sachverständige bitte ein individuelles Angebot erstellen.
+                        </p>
+                      </div>
+                    )}
 
-                      {/* Nur bei Individuell: Paketname, Kurzbeschreibung, Leistungsbeschreibung */}
-                      {angebotData.produkt === 'Individuell' && (
-                        <>
-                          {/* Paketname */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Paketname <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={angebotData.paketname}
-                              onChange={(e) => setAngebotData(prev => ({ ...prev, paketname: e.target.value }))}
-                              placeholder="z.B. KI-Chatbot, WhatsApp-Assistent"
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                            />
-                          </div>
-
-                          {/* Kurzbeschreibung */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Kurzbeschreibung <span className="text-red-500">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={angebotData.kurzbeschreibung}
-                              onChange={(e) => setAngebotData(prev => ({ ...prev, kurzbeschreibung: e.target.value }))}
-                              placeholder="z.B. Aufbau & Betrieb Ihrer individuellen KI-Vertriebsassistenz"
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
-                            />
-                            <p className="text-xs text-gray-400 mt-1">Wird in der Angebots-E-Mail verwendet</p>
-                          </div>
-
-                          {/* Leistungsbeschreibung */}
-                          <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">
-                              Leistungsbeschreibung <span className="text-red-500">*</span>
-                            </label>
-                            <textarea
-                              value={angebotData.leistungsbeschreibung}
-                              onChange={(e) => setAngebotData(prev => ({ ...prev, leistungsbeschreibung: e.target.value }))}
-                              placeholder="Detaillierte Beschreibung der Leistungen..."
-                              rows={5}
-                              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none"
-                            />
-                            <p className="text-xs text-gray-400 mt-1">Verwende Überschriften und Spiegelstriche für Struktur</p>
-                          </div>
-                        </>
-                      )}
-
-                      {/* Setup-Gebühr */}
+                    {/* Setup & Retainer */}
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Setup-Gebühr (netto) <span className="text-red-500">*</span>
+                          Setup (netto) <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
                           <input
                             type="number"
                             value={angebotData.setup}
-                            onChange={(e) => handleSetupChange(e.target.value)}
-                            placeholder="z.B. 1500"
+                            onChange={(e) => setAngebotData(prev => ({ ...prev, setup: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
+                            placeholder="z.B. 2500"
                             className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
                         </div>
                       </div>
-
-                      {angebotData.setup && angebotData.retainer && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <p className="text-sm text-blue-700 mb-1">Automatisch berechneter Retainer</p>
-                          <p className="text-sm text-blue-600">
-                            {angebotData.setup} € / 2,75 = <span className="font-bold text-blue-800">{angebotData.retainer} €/Monat</span>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Website-Setup Feld (nur für Website-Produkte) */}
-                  {currentProduktNeedsWebsiteSetup() && (
-                    <div className="bg-purple-50 rounded-xl p-5 mb-6">
-                      <h4 className="font-medium text-purple-900 mb-4">Website-Komponente</h4>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Website Setup-Gebühr (netto)
+                          Retainer (netto) <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
                           <input
                             type="number"
-                            value={angebotData.websiteSetup}
-                            onChange={(e) => setAngebotData(prev => ({ ...prev, websiteSetup: e.target.value }))}
-                            placeholder="z.B. 2500"
-                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                            value={angebotData.retainer}
+                            onChange={(e) => setAngebotData(prev => ({ ...prev, retainer: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
+                            placeholder="z.B. 400"
+                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">Separater Setup-Betrag für die Website-Erstellung</p>
                       </div>
                     </div>
-                  )}
 
-                  {/* Vertragsbestandteile (immer sichtbar wenn Produkt gewählt) */}
-                  {angebotData.produkt && (
-                    <div className="mb-6">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Vertragsbestandteile
-                      </label>
-                      <textarea
-                        value={angebotData.vertragsbestandteile}
-                        onChange={(e) => setAngebotData(prev => ({ ...prev, vertragsbestandteile: e.target.value }))}
-                        rows={4}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-none text-sm"
-                      />
-                    </div>
-                  )}
+                    {/* Website-Setup Feld (nur für Website-Produkte) */}
+                    {PRODUKTE_MIT_WEBSITE_SETUP.includes(angebotData.produkt) && (
+                      <div className="bg-purple-50 rounded-xl p-5">
+                        <h4 className="font-medium text-purple-900 mb-4">Website-Komponente</h4>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Website Setup-Gebühr (netto)
+                          </label>
+                          <div className="relative">
+                            <input
+                              type="number"
+                              value={angebotData.websiteSetup}
+                              onChange={(e) => setAngebotData(prev => ({ ...prev, websiteSetup: e.target.value }))}
+                              placeholder="z.B. 2500"
+                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                            />
+                            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
+                          </div>
+                          <p className="text-xs text-gray-400 mt-1">Separater Setup-Betrag für die Website-Erstellung</p>
+                        </div>
+                      </div>
+                    )}
 
-                  {/* Vertragslaufzeit */}
-                  {angebotData.produkt && (
+                    {/* Laufzeit */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Vertragslaufzeit
+                        Laufzeit <span className="text-red-500">*</span>
                       </label>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
                         <input
                           type="number"
                           value={angebotData.laufzeit}
-                          onChange={(e) => setAngebotData(prev => ({
-                            ...prev,
-                            laufzeit: Math.min(32, Math.max(3, parseInt(e.target.value) || 12))
-                          }))}
+                          onChange={(e) => handleLaufzeitChange(Math.min(32, Math.max(3, parseInt(e.target.value) || 12)))}
                           min="3"
                           max="32"
-                          className="w-24 px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-center"
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                         />
-                        <span className="text-gray-600">Monate</span>
-                        <div className="flex gap-2 ml-auto">
-                          {[6, 12, 24].map(months => (
-                            <button
-                              key={months}
-                              type="button"
-                              onClick={() => setAngebotData(prev => ({ ...prev, laufzeit: months }))}
-                              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                                angebotData.laufzeit === months
-                                  ? 'bg-purple-100 text-purple-700'
-                                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                              }`}
+                        <span className="text-gray-500 whitespace-nowrap">Monate</span>
+                      </div>
+                      <div className="flex gap-2 mt-2">
+                        {[6, 12, 24].map(months => (
+                          <button
+                            key={months}
+                            type="button"
+                            onClick={() => handleLaufzeitChange(months)}
+                            className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
+                              angebotData.laufzeit === months
+                                ? 'bg-green-100 text-green-700 ring-2 ring-green-400'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {months} Mon
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Individuelle Felder – nur bei "Individuell" */}
+                    {angebotData.produkt === 'Individuell' && (
+                      <>
+                        {/* Paketname */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Paketname <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            value={angebotData.paketname}
+                            onChange={(e) => setAngebotData(prev => ({ ...prev, paketname: e.target.value }))}
+                            placeholder="z.B. KI-Chatbot, WhatsApp-Assistent"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        {/* Kurzbeschreibung */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Kurzbeschreibung der Leistung <span className="text-red-500">*</span>
+                          </label>
+                          <p className="text-xs text-gray-500 mb-2">
+                            Eine Kurzbeschreibung der Leistung für die Mail an den Makler.
+                          </p>
+                          <input
+                            type="text"
+                            value={angebotData.kurzbeschreibung}
+                            onChange={(e) => setAngebotData(prev => ({ ...prev, kurzbeschreibung: e.target.value }))}
+                            placeholder="z.B. Aufbau & Betrieb Ihrer individuellen KI-Vertriebsassistenz"
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                          />
+                        </div>
+
+                        {/* Leistungsbeschreibung */}
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Leistungsbeschreibung <span className="text-red-500">*</span>
+                          </label>
+                          <p className="text-xs text-gray-500 mb-2">
+                            Bitte mit Überschriften und einzelnen Unterpunkten mit Spiegelstrichen angeben.
+                          </p>
+                          <textarea
+                            value={angebotData.leistungsbeschreibung}
+                            onChange={(e) => setAngebotData(prev => ({ ...prev, leistungsbeschreibung: e.target.value }))}
+                            rows={5}
+                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-y min-h-[120px]"
+                          />
+                          <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
+                            <p className="font-medium mb-1">Format-Beispiel:</p>
+                            <p>1. SEO Überarbeitung<br />– Website-Analyse mit Hilfe von verschiedenen Software-Tools<br />– Prüfung und Anpassung der .htaccess, Sitemap &amp; robots.txt.</p>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Vertragsbestandteile (immer sichtbar wenn Produkt gewählt) */}
+                  {angebotData.produkt && (
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Individuelle Vertragsbestandteile
+                        </label>
+                        <p className="text-xs text-gray-500 mb-2">
+                          Hier können zusätzliche Vertragsbedingungen eingefügt werden.
+                        </p>
+                        <textarea
+                          value={angebotData.vertragsbestandteile}
+                          onChange={(e) => setAngebotData(prev => ({ ...prev, vertragsbestandteile: e.target.value }))}
+                          rows={4}
+                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-y min-h-[100px] text-sm"
+                        />
+                      </div>
+
+                      {/* Textbausteine */}
+                      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                        <p className="text-sm font-medium text-gray-700 mb-3">Textbausteine zum Kopieren</p>
+                        <div className="space-y-2">
+                          {TEXTBAUSTEINE.map((text, index) => (
+                            <div
+                              key={index}
+                              onClick={() => {
+                                navigator.clipboard.writeText(text)
+                                showToast('success', 'In Zwischenablage kopiert')
+                              }}
+                              className="p-3 bg-white border border-gray-200 rounded-lg text-xs text-gray-600 cursor-pointer hover:bg-gray-50 hover:border-gray-300 transition-colors"
                             >
-                              {months} Mon
-                            </button>
+                              {text}
+                            </div>
                           ))}
                         </div>
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">Min. 3 Monate, max. 32 Monate</p>
                     </div>
                   )}
 
@@ -2581,7 +2503,7 @@ function Closing() {
                           retainer: '',
                           websiteSetup: '',
                           laufzeit: 12,
-                          vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE,
+                          vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12),
                           paketname: '',
                           kurzbeschreibung: '',
                           leistungsbeschreibung: ''
