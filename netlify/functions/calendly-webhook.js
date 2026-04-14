@@ -260,7 +260,8 @@ async function findHotLeadByEmail(email) {
 
   console.log('Suche Hot Lead nach E-Mail:', email)
 
-  const { data, error } = await supabase
+  // Erst in hot_leads.mail suchen
+  const { data: directMatch, error: directError } = await supabase
     .from('hot_leads')
     .select('id, lead_id, unternehmen, mail, termin_beratungsgespraech, status, setter_id, closer_id')
     .eq('mail', email)
@@ -269,23 +270,55 @@ async function findHotLeadByEmail(email) {
     .limit(1)
     .maybeSingle()
 
-  if (error) {
-    console.error('findHotLeadByEmail Error:', error)
-    return null
+  if (directError) {
+    console.error('findHotLeadByEmail Direct Error:', directError)
   }
 
-  if (data) {
-    console.log('E-Mail-Match gefunden:', data.unternehmen)
+  if (directMatch) {
+    console.log('E-Mail-Match in hot_leads gefunden:', directMatch.unternehmen)
     return {
-      id: data.id,
-      unternehmen: data.unternehmen,
-      termin: data.termin_beratungsgespraech,
-      setterId: data.setter_id,
-      closerId: data.closer_id,
-      originalLeadId: data.lead_id
+      id: directMatch.id,
+      unternehmen: directMatch.unternehmen,
+      termin: directMatch.termin_beratungsgespraech,
+      setterId: directMatch.setter_id,
+      closerId: directMatch.closer_id,
+      originalLeadId: directMatch.lead_id
     }
   }
 
+  // Fallback: Über original_lead.mail suchen (Join)
+  const { data: joinMatch, error: joinError } = await supabase
+    .from('hot_leads')
+    .select(`
+      id, lead_id, unternehmen, termin_beratungsgespraech, status, setter_id, closer_id,
+      original_lead:leads!hot_leads_lead_id_fkey(mail)
+    `)
+    .not('status', 'in', '(Abgeschlossen,Verloren)')
+    .order('termin_beratungsgespraech', { ascending: false })
+
+  if (joinError) {
+    console.error('findHotLeadByEmail Join Error:', joinError)
+    return null
+  }
+
+  // Manuell nach E-Mail filtern (weil Supabase kein Filter auf Join-Felder erlaubt)
+  const matchingLead = (joinMatch || []).find(hl =>
+    hl.original_lead?.mail?.toLowerCase() === email.toLowerCase()
+  )
+
+  if (matchingLead) {
+    console.log('E-Mail-Match über original_lead gefunden:', matchingLead.unternehmen)
+    return {
+      id: matchingLead.id,
+      unternehmen: matchingLead.unternehmen,
+      termin: matchingLead.termin_beratungsgespraech,
+      setterId: matchingLead.setter_id,
+      closerId: matchingLead.closer_id,
+      originalLeadId: matchingLead.lead_id
+    }
+  }
+
+  console.log('Kein E-Mail-Match gefunden für:', email)
   return null
 }
 
@@ -359,35 +392,153 @@ async function updateOriginalLeadKommentar(leadId, neuerKommentar) {
     .eq('id', leadId)
 }
 
-// System-Messages an Setter & Closer senden
+// System-Messages + E-Mails an Setter & Closer senden
 async function sendNotifications(hotLead, eventType, details) {
   const { setterId, closerId, unternehmen } = hotLead
 
   let nachricht = ''
   let typ = 'Info'
   let titel = ''
+  let emailIcon = '📬'
+  let emailColor = '#3B82F6'
 
   if (eventType === 'absage') {
     titel = 'Termin abgesagt'
     nachricht = `Termin abgesagt: ${unternehmen}\n${details.grund || 'Kein Grund angegeben'}`
     typ = 'Termin abgesagt'
+    emailIcon = '❌'
+    emailColor = '#EF4444'
   } else if (eventType === 'verschiebung') {
     titel = 'Termin verschoben'
     nachricht = `Termin verschoben: ${unternehmen}\nNeuer Termin: ${formatDate(details.neuerTermin)}`
     typ = 'Termin verschoben'
+    emailIcon = '🔄'
+    emailColor = '#F59E0B'
   }
 
-  // System-Message an Setter
+  // User-Daten laden für E-Mail-Versand
+  const userIds = [setterId, closerId].filter(Boolean)
+  let usersData = []
+
+  if (userIds.length > 0) {
+    const { data } = await supabase
+      .from('users')
+      .select('id, vor_nachname, email, email_geschaeftlich')
+      .in('id', userIds)
+
+    usersData = data || []
+  }
+
+  // System-Message + E-Mail an Setter
   if (setterId) {
     await createSystemMessage(setterId, titel, nachricht, typ, hotLead.id)
+    const setterUser = usersData.find(u => u.id === setterId)
+    if (setterUser) {
+      await sendNotificationEmail(setterUser, titel, nachricht, typ, emailIcon, emailColor, details, unternehmen)
+    }
   }
 
-  // System-Message an Closer
+  // System-Message + E-Mail an Closer
   if (closerId) {
     await createSystemMessage(closerId, titel, nachricht, typ, hotLead.id)
+    const closerUser = usersData.find(u => u.id === closerId)
+    if (closerUser) {
+      await sendNotificationEmail(closerUser, titel, nachricht, typ, emailIcon, emailColor, details, unternehmen)
+    }
   }
 
-  console.log('Benachrichtigungen gesendet')
+  console.log('Benachrichtigungen gesendet (System Messages + E-Mails)')
+}
+
+// E-Mail-Benachrichtigung senden
+async function sendNotificationEmail(user, titel, nachricht, typ, icon, color, details, unternehmen) {
+  const RESEND_API_KEY = process.env.RESEND_API_KEY
+  if (!RESEND_API_KEY) {
+    console.log('RESEND_API_KEY nicht konfiguriert - keine E-Mail gesendet')
+    return
+  }
+
+  const userEmail = user.email_geschaeftlich || user.email
+  if (!userEmail) {
+    console.log('Keine E-Mail-Adresse für User:', user.id)
+    return
+  }
+
+  const userName = user.vor_nachname || 'User'
+
+  // Details für E-Mail aufbereiten
+  let detailsHtml = ''
+  if (typ === 'Termin verschoben' && details.neuerTermin) {
+    detailsHtml = `
+      <tr>
+        <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Alter Termin:</td>
+        <td style="padding: 8px 0; color: #111827; font-size: 15px; text-decoration: line-through;">${formatDate(details.alterTermin)}</td>
+      </tr>
+      <tr>
+        <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Neuer Termin:</td>
+        <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${formatDate(details.neuerTermin)}</td>
+      </tr>`
+  } else if (typ === 'Termin abgesagt' && details.grund) {
+    detailsHtml = `
+      <tr>
+        <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Grund:</td>
+        <td style="padding: 8px 0; color: #111827; font-size: 15px;">${details.grund}</td>
+      </tr>`
+  }
+
+  const emailHtml = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
+  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="background: linear-gradient(135deg, ${color} 0%, ${color}dd 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 10px;">${icon}</div>
+      <h1 style="color: white; margin: 0; font-size: 24px;">${titel}</h1>
+    </div>
+    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
+        Hallo ${userName},
+      </p>
+      <div style="background: ${color}15; border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid ${color};">
+        <table style="width: 100%; border-collapse: collapse;">
+          <tr>
+            <td style="padding: 8px 0; color: #6B7280; font-size: 14px; width: 120px;">Unternehmen:</td>
+            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${unternehmen}</td>
+          </tr>
+          ${detailsHtml}
+        </table>
+      </div>
+      <div style="text-align: center; margin-top: 25px;">
+        <a href="https://crm.sunside.ai/closing" style="display: inline-block; background: linear-gradient(135deg, ${color} 0%, ${color}dd 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+          Im CRM ansehen
+        </a>
+      </div>
+      <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 30px; margin-bottom: 0;">
+        Sunside AI CRM System
+      </p>
+    </div>
+  </div>
+</body>
+</html>`
+
+  try {
+    await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${RESEND_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from: 'Sunside AI <noreply@sunside.ai>',
+        to: userEmail,
+        subject: `${icon} ${titel}: ${unternehmen}`,
+        html: emailHtml
+      })
+    })
+    console.log('E-Mail gesendet an:', userEmail)
+  } catch (err) {
+    console.error('E-Mail-Fehler:', err)
+  }
 }
 
 // System-Message erstellen
