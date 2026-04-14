@@ -554,17 +554,6 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
     gewonnen: hotLeads.filter(l => l.status === 'Abgeschlossen').length
   }
 
-  if (loading) {
-    return (
-      <div className="card p-6">
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-6 h-6 animate-spin text-primary" />
-          <span className="ml-2 text-on-surface-variant">Lade Hot Leads...</span>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="card-elevated overflow-hidden min-h-[600px]">
       {/* Header */}
@@ -576,22 +565,30 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
             </div>
             <div>
               <h2 className="text-title-lg font-display text-on-surface">Meine Leads im Closing</h2>
-              <p className="text-body-sm text-on-surface-variant">{hotLeads.length} Leads im Closing-Prozess</p>
+              <p className="text-body-sm text-on-surface-variant">
+                {loading ? 'Lädt...' : `${hotLeads.length} Leads im Closing-Prozess`}
+              </p>
             </div>
           </div>
 
           {/* Mini-Stats - Glass Cards */}
           <div className="flex gap-3">
-            <div className="glass-panel px-4 py-2 text-center">
-              <span className="block text-title-lg font-display text-secondary">{stats.lead}</span>
+            <div className="glass-panel px-4 py-2 text-center min-w-[70px]">
+              <span className="block text-title-lg font-display text-secondary">
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto text-secondary/50" /> : stats.lead}
+              </span>
               <span className="text-label-sm text-on-surface-variant">Offen</span>
             </div>
-            <div className="glass-panel px-4 py-2 text-center">
-              <span className="block text-title-lg font-display text-primary">{stats.angebot}</span>
+            <div className="glass-panel px-4 py-2 text-center min-w-[70px]">
+              <span className="block text-title-lg font-display text-primary">
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto text-primary/50" /> : stats.angebot}
+              </span>
               <span className="text-label-sm text-on-surface-variant">Angebot</span>
             </div>
-            <div className="glass-panel px-4 py-2 text-center">
-              <span className="block text-title-lg font-display text-success">{stats.gewonnen}</span>
+            <div className="glass-panel px-4 py-2 text-center min-w-[70px]">
+              <span className="block text-title-lg font-display text-success">
+                {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto text-success/50" /> : stats.gewonnen}
+              </span>
               <span className="text-label-sm text-on-surface-variant">Gewonnen</span>
             </div>
           </div>
@@ -621,7 +618,12 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
       {/* Lead-Liste - feste Mindesthöhe um Layout-Sprünge zu vermeiden */}
       <div className="min-h-[400px]">
-        {paginatedLeads.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+            <p className="text-on-surface-variant">Leads werden geladen...</p>
+          </div>
+        ) : paginatedLeads.length === 0 ? (
           <div className="p-8 text-center">
             <Target className="w-12 h-12 text-outline-variant mx-auto mb-4" />
             {searchTerm ? (
@@ -1229,14 +1231,6 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     noShow: '#F59E0B'      // Amber - Warnung
   }
 
-  if (loading && !refreshing) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       {/* Filter Bar - Glass Style */}
@@ -1292,10 +1286,10 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
           <button
             onClick={handleRefresh}
-            disabled={refreshing}
+            disabled={refreshing || loading}
             className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50 shadow-ambient-sm"
           >
-            <RefreshCw className={`h-5 w-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-5 w-5 text-on-surface-variant ${(refreshing || loading) ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -1306,7 +1300,15 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         </div>
       )}
 
-      {stats && (
+      {/* Loading State */}
+      {loading && !refreshing ? (
+        <div className="card p-6">
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+            <p className="text-on-surface-variant">Analytics werden geladen...</p>
+          </div>
+        </div>
+      ) : stats && (
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
@@ -1649,14 +1651,6 @@ function ClosingAnalytics({ user, isAdmin }) {
     'Offen': '#9CA3AF'      // Gray - wie KPICard color="gray"
   }
 
-  if (loading && !refreshing) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       {/* Filter Bar */}
@@ -1682,10 +1676,10 @@ function ClosingAnalytics({ user, isAdmin }) {
 
           <button
             onClick={handleRefresh}
-            disabled={refreshing}
+            disabled={refreshing || loading}
             className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50 shadow-ambient-sm"
           >
-            <RefreshCw className={`h-5 w-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-5 w-5 text-on-surface-variant ${(refreshing || loading) ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -1696,7 +1690,15 @@ function ClosingAnalytics({ user, isAdmin }) {
         </div>
       )}
 
-      {stats && (
+      {/* Loading State */}
+      {loading && !refreshing ? (
+        <div className="card p-6">
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+            <p className="text-on-surface-variant">Analytics werden geladen...</p>
+          </div>
+        </div>
+      ) : stats && (
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
