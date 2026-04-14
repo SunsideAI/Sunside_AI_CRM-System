@@ -1715,15 +1715,20 @@ function Closing() {
                             </div>
                             <div>
                               <p className="font-medium text-gray-900">{option.label}</p>
-                              {option.value !== 'Individuell' && (
+                              {option.setup !== null && (
                                 <p className="text-sm text-gray-500">{option.description}</p>
                               )}
                             </div>
                           </div>
-                          {option.value !== 'Individuell' && (
+                          {option.setup !== null && (
                             <div className="text-right">
                               <p className="font-bold text-gray-900">{option.setup.toLocaleString('de-DE')} €</p>
                               <p className="text-sm text-gray-500">+ {option.retainer} €/Mon</p>
+                            </div>
+                          )}
+                          {option.setup === null && (
+                            <div className="text-right">
+                              <p className="text-sm text-gray-500 italic">{option.description}</p>
                             </div>
                           )}
                         </div>
