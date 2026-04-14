@@ -464,6 +464,25 @@ function Closing() {
     }
   }, [user, viewMode])
 
+  // Auto-Refresh alle 30 Sekunden (für Zapier-Updates wie "Angebot versendet")
+  useEffect(() => {
+    if (!user) return
+
+    const interval = setInterval(() => {
+      // Nur refreshen wenn kein Modal offen ist
+      if (!selectedLead && !showAngebotView) {
+        console.log('[Closing] Auto-Refresh für Status-Updates')
+        if (viewMode === 'pool') {
+          loadPoolLeads()
+        } else {
+          loadLeads()
+        }
+      }
+    }, 30000) // 30 Sekunden
+
+    return () => clearInterval(interval)
+  }, [user, viewMode, selectedLead, showAngebotView])
+
   // Pool-Anzahl initial laden (für Badge)
   useEffect(() => {
     if (user) {
