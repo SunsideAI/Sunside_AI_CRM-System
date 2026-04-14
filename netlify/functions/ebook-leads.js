@@ -149,22 +149,35 @@ export async function handler(event) {
   try {
     // GET: E-Book Pool Leads laden (ohne Vertriebler zugewiesen)
     if (event.httpMethod === 'GET') {
-      // E-Book Leads ohne Assignment laden (kein 1000er Limit!)
-      const { data: assignments, error: assignError } = await supabase
-        .from('lead_assignments')
-        .select('lead_id')
-        .limit(100000)
+      // ALLE Assignments mit Pagination laden (Supabase hat 1000er Server-Limit!)
+      const assignedLeadIdSet = new Set()
+      const pageSize = 1000
+      let page = 0
+      let hasMore = true
 
-      if (assignError) {
-        console.error('Assignment Query Error:', assignError)
+      while (hasMore) {
+        const { data: assignments, error: assignError } = await supabase
+          .from('lead_assignments')
+          .select('lead_id')
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+
+        if (assignError) {
+          console.error('Assignment Query Error:', assignError)
+          break
+        }
+
+        if (!assignments || assignments.length === 0) {
+          hasMore = false
+        } else {
+          assignments.forEach(a => assignedLeadIdSet.add(String(a.lead_id)))
+          page++
+          if (assignments.length < pageSize) {
+            hasMore = false
+          }
+        }
       }
 
-      // Set für schnelleren Lookup (als Strings für sicheren Vergleich)
-      const assignedLeadIdSet = new Set(
-        (assignments || []).map(a => String(a.lead_id))
-      )
-
-      console.log(`E-Book Pool: ${assignedLeadIdSet.size} Assignments geladen`)
+      console.log(`E-Book Pool: ${assignedLeadIdSet.size} Assignments geladen (${page} Seiten)`)
 
       let query = supabase
         .from('leads')
