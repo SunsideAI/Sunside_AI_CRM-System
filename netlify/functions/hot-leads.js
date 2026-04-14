@@ -620,7 +620,7 @@ export async function handler(event) {
         .eq('id', hotLeadId)
         .select(`
           *,
-          closer:users!hot_leads_closer_id_fkey(vor_nachname),
+          closer:users!hot_leads_closer_id_fkey(vor_nachname, email, email_geschaeftlich),
           original_lead:leads!hot_leads_lead_id_fkey(
             unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname,
             kategorie, mail, telefonnummer
@@ -648,8 +648,9 @@ export async function handler(event) {
             unternehmensname: arrayToString(data.unternehmen) || arrayToString(lead.unternehmensname) || '',
             telefonnummer: arrayToString(data.telefonnummer) || arrayToString(lead.telefonnummer) || '',
             email: arrayToString(data.mail) || arrayToString(lead.mail) || '',
-            // Bearbeiter
+            // Bearbeiter (Closer)
             Bearbeiter: data.closer?.vor_nachname || '',
+            BearbeiterEmail: data.closer?.email_geschaeftlich || data.closer?.email || '',
             // Angebotsdaten
             retainer: data.retainer || 0,
             setup: data.setup || 0,
