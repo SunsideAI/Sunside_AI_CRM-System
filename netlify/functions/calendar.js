@@ -240,20 +240,34 @@ exports.handler = async (event) => {
               start: start.toISOString(),
               end: end.toISOString()
             })
-            // Detaillierte Fehlermeldung zurückgeben
+
+            // Bei "invalid parameters" - oft bedeutet das keine Verfügbarkeit für diesen Zeitraum
+            // Statt Fehler einfach leere Slots zurückgeben
+            const errorMsg = slotsData.message || slotsData.title || ''
+            if (errorMsg.toLowerCase().includes('invalid') || slotsResponse.status === 400) {
+              console.log('Calendly returned invalid params - interpreting as no availability')
+              return {
+                statusCode: 200,
+                headers: corsHeaders,
+                body: JSON.stringify({
+                  success: true,
+                  eventTypeUri,
+                  dateString: dateString || null,
+                  startDate: start.toISOString(),
+                  endDate: end.toISOString(),
+                  slots: [],
+                  message: 'Keine freien Slots verfügbar'
+                })
+              }
+            }
+
+            // Echter Fehler
             return {
               statusCode: slotsResponse.status,
               headers: corsHeaders,
               body: JSON.stringify({
                 error: 'Calendly API Fehler',
-                details: slotsData.message || slotsData.title || JSON.stringify(slotsData),
-                calendlyError: slotsData,
-                requestParams: {
-                  eventTypeUri,
-                  startTime: start.toISOString(),
-                  endTime: end.toISOString(),
-                  dateString: dateString || null
-                }
+                details: errorMsg || JSON.stringify(slotsData)
               })
             }
           }
