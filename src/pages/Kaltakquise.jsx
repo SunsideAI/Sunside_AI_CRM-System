@@ -914,33 +914,11 @@ function Kaltakquise() {
           <div className="text-center py-12 text-on-surface-variant">
             <Building2 className="w-12 h-12 mx-auto mb-4 text-outline-variant" />
             <p className="text-title-md mb-2">Keine Leads gefunden</p>
-            {viewMode === 'own' && (
-              <div className="mt-4 space-y-3">
-                <p className="text-body-sm text-outline">
-                  Dir sind noch keine Leads zugewiesen.
-                </p>
-                <div className="flex flex-wrap justify-center gap-3">
-                  {isAdmin() && (
-                    <button
-                      onClick={() => { setViewMode('all'); setLeads([]); }}
-                      className="btn-secondary text-body-sm"
-                    >
-                      <Users className="w-4 h-4 mr-1.5" />
-                      Alle Leads anzeigen
-                    </button>
-                  )}
-                  {!isAdmin() && (
-                    <button
-                      onClick={() => setShowAnfrageModal(true)}
-                      className="btn-primary text-body-sm"
-                    >
-                      <Plus className="w-4 h-4 mr-1.5" />
-                      Leads anfordern
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
+            <p className="text-body-sm text-outline">
+              {viewMode === 'own'
+                ? 'Dir sind noch keine Leads zugewiesen.'
+                : 'Keine Leads mit diesen Filterkriterien.'}
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
