@@ -283,23 +283,65 @@ async function assignLeadsToUser(userId, anzahl) {
 
 // Fallback-Methode für Kompatibilität (vor Migration)
 async function assignLeadsToUserFallback(userId, anzahl) {
-  const { data: assignments } = await supabase
-    .from('lead_assignments')
-    .select('lead_id')
+  // KRITISCH: Pagination für lead_assignments wegen Supabase 1000-Row Limit!
+  const pageSize = 1000
+  let allAssignments = []
+  let page = 0
 
-  const assignedLeadIds = new Set((assignments || []).map(a => a.lead_id))
+  while (true) {
+    const { data, error } = await supabase
+      .from('lead_assignments')
+      .select('lead_id')
+      .range(page * pageSize, (page + 1) * pageSize - 1)
 
-  // Erhöhtes Limit für bessere Skalierbarkeit
-  const { data: allFreeLeads } = await supabase
-    .from('leads')
-    .select('id')
-    .or('bereits_kontaktiert.is.null,bereits_kontaktiert.eq.false')
-    .neq('ergebnis', 'Ungültiger Lead')
-    .limit(anzahl * 10)
+    if (error) {
+      console.error('Assignments laden fehlgeschlagen:', error)
+      break
+    }
 
-  const freeLeads = (allFreeLeads || [])
-    .filter(l => !assignedLeadIds.has(l.id))
-    .slice(0, anzahl)
+    if (!data || data.length === 0) break
+    allAssignments = allAssignments.concat(data)
+    page++
+    if (data.length < pageSize) break
+  }
+
+  console.log(`[Lead-Requests Fallback] ${allAssignments.length} Assignments geladen (${page} Seiten)`)
+
+  const assignedLeadIds = new Set(allAssignments.map(a => a.lead_id))
+
+  // Leads laden - auch mit Pagination falls nötig
+  let freeLeads = []
+  let leadPage = 0
+  const neededLeads = anzahl
+
+  while (freeLeads.length < neededLeads) {
+    const { data: leadsData, error: leadsError } = await supabase
+      .from('leads')
+      .select('id')
+      .or('bereits_kontaktiert.is.null,bereits_kontaktiert.eq.false')
+      .neq('ergebnis', 'Ungültiger Lead')
+      .range(leadPage * pageSize, (leadPage + 1) * pageSize - 1)
+
+    if (leadsError) {
+      console.error('Leads laden fehlgeschlagen:', leadsError)
+      break
+    }
+
+    if (!leadsData || leadsData.length === 0) break
+
+    // Nur nicht-zugewiesene Leads sammeln
+    for (const lead of leadsData) {
+      if (!assignedLeadIds.has(lead.id)) {
+        freeLeads.push(lead)
+        if (freeLeads.length >= neededLeads) break
+      }
+    }
+
+    leadPage++
+    if (leadsData.length < pageSize) break
+  }
+
+  console.log(`[Lead-Requests Fallback] ${freeLeads.length} freie Leads gefunden`)
 
   if (freeLeads.length === 0) return 0
 
