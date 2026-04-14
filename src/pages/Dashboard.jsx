@@ -1140,12 +1140,21 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
   const formatPercent = (value) => `${value.toFixed(1)}%`
 
-  // Farben für Charts
+  // Farben für Charts (weiche Container-Farben)
   const RESULT_COLORS = {
-    beratungsgespraech: '#10B981', // Grün
-    unterlagen: '#F59E0B',    // Gelb
-    keinInteresse: '#EF4444', // Rot
-    nichtErreicht: '#6B7280'  // Grau
+    beratungsgespraech: '#86EFAC', // green-300
+    unterlagen: '#FDE047',    // yellow-300
+    keinInteresse: '#FCA5A5', // red-300
+    nichtErreicht: '#D1D5DB'  // gray-300
+  }
+
+  // Bar-Farben (etwas kräftiger für bessere Lesbarkeit)
+  const BAR_COLORS = {
+    einwahlen: '#C4B5FD', // purple-300
+    erreicht: '#93C5FD',  // blue-300
+    beratungsgespraech: '#86EFAC', // green-300
+    unterlagen: '#FDE047', // yellow-300
+    keinInteresse: '#FCA5A5' // red-300
   }
 
   if (loading && !refreshing) {
@@ -1159,8 +1168,8 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   return (
     <div className="space-y-6">
       {/* Filter Bar - Glass Style */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <p className="text-body-md text-on-surface-variant">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <p className="text-body-sm text-on-surface-variant">
           {isAdmin()
             ? (selectedUser === 'all' ? 'Übersicht aller Vertriebler' : `Performance: ${selectedUser}`)
             : 'Deine Kaltakquise Performance'
@@ -1170,28 +1179,23 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         <div className="flex flex-wrap items-center gap-3">
           {/* Vertriebler-Filter für Admins */}
           {isAdmin() && vertriebler.length > 0 && (
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2">
-                <Filter className="h-4 w-4 text-outline" />
-              </div>
-              <select
-                value={selectedUser}
-                onChange={(e) => setSelectedUser(e.target.value)}
-                className="select-field pl-9 pr-10 py-2.5"
-              >
-                <option value="all">Alle Vertriebler</option>
-                {vertriebler.map((v) => (
-                  <option key={v.id || v.name} value={v.name}>{v.name}</option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+              className="select-field w-auto min-w-[160px]"
+            >
+              <option value="all">Alle Vertriebler</option>
+              {vertriebler.map((v) => (
+                <option key={v.id || v.name} value={v.name}>{v.name}</option>
+              ))}
+            </select>
           )}
 
           {/* Zeitraum-Filter */}
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
-            className="select-field py-2.5"
+            className="select-field w-auto min-w-[140px]"
           >
             <optgroup label="Tage">
               <option value="today">Heute</option>
@@ -1262,10 +1266,10 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                     <YAxis dataKey="name" type="category" width={100} tick={{ fill: '#44474F' }} />
                     <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
                     <Bar dataKey="value" radius={[0, 8, 8, 0]}>
-                      <Cell fill="#460E74" />
-                      <Cell fill="#5E2C8C" />
-                      <Cell fill="#10B981" />
-                      <Cell fill="#F59E0B" />
+                      <Cell fill={BAR_COLORS.einwahlen} />
+                      <Cell fill={BAR_COLORS.erreicht} />
+                      <Cell fill={BAR_COLORS.beratungsgespraech} />
+                      <Cell fill={BAR_COLORS.unterlagen} />
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
@@ -1565,7 +1569,8 @@ function ClosingAnalytics({ user, isAdmin }) {
 
   const formatPercent = (value) => `${value.toFixed(1)}%`
 
-  const COLORS = ['#10B981', '#EF4444', '#6B7280', '#F59E0B']
+  // Weiche Farben für Closing Charts (green-300, red-300, gray-300, yellow-300)
+  const CLOSING_COLORS = ['#86EFAC', '#FCA5A5', '#D1D5DB', '#FDE047']
 
   if (loading && !refreshing) {
     return (
@@ -1578,16 +1583,16 @@ function ClosingAnalytics({ user, isAdmin }) {
   return (
     <div className="space-y-6">
       {/* Filter Bar */}
-      <div className="flex items-center justify-between">
-        <p className="text-body-md text-on-surface-variant">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <p className="text-body-sm text-on-surface-variant">
           {isAdmin() ? 'Übersicht aller Closer' : 'Deine Closing Performance'}
         </p>
 
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <select
             value={dateRange}
             onChange={(e) => setDateRange(e.target.value)}
-            className="select-field py-2.5"
+            className="select-field w-auto min-w-[140px]"
           >
             <option value="7days">Letzte 7 Tage</option>
             <option value="14days">Letzte 14 Tage</option>
@@ -1679,7 +1684,7 @@ function ClosingAnalytics({ user, isAdmin }) {
                       cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2} dataKey="value"
                       label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
                     >
-                      {COLORS.map((color, index) => (<Cell key={`cell-${index}`} fill={color} />))}
+                      {CLOSING_COLORS.map((color, index) => (<Cell key={`cell-${index}`} fill={color} />))}
                     </Pie>
                     <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
                   </PieChart>
@@ -1720,9 +1725,9 @@ function ClosingAnalytics({ user, isAdmin }) {
                       }}
                     />
                     <Legend />
-                    <Bar dataKey="offen" name="Offen" fill="#7C7C8A" stackId="a" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="gewonnen" name="Gewonnen" fill="#10B981" stackId="a" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="verloren" name="Verloren" fill="#EF4444" stackId="a" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="offen" name="Offen" fill="#D1D5DB" stackId="a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="gewonnen" name="Gewonnen" fill="#86EFAC" stackId="a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="verloren" name="Verloren" fill="#FCA5A5" stackId="a" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
