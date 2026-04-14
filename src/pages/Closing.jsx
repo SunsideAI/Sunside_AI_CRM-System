@@ -2245,45 +2245,74 @@ function Closing() {
                     <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[250px] overflow-y-auto">
                       {selectedLead.kommentar ? (
                         <div className="space-y-3">
-                          {selectedLead.kommentar.split('\n').filter(line => line.trim()).map((line, index) => {
-                            // Parse history format: [DD.MM.YYYY, HH:MM] EMOJI Text (Username)
-                            const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
+                          {(() => {
+                            // Group consecutive plain text lines together
+                            const lines = selectedLead.kommentar.split('\n').filter(line => line.trim())
+                            const groups = []
+                            let currentPlainGroup = []
 
-                            if (historyMatch) {
-                              const [, datum, zeit, rest] = historyMatch
-                              // Extract emoji and text
-                              const emojiMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬|🎯|📞|❌|✉️|📄)\s*(.+)$/)
-                              const emoji = emojiMatch ? emojiMatch[1] : '📋'
-                              let text = emojiMatch ? emojiMatch[2] : rest
-                              // Extract username at end
-                              const userMatch = text.match(/\(([^)]+)\)$/)
-                              const userName = userMatch ? userMatch[1] : null
-                              if (userMatch) text = text.replace(/\s*\([^)]+\)$/, '')
+                            lines.forEach((line) => {
+                              const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
 
-                              return (
-                                <div key={index} className="flex items-start gap-3 p-2 rounded-lg hover:bg-surface-container transition-colors">
-                                  <span className="text-lg flex-shrink-0">{emoji}</span>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-body-sm text-on-surface">{text}</p>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className="text-label-sm text-outline">{datum}, {zeit}</span>
-                                      {userName && (
-                                        <span className="text-label-sm text-on-surface-variant">• {userName}</span>
-                                      )}
+                              if (historyMatch) {
+                                // If we have accumulated plain text, save it as a group
+                                if (currentPlainGroup.length > 0) {
+                                  groups.push({ type: 'plain', lines: currentPlainGroup })
+                                  currentPlainGroup = []
+                                }
+                                groups.push({ type: 'history', match: historyMatch, line })
+                              } else {
+                                // Accumulate plain text lines
+                                currentPlainGroup.push(line)
+                              }
+                            })
+
+                            // Don't forget remaining plain text
+                            if (currentPlainGroup.length > 0) {
+                              groups.push({ type: 'plain', lines: currentPlainGroup })
+                            }
+
+                            return groups.map((group, index) => {
+                              if (group.type === 'history') {
+                                const [, datum, zeit, rest] = group.match
+                                // Extract emoji and text
+                                const emojiMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬|🎯|📞|❌|✉️|📄)\s*(.+)$/)
+                                const emoji = emojiMatch ? emojiMatch[1] : '📋'
+                                let text = emojiMatch ? emojiMatch[2] : rest
+                                // Extract username at end
+                                const userMatch = text.match(/\(([^)]+)\)$/)
+                                const userName = userMatch ? userMatch[1] : null
+                                if (userMatch) text = text.replace(/\s*\([^)]+\)$/, '')
+
+                                return (
+                                  <div key={index} className="flex items-start gap-3 p-2 rounded-lg hover:bg-surface-container transition-colors">
+                                    <span className="text-lg flex-shrink-0">{emoji}</span>
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-body-sm text-on-surface">{text}</p>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <span className="text-label-sm text-outline">{datum}, {zeit}</span>
+                                        {userName && (
+                                          <span className="text-label-sm text-on-surface-variant">• {userName}</span>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              )
-                            } else {
-                              // Plain text note without history format
-                              return (
-                                <div key={index} className="flex items-start gap-3 p-2">
-                                  <span className="text-lg flex-shrink-0">💬</span>
-                                  <p className="text-body-sm text-on-surface">{line}</p>
-                                </div>
-                              )
-                            }
-                          })}
+                                )
+                              } else {
+                                // Plain text group - render all lines together with one icon
+                                return (
+                                  <div key={index} className="flex items-start gap-3 p-2">
+                                    <span className="text-lg flex-shrink-0">💬</span>
+                                    <div className="text-body-sm text-on-surface space-y-1">
+                                      {group.lines.map((line, lineIdx) => (
+                                        <p key={lineIdx}>{line}</p>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )
+                              }
+                            })
+                          })()}
                         </div>
                       ) : (
                         <p className="text-body-sm text-outline italic">Keine Notizen vorhanden</p>
