@@ -14,6 +14,10 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 }
 
+// Simple in-memory cache for webhook deduplication (prevents duplicate events)
+const processedEvents = new Map()
+const EVENT_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
 // Datum formatieren
 function formatDate(isoString) {
   if (!isoString) return 'Unbekannt'
@@ -50,6 +54,31 @@ export async function handler(event) {
 
     const eventType = payload.event
     const data = payload.payload
+
+    // Deduplizierung: Event-URI als eindeutiger Identifier
+    const eventUri = data?.uri || data?.scheduled_event?.uri || `${eventType}-${data?.email}-${Date.now()}`
+    const eventKey = `${eventType}-${eventUri}`
+
+    // Alte Einträge aufräumen
+    const now = Date.now()
+    for (const [key, timestamp] of processedEvents) {
+      if (now - timestamp > EVENT_CACHE_TTL) {
+        processedEvents.delete(key)
+      }
+    }
+
+    // Prüfen ob Event bereits verarbeitet wurde
+    if (processedEvents.has(eventKey)) {
+      console.log('Duplikat-Event ignoriert:', eventKey)
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ success: true, message: 'Event bereits verarbeitet (Duplikat)' })
+      }
+    }
+
+    // Event als verarbeitet markieren
+    processedEvents.set(eventKey, now)
 
     // invitee.canceled (Termin abgesagt ODER verschoben)
     if (eventType === 'invitee.canceled') {
@@ -431,16 +460,21 @@ async function sendNotifications(hotLead, eventType, details) {
 
   // User-Daten laden für E-Mail-Versand
   const userIds = [setterId, closerId].filter(Boolean)
+  // Duplikate entfernen (falls Setter === Closer)
+  const uniqueUserIds = [...new Set(userIds)]
   let usersData = []
 
-  if (userIds.length > 0) {
+  if (uniqueUserIds.length > 0) {
     const { data } = await supabase
       .from('users')
       .select('id, vor_nachname, email, email_geschaeftlich')
-      .in('id', userIds)
+      .in('id', uniqueUserIds)
 
     usersData = data || []
   }
+
+  // Prüfen ob Setter und Closer dieselbe Person sind
+  const samePersonSetterCloser = setterId && closerId && setterId === closerId
 
   // System-Message + E-Mail an Setter
   if (setterId) {
@@ -457,8 +491,8 @@ async function sendNotifications(hotLead, eventType, details) {
     console.log('Kein Setter zugewiesen - keine Setter-Benachrichtigung')
   }
 
-  // System-Message + E-Mail an Closer
-  if (closerId) {
+  // System-Message + E-Mail an Closer (nur wenn nicht dieselbe Person wie Setter)
+  if (closerId && !samePersonSetterCloser) {
     console.log('Sende Benachrichtigung an Closer:', closerId)
     await createSystemMessage(closerId, titel, nachricht, typ, hotLead.id)
     const closerUser = usersData.find(u => u.id === closerId)
@@ -468,6 +502,8 @@ async function sendNotifications(hotLead, eventType, details) {
     } else {
       console.error('Closer nicht in usersData gefunden:', closerId)
     }
+  } else if (samePersonSetterCloser) {
+    console.log('Closer = Setter - keine doppelte Benachrichtigung')
   } else {
     console.log('Kein Closer zugewiesen - keine Closer-Benachrichtigung')
   }
