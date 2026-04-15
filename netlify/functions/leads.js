@@ -146,17 +146,19 @@ export async function handler(event) {
       // User-Filter: Filtere nach lead_assignments für diesen User
       // Mit Pagination um > 1000 Assignments zu unterstützen
       if (needsUserFilter && userId) {
-        console.log('[Leads] Filtering for userId:', userId, 'view:', view, 'userRole:', userRole)
+        console.log('[Leads] Filtering for userId:', userId, 'userName:', userName, 'view:', view, 'userRole:', userRole)
 
         let allAssignments = []
         let assignOffset = 0
         const assignPageSize = 1000
+        let effectiveUserId = userId
 
+        // Erste Versuchen: Mit übergebener userId
         while (true) {
           const { data: batch, error: assignError } = await supabase
             .from('lead_assignments')
             .select('lead_id')
-            .eq('user_id', userId)
+            .eq('user_id', effectiveUserId)
             .range(assignOffset, assignOffset + assignPageSize - 1)
 
           if (assignError) {
@@ -170,7 +172,49 @@ export async function handler(event) {
           assignOffset += assignPageSize
         }
 
-        console.log('[Leads] Found', allAssignments.length, 'assignments for user', userId)
+        // FALLBACK: Wenn keine Assignments gefunden und userName vorhanden
+        // Suche User in der users-Tabelle nach Namen und verwende deren ID
+        if (allAssignments.length === 0 && userName) {
+          console.log('[Leads] No assignments found for userId, trying name fallback:', userName)
+
+          // Suche User mit diesem Namen
+          const { data: matchingUsers } = await supabase
+            .from('users')
+            .select('id, vor_nachname')
+            .ilike('vor_nachname', userName)
+
+          if (matchingUsers && matchingUsers.length > 0) {
+            console.log('[Leads] Found user(s) by name:', matchingUsers.map(u => ({ id: u.id, name: u.vor_nachname })))
+
+            // Versuche mit der gefundenen User-ID
+            for (const matchedUser of matchingUsers) {
+              if (matchedUser.id === userId) continue // Bereits versucht
+
+              effectiveUserId = matchedUser.id
+              assignOffset = 0
+
+              while (true) {
+                const { data: batch } = await supabase
+                  .from('lead_assignments')
+                  .select('lead_id')
+                  .eq('user_id', effectiveUserId)
+                  .range(assignOffset, assignOffset + assignPageSize - 1)
+
+                if (!batch || batch.length === 0) break
+                allAssignments = allAssignments.concat(batch)
+                if (batch.length < assignPageSize) break
+                assignOffset += assignPageSize
+              }
+
+              if (allAssignments.length > 0) {
+                console.log('[Leads] Name fallback successful! Found', allAssignments.length, 'assignments with userId:', effectiveUserId)
+                break
+              }
+            }
+          }
+        }
+
+        console.log('[Leads] Found', allAssignments.length, 'assignments for user', effectiveUserId)
 
         if (allAssignments.length > 0) {
           const leadIds = allAssignments.map(a => a.lead_id)
@@ -182,7 +226,7 @@ export async function handler(event) {
             .select('user_id')
             .limit(5)
           console.log('[Leads] Sample user_ids in lead_assignments:', sampleAssignments?.map(a => a.user_id))
-          console.log('[Leads] Requested userId:', userId)
+          console.log('[Leads] Requested userId:', userId, 'userName:', userName)
 
           return {
             statusCode: 200,
@@ -194,6 +238,7 @@ export async function handler(event) {
               hasMore: false,
               debug: {
                 requestedUserId: userId,
+                requestedUserName: userName,
                 sampleUserIds: sampleAssignments?.map(a => a.user_id) || []
               }
             })
