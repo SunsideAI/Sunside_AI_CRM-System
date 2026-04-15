@@ -95,7 +95,6 @@ function Termine() {
       // Hot Leads als Termine formatieren
       const formattedTermine = allLeads
         .filter(lead => lead.terminDatum) // Nur mit Termin
-        .filter(lead => lead.status !== 'Abgesagt' && lead.status !== 'Termin abgesagt') // Keine abgesagten
         .map(lead => {
           const isMyClosing = lead.closerName === userName
           const isMyBooking = lead.setterName === userName
@@ -273,11 +272,24 @@ function Termine() {
   }
 
   const getEventColor = (event) => {
+    // Status-basierte Farben haben Priorität
+    const status = event.status?.toLowerCase() || ''
+
+    // Abgesagt = Rot
+    if (status.includes('abgesagt')) {
+      return 'bg-red-100 border-red-300 text-red-700'
+    }
+
+    // Verschoben = Gelb/Amber
+    if (status.includes('verschoben')) {
+      return 'bg-amber-100 border-amber-300 text-amber-800'
+    }
+
     // Wiedervorlage = Orange
     if (event.source === 'wiedervorlage') {
       return 'bg-orange-100 border-orange-300 text-orange-800'
     }
-    
+
     if (viewMode === 'all') {
       // In "Alle Termine" Ansicht: Farbe nach Closer
       if (event.closerName) {
@@ -285,7 +297,7 @@ function Termine() {
       }
       return 'bg-amber-100 border-amber-300 text-amber-800' // Kein Closer = Pool
     }
-    
+
     // Mein Closing (ich bin Closer) = Grün
     if (event.isMyClosing) {
       return 'bg-green-100 border-green-300 text-green-800'
@@ -295,6 +307,12 @@ function Termine() {
       return 'bg-purple-100 border-purple-300 text-purple-800'
     }
     return 'bg-blue-100 border-blue-300 text-blue-800'
+  }
+
+  // Prüfen ob Termin abgesagt ist (für Durchstreichung)
+  const isEventCancelled = (event) => {
+    const status = event.status?.toLowerCase() || ''
+    return status.includes('abgesagt')
   }
 
   const getEventIcon = (event) => {
@@ -468,19 +486,22 @@ function Termine() {
                           <button
                             key={event.id}
                             onClick={() => setSelectedEvent(event)}
-                            className={`w-full text-left p-2 rounded-lg border text-xs hover:shadow-md transition-shadow ${getEventColor(event)}`}
+                            className={`w-full text-left p-2 rounded-lg border text-xs hover:shadow-md transition-shadow ${getEventColor(event)} ${isEventCancelled(event) ? 'opacity-60' : ''}`}
                           >
-                            <div className="font-medium truncate flex items-center">
+                            <div className={`font-medium truncate flex items-center ${isEventCancelled(event) ? 'line-through' : ''}`}>
                               {getEventIcon(event)}
                               {event.title}
                             </div>
-                            <div className="text-[10px] opacity-75">
+                            <div className={`text-[10px] opacity-75 ${isEventCancelled(event) ? 'line-through' : ''}`}>
                               {formatTime(event.start, event.source)}
                             </div>
                             {viewMode === 'all' && event.closerName && (
                               <div className="text-[10px] opacity-75 truncate">
                                 {event.closerName}
                               </div>
+                            )}
+                            {isEventCancelled(event) && (
+                              <div className="text-[9px] font-medium mt-0.5">ABGESAGT</div>
                             )}
                           </button>
                         ))}
@@ -520,7 +541,7 @@ function Termine() {
                       <button
                         key={event.id}
                         onClick={() => setSelectedEvent(event)}
-                        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] truncate hover:shadow-sm transition-shadow ${getEventColor(event)}`}
+                        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] truncate hover:shadow-sm transition-shadow ${getEventColor(event)} ${isEventCancelled(event) ? 'opacity-60 line-through' : ''}`}
                       >
                         <span className="font-medium">{formatTime(event.start, event.source)}</span> {event.title}
                       </button>
@@ -571,6 +592,15 @@ function Termine() {
             </div>
           </>
         )}
+        {/* Status-Legende (immer anzeigen) */}
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-red-200 border border-red-300"></div>
+          <span className="line-through">Abgesagt</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-amber-200 border border-amber-300"></div>
+          <span>Verschoben</span>
+        </div>
       </div>
 
       {/* Termin-Detail Modal */}
@@ -740,7 +770,13 @@ function Termine() {
                         </span>
                       )}
                       {selectedEvent.status && selectedEvent.status !== 'Lead' && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                          selectedEvent.status.toLowerCase().includes('abgesagt')
+                            ? 'bg-red-100 text-red-800'
+                            : selectedEvent.status.toLowerCase().includes('verschoben')
+                            ? 'bg-amber-100 text-amber-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
                           {selectedEvent.status}
                         </span>
                       )}
