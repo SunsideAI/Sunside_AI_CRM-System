@@ -113,6 +113,36 @@ export async function handler(event) {
     return assignmentMap
   }
 
+  // Helper: Lead-Record zu Frontend-Format konvertieren
+  function formatLead(record, assignmentMap) {
+    const assignments = assignmentMap[record.id] || []
+
+    return {
+      id: record.id,
+      unternehmensname: arrayToString(record.unternehmensname) || '',
+      stadt: arrayToString(record.stadt) || '',
+      land: arrayToString(record.land) || '',
+      kategorie: arrayToString(record.kategorie) || '',
+      email: arrayToString(record.mail) || '',
+      website: arrayToString(record.website) || '',
+      telefon: arrayToString(record.telefonnummer) || '',
+      zugewiesenAn: assignments.map(a => a.name),
+      zugewiesenAnIds: assignments.map(a => a.id),
+      kontaktiert: record.bereits_kontaktiert === true,
+      datum: record.datum || null,
+      ergebnis: arrayToString(record.ergebnis) || '',
+      kommentar: record.kommentar || '',
+      ansprechpartnerVorname: arrayToString(record.ansprechpartner_vorname) || '',
+      ansprechpartnerNachname: arrayToString(record.ansprechpartner_nachname) || '',
+      wiedervorlageDatum: record.wiedervorlage_datum || '',
+      quelle: arrayToString(record.quelle) || '',
+      absprungrate: arrayToNumber(record.absprungrate),
+      monatlicheBesuche: arrayToNumber(record.monatliche_besuche),
+      anzahlLeads: arrayToNumber(record.anzahl_leads),
+      mehrwert: arrayToNumber(record.mehrwert)
+    }
+  }
+
   // GET - Leads laden
   if (event.httpMethod === 'GET') {
     try {
@@ -144,134 +174,107 @@ export async function handler(event) {
       // User-Filter: Nur wenn NICHT Admin mit "all" view ODER bei Wiedervorlagen-Abfrage
       const needsUserFilter = userRole !== 'Admin' || view === 'own' || wiedervorlage === 'true'
 
-      // User-Filter: Filtere nach lead_assignments für diesen User
-      // Mit Pagination um > 1000 Assignments zu unterstützen
+      // === RPC-basierter Pfad: skaliert auf beliebig viele Assignments ===
+      // Löst das URL-Limit-Problem bei .in('id', [...1200 UUIDs])
       if (needsUserFilter && userId) {
-        console.log('[Leads] Filtering for userId:', userId, 'airtableId:', airtableId, 'userName:', userName, 'view:', view, 'userRole:', userRole)
+        console.log('[Leads] RPC path - userId:', userId, 'airtableId:', airtableId, 'userName:', userName)
 
-        let allAssignments = []
-        let assignOffset = 0
-        const assignPageSize = 1000
         let effectiveUserId = userId
 
-        // Erste Versuchen: Mit übergebener userId
-        while (true) {
-          const { data: batch, error: assignError } = await supabase
+        // Fallback 1: airtableId - prüfe ob userId Assignments hat, sonst airtableId
+        if (airtableId) {
+          const { count } = await supabase
             .from('lead_assignments')
-            .select('lead_id')
-            .eq('user_id', effectiveUserId)
-            .range(assignOffset, assignOffset + assignPageSize - 1)
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', userId)
 
-          if (assignError) {
-            console.error('[Leads] Assignment query error:', assignError.message)
-            break
-          }
-
-          if (!batch || batch.length === 0) break
-          allAssignments = allAssignments.concat(batch)
-          if (batch.length < assignPageSize) break
-          assignOffset += assignPageSize
-        }
-
-        // FALLBACK 1: Wenn keine Assignments gefunden, versuche mit airtable_id
-        if (allAssignments.length === 0 && airtableId) {
-          console.log('[Leads] No assignments found for userId, trying airtableId fallback:', airtableId)
-
-          effectiveUserId = airtableId
-          assignOffset = 0
-
-          while (true) {
-            const { data: batch } = await supabase
+          if (count === 0) {
+            const { count: countAt } = await supabase
               .from('lead_assignments')
-              .select('lead_id')
-              .eq('user_id', effectiveUserId)
-              .range(assignOffset, assignOffset + assignPageSize - 1)
+              .select('*', { count: 'exact', head: true })
+              .eq('user_id', airtableId)
 
-            if (!batch || batch.length === 0) break
-            allAssignments = allAssignments.concat(batch)
-            if (batch.length < assignPageSize) break
-            assignOffset += assignPageSize
-          }
-
-          if (allAssignments.length > 0) {
-            console.log('[Leads] AirtableId fallback successful! Found', allAssignments.length, 'assignments')
+            if (countAt > 0) {
+              effectiveUserId = airtableId
+              console.log('[Leads] Using airtableId fallback:', airtableId, 'with', countAt, 'assignments')
+            }
           }
         }
 
-        // FALLBACK 2: Wenn immer noch keine Assignments gefunden und userName vorhanden
-        // Suche User in der users-Tabelle nach Namen und verwende deren ID
-        if (allAssignments.length === 0 && userName) {
-          console.log('[Leads] No assignments found for userId/airtableId, trying name fallback:', userName)
+        // Fallback 2: User by name (nur wenn weder userId noch airtableId Treffer haben)
+        if (userName && effectiveUserId === userId) {
+          const { count } = await supabase
+            .from('lead_assignments')
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', effectiveUserId)
 
-          // Suche User mit diesem Namen
-          const { data: matchingUsers } = await supabase
-            .from('users')
-            .select('id, vor_nachname')
-            .ilike('vor_nachname', userName)
+          if (count === 0) {
+            const { data: matchingUsers } = await supabase
+              .from('users')
+              .select('id')
+              .ilike('vor_nachname', userName)
+              .limit(5)
 
-          if (matchingUsers && matchingUsers.length > 0) {
-            console.log('[Leads] Found user(s) by name:', matchingUsers.map(u => ({ id: u.id, name: u.vor_nachname })))
+            for (const u of matchingUsers || []) {
+              if (u.id === userId) continue
+              const { count: c2 } = await supabase
+                .from('lead_assignments')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', u.id)
 
-            // Versuche mit der gefundenen User-ID
-            for (const matchedUser of matchingUsers) {
-              if (matchedUser.id === userId) continue // Bereits versucht
-
-              effectiveUserId = matchedUser.id
-              assignOffset = 0
-
-              while (true) {
-                const { data: batch } = await supabase
-                  .from('lead_assignments')
-                  .select('lead_id')
-                  .eq('user_id', effectiveUserId)
-                  .range(assignOffset, assignOffset + assignPageSize - 1)
-
-                if (!batch || batch.length === 0) break
-                allAssignments = allAssignments.concat(batch)
-                if (batch.length < assignPageSize) break
-                assignOffset += assignPageSize
-              }
-
-              if (allAssignments.length > 0) {
-                console.log('[Leads] Name fallback successful! Found', allAssignments.length, 'assignments with userId:', effectiveUserId)
+              if (c2 > 0) {
+                effectiveUserId = u.id
+                console.log('[Leads] Using userName fallback:', u.id, 'with', c2, 'assignments')
                 break
               }
             }
           }
         }
 
-        console.log('[Leads] Found', allAssignments.length, 'assignments for user', effectiveUserId)
+        // RPC-Aufruf — alle Filter serverseitig
+        const { data: rpcResult, error: rpcError } = await supabase.rpc('get_user_leads', {
+          p_user_id: effectiveUserId,
+          p_wiedervorlage: wiedervorlage === 'true' ? true : null,
+          p_contacted: contacted === 'true' ? true : (contacted === 'false' ? false : null),
+          p_ergebnis: result && result !== 'all' ? result : null,
+          p_land: land && land !== 'all' ? land : null,
+          p_quelle: quelle && quelle !== 'all' ? quelle : null,
+          p_search: search || null,
+          p_offset: parseInt(offset) || 0,
+          p_limit: 50
+        })
 
-        if (allAssignments.length > 0) {
-          const leadIds = allAssignments.map(a => a.lead_id)
-          query = query.in('id', leadIds)
-        } else {
-          // Keine Leads zugewiesen - Debug: Prüfe ob User-ID in Tabelle existiert
-          const { data: sampleAssignments } = await supabase
-            .from('lead_assignments')
-            .select('user_id')
-            .limit(10)
-          console.log('[Leads] WARNUNG: Keine Assignments gefunden!')
-          console.log('[Leads] Versuchte IDs - userId:', userId, 'airtableId:', airtableId, 'userName:', userName)
-          console.log('[Leads] Sample user_ids in lead_assignments:', sampleAssignments?.map(a => a.user_id))
+        if (rpcError) {
+          console.error('[Leads] RPC error:', rpcError.message)
+          throw new Error(rpcError.message || 'Fehler beim Laden der Leads (RPC)')
+        }
 
-          return {
-            statusCode: 200,
-            headers,
-            body: JSON.stringify({
-              leads: [],
-              users: Object.entries(userMap).map(([id, name]) => ({ id, name })),
-              offset: null,
-              hasMore: false,
-              debug: {
-                requestedUserId: userId,
-                requestedAirtableId: airtableId,
-                requestedUserName: userName,
-                sampleUserIds: sampleAssignments?.map(a => a.user_id) || [],
-                message: 'Keine Assignments gefunden - User-ID stimmt nicht mit lead_assignments überein'
-              }
-            })
-          }
+        const totalCount = rpcResult?.[0]?.total_count ?? 0
+        const leadsRaw = (rpcResult || []).map(r => r.lead_data)
+
+        console.log('[Leads] RPC returned', leadsRaw.length, 'leads, total:', totalCount)
+
+        // Lead Assignments für die zurückgegebenen Leads laden (für zugewiesenAn-Anzeige)
+        const leadIds = leadsRaw.map(l => l.id)
+        const assignmentMap = await loadLeadAssignments(leadIds)
+
+        const leads = leadsRaw.map(record => formatLead(record, assignmentMap))
+        const offsetNum = parseInt(offset) || 0
+        const hasMore = totalCount > offsetNum + leads.length
+
+        const users = Object.entries(userMap)
+          .map(([id, name]) => ({ id, name }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+
+        return {
+          statusCode: 200,
+          headers,
+          body: JSON.stringify({
+            leads,
+            users,
+            offset: hasMore ? offsetNum + leads.length : null,
+            hasMore
+          })
         }
       }
 
@@ -352,35 +355,8 @@ export async function handler(event) {
       const leadIds = leadsData.map(l => l.id)
       const assignmentMap = await loadLeadAssignments(leadIds)
 
-      // Leads formatieren
-      const leads = leadsData.map(record => {
-        const assignments = assignmentMap[record.id] || []
-
-        return {
-          id: record.id,
-          unternehmensname: arrayToString(record.unternehmensname) || '',
-          stadt: arrayToString(record.stadt) || '',
-          land: arrayToString(record.land) || '',
-          kategorie: arrayToString(record.kategorie) || '',
-          email: arrayToString(record.mail) || '',
-          website: arrayToString(record.website) || '',
-          telefon: arrayToString(record.telefonnummer) || '',
-          zugewiesenAn: assignments.map(a => a.name),
-          zugewiesenAnIds: assignments.map(a => a.id),
-          kontaktiert: record.bereits_kontaktiert === true,
-          datum: record.datum || null,
-          ergebnis: arrayToString(record.ergebnis) || '',
-          kommentar: record.kommentar || '',
-          ansprechpartnerVorname: arrayToString(record.ansprechpartner_vorname) || '',
-          ansprechpartnerNachname: arrayToString(record.ansprechpartner_nachname) || '',
-          wiedervorlageDatum: record.wiedervorlage_datum || '',
-          quelle: arrayToString(record.quelle) || '',
-          absprungrate: arrayToNumber(record.absprungrate),
-          monatlicheBesuche: arrayToNumber(record.monatliche_besuche),
-          anzahlLeads: arrayToNumber(record.anzahl_leads),
-          mehrwert: arrayToNumber(record.mehrwert)
-        }
-      })
+      // Leads formatieren (nutzt formatLead Helper)
+      const leads = leadsData.map(record => formatLead(record, assignmentMap))
 
       // User-Liste für Filter
       const users = Object.entries(userMap)
