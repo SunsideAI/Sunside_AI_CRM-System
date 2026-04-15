@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { Calendar, ChevronLeft, ChevronRight, Clock, User, Users, Loader2, Building2, Phone, Video, RefreshCw, CalendarDays, CalendarRange, PhoneCall, X } from 'lucide-react'
 
 function Termine() {
   const { user, isAdmin } = useAuth()
+  const routerNavigate = useNavigate()
   const [termine, setTermine] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -811,13 +813,16 @@ function Termine() {
 
               <div className="flex gap-3 mt-6 pt-6">
                 {selectedEvent.isMyClosing && (
-                  <a
-                    href="/closing"
+                  <button
+                    onClick={() => {
+                      setSelectedEvent(null)
+                      routerNavigate('/closing', { state: { openLeadId: selectedEvent.hotLeadId } })
+                    }}
                     className="btn-primary flex-1 flex items-center justify-center gap-2"
                   >
                     <Building2 className="w-4 h-4" />
                     Zum Closing
-                  </a>
+                  </button>
                 )}
                 <button
                   onClick={() => setSelectedEvent(null)}

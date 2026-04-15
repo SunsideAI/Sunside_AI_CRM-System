@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
@@ -95,6 +96,7 @@ const STATUS_OPTIONS = [
 
 function Closing() {
   const { user, isAdmin } = useAuth()
+  const location = useLocation()
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -489,6 +491,19 @@ function Closing() {
       loadPoolCount()
     }
   }, [user])
+
+  // Lead öffnen wenn von Termine-Seite navigiert
+  useEffect(() => {
+    const openLeadId = location.state?.openLeadId
+    if (openLeadId && leads.length > 0 && !loading) {
+      const leadToOpen = leads.find(l => l.id === openLeadId)
+      if (leadToOpen) {
+        setSelectedLead(leadToOpen)
+        // State clearen damit es nicht bei jedem Re-render öffnet
+        window.history.replaceState({}, document.title)
+      }
+    }
+  }, [location.state?.openLeadId, leads, loading])
 
   // Nur die Anzahl der Pool-Leads laden (für Badge)
   const loadPoolCount = async () => {
