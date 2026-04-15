@@ -153,6 +153,7 @@ function Kaltakquise() {
       const params = new URLSearchParams()
       params.append('userName', user?.vor_nachname || '')
       params.append('userId', user?.id || '')
+      params.append('airtableId', user?.airtable_id || '') // Fallback für alte IDs
       params.append('userRole', isAdmin() ? 'Admin' : 'Setter')
       params.append('view', viewMode)
       params.append('limit', '50')

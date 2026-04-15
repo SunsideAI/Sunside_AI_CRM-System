@@ -120,6 +120,7 @@ export async function handler(event) {
       const {
         userName,
         userId,
+        airtableId, // Fallback für alte IDs in lead_assignments
         userRole,
         view,
         search,
@@ -146,7 +147,7 @@ export async function handler(event) {
       // User-Filter: Filtere nach lead_assignments für diesen User
       // Mit Pagination um > 1000 Assignments zu unterstützen
       if (needsUserFilter && userId) {
-        console.log('[Leads] Filtering for userId:', userId, 'userName:', userName, 'view:', view, 'userRole:', userRole)
+        console.log('[Leads] Filtering for userId:', userId, 'airtableId:', airtableId, 'userName:', userName, 'view:', view, 'userRole:', userRole)
 
         let allAssignments = []
         let assignOffset = 0
@@ -172,10 +173,35 @@ export async function handler(event) {
           assignOffset += assignPageSize
         }
 
-        // FALLBACK: Wenn keine Assignments gefunden und userName vorhanden
+        // FALLBACK 1: Wenn keine Assignments gefunden, versuche mit airtable_id
+        if (allAssignments.length === 0 && airtableId) {
+          console.log('[Leads] No assignments found for userId, trying airtableId fallback:', airtableId)
+
+          effectiveUserId = airtableId
+          assignOffset = 0
+
+          while (true) {
+            const { data: batch } = await supabase
+              .from('lead_assignments')
+              .select('lead_id')
+              .eq('user_id', effectiveUserId)
+              .range(assignOffset, assignOffset + assignPageSize - 1)
+
+            if (!batch || batch.length === 0) break
+            allAssignments = allAssignments.concat(batch)
+            if (batch.length < assignPageSize) break
+            assignOffset += assignPageSize
+          }
+
+          if (allAssignments.length > 0) {
+            console.log('[Leads] AirtableId fallback successful! Found', allAssignments.length, 'assignments')
+          }
+        }
+
+        // FALLBACK 2: Wenn immer noch keine Assignments gefunden und userName vorhanden
         // Suche User in der users-Tabelle nach Namen und verwende deren ID
         if (allAssignments.length === 0 && userName) {
-          console.log('[Leads] No assignments found for userId, trying name fallback:', userName)
+          console.log('[Leads] No assignments found for userId/airtableId, trying name fallback:', userName)
 
           // Suche User mit diesem Namen
           const { data: matchingUsers } = await supabase
@@ -224,9 +250,10 @@ export async function handler(event) {
           const { data: sampleAssignments } = await supabase
             .from('lead_assignments')
             .select('user_id')
-            .limit(5)
+            .limit(10)
+          console.log('[Leads] WARNUNG: Keine Assignments gefunden!')
+          console.log('[Leads] Versuchte IDs - userId:', userId, 'airtableId:', airtableId, 'userName:', userName)
           console.log('[Leads] Sample user_ids in lead_assignments:', sampleAssignments?.map(a => a.user_id))
-          console.log('[Leads] Requested userId:', userId, 'userName:', userName)
 
           return {
             statusCode: 200,
@@ -238,8 +265,10 @@ export async function handler(event) {
               hasMore: false,
               debug: {
                 requestedUserId: userId,
+                requestedAirtableId: airtableId,
                 requestedUserName: userName,
-                sampleUserIds: sampleAssignments?.map(a => a.user_id) || []
+                sampleUserIds: sampleAssignments?.map(a => a.user_id) || [],
+                message: 'Keine Assignments gefunden - User-ID stimmt nicht mit lead_assignments überein'
               }
             })
           }

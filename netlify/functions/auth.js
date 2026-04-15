@@ -133,6 +133,7 @@ export async function handler(event) {
     // User Objekt erstellen (ohne Passwort!) - Kompatibel mit Frontend
     const user = {
       id: dbUser.id,
+      airtable_id: dbUser.airtable_id || null, // Für Fallback bei lead_assignments
       vorname: dbUser.vorname || '',
       name: dbUser.nachname || '',
       vor_nachname: dbUser.vor_nachname || `${dbUser.vorname || ''} ${dbUser.nachname || ''}`.trim(),
