@@ -809,7 +809,8 @@ function Closing() {
       retainer: lead.retainer || 0,
       laufzeit: lead.laufzeit || 6,
       kommentar: lead.kommentar || '',
-      neuerKommentar: ''  // Für neuen manuellen Kommentar
+      neuerKommentar: '',  // Für neuen manuellen Kommentar
+      terminDatum: lead.terminDatum || ''  // Für manuelles Verschieben im CRM
     })
     setEditMode(false)
   }
@@ -844,12 +845,13 @@ function Closing() {
 
   const handleSave = async () => {
     if (!selectedLead) return
-    
+
     // Status ist optional - Kommentare können auch ohne Status-Änderung gespeichert werden
     const hasStatusChange = editData.status && editData.status !== selectedLead.status
     const hasNeuerKommentar = editData.neuerKommentar && editData.neuerKommentar.trim()
+    const hasTerminChange = editData.terminDatum && editData.terminDatum !== selectedLead.terminDatum
 
-    if (!hasStatusChange && !hasNeuerKommentar) {
+    if (!hasStatusChange && !hasNeuerKommentar && !hasTerminChange) {
       setEditMode(false)
       return // Nichts zu speichern
     }
@@ -857,16 +859,19 @@ function Closing() {
     try {
       setSaving(true)
 
-      // Hot Lead Status updaten (nur wenn Status geändert wurde)
-      if (hasStatusChange) {
+      // Hot Lead Updates sammeln
+      const hotLeadUpdates = {}
+      if (hasStatusChange) hotLeadUpdates.status = editData.status
+      if (hasTerminChange) hotLeadUpdates.terminDatum = editData.terminDatum
+
+      // Hot Lead updaten (Status und/oder Termin)
+      if (Object.keys(hotLeadUpdates).length > 0) {
         const response = await fetch('/.netlify/functions/hot-leads', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             hotLeadId: selectedLead.id,
-            updates: {
-              status: editData.status
-            }
+            updates: hotLeadUpdates
           })
         })
 
@@ -1009,20 +1014,58 @@ function Closing() {
         }
       }
 
+      // History-Eintrag für manuelles Termin-Verschieben
+      if (hasTerminChange && selectedLead.originalLeadId) {
+        const userName = user?.vor_nachname || user?.name || 'Closer'
+        const neuesDatum = new Date(editData.terminDatum).toLocaleDateString('de-DE', {
+          weekday: 'long',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Europe/Berlin'
+        })
+
+        try {
+          await fetch('/.netlify/functions/leads', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              leadId: selectedLead.originalLeadId,
+              updates: {},
+              historyEntry: {
+                action: 'termin_manuell_verschoben',
+                details: `Termin manuell verschoben auf ${neuesDatum} (nur CRM, ohne Calendly)`,
+                userName: userName
+              }
+            })
+          })
+        } catch (histErr) {
+          console.warn('History-Eintrag für Termin-Verschiebung fehlgeschlagen:', histErr)
+        }
+      }
+
       // Lokale Liste aktualisieren
-      setLeads(prev => prev.map(l => 
-        l.id === selectedLead.id 
-          ? { ...l, status: hasStatusChange ? editData.status : l.status, kommentar: updatedKommentar }
+      setLeads(prev => prev.map(l =>
+        l.id === selectedLead.id
+          ? {
+              ...l,
+              status: hasStatusChange ? editData.status : l.status,
+              kommentar: updatedKommentar,
+              terminDatum: hasTerminChange ? editData.terminDatum : l.terminDatum
+            }
           : l
       ))
-      setSelectedLead(prev => ({ 
-        ...prev, 
+      setSelectedLead(prev => ({
+        ...prev,
         status: hasStatusChange ? editData.status : prev.status,
-        kommentar: updatedKommentar
+        kommentar: updatedKommentar,
+        terminDatum: hasTerminChange ? editData.terminDatum : prev.terminDatum
       }))
       setEditData(prev => ({ ...prev, neuerKommentar: '', kommentar: updatedKommentar }))
       setEditMode(false)
-      showToast('success', 'Änderungen gespeichert')
+      showToast('success', hasTerminChange ? 'Termin verschoben' : 'Änderungen gespeichert')
       
       // Bei Status-Änderung Modal schließen (wie vorher)
       if (hasStatusChange) {
@@ -2148,9 +2191,21 @@ function Closing() {
                     {/* Termin */}
                     <div className="flex items-center p-3 bg-gray-50 rounded-lg">
                       <Calendar className="w-5 h-5 text-purple-600 mr-3" />
-                      <div>
+                      <div className="flex-1">
                         <span className="text-xs text-gray-400">Termin</span>
-                        <p className="text-gray-900">{formatDate(selectedLead.terminDatum)}</p>
+                        {editMode ? (
+                          <div className="mt-1">
+                            <input
+                              type="datetime-local"
+                              value={editData.terminDatum ? new Date(new Date(editData.terminDatum).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+                              onChange={(e) => handleEditChange('terminDatum', e.target.value ? new Date(e.target.value).toISOString() : '')}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                            />
+                            <p className="text-xs text-amber-600 mt-1">Nur CRM-Kalender, Calendly bleibt unverändert</p>
+                          </div>
+                        ) : (
+                          <p className="text-gray-900">{formatDate(selectedLead.terminDatum)}</p>
+                        )}
                       </div>
                     </div>
 

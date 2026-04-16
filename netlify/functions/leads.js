@@ -472,6 +472,7 @@ export async function handler(event) {
         const icons = {
           'email': '📧',
           'termin': '📅',
+          'termin_manuell_verschoben': '🔄',
           'angebot': '💰',
           'abgeschlossen': '🎉',
           'verloren': '❌',
