@@ -1,7 +1,13 @@
-// File Upload zu Cloudinary
-const CLOUDINARY_CLOUD_NAME = process.env.CLOUDINARY_CLOUD_NAME
-const CLOUDINARY_API_KEY = process.env.CLOUDINARY_API_KEY
-const CLOUDINARY_API_SECRET = process.env.CLOUDINARY_API_SECRET
+// File Upload zu Supabase Storage (ersetzt Cloudinary)
+import { createClient } from '@supabase/supabase-js'
+import { randomUUID } from 'crypto'
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY
+)
+
+const BUCKET_NAME = 'attachments'
 
 exports.handler = async (event) => {
   const corsHeaders = {
@@ -14,12 +20,12 @@ exports.handler = async (event) => {
     return { statusCode: 204, headers: corsHeaders }
   }
 
-  // Prüfen ob Cloudinary konfiguriert ist
-  if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+  // Prüfen ob Supabase konfiguriert ist
+  if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
     return {
       statusCode: 500,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Cloudinary nicht konfiguriert' })
+      body: JSON.stringify({ error: 'Supabase nicht konfiguriert' })
     }
   }
 
@@ -37,43 +43,61 @@ exports.handler = async (event) => {
         }
       }
 
-      // Timestamp für Signatur
-      const timestamp = Math.round(Date.now() / 1000)
-      
-      // Ordner für Organisation
-      const folder = 'crm-attachments'
-      
-      // Signatur erstellen (für authentifizierten Upload)
-      const crypto = await import('crypto')
-      const signatureString = `folder=${folder}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`
-      const signature = crypto.createHash('sha1').update(signatureString).digest('hex')
-
-      // Upload zu Cloudinary
-      const formData = new URLSearchParams()
-      formData.append('file', file)
-      formData.append('api_key', CLOUDINARY_API_KEY)
-      formData.append('timestamp', timestamp.toString())
-      formData.append('signature', signature)
-      formData.append('folder', folder)
-      
-      // Resource type basierend auf Dateiformat
-      const isPdf = file.includes('application/pdf') || filename?.toLowerCase().endsWith('.pdf')
-      const resourceType = isPdf ? 'raw' : 'auto'
-
-      const uploadUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/${resourceType}/upload`
-      
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString()
-      })
-
-      const result = await response.json()
-
-      if (result.error) {
-        console.error('Cloudinary Error:', result.error)
-        throw new Error(result.error.message)
+      // Base64 Data URL parsen: "data:application/pdf;base64,JVBERi..."
+      const matches = file.match(/^data:([^;]+);base64,(.+)$/)
+      if (!matches) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Ungültiges Dateiformat' })
+        }
       }
+
+      const mimeType = matches[1]
+      const base64Data = matches[2]
+      const buffer = Buffer.from(base64Data, 'base64')
+
+      // Dateiendung ermitteln
+      const extMap = {
+        'application/pdf': 'pdf',
+        'image/png': 'png',
+        'image/jpeg': 'jpg',
+        'application/msword': 'doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx'
+      }
+      const ext = extMap[mimeType] || filename?.split('.').pop() || 'bin'
+
+      // Eindeutigen Dateinamen generieren
+      const safeFilename = (filename || 'file').replace(/[^a-zA-Z0-9._-]/g, '_')
+      const uniqueId = randomUUID()
+      const storagePath = `crm/${uniqueId}_${safeFilename}`
+
+      // Bucket erstellen falls nicht vorhanden (nur beim ersten Mal nötig)
+      const { data: buckets } = await supabase.storage.listBuckets()
+      if (!buckets?.find(b => b.name === BUCKET_NAME)) {
+        await supabase.storage.createBucket(BUCKET_NAME, {
+          public: true,
+          fileSizeLimit: 10 * 1024 * 1024 // 10MB
+        })
+      }
+
+      // Datei hochladen
+      const { data, error: uploadError } = await supabase.storage
+        .from(BUCKET_NAME)
+        .upload(storagePath, buffer, {
+          contentType: mimeType,
+          upsert: false
+        })
+
+      if (uploadError) {
+        console.error('Supabase Storage Error:', uploadError)
+        throw new Error(uploadError.message)
+      }
+
+      // Öffentliche URL generieren
+      const { data: urlData } = supabase.storage
+        .from(BUCKET_NAME)
+        .getPublicUrl(storagePath)
 
       return {
         statusCode: 200,
@@ -81,11 +105,11 @@ exports.handler = async (event) => {
         body: JSON.stringify({
           success: true,
           file: {
-            id: result.public_id,
-            url: result.secure_url,
-            filename: filename || result.original_filename || 'file',
-            type: result.format || result.resource_type,
-            size: result.bytes
+            id: storagePath, // Pfad als ID für späteres Löschen
+            url: urlData.publicUrl,
+            filename: filename || 'file',
+            type: ext,
+            size: buffer.length
           }
         })
       }
@@ -94,49 +118,24 @@ exports.handler = async (event) => {
     // DELETE: Datei löschen
     if (event.httpMethod === 'DELETE') {
       const params = event.queryStringParameters || {}
-      const { public_id } = params
+      const { public_id } = params // Bei Supabase ist das der Storage-Pfad
 
       if (!public_id) {
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'public_id erforderlich' })
+          body: JSON.stringify({ error: 'public_id (Dateipfad) erforderlich' })
         }
       }
 
-      const timestamp = Math.round(Date.now() / 1000)
-      
-      // Signatur für Löschung
-      const crypto = await import('crypto')
-      const signatureString = `public_id=${public_id}&timestamp=${timestamp}${CLOUDINARY_API_SECRET}`
-      const signature = crypto.createHash('sha1').update(signatureString).digest('hex')
+      // Datei löschen
+      const { error: deleteError } = await supabase.storage
+        .from(BUCKET_NAME)
+        .remove([public_id])
 
-      // Lösch-Request
-      const formData = new URLSearchParams()
-      formData.append('public_id', public_id)
-      formData.append('api_key', CLOUDINARY_API_KEY)
-      formData.append('timestamp', timestamp.toString())
-      formData.append('signature', signature)
-
-      // Versuche als raw und als image zu löschen
-      const deleteUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/raw/destroy`
-      
-      const response = await fetch(deleteUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString()
-      })
-
-      const result = await response.json()
-
-      // Falls raw nicht klappt, versuche image
-      if (result.result !== 'ok') {
-        const imageDeleteUrl = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/destroy`
-        await fetch(imageDeleteUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: formData.toString()
-        })
+      if (deleteError) {
+        console.error('Delete Error:', deleteError)
+        // Nicht als Fehler werfen - Datei existiert evtl. nicht mehr
       }
 
       return {

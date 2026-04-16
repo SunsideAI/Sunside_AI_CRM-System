@@ -189,7 +189,7 @@ function Closing() {
         reader.readAsDataURL(file)
       })
 
-      // Upload zu Cloudinary
+      // Upload zu Supabase Storage
       const uploadResponse = await fetch('/.netlify/functions/upload-file', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -256,8 +256,8 @@ function Closing() {
     if (!selectedLead) return
 
     try {
-      // Aus Cloudinary löschen (optional)
-      if (attachment.id && attachment.url?.includes('cloudinary')) {
+      // Aus Storage löschen (Supabase oder legacy Cloudinary)
+      if (attachment.id) {
         await fetch(`/.netlify/functions/upload-file?public_id=${encodeURIComponent(attachment.id)}`, {
           method: 'DELETE'
         })
