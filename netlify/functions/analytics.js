@@ -150,6 +150,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
   let verloren = 0
   let angebotVersendet = 0
   let offen = 0
+  let noShow = 0
   let umsatzGesamt = 0
   const zeitverlaufMap = {}
   const perUserMap = {}
@@ -222,7 +223,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
       // Per User Stats (Admin)
       if (closerName && isAdmin) {
         if (!perUserMap[closerName]) {
-          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
+          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, noShow: 0, umsatz: 0 }
         }
         perUserMap[closerName].gewonnen++
         perUserMap[closerName].umsatz += dealWert
@@ -231,15 +232,23 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
       verloren++
       if (closerName && isAdmin) {
         if (!perUserMap[closerName]) {
-          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
+          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, noShow: 0, umsatz: 0 }
         }
         perUserMap[closerName].verloren++
+      }
+    } else if (status === 'termin abgesagt') {
+      noShow++
+      if (closerName && isAdmin) {
+        if (!perUserMap[closerName]) {
+          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, noShow: 0, umsatz: 0 }
+        }
+        perUserMap[closerName].noShow = (perUserMap[closerName].noShow || 0) + 1
       }
     } else if (status.includes('angebot')) {
       angebotVersendet++
       if (closerName && isAdmin) {
         if (!perUserMap[closerName]) {
-          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
+          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, noShow: 0, umsatz: 0 }
         }
         perUserMap[closerName].offen++
       }
@@ -247,7 +256,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
       offen++
       if (closerName && isAdmin) {
         if (!perUserMap[closerName]) {
-          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, umsatz: 0 }
+          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, noShow: 0, umsatz: 0 }
         }
         perUserMap[closerName].offen++
       }
@@ -274,7 +283,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
       gewonnen,
       verloren,
       angebotVersendet,
-      noShow: 0,
+      noShow,
       offen: offen + angebotVersendet,
       closingQuote,
       umsatzGesamt,
