@@ -371,7 +371,7 @@ function MitarbeiterVerwaltung() {
     }
   }
 
-  // Vertrag erneut versenden via Zapier Webhook
+  // Vertrag erneut versenden via Netlify Function -> Zapier Webhook
   const resendContract = async () => {
     if (!selectedUser) return
 
@@ -379,7 +379,7 @@ function MitarbeiterVerwaltung() {
     setError('')
 
     try {
-      const response = await fetch('https://hooks.zapier.com/hooks/catch/21938164/ujr7e9w/', {
+      const response = await fetch('/.netlify/functions/resend-contract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -400,11 +400,10 @@ function MitarbeiterVerwaltung() {
       })
 
       if (!response.ok) {
-        throw new Error('Webhook konnte nicht erreicht werden')
+        throw new Error('Vertrag konnte nicht versendet werden')
       }
 
       setSuccess(`Vertrag für ${selectedUser.vor_nachname} wird erneut versendet!`)
-      setShowEditModal(false)
       setTimeout(() => setSuccess(''), 5000)
     } catch (err) {
       console.error('Vertrag senden fehlgeschlagen:', err)
