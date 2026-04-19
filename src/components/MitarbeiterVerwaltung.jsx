@@ -371,7 +371,7 @@ function MitarbeiterVerwaltung() {
     }
   }
 
-  // Vertrag erneut versenden via Netlify Function -> Zapier Webhook
+  // Vertrag erneut versenden - sendet nur User-ID, Backend holt frische Daten und forwarded an Zapier
   const resendContract = async () => {
     if (!selectedUser) return
 
@@ -382,21 +382,7 @@ function MitarbeiterVerwaltung() {
       const response = await fetch('/.netlify/functions/resend-contract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId: selectedUser.id,
-          name: selectedUser.vor_nachname,
-          vorname: formData.vorname,
-          nachname: formData.nachname,
-          email: selectedUser.email,
-          email_geschaeftlich: selectedUser.email_geschaeftlich,
-          telefon: selectedUser.telefon,
-          strasse: selectedUser.strasse,
-          plz: selectedUser.plz,
-          ort: selectedUser.ort,
-          bundesland: selectedUser.bundesland,
-          rolle: selectedUser.rolle,
-          timestamp: new Date().toISOString()
-        })
+        body: JSON.stringify({ userId: selectedUser.id })
       })
 
       if (!response.ok) {
