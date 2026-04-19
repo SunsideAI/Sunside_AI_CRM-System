@@ -54,14 +54,35 @@ export async function handler(event) {
       }
     }
 
-    // User-Daten unverändert an Zapier weiterleiten
+    // User-Daten explizit für Zapier formatieren
+    const zapierPayload = {
+      id: user.id,
+      vorname: user.vorname || '',
+      nachname: user.nachname || '',
+      vor_nachname: user.vor_nachname || '',
+      email: user.email || '',
+      email_geschaeftlich: user.email_geschaeftlich || '',
+      telefon: user.telefon || '',
+      strasse: user.strasse || '',
+      plz: user.plz || '',
+      ort: user.ort || '',
+      bundesland: user.bundesland || '',
+      rollen: Array.isArray(user.rollen) ? user.rollen.join(', ') : '',
+      status: user.status ? 'aktiv' : 'inaktiv',
+      onboarding: user.onboarding ? 'ja' : 'nein',
+      google_calendar_id: user.google_calendar_id || '',
+      airtable_id: user.airtable_id || '',
+      created_at: user.created_at || '',
+      updated_at: user.updated_at || '',
+      timestamp: new Date().toISOString()
+    }
+
+    console.log('Sending to Zapier:', JSON.stringify(zapierPayload, null, 2))
+
     const response = await fetch('https://hooks.zapier.com/hooks/catch/21938164/ujr7e9w/', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...user,
-        timestamp: new Date().toISOString()
-      })
+      body: JSON.stringify(zapierPayload)
     })
 
     if (!response.ok) {
