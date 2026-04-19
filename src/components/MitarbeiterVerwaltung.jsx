@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
-import { 
-  Users, 
-  Plus, 
-  Pencil, 
-  X, 
+import {
+  Users,
+  Plus,
+  Pencil,
+  X,
   Check,
   Loader2,
   AlertCircle,
@@ -16,7 +16,8 @@ import {
   Search,
   RefreshCw,
   Target,
-  MapPin
+  MapPin,
+  Send
 } from 'lucide-react'
 
 // Bundesländer
@@ -358,13 +359,56 @@ function MitarbeiterVerwaltung() {
       if (!response.ok) {
         throw new Error('Status konnte nicht geändert werden')
       }
-      
+
       setSuccess(`Closer-Pfad für ${selectedUser.vor_nachname} wird bereitgestellt!`)
       setShowEditModal(false)
       loadUsers()
       setTimeout(() => setSuccess(''), 3000)
     } catch (err) {
       setError('Closer-Pfad konnte nicht bereitgestellt werden')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Vertrag erneut versenden via Zapier Webhook
+  const resendContract = async () => {
+    if (!selectedUser) return
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const response = await fetch('https://hooks.zapier.com/hooks/catch/21938164/ujr7e9w/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: selectedUser.id,
+          name: selectedUser.vor_nachname,
+          vorname: formData.vorname,
+          nachname: formData.nachname,
+          email: selectedUser.email,
+          email_geschaeftlich: selectedUser.email_geschaeftlich,
+          telefon: selectedUser.telefon,
+          strasse: selectedUser.strasse,
+          plz: selectedUser.plz,
+          ort: selectedUser.ort,
+          bundesland: selectedUser.bundesland,
+          rolle: selectedUser.rolle,
+          timestamp: new Date().toISOString()
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Webhook konnte nicht erreicht werden')
+      }
+
+      setSuccess(`Vertrag für ${selectedUser.vor_nachname} wird erneut versendet!`)
+      setShowEditModal(false)
+      setTimeout(() => setSuccess(''), 5000)
+    } catch (err) {
+      console.error('Vertrag senden fehlgeschlagen:', err)
+      setError('Vertrag konnte nicht versendet werden')
     } finally {
       setSaving(false)
     }
@@ -993,6 +1037,26 @@ function MitarbeiterVerwaltung() {
                 </div>
               </div>
             )}
+
+            {/* Vertrag erneut senden */}
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-start">
+                  <Send className="w-5 h-5 text-purple-600 mr-3 mt-0.5" />
+                  <div className="text-sm text-purple-700">
+                    <p className="font-medium">Vertrag erneut senden</p>
+                    <p className="mt-1">Sendet den Vertrag erneut an diesen Mitarbeiter.</p>
+                  </div>
+                </div>
+                <button
+                  onClick={resendContract}
+                  disabled={saving}
+                  className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Senden'}
+                </button>
+              </div>
+            </div>
 
             {/* Onboarding Status anzeigen */}
             {selectedUser?.onboarding && (
