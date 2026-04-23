@@ -32,7 +32,8 @@ import {
   AlertCircle,
   Sparkles,
   Lightbulb,
-  TrendingUp as TrendUp
+  TrendingUp as TrendUp,
+  GitCompare
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import {
@@ -1104,6 +1105,11 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   const [aiAnalysis, setAiAnalysis] = useState(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState(null)
+  // Vergleichsmodus
+  const [compareMode, setCompareMode] = useState(false)
+  const [compareDateRange, setCompareDateRange] = useState('lastWeek')
+  const [compareStats, setCompareStats] = useState(null)
+  const [compareLoading, setCompareLoading] = useState(false)
 
   // Cache Key
   const getCacheKey = () => {
@@ -1258,6 +1264,125 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   const handleRefresh = () => {
     setRefreshing(true)
     loadStats(true)
+    if (compareMode) {
+      loadCompareStats()
+    }
+  }
+
+  // Vergleichsdaten laden
+  const loadCompareStats = async () => {
+    setCompareLoading(true)
+    try {
+      const { startDate, endDate } = getDateRangeFor(compareDateRange)
+      const userEmail = user?.email_geschaeftlich || user?.email
+      const userName = user?.vor_nachname
+
+      const params = new URLSearchParams({
+        type: 'setting',
+        admin: isAdmin().toString(),
+        ...(userEmail && !isAdmin() && { email: userEmail }),
+        ...(userName && !isAdmin() && { userName }),
+        ...(isAdmin() && selectedUser !== 'all' && { filterUserName: selectedUser }),
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate })
+      })
+
+      const res = await fetch(`/.netlify/functions/analytics?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCompareStats(data)
+      }
+    } catch (err) {
+      console.error('Compare Stats Error:', err)
+    } finally {
+      setCompareLoading(false)
+    }
+  }
+
+  // Flexible Datum-Berechnung für beliebigen Zeitraum
+  const getDateRangeFor = (range) => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    let startDate = null
+
+    const formatDateLocal = (date) => {
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      return `${year}-${month}-${day}`
+    }
+
+    switch (range) {
+      case 'today':
+        startDate = today
+        break
+      case 'yesterday':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 1)
+        return { startDate: formatDateLocal(startDate), endDate: formatDateLocal(startDate) }
+      case 'thisWeek':
+        startDate = new Date(today)
+        const dayOfWeek = startDate.getDay() || 7
+        startDate.setDate(startDate.getDate() - dayOfWeek + 1)
+        break
+      case 'lastWeek':
+        const lastWeekEnd = new Date(today)
+        const lastWeekDayOfWeek = lastWeekEnd.getDay() || 7
+        lastWeekEnd.setDate(lastWeekEnd.getDate() - lastWeekDayOfWeek)
+        const lastWeekStart = new Date(lastWeekEnd)
+        lastWeekStart.setDate(lastWeekStart.getDate() - 6)
+        return { startDate: formatDateLocal(lastWeekStart), endDate: formatDateLocal(lastWeekEnd) }
+      case '7days':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 7)
+        break
+      case '14days':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 14)
+        break
+      case '30days':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 30)
+        break
+      case 'thisMonth':
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+        break
+      case 'lastMonth':
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+        return { startDate: formatDateLocal(lastMonthStart), endDate: formatDateLocal(lastMonthEnd) }
+      case '3months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
+        break
+      case 'all':
+        startDate = null
+        break
+      default:
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 7)
+    }
+
+    return {
+      startDate: startDate ? formatDateLocal(startDate) : null,
+      endDate: formatDateLocal(today)
+    }
+  }
+
+  // Vergleichsmodus aktivieren/deaktivieren
+  useEffect(() => {
+    if (compareMode && stats) {
+      loadCompareStats()
+    } else {
+      setCompareStats(null)
+    }
+  }, [compareMode, compareDateRange])
+
+  // Berechnung der Abweichungen
+  const getComparison = (currentValue, compareValue, inverted = false) => {
+    if (!compareMode || compareStats === null || compareValue === undefined) return null
+    const diff = currentValue - compareValue
+    const percent = compareValue > 0 ? ((currentValue - compareValue) / compareValue) * 100 : (currentValue > 0 ? 100 : 0)
+    return { diff, percent, inverted }
   }
 
   // AI-Analyse laden
@@ -1393,6 +1518,19 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           </select>
 
           <button
+            onClick={() => setCompareMode(!compareMode)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              compareMode
+                ? 'bg-primary text-white'
+                : 'bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant'
+            } shadow-ambient-sm`}
+            title="Zeiträume vergleichen"
+          >
+            <GitCompare className="h-4 w-4" />
+            <span className="text-label-sm hidden sm:inline">Vergleichen</span>
+          </button>
+
+          <button
             onClick={handleRefresh}
             disabled={refreshing || loading}
             className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50 shadow-ambient-sm"
@@ -1401,6 +1539,39 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
           </button>
         </div>
       </div>
+
+      {/* Vergleichszeitraum-Auswahl */}
+      {compareMode && (
+        <div className="flex flex-wrap items-center gap-3 p-4 bg-primary-fixed/30 rounded-lg border border-primary/20">
+          <GitCompare className="h-5 w-5 text-primary" />
+          <span className="text-label-md text-on-surface">Vergleiche mit:</span>
+          <select
+            value={compareDateRange}
+            onChange={(e) => setCompareDateRange(e.target.value)}
+            className="select-field w-auto min-w-[160px]"
+          >
+            <optgroup label="Tage">
+              <option value="yesterday">Gestern</option>
+              <option value="7days">Letzte 7 Tage</option>
+              <option value="14days">Letzte 14 Tage</option>
+              <option value="30days">Letzte 30 Tage</option>
+            </optgroup>
+            <optgroup label="Wochen">
+              <option value="lastWeek">Letzte Woche</option>
+            </optgroup>
+            <optgroup label="Monate">
+              <option value="lastMonth">Letzter Monat</option>
+              <option value="3months">Letzte 3 Monate</option>
+            </optgroup>
+          </select>
+          {compareLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+          {compareStats && (
+            <span className="text-label-sm text-outline ml-auto">
+              Vergleichszeitraum: {compareStats.summary?.einwahlen || 0} Einwahlen
+            </span>
+          )}
+        </div>
+      )}
 
       {error && (
         <div className="bg-error-container text-error px-4 py-3 rounded-lg">
@@ -1420,11 +1591,11 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <KPICard title="Einwahlen" value={stats.summary?.einwahlen || 0} icon={Phone} color="purple" />
-            <KPICard title="Erreicht" value={stats.summary?.erreicht || 0} icon={Users} color="blue" subtitle={formatPercent(stats.summary?.erreichQuote || 0)} />
-            <KPICard title="Beratungsgespräch" value={stats.summary?.beratungsgespraech || 0} icon={Calendar} color="green" subtitle={formatPercent(stats.summary?.beratungsgespraechQuote || 0)} />
-            <KPICard title="Unterlage/WV" value={stats.summary?.unterlagen || 0} icon={Target} color="yellow" subtitle={formatPercent(stats.summary?.unterlagenQuote || 0)} />
-            <KPICard title="Kein Interesse" value={stats.summary?.keinInteresse || 0} icon={XCircle} color="red" subtitle={formatPercent(stats.summary?.keinInteresseQuote || 0)} />
+            <KPICard title="Einwahlen" value={stats.summary?.einwahlen || 0} icon={Phone} color="purple" comparison={getComparison(stats.summary?.einwahlen || 0, compareStats?.summary?.einwahlen)} />
+            <KPICard title="Erreicht" value={stats.summary?.erreicht || 0} icon={Users} color="blue" subtitle={formatPercent(stats.summary?.erreichQuote || 0)} comparison={getComparison(stats.summary?.erreicht || 0, compareStats?.summary?.erreicht)} />
+            <KPICard title="Beratungsgespräch" value={stats.summary?.beratungsgespraech || 0} icon={Calendar} color="green" subtitle={formatPercent(stats.summary?.beratungsgespraechQuote || 0)} comparison={getComparison(stats.summary?.beratungsgespraech || 0, compareStats?.summary?.beratungsgespraech)} />
+            <KPICard title="Unterlage/WV" value={stats.summary?.unterlagen || 0} icon={Target} color="yellow" subtitle={formatPercent(stats.summary?.unterlagenQuote || 0)} comparison={getComparison(stats.summary?.unterlagen || 0, compareStats?.summary?.unterlagen)} />
+            <KPICard title="Kein Interesse" value={stats.summary?.keinInteresse || 0} icon={XCircle} color="red" subtitle={formatPercent(stats.summary?.keinInteresseQuote || 0)} comparison={getComparison(stats.summary?.keinInteresse || 0, compareStats?.summary?.keinInteresse, true)} />
           </div>
 
           {/* Charts Row 1 */}
@@ -1770,6 +1941,11 @@ function ClosingAnalytics({ user, isAdmin }) {
   const [stats, setStats] = useState(null)
   const [dateRange, setDateRange] = useState('30days')
   const [refreshing, setRefreshing] = useState(false)
+  // Vergleichsmodus
+  const [compareMode, setCompareMode] = useState(false)
+  const [compareDateRange, setCompareDateRange] = useState('lastMonth')
+  const [compareStats, setCompareStats] = useState(null)
+  const [compareLoading, setCompareLoading] = useState(false)
 
   const getCacheKey = () => {
     const userPart = isAdmin() ? 'admin' : (user?.email_geschaeftlich || user?.email || 'user')
@@ -1863,6 +2039,92 @@ function ClosingAnalytics({ user, isAdmin }) {
   const handleRefresh = () => {
     setRefreshing(true)
     loadStats(true)
+    if (compareMode) {
+      loadCompareStats()
+    }
+  }
+
+  // Vergleichsdaten laden
+  const loadCompareStats = async () => {
+    setCompareLoading(true)
+    try {
+      const { startDate, endDate } = getDateRangeFor(compareDateRange)
+      const userName = user?.vor_nachname || user?.name
+
+      const params = new URLSearchParams({
+        type: 'closing',
+        admin: isAdmin().toString(),
+        ...(userName && !isAdmin() && { userName }),
+        ...(startDate && { startDate }),
+        ...(endDate && { endDate })
+      })
+
+      const res = await fetch(`/.netlify/functions/analytics?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setCompareStats(data)
+      }
+    } catch (err) {
+      console.error('Compare Stats Error:', err)
+    } finally {
+      setCompareLoading(false)
+    }
+  }
+
+  // Flexible Datum-Berechnung für beliebigen Zeitraum
+  const getDateRangeFor = (range) => {
+    const now = new Date()
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    let startDate = null
+
+    switch (range) {
+      case '7days':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 7)
+        break
+      case '14days':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 14)
+        break
+      case '30days':
+        startDate = new Date(today)
+        startDate.setDate(startDate.getDate() - 30)
+        break
+      case 'lastMonth':
+        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+        return { startDate: lastMonthStart.toISOString().split('T')[0], endDate: lastMonthEnd.toISOString().split('T')[0] }
+      case '3months':
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
+        break
+      case 'year':
+        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
+        break
+      default:
+        startDate = null
+    }
+
+    return {
+      startDate: startDate ? startDate.toISOString().split('T')[0] : null,
+      endDate: now.toISOString().split('T')[0]
+    }
+  }
+
+  // Vergleichsmodus aktivieren/deaktivieren
+  useEffect(() => {
+    if (compareMode && stats) {
+      loadCompareStats()
+    } else {
+      setCompareStats(null)
+    }
+  }, [compareMode, compareDateRange])
+
+  // Berechnung der Abweichungen
+  const getComparison = (currentValue, compareValue, inverted = false) => {
+    if (!compareMode || compareStats === null || compareValue === undefined) return null
+    const diff = currentValue - compareValue
+    const percent = compareValue > 0 ? ((currentValue - compareValue) / compareValue) * 100 : (currentValue > 0 ? 100 : 0)
+    return { diff, percent, inverted }
   }
 
   const formatCurrency = (value) => {
@@ -1908,6 +2170,19 @@ function ClosingAnalytics({ user, isAdmin }) {
           </select>
 
           <button
+            onClick={() => setCompareMode(!compareMode)}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+              compareMode
+                ? 'bg-primary text-white'
+                : 'bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant'
+            } shadow-ambient-sm`}
+            title="Zeiträume vergleichen"
+          >
+            <GitCompare className="h-4 w-4" />
+            <span className="text-label-sm hidden sm:inline">Vergleichen</span>
+          </button>
+
+          <button
             onClick={handleRefresh}
             disabled={refreshing || loading}
             className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50 shadow-ambient-sm"
@@ -1916,6 +2191,32 @@ function ClosingAnalytics({ user, isAdmin }) {
           </button>
         </div>
       </div>
+
+      {/* Vergleichszeitraum-Auswahl */}
+      {compareMode && (
+        <div className="flex flex-wrap items-center gap-3 p-4 bg-primary-fixed/30 rounded-lg border border-primary/20">
+          <GitCompare className="h-5 w-5 text-primary" />
+          <span className="text-label-md text-on-surface">Vergleiche mit:</span>
+          <select
+            value={compareDateRange}
+            onChange={(e) => setCompareDateRange(e.target.value)}
+            className="select-field w-auto min-w-[160px]"
+          >
+            <option value="7days">Letzte 7 Tage</option>
+            <option value="14days">Letzte 14 Tage</option>
+            <option value="30days">Letzte 30 Tage</option>
+            <option value="lastMonth">Letzter Monat</option>
+            <option value="3months">Letzte 3 Monate</option>
+            <option value="year">Letztes Jahr</option>
+          </select>
+          {compareLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+          {compareStats && (
+            <span className="text-label-sm text-outline ml-auto">
+              Vergleichszeitraum: {formatCurrency(compareStats.summary?.umsatzGesamt || 0)} Umsatz
+            </span>
+          )}
+        </div>
+      )}
 
       {error && (
         <div className="bg-error-container text-error px-4 py-3 rounded-lg">
@@ -1935,13 +2236,13 @@ function ClosingAnalytics({ user, isAdmin }) {
         <>
           {/* KPI Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-            <KPICard title="Closing Quote" value={formatPercent(stats.summary?.closingQuote || 0)} icon={TrendingUp} color="purple" subtitle={`${stats.summary?.gewonnen || 0} von ${(stats.summary?.gewonnen || 0) + (stats.summary?.verloren || 0)}`} />
-            <KPICard title="Umsatz Gesamt" value={formatCurrency(stats.summary?.umsatzGesamt || 0)} icon={DollarSign} color="green" />
-            <KPICard title="Ø Umsatz" value={formatCurrency(stats.summary?.umsatzDurchschnitt || 0)} icon={BarChart3} color="blue" />
-            <KPICard title="Gewonnen" value={stats.summary?.gewonnen || 0} icon={Award} color="green" />
-            <KPICard title="Verloren" value={stats.summary?.verloren || 0} icon={XCircle} color="red" />
-            <KPICard title="No-Show" value={stats.summary?.noShow || 0} icon={Clock} color="yellow" />
-            <KPICard title="Offen" value={stats.summary?.offen || 0} icon={Target} color="gray" />
+            <KPICard title="Closing Quote" value={formatPercent(stats.summary?.closingQuote || 0)} icon={TrendingUp} color="purple" subtitle={`${stats.summary?.gewonnen || 0} von ${(stats.summary?.gewonnen || 0) + (stats.summary?.verloren || 0)}`} comparison={getComparison(stats.summary?.closingQuote || 0, compareStats?.summary?.closingQuote)} />
+            <KPICard title="Umsatz Gesamt" value={formatCurrency(stats.summary?.umsatzGesamt || 0)} icon={DollarSign} color="green" comparison={getComparison(stats.summary?.umsatzGesamt || 0, compareStats?.summary?.umsatzGesamt)} />
+            <KPICard title="Ø Umsatz" value={formatCurrency(stats.summary?.umsatzDurchschnitt || 0)} icon={BarChart3} color="blue" comparison={getComparison(stats.summary?.umsatzDurchschnitt || 0, compareStats?.summary?.umsatzDurchschnitt)} />
+            <KPICard title="Gewonnen" value={stats.summary?.gewonnen || 0} icon={Award} color="green" comparison={getComparison(stats.summary?.gewonnen || 0, compareStats?.summary?.gewonnen)} />
+            <KPICard title="Verloren" value={stats.summary?.verloren || 0} icon={XCircle} color="red" comparison={getComparison(stats.summary?.verloren || 0, compareStats?.summary?.verloren, true)} />
+            <KPICard title="No-Show" value={stats.summary?.noShow || 0} icon={Clock} color="yellow" comparison={getComparison(stats.summary?.noShow || 0, compareStats?.summary?.noShow, true)} />
+            <KPICard title="Offen" value={stats.summary?.offen || 0} icon={Target} color="gray" comparison={getComparison(stats.summary?.offen || 0, compareStats?.summary?.offen)} />
           </div>
 
           {/* Charts */}
@@ -2076,7 +2377,7 @@ function ClosingAnalytics({ user, isAdmin }) {
 // ==========================================
 // KPI Card Component
 // ==========================================
-function KPICard({ title, value, icon: Icon, color, subtitle }) {
+function KPICard({ title, value, icon: Icon, color, subtitle, comparison }) {
   const colorClasses = {
     purple: 'bg-primary-fixed text-primary',
     green: 'bg-success-container text-success',
@@ -2084,6 +2385,21 @@ function KPICard({ title, value, icon: Icon, color, subtitle }) {
     red: 'bg-error-container text-error',
     yellow: 'bg-warning-container text-warning',
     gray: 'bg-surface-container text-on-surface-variant'
+  }
+
+  const getComparisonDisplay = () => {
+    if (!comparison || comparison.diff === undefined || comparison.diff === null) return null
+    const { diff, percent, inverted } = comparison
+    const isPositive = inverted ? diff < 0 : diff > 0
+    const isNegative = inverted ? diff > 0 : diff < 0
+    const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '→'
+    const colorClass = isPositive ? 'text-success' : isNegative ? 'text-error' : 'text-outline'
+    const displayPercent = percent !== undefined ? `${percent > 0 ? '+' : ''}${percent.toFixed(1)}%` : `${diff > 0 ? '+' : ''}${diff}`
+    return (
+      <span className={`text-label-sm font-medium ${colorClass}`}>
+        {arrow} {displayPercent}
+      </span>
+    )
   }
 
   return (
@@ -2094,7 +2410,10 @@ function KPICard({ title, value, icon: Icon, color, subtitle }) {
         </div>
         <div className="min-w-0 flex-1 overflow-hidden">
           <p className="text-label-sm text-on-surface-variant leading-tight truncate">{title}</p>
-          <p className="text-title-md font-display text-on-surface truncate">{value}</p>
+          <div className="flex items-center gap-2">
+            <p className="text-title-md font-display text-on-surface truncate">{value}</p>
+            {getComparisonDisplay()}
+          </div>
           {subtitle && <p className="text-label-sm text-outline truncate">{subtitle}</p>}
         </div>
       </div>
