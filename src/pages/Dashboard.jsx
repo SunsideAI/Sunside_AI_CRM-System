@@ -1256,12 +1256,12 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     }
   }, [dateRange])
 
-  // Auto-trigger AI analysis when stats are loaded
+  // AI-Analyse invalidieren wenn sich Filter ändern
   useEffect(() => {
-    if (stats?.summary && !aiAnalysis && !aiLoading) {
-      fetchAiAnalysis()
+    if (aiAnalysis) {
+      setAiAnalysis(null)
     }
-  }, [stats])
+  }, [dateRange, selectedUser, compareMode, compareDateRange])
 
   const loadStats = async (forceRefresh = false) => {
     const cacheKey = getCacheKey()
@@ -1392,20 +1392,6 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     setAiAnalysis(null)
 
     try {
-      const dateRangeLabels = {
-        'today': 'Heute',
-        'yesterday': 'Gestern',
-        '7days': 'Letzte 7 Tage',
-        '14days': 'Letzte 14 Tage',
-        '30days': 'Letzte 30 Tage',
-        'thisWeek': 'Diese Woche',
-        'lastWeek': 'Letzte Woche',
-        'thisMonth': 'Dieser Monat',
-        'lastMonth': 'Letzter Monat',
-        '3months': 'Letzte 3 Monate',
-        'all': 'Gesamter Zeitraum'
-      }
-
       const response = await fetch('/.netlify/functions/ai-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1416,11 +1402,32 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
             beratungsgespraech: stats.summary?.beratungsgespraech || 0,
             unterlagen: stats.summary?.unterlagen || 0,
             keinInteresse: stats.summary?.keinInteresse || 0,
-            erreichtQuote: stats.summary?.erreichQuote || 0,
+            nichtErreicht: stats.summary?.nichtErreicht || 0,
+            erreichQuote: stats.summary?.erreichQuote || 0,
             beratungsgespraechQuote: stats.summary?.beratungsgespraechQuote || 0,
-            unterlagenQuote: stats.summary?.unterlagenQuote || 0
+            unterlagenQuote: stats.summary?.unterlagenQuote || 0,
+            keinInteresseQuote: stats.summary?.keinInteresseQuote || 0
           },
-          dateRange: dateRangeLabels[dateRange] || dateRange
+          zeitverlauf: stats.zeitverlauf || [],
+          compareStats: compareMode && compareStats ? {
+            label: DATE_RANGE_LABELS[compareDateRange] || compareDateRange,
+            summary: compareStats.summary || null
+          } : null,
+          perUser: isAdmin() ? (stats.perUser || []).slice(0, 8).map(u => ({
+            name: u.name,
+            einwahlen: u.einwahlen,
+            erreicht: u.erreicht,
+            beratungsgespraech: u.beratungsgespraech,
+            keinInteresse: u.keinInteresse
+          })) : null,
+          dateRange: DATE_RANGE_LABELS[dateRange] || dateRange,
+          context: {
+            userName: isAdmin()
+              ? (selectedUser === 'all' ? 'Team-Übersicht' : selectedUser)
+              : user?.vor_nachname,
+            isTeam: isAdmin() && selectedUser === 'all',
+            teamSize: isAdmin() ? (stats.perUser?.length || 0) : null
+          }
         })
       })
 
@@ -1692,7 +1699,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
                 ) : (
                   <>
                     <Sparkles className="h-4 w-4" />
-                    Analyse generieren
+                    {aiAnalysis ? 'Neu analysieren' : 'Analyse generieren'}
                   </>
                 )}
               </button>
@@ -1722,71 +1729,144 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
             {aiAnalysis && !aiLoading && (
               <div className="space-y-6">
-                {/* Zusammenfassung */}
-                <div className="bg-primary-container/30 rounded-lg p-4">
-                  <p className="text-on-surface font-medium">{aiAnalysis.zusammenfassung}</p>
+                {/* Zusammenfassung - Hero Card */}
+                <div className="relative overflow-hidden rounded-xl p-5 bg-gradient-to-br from-primary via-primary to-primary/80">
+                  <div className="relative z-10">
+                    <p className="text-white/80 text-label-sm mb-1">Zusammenfassung</p>
+                    <p className="text-white text-body-lg font-medium leading-relaxed">{aiAnalysis.zusammenfassung}</p>
+                  </div>
+                  <div className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-white/10 blur-2xl" />
+                  <div className="absolute -left-4 -top-4 w-20 h-20 rounded-full bg-white/5 blur-xl" />
                 </div>
 
-                {/* Insights */}
+                {/* Insights - Grid Layout */}
                 {aiAnalysis.insights?.length > 0 && (
                   <div>
                     <h4 className="text-label-md text-on-surface mb-3 flex items-center gap-2">
                       <Lightbulb className="h-4 w-4 text-yellow-500" />
                       Erkenntnisse
                     </h4>
-                    <div className="space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {aiAnalysis.insights.map((insight, idx) => (
                         <div
                           key={idx}
-                          className={`rounded-lg p-4 border-l-4 ${
+                          className={`rounded-xl p-4 border ${
                             insight.typ === 'positiv'
-                              ? 'bg-green-50 border-green-500'
+                              ? 'bg-green-50 border-green-200'
                               : insight.typ === 'negativ'
-                              ? 'bg-red-50 border-red-500'
-                              : 'bg-gray-50 border-gray-400'
+                              ? 'bg-red-50 border-red-200'
+                              : 'bg-gray-50 border-gray-200'
                           }`}
                         >
-                          <p className="font-medium text-on-surface">{insight.titel}</p>
-                          <p className="text-sm text-on-surface-variant mt-1">{insight.beschreibung}</p>
+                          <div className="flex items-start gap-3">
+                            <div className={`p-2 rounded-lg flex-shrink-0 ${
+                              insight.typ === 'positiv'
+                                ? 'bg-green-100'
+                                : insight.typ === 'negativ'
+                                ? 'bg-red-100'
+                                : 'bg-gray-100'
+                            }`}>
+                              {insight.typ === 'positiv' ? (
+                                <CheckCircle className="h-4 w-4 text-green-600" />
+                              ) : insight.typ === 'negativ' ? (
+                                <AlertCircle className="h-4 w-4 text-red-600" />
+                              ) : (
+                                <Lightbulb className="h-4 w-4 text-gray-600" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium text-on-surface text-sm">{insight.titel}</p>
+                                {insight.impact && (
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                    insight.impact === 'hoch'
+                                      ? 'bg-primary/10 text-primary'
+                                      : insight.impact === 'mittel'
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : 'bg-gray-100 text-gray-600'
+                                  }`}>
+                                    {insight.impact}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-on-surface-variant mt-1">{insight.beschreibung}</p>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {/* Prognosen */}
-                {aiAnalysis.prognosen?.length > 0 && (
-                  <div>
+                {/* Trend Section */}
+                {aiAnalysis.trend && (
+                  <div className="border-t border-outline-variant pt-5">
                     <h4 className="text-label-md text-on-surface mb-3 flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4 text-primary" />
-                      Prognosen
+                      {aiAnalysis.trend.richtung === 'steigend' ? (
+                        <TrendingUp className="h-4 w-4 text-green-500" />
+                      ) : aiAnalysis.trend.richtung === 'fallend' ? (
+                        <TrendingDown className="h-4 w-4 text-red-500" />
+                      ) : (
+                        <TrendingUp className="h-4 w-4 text-gray-500" />
+                      )}
+                      Trend
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${
+                        aiAnalysis.trend.richtung === 'steigend'
+                          ? 'bg-green-100 text-green-700'
+                          : aiAnalysis.trend.richtung === 'fallend'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-gray-100 text-gray-600'
+                      }`}>
+                        {aiAnalysis.trend.richtung}
+                      </span>
                     </h4>
-                    <div className="space-y-3">
-                      {aiAnalysis.prognosen.map((prognose, idx) => (
-                        <div key={idx} className="bg-surface-container rounded-lg p-4">
-                          <p className="font-medium text-on-surface">{prognose.titel}</p>
-                          <p className="text-sm text-on-surface-variant mt-1">{prognose.beschreibung}</p>
-                        </div>
-                      ))}
-                    </div>
+                    <p className="text-on-surface-variant">{aiAnalysis.trend.beschreibung}</p>
                   </div>
                 )}
 
-                {/* Empfehlungen */}
+                {/* Empfehlungen - Cards mit Priorität */}
                 {aiAnalysis.empfehlungen?.length > 0 && (
                   <div>
                     <h4 className="text-label-md text-on-surface mb-3 flex items-center gap-2">
-                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <Target className="h-4 w-4 text-primary" />
                       Handlungsempfehlungen
                     </h4>
-                    <ul className="space-y-2">
-                      {aiAnalysis.empfehlungen.map((empfehlung, idx) => (
-                        <li key={idx} className="flex items-start gap-2 text-on-surface-variant">
-                          <ArrowRight className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
-                          <span>{empfehlung}</span>
-                        </li>
-                      ))}
-                    </ul>
+                    <div className="space-y-3">
+                      {aiAnalysis.empfehlungen.map((empfehlung, idx) => {
+                        const text = typeof empfehlung === 'string' ? empfehlung : empfehlung.text
+                        const prio = typeof empfehlung === 'object' ? empfehlung.prioritaet : null
+                        return (
+                          <div key={idx} className="flex items-start gap-3 p-4 bg-surface-container rounded-xl">
+                            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center">
+                              <span className="text-sm font-semibold text-primary">{idx + 1}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {prio && (
+                                  <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+                                    prio === 'hoch'
+                                      ? 'bg-red-100 text-red-700'
+                                      : prio === 'mittel'
+                                      ? 'bg-yellow-100 text-yellow-700'
+                                      : 'bg-gray-100 text-gray-600'
+                                  }`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${
+                                      prio === 'hoch'
+                                        ? 'bg-red-500'
+                                        : prio === 'mittel'
+                                        ? 'bg-yellow-500'
+                                        : 'bg-gray-400'
+                                    }`} />
+                                    {prio}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-on-surface-variant mt-1">{text}</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
               </div>

@@ -1,7 +1,6 @@
 const fetch = require('node-fetch');
 
 exports.handler = async (event) => {
-  // CORS headers
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -22,7 +21,7 @@ exports.handler = async (event) => {
   }
 
   try {
-    const { stats, dateRange } = JSON.parse(event.body);
+    const { stats, zeitverlauf, compareStats, perUser, dateRange, context } = JSON.parse(event.body);
 
     if (!stats) {
       return {
@@ -41,50 +40,97 @@ exports.handler = async (event) => {
       };
     }
 
-    // Build the prompt with stats data
-    const prompt = `Du bist ein Experte für Vertriebsanalysen und Kaltakquise. Analysiere die folgenden Kaltakquise-Statistiken und erstelle eine strukturierte Analyse.
+    // System-Prompt
+    const systemPrompt = `Du bist ein erfahrener Vertriebsanalyst für B2B-Kaltakquise im deutschen Mittelstand. Dein Kunde ist ein Vertriebsteam, das Immobilienmakler und Sachverständige als Kunden akquiriert. Du analysierst deren Kaltakquise-KPIs und gibst datenbasierte Einschätzungen.
 
+Regeln:
+- Antworte ausschließlich auf Deutsch.
+- Antworte ausschließlich mit validem JSON — kein Markdown, keine Backticks, kein Fließtext.
+- Basiere deine Aussagen nur auf den übergebenen Zahlen. Wenn die Daten für eine Aussage nicht ausreichen, lass sie weg statt zu raten.
+- Vermeide Floskeln wie "Gute Arbeit!" oder "Weiter so!". Sei sachlich, konkret und direkt.
+- Gib Quoten immer als gerundete Prozentwerte an.
+- Vergleiche die Quoten mit diesen Branchen-Benchmarks für Kaltakquise an Immobilienmakler:
+    - Erreichquote: 25–35 % ist durchschnittlich, >40 % ist stark
+    - Beratungsgesprächquote (von Erreichten): 8–15 % ist durchschnittlich, >20 % ist stark
+    - Kein-Interesse-Quote (von Erreichten): <50 % ist gut, >65 % ist problematisch`;
+
+    // User-Prompt dynamisch aufbauen
+    const userName = context?.userName || 'Unbekannt';
+    const isTeam = context?.isTeam || false;
+    const teamSize = context?.teamSize || 0;
+
+    let userPrompt = `Analysiere die Kaltakquise-Performance.
+
+ANSICHT: ${userName}${isTeam ? ` (${teamSize} Vertriebler)` : ''}
 ZEITRAUM: ${dateRange || 'Aktueller Zeitraum'}
 
-STATISTIKEN:
-- Einwahlen (Anrufe): ${stats.einwahlen || 0}
-- Erreicht (Kontakte): ${stats.erreicht || 0}
-- Beratungsgespräche: ${stats.beratungsgespraech || 0}
-- Unterlagen versendet: ${stats.unterlagen || 0}
-- Kein Interesse: ${stats.keinInteresse || 0}
+KENNZAHLEN:
+- Einwahlen: ${stats.einwahlen || 0}
+- Erreicht: ${stats.erreicht || 0} (${(stats.erreichQuote || 0).toFixed(1)}% Erreichquote)
+- Beratungsgespräch: ${stats.beratungsgespraech || 0} (${(stats.beratungsgespraechQuote || 0).toFixed(1)}% der Erreichten)
+- Unterlagen/WV: ${stats.unterlagen || 0} (${(stats.unterlagenQuote || 0).toFixed(1)}% der Erreichten)
+- Kein Interesse: ${stats.keinInteresse || 0} (${(stats.keinInteresseQuote || 0).toFixed(1)}% der Erreichten)
+- Nicht erreicht: ${stats.nichtErreicht || 0}`;
 
-QUOTEN:
-- Erreicht-Quote: ${stats.erreichtQuote || 0}%
-- Beratungsgespräch-Quote: ${stats.beratungsgespraechQuote || 0}%
-- Unterlagen-Quote: ${stats.unterlagenQuote || 0}%
+    // Zeitverlauf hinzufügen wenn >= 3 Datenpunkte
+    const hasVerlauf = zeitverlauf && zeitverlauf.length >= 3;
+    if (hasVerlauf) {
+      userPrompt += `
 
-Erstelle eine Analyse im folgenden JSON-Format:
+VERLAUF (${zeitverlauf.length} Datenpunkte, chronologisch):
+${zeitverlauf.map(z => `  ${z.label}: ${z.count} Einwahlen`).join('\n')}`;
+    }
+
+    // Vergleichszeitraum hinzufügen wenn vorhanden
+    if (compareStats && compareStats.summary) {
+      const cs = compareStats.summary;
+      userPrompt += `
+
+VERGLEICHSZEITRAUM: ${compareStats.label || 'Vorperiode'}
+- Einwahlen: ${cs.einwahlen || 0}
+- Erreicht: ${cs.erreicht || 0} (${(cs.erreichQuote || 0).toFixed(1)}%)
+- Beratungsgespräch: ${cs.beratungsgespraech || 0} (${(cs.beratungsgespraechQuote || 0).toFixed(1)}%)
+- Kein Interesse: ${cs.keinInteresse || 0} (${(cs.keinInteresseQuote || 0).toFixed(1)}%)`;
+    }
+
+    // Team-Performance hinzufügen wenn Admin und Daten vorhanden
+    if (perUser && perUser.length > 0) {
+      userPrompt += `
+
+TEAM-PERFORMANCE (Top ${perUser.length}):
+${perUser.map(u => `  ${u.name}: ${u.einwahlen} Einwahlen, ${u.erreicht} erreicht, ${u.beratungsgespraech} BG`).join('\n')}`;
+    }
+
+    // JSON-Schema im Prompt
+    userPrompt += `
+
+Antworte mit folgendem JSON:
 {
-  "zusammenfassung": "Eine kurze Zusammenfassung der Performance in 1-2 Sätzen",
+  "zusammenfassung": "2-3 Sätze: Was zeigen die Daten? Zentrale Stärke + zentrales Problem benennen. Keine Floskeln.",
+
   "insights": [
     {
-      "titel": "Insight Titel",
-      "beschreibung": "Detaillierte Erklärung des Insights",
-      "typ": "positiv|neutral|negativ"
+      "titel": "Kurzer Fakt-Titel (max 8 Wörter)",
+      "beschreibung": "1-2 Sätze. Konkreter Bezug auf die Zahlen, Vergleich mit Benchmark oder Vorperiode.",
+      "typ": "positiv | neutral | negativ",
+      "impact": "hoch | mittel | niedrig"
     }
-  ],
-  "prognosen": [
-    {
-      "titel": "Prognose Titel",
-      "beschreibung": "Detaillierte Prognose basierend auf den Daten"
-    }
-  ],
+  ]${hasVerlauf ? `,
+
+  "trend": {
+    "richtung": "steigend | fallend | stabil | schwankend",
+    "beschreibung": "1 Satz: Was zeigt der Verlauf?"
+  }` : ''},
+
   "empfehlungen": [
-    "Konkrete Handlungsempfehlung 1",
-    "Konkrete Handlungsempfehlung 2"
+    {
+      "text": "Konkrete, umsetzbare Handlung in 1 Satz.",
+      "prioritaet": "hoch | mittel | niedrig"
+    }
   ]
 }
 
-Wichtig:
-- Gib NUR das JSON zurück, keine zusätzlichen Erklärungen
-- Analysiere die Quoten im Branchenvergleich (typische Kaltakquise-Conversion liegt bei 2-5%)
-- Berücksichtige saisonale Faktoren wenn relevant
-- Gib konkrete, umsetzbare Empfehlungen`;
+Liefere 2-4 Insights sortiert nach Impact. Liefere 2-3 Empfehlungen sortiert nach Priorität.${compareStats ? ' Beziehe dich explizit auf die Veränderung zwischen den Zeiträumen.' : ''}${perUser ? ' Erwähne Unterschiede zwischen den Vertrieblern.' : ''}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -95,17 +141,11 @@ Wichtig:
       body: JSON.stringify({
         model: 'gpt-4o-mini',
         messages: [
-          {
-            role: 'system',
-            content: 'Du bist ein deutscher Vertriebsexperte. Antworte immer auf Deutsch und nur im angeforderten JSON-Format.'
-          },
-          {
-            role: 'user',
-            content: prompt
-          }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
         ],
-        temperature: 0.7,
-        max_tokens: 1000
+        temperature: 0.3,
+        max_tokens: 1500
       })
     });
 
@@ -130,18 +170,28 @@ Wichtig:
       };
     }
 
-    // Parse the JSON response
+    // Robustes JSON-Parsing
     let analysis;
     try {
-      // Remove potential markdown code blocks
-      const cleanedResponse = aiResponse.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-      analysis = JSON.parse(cleanedResponse);
+      const cleaned = aiResponse
+        .replace(/```json\n?/g, '').replace(/```\n?/g, '')
+        .replace(/\/\/.*$/gm, '')           // Einzeilige Kommentare
+        .replace(/,\s*([}\]])/g, '$1')      // Trailing Commas
+        .trim();
+      analysis = JSON.parse(cleaned);
     } catch (parseError) {
       console.error('Failed to parse AI response:', aiResponse);
+      // Fallback bei Parse-Fehler
       return {
-        statusCode: 500,
+        statusCode: 200,
         headers,
-        body: JSON.stringify({ error: 'Failed to parse AI response' })
+        body: JSON.stringify({
+          analysis: {
+            zusammenfassung: aiResponse.substring(0, 300).replace(/[{}"]/g, ''),
+            insights: [],
+            empfehlungen: []
+          }
+        })
       };
     }
 
