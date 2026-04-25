@@ -42,6 +42,123 @@ import {
 } from 'recharts'
 
 // ==========================================
+// DATE RANGE UTILITIES
+// ==========================================
+
+// Lokale Datum-Formatierung (keine Zeitzonen-Konvertierung!)
+const formatDateLocal = (date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+// Smart defaults: Natürliche Vorperiode für jeden Zeitraum
+const SMART_COMPARE_DEFAULTS = {
+  'today': 'yesterday',
+  'yesterday': '7days',
+  'thisWeek': 'lastWeek',
+  'lastWeek': '7days',
+  '7days': '14days',
+  '14days': '30days',
+  '30days': '3months',
+  'thisMonth': 'lastMonth',
+  'lastMonth': '3months',
+  '3months': 'year',
+  'year': 'all',
+  'all': '3months'
+}
+
+// Labels für Zeiträume
+const DATE_RANGE_LABELS = {
+  'today': 'Heute',
+  'yesterday': 'Gestern',
+  '7days': 'Letzte 7 Tage',
+  '14days': 'Letzte 14 Tage',
+  '30days': 'Letzte 30 Tage',
+  'thisWeek': 'Diese Woche',
+  'lastWeek': 'Letzte Woche',
+  'thisMonth': 'Dieser Monat',
+  'lastMonth': 'Letzter Monat',
+  '3months': 'Letzte 3 Monate',
+  'year': 'Letztes Jahr',
+  'all': 'Gesamter Zeitraum'
+}
+
+// Zentrale Funktion für Datumsberechnung
+function computeDateRange(rangeKey) {
+  const now = new Date()
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  let startDate = null
+  let endDate = today
+
+  switch (rangeKey) {
+    case 'today':
+      startDate = today
+      break
+    case 'yesterday':
+      startDate = new Date(today)
+      startDate.setDate(startDate.getDate() - 1)
+      endDate = startDate
+      break
+    case 'thisWeek':
+      startDate = new Date(today)
+      const dayOfWeek = startDate.getDay() || 7
+      startDate.setDate(startDate.getDate() - dayOfWeek + 1)
+      break
+    case 'lastWeek':
+      const lastWeekEnd = new Date(today)
+      const lastWeekDayOfWeek = lastWeekEnd.getDay() || 7
+      lastWeekEnd.setDate(lastWeekEnd.getDate() - lastWeekDayOfWeek)
+      const lastWeekStart = new Date(lastWeekEnd)
+      lastWeekStart.setDate(lastWeekStart.getDate() - 6)
+      return {
+        startDate: formatDateLocal(lastWeekStart),
+        endDate: formatDateLocal(lastWeekEnd)
+      }
+    case '7days':
+      startDate = new Date(today)
+      startDate.setDate(startDate.getDate() - 7)
+      break
+    case '14days':
+      startDate = new Date(today)
+      startDate.setDate(startDate.getDate() - 14)
+      break
+    case '30days':
+      startDate = new Date(today)
+      startDate.setDate(startDate.getDate() - 30)
+      break
+    case 'thisMonth':
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1)
+      break
+    case 'lastMonth':
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
+      return {
+        startDate: formatDateLocal(lastMonthStart),
+        endDate: formatDateLocal(lastMonthEnd)
+      }
+    case '3months':
+      startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
+      break
+    case 'year':
+      startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
+      break
+    case 'all':
+      startDate = null
+      break
+    default:
+      startDate = new Date(today)
+      startDate.setDate(startDate.getDate() - 7)
+  }
+
+  return {
+    startDate: startDate ? formatDateLocal(startDate) : null,
+    endDate: formatDateLocal(endDate)
+  }
+}
+
+// ==========================================
 // CACHE HELPERS
 // ==========================================
 const CACHE_DURATION = 5 * 60 * 1000 // 5 Minuten
@@ -1111,15 +1228,33 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   const [compareStats, setCompareStats] = useState(null)
   const [compareLoading, setCompareLoading] = useState(false)
 
-  // Cache Key
+  // Cache Keys
   const getCacheKey = () => {
     const userPart = isAdmin() ? `admin_${selectedUser}` : (user?.vor_nachname || 'user')
     return `dashboard_kaltakquise_${dateRange}_${userPart}`
   }
 
+  const getCompareCacheKey = () => {
+    const userPart = isAdmin() ? `admin_${selectedUser}` : (user?.vor_nachname || 'user')
+    return `dashboard_kaltakquise_compare_${compareDateRange}_${userPart}`
+  }
+
+  // Prüfen ob Zeiträume identisch sind
+  const isIdenticalPeriod = dateRange === compareDateRange
+
   useEffect(() => {
     loadStats()
   }, [dateRange, selectedUser])
+
+  // Smart Defaults: Bei Änderung des Hauptzeitraums den Vergleichszeitraum anpassen
+  useEffect(() => {
+    if (compareMode && SMART_COMPARE_DEFAULTS[dateRange]) {
+      const suggested = SMART_COMPARE_DEFAULTS[dateRange]
+      if (suggested !== compareDateRange && suggested !== dateRange) {
+        setCompareDateRange(suggested)
+      }
+    }
+  }, [dateRange])
 
   // Auto-trigger AI analysis when stats are loaded
   useEffect(() => {
@@ -1127,85 +1262,6 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
       fetchAiAnalysis()
     }
   }, [stats])
-
-  // Erweiterte Zeitraum-Optionen
-  const getDateRange = () => {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    let startDate = null
-
-    // Lokale Datum-Formatierung (keine Zeitzonen-Konvertierung!)
-    const formatDateLocal = (date) => {
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      return `${year}-${month}-${day}`
-    }
-
-    switch (dateRange) {
-      case 'today':
-        startDate = today
-        break
-      case 'yesterday':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 1)
-        return {
-          startDate: formatDateLocal(startDate),
-          endDate: formatDateLocal(startDate) // Nur gestern
-        }
-      case 'thisWeek':
-        startDate = new Date(today)
-        const dayOfWeek = startDate.getDay() || 7 // Sonntag = 7 statt 0
-        startDate.setDate(startDate.getDate() - dayOfWeek + 1) // Montag dieser Woche
-        break
-      case 'lastWeek':
-        const lastWeekEnd = new Date(today)
-        const lastWeekDayOfWeek = lastWeekEnd.getDay() || 7 // Sonntag = 7 statt 0
-        lastWeekEnd.setDate(lastWeekEnd.getDate() - lastWeekDayOfWeek) // Letzter Sonntag
-        const lastWeekStart = new Date(lastWeekEnd)
-        lastWeekStart.setDate(lastWeekStart.getDate() - 6)
-        return {
-          startDate: formatDateLocal(lastWeekStart),
-          endDate: formatDateLocal(lastWeekEnd)
-        }
-      case '7days':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 7)
-        break
-      case '14days':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 14)
-        break
-      case '30days':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 30)
-        break
-      case 'thisMonth':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-        break
-      case 'lastMonth':
-        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
-        return {
-          startDate: formatDateLocal(lastMonthStart),
-          endDate: formatDateLocal(lastMonthEnd)
-        }
-      case '3months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
-        break
-      case 'all':
-        startDate = null
-        break
-      default:
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 7)
-    }
-
-    return {
-      startDate: startDate ? formatDateLocal(startDate) : null,
-      endDate: formatDateLocal(today)
-    }
-  }
 
   const loadStats = async (forceRefresh = false) => {
     const cacheKey = getCacheKey()
@@ -1224,7 +1280,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
       setLoading(true)
       setError(null)
 
-      const { startDate, endDate } = getDateRange()
+      const { startDate, endDate } = computeDateRange(dateRange)
       const userEmail = user?.email_geschaeftlich || user?.email
       const userName = user?.vor_nachname
 
@@ -1233,7 +1289,6 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         admin: isAdmin().toString(),
         ...(userEmail && !isAdmin() && { email: userEmail }),
         ...(userName && !isAdmin() && { userName }),
-        // NEU: Wenn Admin einen Vertriebler auswählt
         ...(isAdmin() && selectedUser !== 'all' && { filterUserName: selectedUser }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate })
@@ -1244,8 +1299,6 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         const data = await res.json()
         setCache(cacheKey, data)
         setStats(data)
-        // Vertriebler-Liste NUR updaten wenn "Alle" ausgewählt ist
-        // Sonst verlieren wir die vollständige Liste beim Filtern
         if (data.perUser && isAdmin() && selectedUser === 'all') {
           setVertriebler(data.perUser)
         }
@@ -1265,15 +1318,28 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     setRefreshing(true)
     loadStats(true)
     if (compareMode) {
-      loadCompareStats()
+      loadCompareStats(true)
     }
   }
 
-  // Vergleichsdaten laden
-  const loadCompareStats = async () => {
+  // Vergleichsdaten laden (mit Caching)
+  const loadCompareStats = async (forceRefresh = false) => {
+    if (isIdenticalPeriod) {
+      setCompareStats(null)
+      return
+    }
+
+    const cacheKey = getCompareCacheKey()
+    const cached = getCache(cacheKey)
+
+    if (cached && !forceRefresh) {
+      setCompareStats(cached)
+      return
+    }
+
     setCompareLoading(true)
     try {
-      const { startDate, endDate } = getDateRangeFor(compareDateRange)
+      const { startDate, endDate } = computeDateRange(compareDateRange)
       const userEmail = user?.email_geschaeftlich || user?.email
       const userName = user?.vor_nachname
 
@@ -1290,6 +1356,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
       const res = await fetch(`/.netlify/functions/analytics?${params}`)
       if (res.ok) {
         const data = await res.json()
+        setCache(cacheKey, data)
         setCompareStats(data)
       }
     } catch (err) {
@@ -1299,83 +1366,14 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
     }
   }
 
-  // Flexible Datum-Berechnung für beliebigen Zeitraum
-  const getDateRangeFor = (range) => {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    let startDate = null
-
-    const formatDateLocal = (date) => {
-      const year = date.getFullYear()
-      const month = String(date.getMonth() + 1).padStart(2, '0')
-      const day = String(date.getDate()).padStart(2, '0')
-      return `${year}-${month}-${day}`
-    }
-
-    switch (range) {
-      case 'today':
-        startDate = today
-        break
-      case 'yesterday':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 1)
-        return { startDate: formatDateLocal(startDate), endDate: formatDateLocal(startDate) }
-      case 'thisWeek':
-        startDate = new Date(today)
-        const dayOfWeek = startDate.getDay() || 7
-        startDate.setDate(startDate.getDate() - dayOfWeek + 1)
-        break
-      case 'lastWeek':
-        const lastWeekEnd = new Date(today)
-        const lastWeekDayOfWeek = lastWeekEnd.getDay() || 7
-        lastWeekEnd.setDate(lastWeekEnd.getDate() - lastWeekDayOfWeek)
-        const lastWeekStart = new Date(lastWeekEnd)
-        lastWeekStart.setDate(lastWeekStart.getDate() - 6)
-        return { startDate: formatDateLocal(lastWeekStart), endDate: formatDateLocal(lastWeekEnd) }
-      case '7days':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 7)
-        break
-      case '14days':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 14)
-        break
-      case '30days':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 30)
-        break
-      case 'thisMonth':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-        break
-      case 'lastMonth':
-        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
-        return { startDate: formatDateLocal(lastMonthStart), endDate: formatDateLocal(lastMonthEnd) }
-      case '3months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
-        break
-      case 'all':
-        startDate = null
-        break
-      default:
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 7)
-    }
-
-    return {
-      startDate: startDate ? formatDateLocal(startDate) : null,
-      endDate: formatDateLocal(today)
-    }
-  }
-
-  // Vergleichsmodus aktivieren/deaktivieren
+  // Vergleichsmodus: Bei jeder relevanten Änderung neu laden
   useEffect(() => {
-    if (compareMode && stats) {
+    if (compareMode && stats && !isIdenticalPeriod) {
       loadCompareStats()
     } else {
       setCompareStats(null)
     }
-  }, [compareMode, compareDateRange])
+  }, [compareMode, compareDateRange, dateRange, selectedUser])
 
   // Berechnung der Abweichungen
   const getComparison = (currentValue, compareValue, inverted = false) => {
@@ -1519,15 +1517,14 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
           <button
             onClick={() => setCompareMode(!compareMode)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+            className={`p-2.5 rounded-lg transition-colors shadow-ambient-sm ${
               compareMode
                 ? 'bg-primary text-white'
                 : 'bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant'
-            } shadow-ambient-sm`}
+            }`}
             title="Zeiträume vergleichen"
           >
-            <GitCompare className="h-4 w-4" />
-            <span className="text-label-sm hidden sm:inline">Vergleichen</span>
+            <GitCompare className="h-5 w-5" />
           </button>
 
           <button
@@ -1542,32 +1539,34 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
 
       {/* Vergleichszeitraum-Auswahl */}
       {compareMode && (
-        <div className="flex flex-wrap items-center gap-3 p-4 bg-primary-fixed/30 rounded-lg border border-primary/20">
-          <GitCompare className="h-5 w-5 text-primary" />
+        <div className={`flex flex-wrap items-center gap-3 p-4 rounded-lg border ${
+          isIdenticalPeriod
+            ? 'bg-warning-container/30 border-warning/30'
+            : 'bg-primary-fixed/30 border-primary/20'
+        }`}>
+          <GitCompare className={`h-5 w-5 ${isIdenticalPeriod ? 'text-warning' : 'text-primary'}`} />
           <span className="text-label-md text-on-surface">Vergleiche mit:</span>
           <select
             value={compareDateRange}
             onChange={(e) => setCompareDateRange(e.target.value)}
             className="select-field w-auto min-w-[160px]"
           >
-            <optgroup label="Tage">
-              <option value="yesterday">Gestern</option>
-              <option value="7days">Letzte 7 Tage</option>
-              <option value="14days">Letzte 14 Tage</option>
-              <option value="30days">Letzte 30 Tage</option>
-            </optgroup>
-            <optgroup label="Wochen">
-              <option value="lastWeek">Letzte Woche</option>
-            </optgroup>
-            <optgroup label="Monate">
-              <option value="lastMonth">Letzter Monat</option>
-              <option value="3months">Letzte 3 Monate</option>
-            </optgroup>
+            {Object.entries(DATE_RANGE_LABELS)
+              .filter(([key]) => key !== dateRange)
+              .map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))
+            }
           </select>
           {compareLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-          {compareStats && (
+          {isIdenticalPeriod && (
+            <span className="text-label-sm text-warning font-medium">
+              ⚠️ Gleicher Zeitraum gewählt
+            </span>
+          )}
+          {compareStats && !isIdenticalPeriod && (
             <span className="text-label-sm text-outline ml-auto">
-              Vergleichszeitraum: {compareStats.summary?.einwahlen || 0} Einwahlen
+              {DATE_RANGE_LABELS[compareDateRange]}: {compareStats.summary?.einwahlen || 0} Einwahlen
             </span>
           )}
         </div>
@@ -1947,51 +1946,33 @@ function ClosingAnalytics({ user, isAdmin }) {
   const [compareStats, setCompareStats] = useState(null)
   const [compareLoading, setCompareLoading] = useState(false)
 
+  // Cache Keys
   const getCacheKey = () => {
     const userPart = isAdmin() ? 'admin' : (user?.email_geschaeftlich || user?.email || 'user')
     return `dashboard_closing_${dateRange}_${userPart}`
   }
 
+  const getCompareCacheKey = () => {
+    const userPart = isAdmin() ? 'admin' : (user?.email_geschaeftlich || user?.email || 'user')
+    return `dashboard_closing_compare_${compareDateRange}_${userPart}`
+  }
+
+  // Prüfen ob Zeiträume identisch sind
+  const isIdenticalPeriod = dateRange === compareDateRange
+
   useEffect(() => {
     loadStats()
   }, [dateRange])
 
-  const getDateRange = () => {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    let startDate = null
-
-    switch (dateRange) {
-      case '7days':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 7)
-        break
-      case '14days':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 14)
-        break
-      case '30days':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 30)
-        break
-      case 'thisMonth':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1)
-        break
-      case '3months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
-        break
-      case 'year':
-        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
-        break
-      default:
-        startDate = null
+  // Smart Defaults: Bei Änderung des Hauptzeitraums den Vergleichszeitraum anpassen
+  useEffect(() => {
+    if (compareMode && SMART_COMPARE_DEFAULTS[dateRange]) {
+      const suggested = SMART_COMPARE_DEFAULTS[dateRange]
+      if (suggested !== compareDateRange && suggested !== dateRange) {
+        setCompareDateRange(suggested)
+      }
     }
-
-    return {
-      startDate: startDate ? startDate.toISOString().split('T')[0] : null,
-      endDate: now.toISOString().split('T')[0]
-    }
-  }
+  }, [dateRange])
 
   const loadStats = async (forceRefresh = false) => {
     const cacheKey = getCacheKey()
@@ -2007,8 +1988,7 @@ function ClosingAnalytics({ user, isAdmin }) {
       setLoading(true)
       setError(null)
 
-      const { startDate, endDate } = getDateRange()
-      const userEmail = user?.email_geschaeftlich || user?.email
+      const { startDate, endDate } = computeDateRange(dateRange)
       const userName = user?.vor_nachname || user?.name
 
       const params = new URLSearchParams({
@@ -2040,15 +2020,28 @@ function ClosingAnalytics({ user, isAdmin }) {
     setRefreshing(true)
     loadStats(true)
     if (compareMode) {
-      loadCompareStats()
+      loadCompareStats(true)
     }
   }
 
-  // Vergleichsdaten laden
-  const loadCompareStats = async () => {
+  // Vergleichsdaten laden (mit Caching)
+  const loadCompareStats = async (forceRefresh = false) => {
+    if (isIdenticalPeriod) {
+      setCompareStats(null)
+      return
+    }
+
+    const cacheKey = getCompareCacheKey()
+    const cached = getCache(cacheKey)
+
+    if (cached && !forceRefresh) {
+      setCompareStats(cached)
+      return
+    }
+
     setCompareLoading(true)
     try {
-      const { startDate, endDate } = getDateRangeFor(compareDateRange)
+      const { startDate, endDate } = computeDateRange(compareDateRange)
       const userName = user?.vor_nachname || user?.name
 
       const params = new URLSearchParams({
@@ -2062,6 +2055,7 @@ function ClosingAnalytics({ user, isAdmin }) {
       const res = await fetch(`/.netlify/functions/analytics?${params}`)
       if (res.ok) {
         const data = await res.json()
+        setCache(cacheKey, data)
         setCompareStats(data)
       }
     } catch (err) {
@@ -2071,53 +2065,14 @@ function ClosingAnalytics({ user, isAdmin }) {
     }
   }
 
-  // Flexible Datum-Berechnung für beliebigen Zeitraum
-  const getDateRangeFor = (range) => {
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    let startDate = null
-
-    switch (range) {
-      case '7days':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 7)
-        break
-      case '14days':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 14)
-        break
-      case '30days':
-        startDate = new Date(today)
-        startDate.setDate(startDate.getDate() - 30)
-        break
-      case 'lastMonth':
-        const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
-        const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0)
-        return { startDate: lastMonthStart.toISOString().split('T')[0], endDate: lastMonthEnd.toISOString().split('T')[0] }
-      case '3months':
-        startDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate())
-        break
-      case 'year':
-        startDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate())
-        break
-      default:
-        startDate = null
-    }
-
-    return {
-      startDate: startDate ? startDate.toISOString().split('T')[0] : null,
-      endDate: now.toISOString().split('T')[0]
-    }
-  }
-
-  // Vergleichsmodus aktivieren/deaktivieren
+  // Vergleichsmodus: Bei jeder relevanten Änderung neu laden
   useEffect(() => {
-    if (compareMode && stats) {
+    if (compareMode && stats && !isIdenticalPeriod) {
       loadCompareStats()
     } else {
       setCompareStats(null)
     }
-  }, [compareMode, compareDateRange])
+  }, [compareMode, compareDateRange, dateRange])
 
   // Berechnung der Abweichungen
   const getComparison = (currentValue, compareValue, inverted = false) => {
@@ -2171,15 +2126,14 @@ function ClosingAnalytics({ user, isAdmin }) {
 
           <button
             onClick={() => setCompareMode(!compareMode)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+            className={`p-2.5 rounded-lg transition-colors shadow-ambient-sm ${
               compareMode
                 ? 'bg-primary text-white'
                 : 'bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant'
-            } shadow-ambient-sm`}
+            }`}
             title="Zeiträume vergleichen"
           >
-            <GitCompare className="h-4 w-4" />
-            <span className="text-label-sm hidden sm:inline">Vergleichen</span>
+            <GitCompare className="h-5 w-5" />
           </button>
 
           <button
@@ -2194,25 +2148,34 @@ function ClosingAnalytics({ user, isAdmin }) {
 
       {/* Vergleichszeitraum-Auswahl */}
       {compareMode && (
-        <div className="flex flex-wrap items-center gap-3 p-4 bg-primary-fixed/30 rounded-lg border border-primary/20">
-          <GitCompare className="h-5 w-5 text-primary" />
+        <div className={`flex flex-wrap items-center gap-3 p-4 rounded-lg border ${
+          isIdenticalPeriod
+            ? 'bg-warning-container/30 border-warning/30'
+            : 'bg-primary-fixed/30 border-primary/20'
+        }`}>
+          <GitCompare className={`h-5 w-5 ${isIdenticalPeriod ? 'text-warning' : 'text-primary'}`} />
           <span className="text-label-md text-on-surface">Vergleiche mit:</span>
           <select
             value={compareDateRange}
             onChange={(e) => setCompareDateRange(e.target.value)}
             className="select-field w-auto min-w-[160px]"
           >
-            <option value="7days">Letzte 7 Tage</option>
-            <option value="14days">Letzte 14 Tage</option>
-            <option value="30days">Letzte 30 Tage</option>
-            <option value="lastMonth">Letzter Monat</option>
-            <option value="3months">Letzte 3 Monate</option>
-            <option value="year">Letztes Jahr</option>
+            {Object.entries(DATE_RANGE_LABELS)
+              .filter(([key]) => key !== dateRange)
+              .map(([key, label]) => (
+                <option key={key} value={key}>{label}</option>
+              ))
+            }
           </select>
           {compareLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
-          {compareStats && (
+          {isIdenticalPeriod && (
+            <span className="text-label-sm text-warning font-medium">
+              ⚠️ Gleicher Zeitraum gewählt
+            </span>
+          )}
+          {compareStats && !isIdenticalPeriod && (
             <span className="text-label-sm text-outline ml-auto">
-              Vergleichszeitraum: {formatCurrency(compareStats.summary?.umsatzGesamt || 0)} Umsatz
+              {DATE_RANGE_LABELS[compareDateRange]}: {formatCurrency(compareStats.summary?.umsatzGesamt || 0)} Umsatz
             </span>
           )}
         </div>
