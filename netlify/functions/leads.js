@@ -181,7 +181,7 @@ export async function handler(event) {
 
         let effectiveUserId = userId
 
-        // Fallback 1: airtableId - prüfe ob userId Assignments hat, sonst airtableId
+        // Fallback 1: airtableId - suche User über airtable_id Spalte
         if (airtableId) {
           const { count } = await supabase
             .from('lead_assignments')
@@ -189,14 +189,24 @@ export async function handler(event) {
             .eq('user_id', userId)
 
           if (count === 0) {
-            const { count: countAt } = await supabase
-              .from('lead_assignments')
-              .select('*', { count: 'exact', head: true })
-              .eq('user_id', airtableId)
+            // User über airtable_id in users-Tabelle nachschlagen
+            const { data: userByAirtable } = await supabase
+              .from('users')
+              .select('id')
+              .eq('airtable_id', airtableId)
+              .single()
 
-            if (countAt > 0) {
-              effectiveUserId = airtableId
-              console.log('[Leads] Using airtableId fallback:', airtableId, 'with', countAt, 'assignments')
+            if (userByAirtable?.id) {
+              // Prüfen ob dieser User Assignments hat
+              const { count: countAt } = await supabase
+                .from('lead_assignments')
+                .select('*', { count: 'exact', head: true })
+                .eq('user_id', userByAirtable.id)
+
+              if (countAt > 0) {
+                effectiveUserId = userByAirtable.id
+                console.log('[Leads] Using airtableId fallback:', airtableId, '-> UUID:', userByAirtable.id, 'with', countAt, 'assignments')
+              }
             }
           }
         }
