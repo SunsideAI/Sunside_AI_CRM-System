@@ -872,7 +872,6 @@ function Termine() {
                     </div>
                   </>
                 )}
-              </div>
 
               <div className="flex gap-3 mt-6 pt-6">
                 {selectedEvent.isMyClosing && (

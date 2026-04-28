@@ -623,7 +623,8 @@ function FollowUp() {
                   </td>
                 </tr>
               )
-            })
+            })}
+            </>
             )}
           </tbody>
         </table>
