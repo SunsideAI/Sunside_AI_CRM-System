@@ -1618,24 +1618,16 @@ function Closing() {
           {/* Drawer Content */}
           <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-surface shadow-xl flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="sticky top-0 bg-surface border-b border-outline-variant px-4 sm:px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2 bg-gradient-primary rounded-lg flex-shrink-0">
-                  <Building2 className="w-5 h-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <h3 className="text-title-lg font-semibold text-on-surface truncate">
-                    {safeString(selectedLead.unternehmen) || 'Lead Details'}
-                  </h3>
-                  <p className="text-body-sm text-on-surface-variant truncate">{selectedLead.kategorie || 'Immobilienmakler'}</p>
-                </div>
-              </div>
+            <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
+              <h2 className="text-title-lg font-semibold text-on-surface truncate">
+                {safeString(selectedLead.unternehmen) || 'Lead Details'}
+              </h2>
               <button
                 type="button"
                 onClick={closeModal}
                 className="p-2 hover:bg-surface-container rounded-lg transition-colors flex-shrink-0"
               >
-                <X className="w-5 h-5 text-gray-500" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -2086,308 +2078,244 @@ function Closing() {
                     </div>
                   )}
 
-                  {/* Status */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-500 mb-2">Status</label>
-                    {editMode ? (
-                      <select
-                        value={editData.status}
-                        onChange={(e) => handleEditChange('status', e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                      >
-                        {/* Aktuellen Status als Default */}
-                        <option value="">Status beibehalten ({selectedLead.status})</option>
-                        <option value="Lead">Lead</option>
-                        <option value="Angebot">Angebot</option>
-                        <option value="Angebot versendet">Angebot versendet</option>
-                        <option value="Termin verschoben">Termin verschoben</option>
-                        <option value="Termin abgesagt">Termin abgesagt</option>
-                        <option value="Abgeschlossen">Abgeschlossen</option>
-                        <option value="Verloren">Verloren</option>
-                      </select>
-                    ) : (
-                      <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium ${getStatusStyle(selectedLead.status)}`}>
-                        {selectedLead.status || 'Unbekannt'}
-                      </span>
-                    )}
-                  </div>
+                  {/* KONTAKTDATEN Section */}
+                  <div className="space-y-3">
+                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                      Kontaktdaten
+                    </h3>
 
-                  {/* Kontaktdaten - gleicher Stil wie Kaltakquise */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Telefon */}
-                    {safeString(selectedLead.telefon) ? (
-                      <a 
-                        href={`tel:${safeString(selectedLead.telefon)}`}
-                        className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <Phone className="w-5 h-5 text-purple-600 mr-3" />
-                        <span className="text-gray-900">{safeString(selectedLead.telefon)}</span>
-                      </a>
-                    ) : (
-                      <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
-                        <Phone className="w-5 h-5 mr-3" />
-                        <span>Keine Telefonnummer</span>
-                      </div>
-                    )}
-
-                    {/* E-Mail */}
-                    {safeString(selectedLead.email) ? (
-                      <a 
-                        href={`mailto:${safeString(selectedLead.email)}`}
-                        className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <Mail className="w-5 h-5 text-purple-600 mr-3" />
-                        <span className="text-gray-900 truncate">{safeString(selectedLead.email)}</span>
-                      </a>
-                    ) : (
-                      <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
-                        <Mail className="w-5 h-5 mr-3" />
-                        <span>Keine E-Mail</span>
-                      </div>
-                    )}
-
-                    {/* Website */}
-                    {safeString(selectedLead.website) ? (
-                      <a 
-                        href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                      >
-                        <Globe className="w-5 h-5 text-purple-600 mr-3" />
-                        <span className="text-gray-900 truncate">{safeString(selectedLead.website)}</span>
-                      </a>
-                    ) : (
-                      <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
-                        <Globe className="w-5 h-5 mr-3" />
-                        <span>Keine Website</span>
-                      </div>
-                    )}
-
-                    {/* Standort */}
-                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                      <MapPin className="w-5 h-5 text-purple-600 mr-3" />
-                      <span className="text-gray-900">
-                        {[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ') || 'Kein Standort'}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Ansprechpartner & Zuständig */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Ansprechpartner */}
-                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                      <Users className="w-5 h-5 text-purple-600 mr-3" />
+                    {/* Info Grid */}
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <span className="text-xs text-gray-400">Ansprechpartner</span>
-                        <p className="text-gray-900">
-                          {safeString(selectedLead.ansprechpartnerVorname) || safeString(selectedLead.ansprechpartnerNachname) 
+                        <p className="text-body-sm text-on-surface-variant">Ansprechpartner</p>
+                        <p className="text-body-md text-on-surface">
+                          {safeString(selectedLead.ansprechpartnerVorname) || safeString(selectedLead.ansprechpartnerNachname)
                             ? `${safeString(selectedLead.ansprechpartnerVorname)} ${safeString(selectedLead.ansprechpartnerNachname)}`.trim()
-                            : 'Nicht angegeben'}
+                            : '-'}
                         </p>
                       </div>
-                    </div>
-
-                    {/* Termin */}
-                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                      <Calendar className="w-5 h-5 text-purple-600 mr-3" />
-                      <div className="flex-1">
-                        <span className="text-xs text-gray-400">Termin</span>
+                      <div>
+                        <p className="text-body-sm text-on-surface-variant">Status</p>
                         {editMode ? (
-                          <div className="mt-1">
-                            <input
-                              type="datetime-local"
-                              value={editData.terminDatum ? new Date(new Date(editData.terminDatum).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
-                              onChange={(e) => handleEditChange('terminDatum', e.target.value ? new Date(e.target.value).toISOString() : '')}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
-                            />
-                            <p className="text-xs text-amber-600 mt-1">Nur CRM-Kalender, Calendly bleibt unverändert</p>
-                          </div>
+                          <select
+                            value={editData.status}
+                            onChange={(e) => handleEditChange('status', e.target.value)}
+                            className="w-full px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary text-body-md"
+                          >
+                            <option value="">Status beibehalten ({selectedLead.status})</option>
+                            <option value="Lead">Lead</option>
+                            <option value="Angebot">Angebot</option>
+                            <option value="Angebot versendet">Angebot versendet</option>
+                            <option value="Termin verschoben">Termin verschoben</option>
+                            <option value="Termin abgesagt">Termin abgesagt</option>
+                            <option value="Abgeschlossen">Abgeschlossen</option>
+                            <option value="Verloren">Verloren</option>
+                          </select>
                         ) : (
-                          <p className="text-gray-900">{formatDate(selectedLead.terminDatum)}</p>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-label-sm ${getStatusStyle(selectedLead.status)}`}>
+                            {selectedLead.status || 'Unbekannt'}
+                          </span>
                         )}
                       </div>
                     </div>
 
-                    {/* Coldcaller */}
-                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                      <UserIcon className="w-5 h-5 text-purple-600 mr-3" />
+                    {/* Contact Buttons (Pill Style) */}
+                    <div className="flex flex-wrap gap-2">
+                      {safeString(selectedLead.telefon) && (
+                        <a
+                          href={`tel:${safeString(selectedLead.telefon)}`}
+                          className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                        >
+                          <Phone className="h-4 w-4 text-primary" />
+                          <span className="text-body-sm">{safeString(selectedLead.telefon)}</span>
+                        </a>
+                      )}
+                      {safeString(selectedLead.email) && (
+                        <a
+                          href={`mailto:${safeString(selectedLead.email)}`}
+                          className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                        >
+                          <Mail className="h-4 w-4 text-primary" />
+                          <span className="text-body-sm truncate max-w-[180px]">{safeString(selectedLead.email)}</span>
+                        </a>
+                      )}
+                      {safeString(selectedLead.website) && (
+                        <a
+                          href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                        >
+                          <Globe className="h-4 w-4 text-primary" />
+                          <span className="text-body-sm">Website</span>
+                        </a>
+                      )}
+                      {(safeString(selectedLead.ort) || safeString(selectedLead.bundesland)) && (
+                        <div className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg">
+                          <MapPin className="h-4 w-4 text-primary" />
+                          <span className="text-body-sm">
+                            {[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ')}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Setter/Closer Tags */}
+                    <div className="flex flex-wrap gap-2">
+                      {safeString(selectedLead.setterName) && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-label-sm">
+                          Setter: {safeString(selectedLead.setterName)}
+                        </span>
+                      )}
+                      {safeString(selectedLead.closerName) && (
+                        <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-label-sm">
+                          Closer: {safeString(selectedLead.closerName)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* TERMIN Section */}
+                  <div className="space-y-3 border-t border-outline-variant pt-6">
+                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                      Termin
+                    </h3>
+
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <span className="text-xs text-gray-400">Coldcaller</span>
-                        <p className="text-gray-900">{safeString(selectedLead.setterName) || '-'}</p>
+                        <p className="text-body-sm text-on-surface-variant">Datum & Uhrzeit</p>
+                        {editMode ? (
+                          <div>
+                            <input
+                              type="datetime-local"
+                              value={editData.terminDatum ? new Date(new Date(editData.terminDatum).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
+                              onChange={(e) => handleEditChange('terminDatum', e.target.value ? new Date(e.target.value).toISOString() : '')}
+                              className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
+                            />
+                            <p className="text-label-sm text-warning mt-1">Nur CRM-Kalender, Calendly bleibt unverändert</p>
+                          </div>
+                        ) : (
+                          <p className="text-body-md text-on-surface">{formatDate(selectedLead.terminDatum)}</p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-body-sm text-on-surface-variant">Terminart</p>
+                        <p className="text-body-md text-on-surface">{selectedLead.terminart || 'Video'}</p>
                       </div>
                     </div>
 
-                    {/* Closer */}
-                    <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                      <Target className="w-5 h-5 text-purple-600 mr-3" />
-                      <div>
-                        <span className="text-xs text-gray-400">Closer</span>
-                        <p className="text-gray-900">{safeString(selectedLead.closerName) || '-'}</p>
-                      </div>
-                    </div>
-
-                    {/* Video-Link (wenn Video-Termin mit Link) - ganz unten */}
+                    {/* Video-Link */}
                     {selectedLead.terminart === 'Video' && selectedLead.meetingLink && (
                       <a
                         href={selectedLead.meetingLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex items-center p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors group col-span-2"
+                        className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
                       >
-                        <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3 group-hover:bg-blue-600 transition-colors">
-                          <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
                             <path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/>
                           </svg>
                         </div>
-                        <div className="flex-1">
-                          <span className="text-sm font-medium text-blue-700">Video-Meeting beitreten</span>
-                          <p className="text-xs text-blue-500 truncate max-w-[300px]">{selectedLead.meetingLink}</p>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-body-sm font-medium text-blue-700">Video-Meeting beitreten</span>
+                          <p className="text-label-sm text-blue-500 truncate">{selectedLead.meetingLink}</p>
                         </div>
-                        <svg className="w-5 h-5 text-blue-400 group-hover:text-blue-600 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                        </svg>
                       </a>
                     )}
                   </div>
 
-                  {/* Website-Statistiken (bei Status "Lead") ODER Deal-Details (bei anderen Status) */}
-                  {selectedLead.status === 'Lead' ? (
-                    /* Website-Statistiken - Hauptanzeige bei Status Lead */
-                    <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                        <BarChart3 className="w-4 h-4 mr-2 text-purple-600" />
+                  {/* DEAL-DETAILS Section (wenn nicht Lead-Status) */}
+                  {selectedLead.status !== 'Lead' && (
+                    <div className="space-y-3 border-t border-outline-variant pt-6">
+                      <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide flex items-center gap-2">
+                        <Euro className="w-4 h-4" />
+                        Deal-Details
+                      </h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-surface-container-lowest rounded-xl border border-outline-variant">
+                        <div>
+                          <p className="text-label-sm text-on-surface-variant">Setup</p>
+                          <p className="text-title-md font-semibold text-on-surface">{formatMoney(selectedLead.setup)}</p>
+                        </div>
+                        <div>
+                          <p className="text-label-sm text-on-surface-variant">Retainer</p>
+                          <p className="text-title-md font-semibold text-on-surface">{formatMoney(selectedLead.retainer)}/Mon</p>
+                        </div>
+                        <div>
+                          <p className="text-label-sm text-on-surface-variant">Laufzeit</p>
+                          <p className="text-title-md font-semibold text-on-surface">{selectedLead.laufzeit || 12} Mon</p>
+                        </div>
+                        <div>
+                          <p className="text-label-sm text-on-surface-variant">Gesamtwert</p>
+                          <p className="text-title-md font-semibold text-success">
+                            {formatMoney(
+                              (selectedLead.setup || 0) +
+                              (selectedLead.retainer || 0) *
+                              (selectedLead.laufzeit || 12)
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* WEBSITE-STATISTIKEN Section */}
+                  <div className="border-t border-outline-variant pt-6">
+                    <button
+                      type="button"
+                      onClick={() => setShowWebsiteStats(!showWebsiteStats)}
+                      className="w-full flex items-center justify-between py-2"
+                    >
+                      <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4" />
                         Website-Statistiken
-                      </h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                        <div className="bg-white p-3 rounded-lg shadow-sm">
-                          <p className="text-xs text-gray-500">Besucher/Monat</p>
-                          <p className="text-base sm:text-lg font-semibold text-gray-900">
+                      </h3>
+                      <ChevronDown className={`w-5 h-5 text-on-surface-variant transition-transform ${showWebsiteStats ? 'rotate-180' : ''}`} />
+                    </button>
+
+                    {showWebsiteStats && (
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 p-4 bg-surface-container-lowest rounded-xl border border-outline-variant">
+                        <div>
+                          <p className="text-label-sm text-on-surface-variant">Besucher/Monat</p>
+                          <p className="text-title-md font-semibold text-on-surface">
                             {selectedLead.monatlicheBesuche
                               ? selectedLead.monatlicheBesuche.toLocaleString('de-DE')
                               : '-'}
                           </p>
                         </div>
-                        <div className="bg-white p-3 rounded-lg shadow-sm">
-                          <p className="text-xs text-gray-500">Absprungrate</p>
-                          <p className="text-base sm:text-lg font-semibold text-gray-900">
+                        <div>
+                          <p className="text-label-sm text-on-surface-variant">Absprungrate</p>
+                          <p className="text-title-md font-semibold text-on-surface">
                             {selectedLead.absprungrate !== null && selectedLead.absprungrate !== undefined
                               ? `${Math.round(selectedLead.absprungrate * 100)}%`
                               : '-'}
                           </p>
                         </div>
-                        <div className="bg-white p-3 rounded-lg shadow-sm">
-                          <p className="text-xs text-gray-500">Leads/Monat</p>
-                          <p className="text-base sm:text-lg font-semibold text-gray-900">
+                        <div>
+                          <p className="text-label-sm text-on-surface-variant">Leads/Monat</p>
+                          <p className="text-title-md font-semibold text-on-surface">
                             {selectedLead.anzahlLeads !== null && selectedLead.anzahlLeads !== undefined
                               ? selectedLead.anzahlLeads
                               : '-'}
                           </p>
                         </div>
-                        <div className="bg-white p-3 rounded-lg shadow-sm">
-                          <p className="text-xs text-gray-500">Mehrwert</p>
-                          <p className="text-base sm:text-lg font-semibold text-green-600">
+                        <div>
+                          <p className="text-label-sm text-on-surface-variant">Mehrwert</p>
+                          <p className="text-title-md font-semibold text-success">
                             {selectedLead.mehrwert
                               ? `${selectedLead.mehrwert.toLocaleString('de-DE')} €`
                               : '-'}
                           </p>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    /* Deal-Details und einklappbare Website-Statistiken bei anderen Status */
-                    <>
-                      {/* Deal-Werte - gleicher Stil wie Website-Statistiken */}
-                      <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
-                        <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                          <Euro className="w-4 h-4 mr-2 text-green-600" />
-                          Deal-Details
-                        </h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                          <div className="bg-white p-3 rounded-lg shadow-sm">
-                            <p className="text-xs text-gray-500">Setup</p>
-                            <p className="text-base sm:text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</p>
-                          </div>
-                          <div className="bg-white p-3 rounded-lg shadow-sm">
-                            <p className="text-xs text-gray-500">Retainer</p>
-                            <p className="text-base sm:text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/Mon</p>
-                          </div>
-                          <div className="bg-white p-3 rounded-lg shadow-sm">
-                            <p className="text-xs text-gray-500">Laufzeit</p>
-                            <p className="text-base sm:text-lg font-semibold text-gray-900">{selectedLead.laufzeit || 12} Mon</p>
-                          </div>
-                          <div className="bg-white p-3 rounded-lg shadow-sm">
-                            <p className="text-xs text-gray-500">Gesamtwert</p>
-                            <p className="text-base sm:text-lg font-semibold text-green-600">
-                              {formatMoney(
-                                (selectedLead.setup || 0) +
-                                (selectedLead.retainer || 0) *
-                                (selectedLead.laufzeit || 12)
-                              )}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
+                    )}
+                  </div>
 
-                      {/* Website-Statistiken - Einklappbar */}
-                      <div className="border border-gray-200 rounded-lg overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => setShowWebsiteStats(!showWebsiteStats)}
-                          className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
-                        >
-                          <span className="flex items-center text-sm font-medium text-gray-700">
-                            <BarChart3 className="w-4 h-4 mr-2 text-purple-600" />
-                            Website-Statistiken
-                          </span>
-                          <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showWebsiteStats ? 'rotate-180' : ''}`} />
-                        </button>
-                        
-                        {showWebsiteStats && (
-                          <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 border-t border-gray-200">
-                            <div className="grid grid-cols-4 gap-4">
-                              <div className="bg-white p-3 rounded-lg shadow-sm">
-                                <p className="text-xs text-gray-500">Besucher/Monat</p>
-                                <p className="text-lg font-semibold text-gray-900">
-                                  {selectedLead.monatlicheBesuche 
-                                    ? selectedLead.monatlicheBesuche.toLocaleString('de-DE')
-                                    : '-'}
-                                </p>
-                              </div>
-                              <div className="bg-white p-3 rounded-lg shadow-sm">
-                                <p className="text-xs text-gray-500">Absprungrate</p>
-                                <p className="text-lg font-semibold text-gray-900">
-                                  {selectedLead.absprungrate !== null && selectedLead.absprungrate !== undefined
-                                    ? `${Math.round(selectedLead.absprungrate * 100)}%`
-                                    : '-'}
-                                </p>
-                              </div>
-                              <div className="bg-white p-3 rounded-lg shadow-sm">
-                                <p className="text-xs text-gray-500">Leads/Monat</p>
-                                <p className="text-lg font-semibold text-gray-900">
-                                  {selectedLead.anzahlLeads !== null && selectedLead.anzahlLeads !== undefined
-                                    ? selectedLead.anzahlLeads
-                                    : '-'}
-                                </p>
-                              </div>
-                              <div className="bg-white p-3 rounded-lg shadow-sm">
-                                <p className="text-xs text-gray-500">Mehrwert</p>
-                                <p className="text-lg font-semibold text-green-600">
-                                  {selectedLead.mehrwert 
-                                    ? `${selectedLead.mehrwert.toLocaleString('de-DE')} €`
-                                    : '-'}
-                                </p>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {/* Notizen / History - immer read-only */}
-                  <div>
-                    <h4 className="text-label-md text-on-surface-variant mb-3">Notizen & Verlauf</h4>
+                  {/* NOTIZEN & VERLAUF Section */}
+                  <div className="border-t border-outline-variant pt-6">
+                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide mb-3">
+                      Notizen & Verlauf
+                    </h3>
                     <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[250px] overflow-y-auto">
                       {selectedLead.kommentar ? (
                         <div className="space-y-3">

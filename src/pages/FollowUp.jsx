@@ -427,22 +427,22 @@ function FollowUp() {
       </div>
 
       {/* Mobile: Card-Layout */}
-      <div className="md:hidden">
+      <div className="md:hidden card-elevated overflow-hidden">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
-            <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+            <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
             <p className="text-on-surface-variant">Leads werden geladen...</p>
           </div>
         ) : leads.length === 0 ? (
-          <div className="card-elevated text-center py-12 text-on-surface-variant">
-            <RotateCcw className="w-12 h-12 mx-auto mb-4 text-outline-variant" />
-            <p className="text-title-md mb-2">Keine Leads gefunden</p>
+          <div className="text-center py-12 text-on-surface-variant">
+            <RotateCcw className="w-10 h-10 mx-auto mb-3 text-outline-variant" />
+            <p className="text-title-md mb-1">Keine Leads gefunden</p>
             <p className="text-body-sm text-outline">
               Keine Leads mit diesen Filterkriterien im Follow-Up.
             </p>
           </div>
         ) : (
-        <div className="space-y-3">
+        <div className="divide-y divide-outline-variant">
           {leads.map((lead) => {
             const overdue = isOverdue(lead.follow_up_datum)
             const lastAction = lead.letzte_aktionen?.[0]
@@ -453,7 +453,7 @@ function FollowUp() {
               <div
                 key={lead.id}
                 onClick={() => handleSelectLead(lead)}
-                className={`card p-4 cursor-pointer hover:bg-surface-container active:bg-surface-container-high transition-colors ${overdue ? 'border-l-4 border-error' : ''}`}
+                className={`p-4 cursor-pointer hover:bg-surface-container active:bg-surface-container-high transition-colors ${overdue ? 'border-l-4 border-error' : ''}`}
               >
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <div className="min-w-0">
@@ -502,7 +502,7 @@ function FollowUp() {
 
         {/* Mobile Pagination */}
         {!loading && leads.length > 0 && totalPages > 1 && (
-          <div className="flex items-center justify-between p-4 bg-surface-container rounded-lg">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
             <span className="text-body-sm text-on-surface-variant">
               Seite {currentPage} von {totalPages}
             </span>
@@ -510,14 +510,14 @@ function FollowUp() {
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="p-2 rounded-lg bg-surface hover:bg-surface-container-high disabled:opacity-50"
+                className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high disabled:opacity-50"
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="p-2 rounded-lg bg-surface hover:bg-surface-container-high disabled:opacity-50"
+                className="p-2 rounded-lg bg-surface-container hover:bg-surface-container-high disabled:opacity-50"
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
@@ -528,20 +528,6 @@ function FollowUp() {
 
       {/* Desktop: Table-Layout */}
       <div className="hidden md:block card-elevated overflow-hidden">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
-            <p className="text-on-surface-variant">Leads werden geladen...</p>
-          </div>
-        ) : leads.length === 0 ? (
-          <div className="text-center py-12 text-on-surface-variant">
-            <RotateCcw className="w-12 h-12 mx-auto mb-4 text-outline-variant" />
-            <p className="text-title-md mb-2">Keine Leads gefunden</p>
-            <p className="text-body-sm text-outline">
-              Keine Leads mit diesen Filterkriterien im Follow-Up.
-            </p>
-          </div>
-        ) : (
         <table className="w-full">
           <thead>
             <tr className="bg-surface-container">
@@ -554,6 +540,29 @@ function FollowUp() {
             </tr>
           </thead>
           <tbody>
+            {loading ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-16">
+                  <div className="flex flex-col items-center justify-center">
+                    <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
+                    <p className="text-on-surface-variant">Leads werden geladen...</p>
+                  </div>
+                </td>
+              </tr>
+            ) : leads.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-12">
+                  <div className="text-center text-on-surface-variant">
+                    <RotateCcw className="w-10 h-10 mx-auto mb-3 text-outline-variant" />
+                    <p className="text-title-md mb-1">Keine Leads gefunden</p>
+                    <p className="text-body-sm text-outline">
+                      Keine Leads mit diesen Filterkriterien im Follow-Up.
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              <>
             {leads.map((lead, index) => {
               const overdue = isOverdue(lead.follow_up_datum)
               const lastAction = lead.letzte_aktionen?.[0]
@@ -614,10 +623,10 @@ function FollowUp() {
                   </td>
                 </tr>
               )
-            })}
+            })
+            )}
           </tbody>
         </table>
-        )}
 
         {/* Pagination - Desktop */}
         {!loading && leads.length > 0 && totalPages > 1 && (
