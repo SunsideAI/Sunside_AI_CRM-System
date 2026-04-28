@@ -946,156 +946,134 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
           {/* Drawer Content */}
           <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-surface shadow-xl flex flex-col overflow-hidden">
             {/* Drawer Header */}
-            <div className="sticky top-0 bg-surface border-b border-outline-variant px-4 sm:px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2 bg-gradient-primary rounded-lg flex-shrink-0">
-                  <Building2 className="w-5 h-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-title-lg font-semibold text-on-surface truncate">{selectedLead.unternehmen || 'Lead Details'}</h2>
-                  <p className="text-body-sm text-on-surface-variant truncate">{selectedLead.kategorie || 'Hot Lead'}</p>
-                </div>
-              </div>
+            <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
+              <h2 className="text-title-lg font-semibold text-on-surface truncate">{selectedLead.unternehmen || 'Lead Details'}</h2>
               <button
                 onClick={closeModal}
                 className="p-2 hover:bg-surface-container rounded-lg transition-colors flex-shrink-0"
               >
-                <X className="w-5 h-5 text-on-surface-variant" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Drawer Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-              {/* Kontaktdaten Grid - CI Style */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                {/* Telefon */}
-                {safeString(selectedLead.telefon) ? (
-                  <a
-                    href={`tel:${safeString(selectedLead.telefon)}`}
-                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <Phone className="w-5 h-5 text-purple-600 mr-3" />
-                    <span className="text-gray-900">{safeString(selectedLead.telefon)}</span>
-                  </a>
-                ) : (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
-                    <Phone className="w-5 h-5 mr-3" />
-                    <span>Keine Telefonnummer</span>
-                  </div>
-                )}
+            <div className="flex-1 overflow-y-auto p-6">
+              {/* KONTAKTDATEN Section */}
+              <div className="space-y-3">
+                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                  Kontaktdaten
+                </h3>
 
-                {/* E-Mail */}
-                {safeString(selectedLead.email) ? (
-                  <a
-                    href={`mailto:${safeString(selectedLead.email)}`}
-                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <Mail className="w-5 h-5 text-purple-600 mr-3" />
-                    <span className="text-gray-900 truncate">{safeString(selectedLead.email)}</span>
-                  </a>
-                ) : (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
-                    <Mail className="w-5 h-5 mr-3" />
-                    <span>Keine E-Mail</span>
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-body-sm text-on-surface-variant">Ansprechpartner</p>
+                    <p className="text-body-md text-on-surface">
+                      {(safeString(selectedLead.ansprechpartnerVorname) || safeString(selectedLead.ansprechpartnerNachname))
+                        ? `${safeString(selectedLead.ansprechpartnerVorname)} ${safeString(selectedLead.ansprechpartnerNachname)}`.trim()
+                        : '-'}
+                    </p>
                   </div>
-                )}
-
-                {/* Website */}
-                {safeString(selectedLead.website) ? (
-                  <a
-                    href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <Globe className="w-5 h-5 text-purple-600 mr-3" />
-                    <span className="text-gray-900 truncate">{safeString(selectedLead.website)}</span>
-                  </a>
-                ) : (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
-                    <Globe className="w-5 h-5 mr-3" />
-                    <span>Keine Website</span>
+                  <div>
+                    <p className="text-body-sm text-on-surface-variant">Kategorie</p>
+                    <p className="text-body-md text-on-surface">{selectedLead.kategorie || 'Hot Lead'}</p>
                   </div>
-                )}
-
-                {/* Standort */}
-                <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                  <MapPin className="w-5 h-5 text-purple-600 mr-3" />
-                  <span className="text-gray-900">
-                    {[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ') || 'Kein Standort'}
-                  </span>
                 </div>
 
-                {/* Ansprechpartner */}
-                {(safeString(selectedLead.ansprechpartnerVorname) || safeString(selectedLead.ansprechpartnerNachname)) && (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                    <User className="w-5 h-5 text-purple-600 mr-3" />
-                    <div>
-                      <span className="text-xs text-gray-500">Ansprechpartner</span>
-                      <p className="text-gray-900">{safeString(selectedLead.ansprechpartnerVorname)} {safeString(selectedLead.ansprechpartnerNachname)}</p>
+                {/* Contact Buttons (Pill Style) */}
+                <div className="flex flex-wrap gap-2">
+                  {safeString(selectedLead.telefon) && (
+                    <a
+                      href={`tel:${safeString(selectedLead.telefon)}`}
+                      className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                    >
+                      <Phone className="h-4 w-4 text-primary" />
+                      <span className="text-body-sm">{safeString(selectedLead.telefon)}</span>
+                    </a>
+                  )}
+                  {safeString(selectedLead.email) && (
+                    <a
+                      href={`mailto:${safeString(selectedLead.email)}`}
+                      className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                    >
+                      <Mail className="h-4 w-4 text-primary" />
+                      <span className="text-body-sm truncate max-w-[180px]">{safeString(selectedLead.email)}</span>
+                    </a>
+                  )}
+                  {safeString(selectedLead.website) && (
+                    <a
+                      href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                    >
+                      <Globe className="h-4 w-4 text-primary" />
+                      <span className="text-body-sm">Website</span>
+                    </a>
+                  )}
+                  {(safeString(selectedLead.ort) || safeString(selectedLead.bundesland)) && (
+                    <div className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg">
+                      <MapPin className="h-4 w-4 text-primary" />
+                      <span className="text-body-sm">
+                        {[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ')}
+                      </span>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
-                {/* Termin */}
-                {selectedLead.terminDatum && (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                    <Calendar className="w-5 h-5 text-purple-600 mr-3" />
-                    <div>
-                      <span className="text-xs text-gray-500">Termin</span>
-                      <p className="text-gray-900">{formatDate(selectedLead.terminDatum)}</p>
-                    </div>
-                  </div>
-                )}
+                {/* Setter/Closer Tags */}
+                <div className="flex flex-wrap gap-2">
+                  {selectedLead.setterName && (
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-label-sm">
+                      Setter: {selectedLead.setterName}
+                    </span>
+                  )}
+                  {selectedLead.closerName && (
+                    <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-label-sm">
+                      Closer: {selectedLead.closerName}
+                    </span>
+                  )}
+                </div>
               </div>
 
-              {/* Zuständig Box - CI Gradient Style */}
-              {(selectedLead.setterName || selectedLead.closerName) && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-100">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                    <Users className="w-4 h-4 mr-2 text-purple-600" />
-                    Zuständig
-                  </h4>
+              {/* TERMIN Section */}
+              {selectedLead.terminDatum && (
+                <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
+                  <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                    Termin
+                  </h3>
                   <div className="grid grid-cols-2 gap-4">
-                    {selectedLead.setterName && (
-                      <div className="bg-white p-3 rounded-lg shadow-sm">
-                        <p className="text-xs text-gray-500">Coldcaller</p>
-                        <p className="text-sm font-semibold text-gray-900">{selectedLead.setterName}</p>
-                      </div>
-                    )}
-                    {selectedLead.closerName && (
-                      <div className="bg-white p-3 rounded-lg shadow-sm">
-                        <p className="text-xs text-gray-500">Closer</p>
-                        <p className="text-sm font-semibold text-gray-900">{selectedLead.closerName}</p>
-                      </div>
-                    )}
+                    <div>
+                      <p className="text-body-sm text-on-surface-variant">Datum & Uhrzeit</p>
+                      <p className="text-body-md text-on-surface">{formatDate(selectedLead.terminDatum)}</p>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Deal-Werte - CI Gradient Style */}
+              {/* DEAL-DETAILS Section */}
               {(selectedLead.setup > 0 || selectedLead.retainer > 0) && (
-                <div className="mb-6 p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                  <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                    <DollarSign className="w-4 h-4 mr-2 text-green-600" />
+                <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
+                  <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide flex items-center gap-2">
+                    <DollarSign className="w-4 h-4" />
                     Deal-Details
-                  </h4>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                      <p className="text-xs text-gray-500">Setup</p>
-                      <p className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.setup)}</p>
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-surface-container-lowest rounded-xl border border-outline-variant">
+                    <div>
+                      <p className="text-label-sm text-on-surface-variant">Setup</p>
+                      <p className="text-title-md font-semibold text-on-surface">{formatMoney(selectedLead.setup)}</p>
                     </div>
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                      <p className="text-xs text-gray-500">Retainer</p>
-                      <p className="text-lg font-semibold text-gray-900">{formatMoney(selectedLead.retainer)}/M</p>
+                    <div>
+                      <p className="text-label-sm text-on-surface-variant">Retainer</p>
+                      <p className="text-title-md font-semibold text-on-surface">{formatMoney(selectedLead.retainer)}/Mon</p>
                     </div>
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                      <p className="text-xs text-gray-500">Laufzeit</p>
-                      <p className="text-lg font-semibold text-gray-900">{selectedLead.laufzeit || '-'} Mon</p>
+                    <div>
+                      <p className="text-label-sm text-on-surface-variant">Laufzeit</p>
+                      <p className="text-title-md font-semibold text-on-surface">{selectedLead.laufzeit || '-'} Mon</p>
                     </div>
-                    <div className="bg-white p-3 rounded-lg shadow-sm">
-                      <p className="text-xs text-gray-500">Gesamt</p>
-                      <p className="text-lg font-semibold text-green-600">
+                    <div>
+                      <p className="text-label-sm text-on-surface-variant">Gesamtwert</p>
+                      <p className="text-title-md font-semibold text-success">
                         {formatMoney((selectedLead.setup || 0) + (selectedLead.retainer || 0) * (selectedLead.laufzeit || 1))}
                       </p>
                     </div>
@@ -1103,9 +1081,11 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                 </div>
               )}
 
-              {/* Status & Notizen */}
-              <div className="space-y-4">
-                <h3 className="text-title-md font-display text-on-surface">Status & Notizen</h3>
+              {/* STATUS & NOTIZEN Section */}
+              <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
+                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                  Status & Notizen
+                </h3>
 
                 {/* Status Badge */}
                 <div className="flex items-center gap-2">
@@ -1119,7 +1099,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                   )}
                 </div>
 
-                {/* Notizen - formatiert wie in Closing */}
+                {/* Notizen */}
                 <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[200px] overflow-y-auto">
                   {selectedLead.kommentar ? (
                     <div className="space-y-3">

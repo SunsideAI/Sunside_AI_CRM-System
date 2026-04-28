@@ -1282,21 +1282,13 @@ function Kaltakquise() {
           />
           <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-surface shadow-xl flex flex-col overflow-hidden">
             {/* Drawer Header */}
-            <div className="sticky top-0 bg-surface border-b border-outline-variant px-4 sm:px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="p-2 bg-gradient-primary rounded-lg flex-shrink-0">
-                  <Building2 className="w-5 h-5 text-white" />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-title-lg font-semibold text-on-surface truncate">{selectedLead.unternehmensname}</h2>
-                  <p className="text-body-sm text-on-surface-variant truncate">{selectedLead.kategorie}</p>
-                </div>
-              </div>
+            <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
+              <h2 className="text-title-lg font-semibold text-on-surface truncate">{selectedLead.unternehmensname}</h2>
               <button
                 onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
                 className="p-2 hover:bg-surface-container rounded-lg transition-colors flex-shrink-0"
               >
-                <X className="w-5 h-5 text-on-surface-variant" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -1390,150 +1382,144 @@ function Kaltakquise() {
                   </div>
                 </div>
               )}
-              
-              {/* Kontaktdaten - CI Style */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                {/* Telefon */}
-                {editMode ? (
-                  <div className="flex items-center p-3 bg-white border-2 border-purple-200 rounded-lg">
-                    <Phone className="w-5 h-5 text-purple-600 mr-3" />
-                    <input
-                      type="tel"
-                      value={editForm.telefon}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, telefon: e.target.value }))}
-                      placeholder="Telefonnummer eingeben..."
-                      className="flex-1 bg-transparent outline-none text-gray-900"
-                    />
-                  </div>
-                ) : selectedLead.telefon ? (
-                  <a
-                    href={`tel:${selectedLead.telefon}`}
-                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <Phone className="w-5 h-5 text-purple-600 mr-3" />
-                    <span className="text-gray-900">{selectedLead.telefon}</span>
-                  </a>
-                ) : (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
-                    <Phone className="w-5 h-5 mr-3" />
-                    <span>Keine Telefonnummer</span>
-                  </div>
-                )}
 
-                {/* E-Mail */}
-                {editMode ? (
-                  <div className="flex items-center p-3 bg-white border-2 border-purple-200 rounded-lg">
-                    <Mail className="w-5 h-5 text-purple-600 mr-3" />
-                    <input
-                      type="email"
-                      value={editForm.email}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                      placeholder="E-Mail eingeben..."
-                      className="flex-1 bg-transparent outline-none text-gray-900"
-                    />
-                  </div>
-                ) : selectedLead.email ? (
-                  <a
-                    href={`mailto:${selectedLead.email}`}
-                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <Mail className="w-5 h-5 text-purple-600 mr-3" />
-                    <span className="text-gray-900 truncate">{selectedLead.email}</span>
-                  </a>
-                ) : (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
-                    <Mail className="w-5 h-5 mr-3" />
-                    <span>Keine E-Mail</span>
-                  </div>
-                )}
+              {/* KONTAKTDATEN Section */}
+              <div className="space-y-3 mb-6">
+                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                  Kontaktdaten
+                </h3>
 
-                {/* Website */}
-                {editMode ? (
-                  <div className="flex items-center p-3 bg-white border-2 border-purple-200 rounded-lg">
-                    <Globe className="w-5 h-5 text-purple-600 mr-3" />
-                    <input
-                      type="url"
-                      value={editForm.website}
-                      onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
-                      placeholder="Website eingeben..."
-                      className="flex-1 bg-transparent outline-none text-gray-900"
-                    />
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-body-sm text-on-surface-variant">Kategorie</p>
+                    <p className="text-body-md text-on-surface">{selectedLead.kategorie || '-'}</p>
                   </div>
-                ) : selectedLead.website ? (
-                  <a
-                    href={selectedLead.website.startsWith('http') ? selectedLead.website : `https://${selectedLead.website}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                  >
-                    <Globe className="w-5 h-5 text-purple-600 mr-3" />
-                    <span className="text-gray-900 truncate">{selectedLead.website}</span>
-                  </a>
-                ) : (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg text-gray-400">
-                    <Globe className="w-5 h-5 mr-3" />
-                    <span>Keine Website</span>
+                  <div>
+                    <p className="text-body-sm text-on-surface-variant">Standort</p>
+                    <p className="text-body-md text-on-surface flex items-center gap-1">
+                      {selectedLead.land && <span title={selectedLead.land}>{getLandFlag(selectedLead.land)}</span>}
+                      {selectedLead.stadt || '-'}
+                    </p>
                   </div>
-                )}
-
-                {/* Standort - nicht editierbar */}
-                <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                  {selectedLead.land && (
-                    <span className="text-xl mr-2" title={selectedLead.land}>{getLandFlag(selectedLead.land)}</span>
-                  )}
-                  <MapPin className="w-5 h-5 text-purple-600 mr-3" />
-                  <span className="text-gray-900">{selectedLead.stadt}</span>
                 </div>
-                {/* Vertriebler anzeigen wenn vorhanden */}
-                {selectedLead.zugewiesenAn && selectedLead.zugewiesenAn.length > 0 && (
-                  <div className="flex items-center p-3 bg-gray-50 rounded-lg">
-                    <UserIcon className="w-5 h-5 text-purple-600 mr-3" />
-                    <div>
-                      <span className="text-xs text-gray-500">Zugewiesen an</span>
-                      <p className="text-gray-900">{selectedLead.zugewiesenAn.join(', ')}</p>
+
+                {/* Contact Buttons (Pill Style) - Edit mode inline */}
+                {editMode ? (
+                  <div className="grid grid-cols-1 gap-3">
+                    <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg">
+                      <Phone className="h-4 w-4 text-primary flex-shrink-0" />
+                      <input
+                        type="tel"
+                        value={editForm.telefon}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, telefon: e.target.value }))}
+                        placeholder="Telefonnummer eingeben..."
+                        className="flex-1 bg-transparent outline-none text-body-sm"
+                      />
                     </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg">
+                      <Mail className="h-4 w-4 text-primary flex-shrink-0" />
+                      <input
+                        type="email"
+                        value={editForm.email}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                        placeholder="E-Mail eingeben..."
+                        className="flex-1 bg-transparent outline-none text-body-sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg">
+                      <Globe className="h-4 w-4 text-primary flex-shrink-0" />
+                      <input
+                        type="url"
+                        value={editForm.website}
+                        onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
+                        placeholder="Website eingeben..."
+                        className="flex-1 bg-transparent outline-none text-body-sm"
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {selectedLead.telefon && (
+                      <a
+                        href={`tel:${selectedLead.telefon}`}
+                        className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                      >
+                        <Phone className="h-4 w-4 text-primary" />
+                        <span className="text-body-sm">{selectedLead.telefon}</span>
+                      </a>
+                    )}
+                    {selectedLead.email && (
+                      <a
+                        href={`mailto:${selectedLead.email}`}
+                        className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                      >
+                        <Mail className="h-4 w-4 text-primary" />
+                        <span className="text-body-sm truncate max-w-[180px]">{selectedLead.email}</span>
+                      </a>
+                    )}
+                    {selectedLead.website && (
+                      <a
+                        href={selectedLead.website.startsWith('http') ? selectedLead.website : `https://${selectedLead.website}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                      >
+                        <Globe className="h-4 w-4 text-primary" />
+                        <span className="text-body-sm">Website</span>
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Vertriebler Tag */}
+                {selectedLead.zugewiesenAn && selectedLead.zugewiesenAn.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-label-sm">
+                      Vertriebler: {selectedLead.zugewiesenAn.join(', ')}
+                    </span>
                   </div>
                 )}
               </div>
 
-              {/* Website-Statistiken - immer anzeigen */}
-              <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-100">
-                <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
-                  <Building2 className="w-4 h-4 mr-2 text-purple-600" />
+              {/* WEBSITE-STATISTIKEN Section */}
+              <div className="space-y-3 border-t border-outline-variant pt-6 mb-6">
+                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide flex items-center gap-2">
+                  <Building2 className="w-4 h-4" />
                   Website-Statistiken
-                </h4>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-                  <div className="bg-white p-2 sm:p-3 rounded-lg shadow-sm">
-                    <p className="text-xs text-gray-500">Besucher/Monat</p>
-                    <p className="text-base sm:text-lg font-semibold text-gray-900">
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-surface-container-lowest rounded-xl border border-outline-variant">
+                  <div>
+                    <p className="text-label-sm text-on-surface-variant">Besucher/Monat</p>
+                    <p className="text-title-md font-semibold text-on-surface">
                       {selectedLead.monatlicheBesuche !== null && selectedLead.monatlicheBesuche !== undefined
                         ? selectedLead.monatlicheBesuche.toLocaleString('de-DE')
                         : '-'}
                     </p>
                   </div>
-                  <div className="bg-white p-2 sm:p-3 rounded-lg shadow-sm">
-                    <p className="text-xs text-gray-500">Mehrwert</p>
-                    <p className="text-base sm:text-lg font-semibold text-green-600">
+                  <div>
+                    <p className="text-label-sm text-on-surface-variant">Mehrwert</p>
+                    <p className="text-title-md font-semibold text-success">
                       {selectedLead.mehrwert !== null && selectedLead.mehrwert !== undefined
                         ? `${selectedLead.mehrwert.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €`
                         : '-'}
                     </p>
                   </div>
-                  <div className="bg-white p-2 sm:p-3 rounded-lg shadow-sm">
-                    <p className="text-xs text-gray-500">Absprungrate</p>
-                    <p className={`text-base sm:text-lg font-semibold ${
-                      selectedLead.absprungrate === null || selectedLead.absprungrate === undefined ? 'text-gray-400' :
-                      (parseFloat(selectedLead.absprungrate) * 100) > 60 ? 'text-red-500' :
-                      (parseFloat(selectedLead.absprungrate) * 100) > 40 ? 'text-amber-500' : 'text-green-600'
+                  <div>
+                    <p className="text-label-sm text-on-surface-variant">Absprungrate</p>
+                    <p className={`text-title-md font-semibold ${
+                      selectedLead.absprungrate === null || selectedLead.absprungrate === undefined ? 'text-on-surface-variant' :
+                      (parseFloat(selectedLead.absprungrate) * 100) > 60 ? 'text-error' :
+                      (parseFloat(selectedLead.absprungrate) * 100) > 40 ? 'text-warning' : 'text-success'
                     }`}>
                       {selectedLead.absprungrate !== null && selectedLead.absprungrate !== undefined
                         ? `${Math.round(parseFloat(selectedLead.absprungrate) * 100)}%`
                         : '-'}
                     </p>
                   </div>
-                  <div className="bg-white p-2 sm:p-3 rounded-lg shadow-sm">
-                    <p className="text-xs text-gray-500">Leads/Monat</p>
-                    <p className="text-base sm:text-lg font-semibold text-blue-600">
+                  <div>
+                    <p className="text-label-sm text-on-surface-variant">Leads/Monat</p>
+                    <p className="text-title-md font-semibold text-primary">
                       {selectedLead.anzahlLeads !== null && selectedLead.anzahlLeads !== undefined
                         ? selectedLead.anzahlLeads
                         : '-'}
@@ -1542,9 +1528,11 @@ function Kaltakquise() {
                 </div>
               </div>
 
-              {/* Status & Bearbeitung */}
-              <div className="space-y-4">
-                <h3 className="text-title-md font-display text-on-surface">Status & Notizen</h3>
+              {/* STATUS & NOTIZEN Section */}
+              <div className="space-y-4 border-t border-outline-variant pt-6">
+                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                  Status & Notizen
+                </h3>
 
                 {editMode ? (
                   // Bearbeitungsmodus

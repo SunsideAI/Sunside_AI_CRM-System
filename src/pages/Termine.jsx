@@ -609,82 +609,105 @@ function Termine() {
           <div className="fixed inset-0 bg-scrim/50" onClick={() => setSelectedEvent(null)} />
           <div className="fixed right-0 top-0 h-full w-full max-w-md bg-surface shadow-xl flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="sticky top-0 bg-surface border-b border-outline-variant px-4 sm:px-6 py-4 flex items-start justify-between z-10 flex-shrink-0">
-              <div className="min-w-0">
-                <h3 className="text-title-lg font-semibold text-on-surface truncate">{selectedEvent.title}</h3>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {selectedEvent.source === 'beratungsgespraech' && (
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedEvent.terminart === 'Video'
-                        ? 'bg-purple-100 text-purple-800'
-                        : 'bg-blue-100 text-blue-800'
-                    }`}>
-                      {selectedEvent.terminart === 'Video' ? <Video className="w-3 h-3 mr-1" /> : <Phone className="w-3 h-3 mr-1" />}
-                      {selectedEvent.terminart || 'Telefonisch'}
-                    </span>
-                  )}
-                  {selectedEvent.source === 'wiedervorlage' && (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                      <PhoneCall className="w-3 h-3 mr-1" />
-                      Wiedervorlage
-                    </span>
-                  )}
-                </div>
-              </div>
+            <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
+              <h2 className="text-title-lg font-semibold text-on-surface truncate">{selectedEvent.title}</h2>
               <button onClick={() => setSelectedEvent(null)} className="p-2 hover:bg-surface-container rounded-lg transition-colors flex-shrink-0">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+            <div className="flex-1 overflow-y-auto p-6">
 
-              <div className="space-y-4">
-                <div className="flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-gray-400 mt-0.5" />
+              {/* TERMIN-INFO Section */}
+              <div className="space-y-3">
+                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                  Termin
+                </h3>
+
+                <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <div className="font-medium">{formatDateLong(selectedEvent.start)}</div>
-                    <div className="text-gray-600">{formatTime(selectedEvent.start, selectedEvent.source)} - {formatTime(selectedEvent.end, selectedEvent.source)}</div>
+                    <p className="text-body-sm text-on-surface-variant">Datum & Zeit</p>
+                    <p className="text-body-md text-on-surface">{formatDateLong(selectedEvent.start)}</p>
+                    <p className="text-body-sm text-on-surface-variant">{formatTime(selectedEvent.start, selectedEvent.source)} - {formatTime(selectedEvent.end, selectedEvent.source)}</p>
+                  </div>
+                  <div>
+                    <p className="text-body-sm text-on-surface-variant">Terminart</p>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {selectedEvent.source === 'beratungsgespraech' && (
+                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-label-sm ${
+                          selectedEvent.terminart === 'Video'
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {selectedEvent.terminart === 'Video' ? <Video className="w-3 h-3 mr-1" /> : <Phone className="w-3 h-3 mr-1" />}
+                          {selectedEvent.terminart || 'Telefonisch'}
+                        </span>
+                      )}
+                      {selectedEvent.source === 'wiedervorlage' && (
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-label-sm bg-orange-100 text-orange-700">
+                          <PhoneCall className="w-3 h-3 mr-1" />
+                          Wiedervorlage
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                {selectedEvent.source === 'beratungsgespraech' && (
-                  <>
-                    {selectedEvent.ansprechpartner && (
-                      <div className="flex items-start gap-3">
-                        <User className="w-5 h-5 text-gray-400 mt-0.5" />
+              {selectedEvent.source === 'beratungsgespraech' && (
+                <>
+                  {/* KONTAKTDATEN Section */}
+                  <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
+                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                      Kontaktdaten
+                    </h3>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      {selectedEvent.ansprechpartner && (
                         <div>
-                          <div className="font-medium text-sm">Ansprechpartner</div>
-                          <div className="text-gray-600">{selectedEvent.ansprechpartner}</div>
+                          <p className="text-body-sm text-on-surface-variant">Ansprechpartner</p>
+                          <p className="text-body-md text-on-surface">{selectedEvent.ansprechpartner}</p>
                         </div>
-                      </div>
-                    )}
-
-                    {selectedEvent.unternehmen && (
-                      <div className="flex items-start gap-3">
-                        <Building2 className="w-5 h-5 text-gray-400 mt-0.5" />
+                      )}
+                      {selectedEvent.unternehmen && (
                         <div>
-                          <div className="font-medium text-sm">Unternehmen</div>
-                          <div className="text-gray-600">{selectedEvent.unternehmen}</div>
-                          {selectedEvent.ort && <div className="text-gray-500 text-sm">{selectedEvent.ort}</div>}
+                          <p className="text-body-sm text-on-surface-variant">Unternehmen</p>
+                          <p className="text-body-md text-on-surface">{selectedEvent.unternehmen}</p>
+                          {selectedEvent.ort && <p className="text-body-sm text-on-surface-variant">{selectedEvent.ort}</p>}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
 
+                    {/* Contact Pills */}
                     {selectedEvent.telefon && (
-                      <div className="flex items-start gap-3">
-                        <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <a href={`tel:${selectedEvent.telefon}`} className="text-purple-600 hover:underline">
-                            {selectedEvent.telefon}
-                          </a>
-                        </div>
+                      <div className="flex flex-wrap gap-2">
+                        <a
+                          href={`tel:${selectedEvent.telefon}`}
+                          className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                        >
+                          <Phone className="h-4 w-4 text-primary" />
+                          <span className="text-body-sm">{selectedEvent.telefon}</span>
+                        </a>
                       </div>
                     )}
 
-                    {selectedEvent.kommentar && (
-                      <div className="pt-3 border-t">
-                        <div className="text-sm font-medium text-gray-700 mb-2">Notizen / Problemstellung</div>
+                    {/* Setter Tag */}
+                    {selectedEvent.setterName && (
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-label-sm">
+                          Gebucht von: {selectedEvent.setterName}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* NOTIZEN Section */}
+                  {selectedEvent.kommentar && (
+                    <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
+                      <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                        Notizen
+                      </h3>
                         <div className="bg-gray-50 rounded-lg p-3 max-h-[200px] overflow-y-auto">
                           <div className="space-y-2">
                             {(() => {
@@ -746,46 +769,44 @@ function Termine() {
                       </div>
                     )}
 
-                    <div className="pt-3 border-t">
-                      {selectedEvent.setterName && (
-                        <div className="text-sm text-gray-500 mb-2">
-                          Gebucht von: <span className="font-medium">{selectedEvent.setterName}</span>
-                        </div>
-                      )}
-                      {selectedEvent.closerName && (
-                        <div className="text-sm text-gray-500 mb-2">
-                          Closer: <span className="font-medium">{selectedEvent.closerName}</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {selectedEvent.isMyClosing && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Mein Closing
-                        </span>
-                      )}
-                      {selectedEvent.isMyBooking && !selectedEvent.isMyClosing && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                          Von mir gebucht
-                        </span>
-                      )}
-                      {!selectedEvent.closerName && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                          Im Pool
-                        </span>
-                      )}
-                      {selectedEvent.status && selectedEvent.status !== 'Lead' && (
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                          selectedEvent.status.toLowerCase().includes('abgesagt')
-                            ? 'bg-red-100 text-red-800'
-                            : selectedEvent.status.toLowerCase().includes('verschoben')
-                            ? 'bg-amber-100 text-amber-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {selectedEvent.status}
-                        </span>
-                      )}
+                    {/* Status Tags */}
+                    <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
+                      <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                        Status
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedEvent.closerName && (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-label-sm">
+                            Closer: {selectedEvent.closerName}
+                          </span>
+                        )}
+                        {selectedEvent.isMyClosing && (
+                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-label-sm">
+                            Mein Closing
+                          </span>
+                        )}
+                        {selectedEvent.isMyBooking && !selectedEvent.isMyClosing && (
+                          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-label-sm">
+                            Von mir gebucht
+                          </span>
+                        )}
+                        {!selectedEvent.closerName && (
+                          <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-label-sm">
+                            Im Pool
+                          </span>
+                        )}
+                        {selectedEvent.status && selectedEvent.status !== 'Lead' && (
+                          <span className={`px-2 py-1 rounded-full text-label-sm ${
+                            selectedEvent.status.toLowerCase().includes('abgesagt')
+                              ? 'bg-red-100 text-red-700'
+                              : selectedEvent.status.toLowerCase().includes('verschoben')
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}>
+                            {selectedEvent.status}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </>
                 )}
