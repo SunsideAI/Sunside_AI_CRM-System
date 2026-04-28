@@ -43,19 +43,19 @@ const BUNDESLAENDER = [
 // Rollen Optionen
 const ROLLEN = ['Admin', 'Closer', 'Coldcaller']
 
-// Modal Component mit Portal - CI Design System
+// Drawer Component mit Portal - Slide-in von rechts
 function Modal({ isOpen, onClose, children }) {
   if (!isOpen) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-50">
       {/* Backdrop */}
       <div
-        className="modal-backdrop absolute inset-0"
+        className="fixed inset-0 bg-scrim/50"
         onClick={onClose}
       />
-      {/* Content */}
-      <div className="modal-content relative">
+      {/* Drawer Content */}
+      <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-surface shadow-xl overflow-y-auto">
         {children}
       </div>
     </div>,
@@ -700,9 +700,9 @@ function MitarbeiterVerwaltung() {
 
       {/* Add Modal */}
       <Modal isOpen={showAddModal} onClose={() => setShowAddModal(false)}>
-        <div className="w-[750px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
-          <div className="flex items-center justify-between pb-6">
-            <h3 className="text-headline-sm font-display text-on-surface">Neuer Mitarbeiter</h3>
+        <div className="p-4 sm:p-6">
+          <div className="flex items-center justify-between pb-6 border-b border-outline-variant mb-6">
+            <h3 className="text-title-lg font-semibold text-on-surface">Neuer Mitarbeiter</h3>
             <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-surface-container rounded-lg transition-colors">
               <X className="w-5 h-5 text-muted" />
             </button>
@@ -710,7 +710,7 @@ function MitarbeiterVerwaltung() {
 
           <div className="space-y-5">
             {/* Zeile 1: Vorname + Nachname + Telefon */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-on-surface mb-1">Vorname *</label>
                 <input
@@ -744,7 +744,7 @@ function MitarbeiterVerwaltung() {
             </div>
 
             {/* Zeile 2: E-Mails */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-on-surface mb-1">Private E-Mail *</label>
                 <input
@@ -802,7 +802,7 @@ function MitarbeiterVerwaltung() {
             </div>
 
             {/* Zeile 4: Bundesland + Rollen */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-on-surface mb-1">Bundesland *</label>
                 <select
@@ -869,9 +869,9 @@ function MitarbeiterVerwaltung() {
 
       {/* Edit Modal */}
       <Modal isOpen={showEditModal} onClose={() => setShowEditModal(false)}>
-        <div className="w-[750px] max-w-[95vw] max-h-[95vh] overflow-y-auto">
-          <div className="flex items-center justify-between pb-6">
-            <h3 className="text-headline-sm font-display text-on-surface">Mitarbeiter bearbeiten</h3>
+        <div className="p-4 sm:p-6">
+          <div className="flex items-center justify-between pb-6 border-b border-outline-variant mb-6">
+            <h3 className="text-title-lg font-semibold text-on-surface">Mitarbeiter bearbeiten</h3>
             <button onClick={() => setShowEditModal(false)} className="p-2 hover:bg-surface-container rounded-lg transition-colors">
               <X className="w-5 h-5 text-muted" />
             </button>
@@ -879,7 +879,7 @@ function MitarbeiterVerwaltung() {
 
           <div className="space-y-5">
             {/* Zeile 1: Vorname + Nachname + Telefon */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-on-surface mb-1">Vorname *</label>
                 <input
@@ -910,7 +910,7 @@ function MitarbeiterVerwaltung() {
             </div>
 
             {/* Zeile 2: E-Mails */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-on-surface mb-1">Private E-Mail *</label>
                 <input
@@ -966,7 +966,7 @@ function MitarbeiterVerwaltung() {
             </div>
 
             {/* Zeile 4: Bundesland + Rollen */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-on-surface mb-1">Bundesland *</label>
                 <select
@@ -1090,7 +1090,7 @@ function MitarbeiterVerwaltung() {
 
       {/* Delete Confirmation Modal */}
       <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)}>
-        <div className="max-w-md w-full">
+        <div className="p-4 sm:p-6">
           <div className="flex items-center justify-center w-12 h-12 bg-error-container rounded-full mx-auto mb-4">
             <UserX className="w-6 h-6 text-error" />
           </div>

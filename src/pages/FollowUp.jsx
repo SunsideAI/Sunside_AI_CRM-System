@@ -417,95 +417,182 @@ function FollowUp() {
         </div>
       </div>
 
-      {/* Table */}
-      <div className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-surface-container">
-                <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Unternehmen</th>
-                <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Closer</th>
-                <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Status</th>
-                <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Nächster Schritt</th>
-                <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Fällig am</th>
-                <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Letzte Aktion</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((lead, index) => {
-                const overdue = isOverdue(lead.follow_up_datum)
-                const lastAction = lead.letzte_aktionen?.[0]
-                const ActionIcon = lastAction ? getActionIcon(lastAction.typ) : null
+      {/* Mobile: Card-Layout */}
+      <div className="md:hidden space-y-3">
+        {leads.map((lead) => {
+          const overdue = isOverdue(lead.follow_up_datum)
+          const lastAction = lead.letzte_aktionen?.[0]
+          const ActionIcon = lastAction ? getActionIcon(lastAction.typ) : null
+          const statusOption = FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)
 
-                return (
-                  <tr
-                    key={lead.id}
-                    onClick={() => handleSelectLead(lead)}
-                    className={`
-                      table-row cursor-pointer transition-colors
-                      ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}
-                      ${overdue ? 'bg-red-50/30' : ''}
-                      hover:bg-primary-fixed/20
-                    `}
-                  >
-                    <td className="px-4 py-4">
-                      <div className="font-medium text-on-surface">{lead.unternehmen || '-'}</div>
-                      <div className="text-body-sm text-on-surface-variant">
-                        {lead.ansprechpartner_vorname} {lead.ansprechpartner_nachname}
-                      </div>
-                    </td>
-                    <td className="px-4 py-4 text-body-md text-on-surface">
-                      {lead.closer_name || '-'}
-                    </td>
-                    <td className="px-4 py-4">
-                      {FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status) ? (
-                        <span className={`px-2 py-1 rounded-full text-label-sm ${
-                          FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)?.color
-                        }`}>
-                          {FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)?.label}
-                        </span>
-                      ) : (
-                        <span className="px-2 py-1 rounded-full text-label-sm bg-gray-100 text-gray-700">
-                          -
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-body-md text-on-surface max-w-[200px] truncate">
-                      {lead.follow_up_naechster_schritt || '-'}
-                    </td>
-                    <td className="px-4 py-4">
-                      <span className={`text-body-md ${overdue ? 'text-error font-medium' : 'text-on-surface'}`}>
-                        {formatDate(lead.follow_up_datum)}
+          return (
+            <div
+              key={lead.id}
+              onClick={() => handleSelectLead(lead)}
+              className={`card p-4 cursor-pointer transition-colors hover:bg-primary-fixed/10 ${overdue ? 'border-l-4 border-error' : ''}`}
+            >
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-on-surface truncate">{lead.unternehmen || '-'}</div>
+                  <div className="text-body-sm text-on-surface-variant">
+                    {lead.ansprechpartner_vorname} {lead.ansprechpartner_nachname}
+                  </div>
+                </div>
+                {statusOption && (
+                  <span className={`px-2 py-1 rounded-full text-label-sm flex-shrink-0 ${statusOption.color}`}>
+                    {statusOption.label}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-body-sm">
+                <div>
+                  <span className="text-on-surface-variant">Closer:</span>
+                  <span className="ml-1 text-on-surface">{lead.closer_name || '-'}</span>
+                </div>
+                <div>
+                  <span className="text-on-surface-variant">Fällig:</span>
+                  <span className={`ml-1 ${overdue ? 'text-error font-medium' : 'text-on-surface'}`}>
+                    {formatDate(lead.follow_up_datum)}
+                  </span>
+                </div>
+              </div>
+
+              {lead.follow_up_naechster_schritt && (
+                <div className="mt-2 text-body-sm text-on-surface-variant line-clamp-2">
+                  {lead.follow_up_naechster_schritt}
+                </div>
+              )}
+
+              {lastAction && (
+                <div className="mt-2 flex items-center gap-2 text-body-sm text-on-surface-variant">
+                  <ActionIcon className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{lastAction.beschreibung?.substring(0, 40)}</span>
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+        {leads.length === 0 && !loading && (
+          <div className="card p-8 text-center text-on-surface-variant">
+            Keine Leads im Follow-Up-Prozess
+          </div>
+        )}
+
+        {/* Mobile Pagination */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between p-4 bg-surface-container rounded-lg">
+            <span className="text-body-sm text-on-surface-variant">
+              Seite {currentPage} von {totalPages}
+            </span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg bg-surface hover:bg-surface-container-high disabled:opacity-50"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg bg-surface hover:bg-surface-container-high disabled:opacity-50"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: Table-Layout */}
+      <div className="hidden md:block card overflow-hidden">
+        <table className="w-full">
+          <thead>
+            <tr className="bg-surface-container">
+              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Unternehmen</th>
+              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Closer</th>
+              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Status</th>
+              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Nächster Schritt</th>
+              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Fällig am</th>
+              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Letzte Aktion</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leads.map((lead, index) => {
+              const overdue = isOverdue(lead.follow_up_datum)
+              const lastAction = lead.letzte_aktionen?.[0]
+              const ActionIcon = lastAction ? getActionIcon(lastAction.typ) : null
+
+              return (
+                <tr
+                  key={lead.id}
+                  onClick={() => handleSelectLead(lead)}
+                  className={`
+                    table-row cursor-pointer transition-colors
+                    ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}
+                    ${overdue ? 'bg-red-50/30' : ''}
+                    hover:bg-primary-fixed/20
+                  `}
+                >
+                  <td className="px-4 py-4">
+                    <div className="font-medium text-on-surface">{lead.unternehmen || '-'}</div>
+                    <div className="text-body-sm text-on-surface-variant">
+                      {lead.ansprechpartner_vorname} {lead.ansprechpartner_nachname}
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 text-body-md text-on-surface">
+                    {lead.closer_name || '-'}
+                  </td>
+                  <td className="px-4 py-4">
+                    {FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status) ? (
+                      <span className={`px-2 py-1 rounded-full text-label-sm ${
+                        FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)?.color
+                      }`}>
+                        {FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)?.label}
                       </span>
-                    </td>
-                    <td className="px-4 py-4">
-                      {lastAction ? (
-                        <div className="flex items-center gap-2">
-                          <ActionIcon className="h-4 w-4 text-on-surface-variant" />
-                          <span className="text-body-sm text-on-surface-variant truncate max-w-[150px]">
-                            {lastAction.beschreibung?.substring(0, 50)}
-                          </span>
-                        </div>
-                      ) : (
-                        <span className="text-body-sm text-on-surface-variant">-</span>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-
-              {leads.length === 0 && !loading && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-on-surface-variant">
-                    Keine Leads im Follow-Up-Prozess
+                    ) : (
+                      <span className="px-2 py-1 rounded-full text-label-sm bg-gray-100 text-gray-700">
+                        -
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-4 text-body-md text-on-surface max-w-[200px] truncate">
+                    {lead.follow_up_naechster_schritt || '-'}
+                  </td>
+                  <td className="px-4 py-4">
+                    <span className={`text-body-md ${overdue ? 'text-error font-medium' : 'text-on-surface'}`}>
+                      {formatDate(lead.follow_up_datum)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4">
+                    {lastAction ? (
+                      <div className="flex items-center gap-2">
+                        <ActionIcon className="h-4 w-4 text-on-surface-variant" />
+                        <span className="text-body-sm text-on-surface-variant truncate max-w-[150px]">
+                          {lastAction.beschreibung?.substring(0, 50)}
+                        </span>
+                      </div>
+                    ) : (
+                      <span className="text-body-sm text-on-surface-variant">-</span>
+                    )}
                   </td>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              )
+            })}
 
-        {/* Pagination */}
+            {leads.length === 0 && !loading && (
+              <tr>
+                <td colSpan={6} className="px-4 py-12 text-center text-on-surface-variant">
+                  Keine Leads im Follow-Up-Prozess
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+
+        {/* Pagination - Desktop */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
             <span className="text-body-sm text-on-surface-variant">

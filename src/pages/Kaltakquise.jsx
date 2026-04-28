@@ -1273,35 +1273,35 @@ function Kaltakquise() {
         </>
       )}
 
-      {/* Lead Detail Modal - Portal rendert direkt in body */}
+      {/* Lead Detail Drawer - Slide-in von rechts */}
       {selectedLead && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50">
           <div
-            className="modal-backdrop absolute inset-0"
+            className="fixed inset-0 bg-scrim/50"
             onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
           />
-          <div className="modal-content relative max-w-2xl w-full max-h-[90vh] flex flex-col">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-primary rounded-lg">
+          <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-surface shadow-xl flex flex-col overflow-hidden">
+            {/* Drawer Header */}
+            <div className="sticky top-0 bg-surface border-b border-outline-variant px-4 sm:px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 bg-gradient-primary rounded-lg flex-shrink-0">
                   <Building2 className="w-5 h-5 text-white" />
                 </div>
-                <div>
-                  <h2 className="text-headline-sm font-display text-on-surface">{selectedLead.unternehmensname}</h2>
-                  <p className="text-body-sm text-on-surface-variant">{selectedLead.kategorie}</p>
+                <div className="min-w-0">
+                  <h2 className="text-title-lg font-semibold text-on-surface truncate">{selectedLead.unternehmensname}</h2>
+                  <p className="text-body-sm text-on-surface-variant truncate">{selectedLead.kategorie}</p>
                 </div>
               </div>
               <button
                 onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
-                className="p-2 hover:bg-surface-container rounded-lg transition-colors"
+                className="p-2 hover:bg-surface-container rounded-lg transition-colors flex-shrink-0"
               >
                 <X className="w-5 h-5 text-on-surface-variant" />
               </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="overflow-y-auto flex-1">
+            {/* Drawer Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               {showTerminPicker ? (
                 // Termin-Picker anzeigen
                 <TerminPicker
@@ -1502,26 +1502,26 @@ function Kaltakquise() {
                   <Building2 className="w-4 h-4 mr-2 text-purple-600" />
                   Website-Statistiken
                 </h4>
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="bg-white p-3 rounded-lg shadow-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+                  <div className="bg-white p-2 sm:p-3 rounded-lg shadow-sm">
                     <p className="text-xs text-gray-500">Besucher/Monat</p>
-                    <p className="text-lg font-semibold text-gray-900">
+                    <p className="text-base sm:text-lg font-semibold text-gray-900">
                       {selectedLead.monatlicheBesuche !== null && selectedLead.monatlicheBesuche !== undefined
                         ? selectedLead.monatlicheBesuche.toLocaleString('de-DE')
                         : '-'}
                     </p>
                   </div>
-                  <div className="bg-white p-3 rounded-lg shadow-sm">
+                  <div className="bg-white p-2 sm:p-3 rounded-lg shadow-sm">
                     <p className="text-xs text-gray-500">Mehrwert</p>
-                    <p className="text-lg font-semibold text-green-600">
+                    <p className="text-base sm:text-lg font-semibold text-green-600">
                       {selectedLead.mehrwert !== null && selectedLead.mehrwert !== undefined
                         ? `${selectedLead.mehrwert.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €`
                         : '-'}
                     </p>
                   </div>
-                  <div className="bg-white p-3 rounded-lg shadow-sm">
+                  <div className="bg-white p-2 sm:p-3 rounded-lg shadow-sm">
                     <p className="text-xs text-gray-500">Absprungrate</p>
-                    <p className={`text-lg font-semibold ${
+                    <p className={`text-base sm:text-lg font-semibold ${
                       selectedLead.absprungrate === null || selectedLead.absprungrate === undefined ? 'text-gray-400' :
                       (parseFloat(selectedLead.absprungrate) * 100) > 60 ? 'text-red-500' :
                       (parseFloat(selectedLead.absprungrate) * 100) > 40 ? 'text-amber-500' : 'text-green-600'
@@ -1531,9 +1531,9 @@ function Kaltakquise() {
                         : '-'}
                     </p>
                   </div>
-                  <div className="bg-white p-3 rounded-lg shadow-sm">
+                  <div className="bg-white p-2 sm:p-3 rounded-lg shadow-sm">
                     <p className="text-xs text-gray-500">Leads/Monat</p>
-                    <p className="text-lg font-semibold text-blue-600">
+                    <p className="text-base sm:text-lg font-semibold text-blue-600">
                       {selectedLead.anzahlLeads !== null && selectedLead.anzahlLeads !== undefined
                         ? selectedLead.anzahlLeads
                         : '-'}

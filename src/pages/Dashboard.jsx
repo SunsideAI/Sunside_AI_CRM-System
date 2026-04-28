@@ -934,38 +934,38 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
         )}
       </div>
 
-      {/* Detail Modal */}
+      {/* Detail Drawer - Slide-in von rechts */}
       {selectedLead && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50">
           {/* Backdrop */}
           <div
-            className="modal-backdrop absolute inset-0"
+            className="fixed inset-0 bg-scrim/50"
             onClick={closeModal}
           />
 
-          {/* Modal Content */}
-          <div className="modal-content relative max-w-2xl w-full max-h-[90vh] flex flex-col">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 flex-shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-primary rounded-lg">
+          {/* Drawer Content */}
+          <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-surface shadow-xl flex flex-col overflow-hidden">
+            {/* Drawer Header */}
+            <div className="sticky top-0 bg-surface border-b border-outline-variant px-4 sm:px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 bg-gradient-primary rounded-lg flex-shrink-0">
                   <Building2 className="w-5 h-5 text-white" />
                 </div>
-                <div>
-                  <h2 className="text-headline-sm font-display text-on-surface">{selectedLead.unternehmen || 'Lead Details'}</h2>
-                  <p className="text-body-sm text-on-surface-variant">{selectedLead.kategorie || 'Hot Lead'}</p>
+                <div className="min-w-0">
+                  <h2 className="text-title-lg font-semibold text-on-surface truncate">{selectedLead.unternehmen || 'Lead Details'}</h2>
+                  <p className="text-body-sm text-on-surface-variant truncate">{selectedLead.kategorie || 'Hot Lead'}</p>
                 </div>
               </div>
               <button
                 onClick={closeModal}
-                className="p-2 hover:bg-surface-container rounded-lg transition-colors"
+                className="p-2 hover:bg-surface-container rounded-lg transition-colors flex-shrink-0"
               >
                 <X className="w-5 h-5 text-on-surface-variant" />
               </button>
             </div>
 
-            {/* Modal Content */}
-            <div className="overflow-y-auto flex-1">
+            {/* Drawer Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               {/* Kontaktdaten Grid - CI Style */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {/* Telefon */}

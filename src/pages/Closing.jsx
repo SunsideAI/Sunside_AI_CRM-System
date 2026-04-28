@@ -1606,41 +1606,41 @@ function Closing() {
         </div>
       </div>
 
-      {/* Detail/Edit Modal */}
+      {/* Detail/Edit Drawer - Slide-in von rechts */}
       {selectedLead && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-50">
           {/* Backdrop */}
           <div
-            className="modal-backdrop fixed inset-0"
+            className="fixed inset-0 bg-scrim/50"
             onClick={closeModal}
           />
 
-          {/* Modal Content */}
-          <div className="modal-content relative max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          {/* Drawer Content */}
+          <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-surface shadow-xl flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="pb-4 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-primary rounded-lg">
+            <div className="sticky top-0 bg-surface border-b border-outline-variant px-4 sm:px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 bg-gradient-primary rounded-lg flex-shrink-0">
                   <Building2 className="w-5 h-5 text-white" />
                 </div>
-                <div>
-                  <h3 className="text-headline-sm font-display text-on-surface">
+                <div className="min-w-0">
+                  <h3 className="text-title-lg font-semibold text-on-surface truncate">
                     {safeString(selectedLead.unternehmen) || 'Lead Details'}
                   </h3>
-                  <p className="text-body-sm text-on-surface-variant">{selectedLead.kategorie || 'Immobilienmakler'}</p>
+                  <p className="text-body-sm text-on-surface-variant truncate">{selectedLead.kategorie || 'Immobilienmakler'}</p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={closeModal}
-                className="p-2 hover:bg-surface-container rounded-lg transition-colors"
+                className="p-2 hover:bg-surface-container rounded-lg transition-colors flex-shrink-0"
               >
                 <X className="w-5 h-5 text-gray-500" />
               </button>
             </div>
 
             {/* Body - Scrollbar hier */}
-            <div className="flex-1 overflow-y-auto px-6 py-4">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               {angebotSuccess ? (
                 /* ========================================
                    ERFOLGS-ANSICHT nach Angebot versenden
