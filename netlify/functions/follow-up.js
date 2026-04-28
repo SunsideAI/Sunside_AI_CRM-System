@@ -24,13 +24,17 @@ async function isAdminUser(userId) {
   try {
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('rolle')
+      .select('rollen')
       .eq('id', userId)
       .single()
 
-    if (userError || !userData) return false
+    if (userError || !userData) {
+      console.log('Admin check - User not found:', userId, userError)
+      return false
+    }
 
-    const rollen = userData.rolle || []
+    const rollen = userData.rollen || []
+    console.log('Admin check - User roles:', userId, rollen)
     return rollen.some(r => r.toLowerCase() === 'admin')
   } catch (err) {
     console.error('Admin check failed:', err)
