@@ -14,7 +14,8 @@ import {
   ChevronDown,
   Check,
   Clock,
-  CheckCheck
+  CheckCheck,
+  RotateCcw
 } from 'lucide-react'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Clippy from './Clippy'
@@ -358,6 +359,12 @@ function Layout({ children }) {
       path: '/closing',
       icon: Target,
       show: isCloser() || isAdmin()
+    },
+    {
+      name: 'Follow-Up',
+      path: '/follow-up',
+      icon: RotateCcw,
+      show: isAdmin()
     },
     {
       name: 'Termine',

@@ -13,6 +13,7 @@ import Closing from './pages/Closing'
 import Termine from './pages/Termine'
 import Profil from './pages/Profil'
 import Einstellungen from './pages/Einstellungen'
+import FollowUp from './pages/FollowUp'
 
 // Protected Route Komponente
 function ProtectedRoute({ children, allowedRoles = [] }) {
@@ -75,15 +76,24 @@ function App() {
           } 
         />
         
-        <Route 
-          path="closing" 
+        <Route
+          path="closing"
           element={
             <ProtectedRoute allowedRoles={['Closer', 'Admin']}>
               <Closing />
             </ProtectedRoute>
-          } 
+          }
         />
-        
+
+        <Route
+          path="follow-up"
+          element={
+            <ProtectedRoute allowedRoles={['Admin']}>
+              <FollowUp />
+            </ProtectedRoute>
+          }
+        />
+
         <Route path="termine" element={<Termine />} />
         
         <Route 
