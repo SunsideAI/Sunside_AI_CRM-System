@@ -52,7 +52,7 @@ const FAELLIGKEIT_OPTIONS = [
 ]
 
 function FollowUp() {
-  const { user, getAuthToken } = useAuth()
+  const { user } = useAuth()
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -103,9 +103,8 @@ function FollowUp() {
       if (showRefreshing) setRefreshing(true)
       else setLoading(true)
 
-      const token = await getAuthToken()
-
       const params = new URLSearchParams()
+      if (user?.id) params.append('userId', user.id)
       if (closerFilter !== 'all') params.append('closerId', closerFilter)
       if (statusFilter !== 'all') params.append('followUpStatus', statusFilter)
       if (searchTerm) params.append('search', searchTerm)
@@ -125,11 +124,7 @@ function FollowUp() {
         params.append('faelligBis', getNext7Days())
       }
 
-      const response = await fetch(`/.netlify/functions/follow-up?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      })
+      const response = await fetch(`/.netlify/functions/follow-up?${params.toString()}`)
 
       if (!response.ok) {
         const err = await response.json()
@@ -181,15 +176,14 @@ function FollowUp() {
 
     try {
       setSaving(true)
-      const token = await getAuthToken()
 
       const response = await fetch('/.netlify/functions/follow-up', {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          userId: user?.id,
           hotLeadId: selectedLead.id,
           updates: editData
         })
@@ -219,15 +213,14 @@ function FollowUp() {
 
     try {
       setAddingAction(true)
-      const token = await getAuthToken()
 
       const response = await fetch('/.netlify/functions/follow-up', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          userId: user?.id,
           hotLeadId: selectedLead.id,
           typ: newAction.typ,
           beschreibung: newAction.beschreibung.trim(),
@@ -267,15 +260,13 @@ function FollowUp() {
   // Action als erledigt markieren
   const handleToggleActionDone = async (actionId, currentErledigt) => {
     try {
-      const token = await getAuthToken()
-
       const response = await fetch('/.netlify/functions/follow-up', {
         method: 'PATCH',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          userId: user?.id,
           actionId,
           updates: { erledigt: !currentErledigt }
         })

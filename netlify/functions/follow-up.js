@@ -17,21 +17,15 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 }
 
-// Admin-Check: User-Rolle aus Auth-Header prüfen
-async function isAdminUser(authHeader) {
-  if (!authHeader) return false
-
-  const token = authHeader.replace('Bearer ', '')
-  if (!token) return false
+// Admin-Check: User-Rolle über User-ID prüfen
+async function isAdminUser(userId) {
+  if (!userId) return false
 
   try {
-    const { data: { user }, error } = await supabase.auth.getUser(token)
-    if (error || !user) return false
-
     const { data: userData, error: userError } = await supabase
       .from('users')
       .select('rolle')
-      .eq('auth_id', user.id)
+      .eq('id', userId)
       .single()
 
     if (userError || !userData) return false
@@ -75,8 +69,19 @@ export async function handler(event) {
     }
   }
 
+  // User-ID aus Query-Params oder Body extrahieren
+  let userId = null
+  if (event.httpMethod === 'GET') {
+    userId = (event.queryStringParameters || {}).userId
+  } else if (event.body) {
+    try {
+      const body = JSON.parse(event.body)
+      userId = body.userId
+    } catch (e) {}
+  }
+
   // Admin-Check für alle Methoden
-  const isAdmin = await isAdminUser(event.headers.authorization)
+  const isAdmin = await isAdminUser(userId)
   if (!isAdmin) {
     return {
       statusCode: 403,
