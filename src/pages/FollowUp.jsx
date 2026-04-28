@@ -324,67 +324,60 @@ function FollowUp() {
     return option?.icon || FileText
   }
 
-  // Loading State
-  if (loading && leads.length === 0) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-display-sm font-semibold text-on-surface flex items-center gap-3">
-            <RotateCcw className="h-8 w-8 text-primary" />
+          <h1 className="text-headline-lg font-display text-on-surface">
             Follow-Up
           </h1>
-          <p className="text-body-md text-on-surface-variant mt-1">
+          <p className="mt-2 text-body-md text-on-surface-variant">
             {totalLeads} Lead{totalLeads !== 1 ? 's' : ''} im Follow-Up-Prozess
           </p>
         </div>
-
-        <button
-          onClick={() => loadLeads(true)}
-          disabled={refreshing}
-          className="flex items-center gap-2 px-4 py-2 bg-surface-container hover:bg-surface-container-high rounded-lg transition-colors"
-        >
-          <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          Aktualisieren
-        </button>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="bg-error-container text-on-error-container px-4 py-3 rounded-lg flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5" />
+        <div className="bg-error-container rounded-xl p-4 text-error">
           {error}
         </div>
       )}
 
       {/* Filter Bar */}
-      <div className="card p-4">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Search */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-on-surface-variant" />
+      <div className="card p-5 space-y-4">
+        {/* Zeile 1: Suche + Refresh */}
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-outline" />
             <input
               type="text"
-              placeholder="Unternehmen suchen..."
+              placeholder="Firma, Name suchen..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary"
+              className="input-field pl-10"
             />
           </div>
 
+          {/* Refresh */}
+          <button
+            onClick={() => loadLeads(true)}
+            disabled={refreshing}
+            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
+          >
+            <RefreshCw className={`w-5 h-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
+        </div>
+
+        {/* Zeile 2: Filter - responsive grid on mobile */}
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3">
           {/* Closer Filter */}
           <select
             value={closerFilter}
             onChange={(e) => { setCloserFilter(e.target.value); setCurrentPage(1) }}
-            className="px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
+            className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
           >
             <option value="all">Alle Closer</option>
             {closers.map(c => (
@@ -396,7 +389,7 @@ function FollowUp() {
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1) }}
-            className="px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
+            className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
           >
             <option value="all">Alle Status</option>
             {FOLLOW_UP_STATUS_OPTIONS.map(s => (
@@ -408,80 +401,107 @@ function FollowUp() {
           <select
             value={faelligkeitFilter}
             onChange={(e) => { setFaelligkeitFilter(e.target.value); setCurrentPage(1) }}
-            className="px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
+            className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
           >
             {FAELLIGKEIT_OPTIONS.map(f => (
               <option key={f.value} value={f.value}>{f.label}</option>
             ))}
           </select>
+
+          {/* Reset Filter Button */}
+          {(closerFilter !== 'all' || statusFilter !== 'all' || faelligkeitFilter !== 'all') && (
+            <button
+              onClick={() => {
+                setCloserFilter('all')
+                setStatusFilter('all')
+                setFaelligkeitFilter('all')
+                setCurrentPage(1)
+              }}
+              className="px-3 py-2 text-body-sm text-error hover:bg-error-container rounded-lg transition-colors flex items-center gap-1 col-span-2 sm:col-span-1"
+            >
+              <X className="w-4 h-4" />
+              Filter zurücksetzen
+            </button>
+          )}
         </div>
       </div>
 
       {/* Mobile: Card-Layout */}
-      <div className="md:hidden space-y-3">
-        {leads.map((lead) => {
-          const overdue = isOverdue(lead.follow_up_datum)
-          const lastAction = lead.letzte_aktionen?.[0]
-          const ActionIcon = lastAction ? getActionIcon(lastAction.typ) : null
-          const statusOption = FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)
+      <div className="md:hidden">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+            <p className="text-on-surface-variant">Leads werden geladen...</p>
+          </div>
+        ) : leads.length === 0 ? (
+          <div className="card-elevated text-center py-12 text-on-surface-variant">
+            <RotateCcw className="w-12 h-12 mx-auto mb-4 text-outline-variant" />
+            <p className="text-title-md mb-2">Keine Leads gefunden</p>
+            <p className="text-body-sm text-outline">
+              Keine Leads mit diesen Filterkriterien im Follow-Up.
+            </p>
+          </div>
+        ) : (
+        <div className="space-y-3">
+          {leads.map((lead) => {
+            const overdue = isOverdue(lead.follow_up_datum)
+            const lastAction = lead.letzte_aktionen?.[0]
+            const ActionIcon = lastAction ? getActionIcon(lastAction.typ) : null
+            const statusOption = FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)
 
-          return (
-            <div
-              key={lead.id}
-              onClick={() => handleSelectLead(lead)}
-              className={`card p-4 cursor-pointer transition-colors hover:bg-primary-fixed/10 ${overdue ? 'border-l-4 border-error' : ''}`}
-            >
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="min-w-0">
-                  <div className="font-medium text-on-surface truncate">{lead.unternehmen || '-'}</div>
-                  <div className="text-body-sm text-on-surface-variant">
-                    {lead.ansprechpartner_vorname} {lead.ansprechpartner_nachname}
+            return (
+              <div
+                key={lead.id}
+                onClick={() => handleSelectLead(lead)}
+                className={`card p-4 cursor-pointer hover:bg-surface-container active:bg-surface-container-high transition-colors ${overdue ? 'border-l-4 border-error' : ''}`}
+              >
+                <div className="flex items-start justify-between gap-3 mb-3">
+                  <div className="min-w-0">
+                    <div className="font-medium text-on-surface truncate">{lead.unternehmen || '-'}</div>
+                    <div className="text-body-sm text-on-surface-variant">
+                      {lead.ansprechpartner_vorname} {lead.ansprechpartner_nachname}
+                    </div>
+                  </div>
+                  {statusOption && (
+                    <span className={`px-2 py-1 rounded-full text-label-sm flex-shrink-0 ${statusOption.color}`}>
+                      {statusOption.label}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 text-body-sm">
+                  <div>
+                    <span className="text-on-surface-variant">Closer:</span>
+                    <span className="ml-1 text-on-surface">{lead.closer_name || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-on-surface-variant">Fällig:</span>
+                    <span className={`ml-1 ${overdue ? 'text-error font-medium' : 'text-on-surface'}`}>
+                      {formatDate(lead.follow_up_datum)}
+                    </span>
                   </div>
                 </div>
-                {statusOption && (
-                  <span className={`px-2 py-1 rounded-full text-label-sm flex-shrink-0 ${statusOption.color}`}>
-                    {statusOption.label}
-                  </span>
+
+                {lead.follow_up_naechster_schritt && (
+                  <div className="mt-2 text-body-sm text-on-surface-variant line-clamp-2">
+                    {lead.follow_up_naechster_schritt}
+                  </div>
+                )}
+
+                {lastAction && (
+                  <div className="mt-2 flex items-center gap-2 text-body-sm text-on-surface-variant">
+                    <ActionIcon className="h-4 w-4 flex-shrink-0" />
+                    <span className="truncate">{lastAction.beschreibung?.substring(0, 40)}</span>
+                  </div>
                 )}
               </div>
-
-              <div className="grid grid-cols-2 gap-2 text-body-sm">
-                <div>
-                  <span className="text-on-surface-variant">Closer:</span>
-                  <span className="ml-1 text-on-surface">{lead.closer_name || '-'}</span>
-                </div>
-                <div>
-                  <span className="text-on-surface-variant">Fällig:</span>
-                  <span className={`ml-1 ${overdue ? 'text-error font-medium' : 'text-on-surface'}`}>
-                    {formatDate(lead.follow_up_datum)}
-                  </span>
-                </div>
-              </div>
-
-              {lead.follow_up_naechster_schritt && (
-                <div className="mt-2 text-body-sm text-on-surface-variant line-clamp-2">
-                  {lead.follow_up_naechster_schritt}
-                </div>
-              )}
-
-              {lastAction && (
-                <div className="mt-2 flex items-center gap-2 text-body-sm text-on-surface-variant">
-                  <ActionIcon className="h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">{lastAction.beschreibung?.substring(0, 40)}</span>
-                </div>
-              )}
-            </div>
-          )
-        })}
-
-        {leads.length === 0 && !loading && (
-          <div className="card p-8 text-center text-on-surface-variant">
-            Keine Leads im Follow-Up-Prozess
-          </div>
+            )
+          })}
+        </div>
         )}
 
         {/* Mobile Pagination */}
-        {totalPages > 1 && (
+        {!loading && leads.length > 0 && totalPages > 1 && (
           <div className="flex items-center justify-between p-4 bg-surface-container rounded-lg">
             <span className="text-body-sm text-on-surface-variant">
               Seite {currentPage} von {totalPages}
@@ -507,7 +527,21 @@ function FollowUp() {
       </div>
 
       {/* Desktop: Table-Layout */}
-      <div className="hidden md:block card overflow-hidden">
+      <div className="hidden md:block card-elevated overflow-hidden">
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+            <p className="text-on-surface-variant">Leads werden geladen...</p>
+          </div>
+        ) : leads.length === 0 ? (
+          <div className="text-center py-12 text-on-surface-variant">
+            <RotateCcw className="w-12 h-12 mx-auto mb-4 text-outline-variant" />
+            <p className="text-title-md mb-2">Keine Leads gefunden</p>
+            <p className="text-body-sm text-outline">
+              Keine Leads mit diesen Filterkriterien im Follow-Up.
+            </p>
+          </div>
+        ) : (
         <table className="w-full">
           <thead>
             <tr className="bg-surface-container">
@@ -530,7 +564,7 @@ function FollowUp() {
                   key={lead.id}
                   onClick={() => handleSelectLead(lead)}
                   className={`
-                    table-row cursor-pointer transition-colors
+                    cursor-pointer transition-colors
                     ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}
                     ${overdue ? 'bg-red-50/30' : ''}
                     hover:bg-primary-fixed/20
@@ -581,19 +615,12 @@ function FollowUp() {
                 </tr>
               )
             })}
-
-            {leads.length === 0 && !loading && (
-              <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-on-surface-variant">
-                  Keine Leads im Follow-Up-Prozess
-                </td>
-              </tr>
-            )}
           </tbody>
         </table>
+        )}
 
         {/* Pagination - Desktop */}
-        {totalPages > 1 && (
+        {!loading && leads.length > 0 && totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
             <span className="text-body-sm text-on-surface-variant">
               Seite {currentPage} von {totalPages}
