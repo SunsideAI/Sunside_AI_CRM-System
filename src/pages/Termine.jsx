@@ -603,18 +603,20 @@ function Termine() {
         </div>
       </div>
 
-      {/* Termin-Detail Modal */}
+      {/* Termin-Detail Drawer */}
       {selectedEvent && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="modal-backdrop fixed inset-0" onClick={() => setSelectedEvent(null)} />
-          <div className="modal-content relative max-w-md w-full max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-start mb-4">
-                <div>
-                  <h3 className="text-xl font-semibold text-gray-900">{selectedEvent.title}</h3>
+        <div className="fixed inset-0 z-50">
+          <div className="fixed inset-0 bg-scrim/50" onClick={() => setSelectedEvent(null)} />
+          <div className="fixed right-0 top-0 h-full w-full max-w-md bg-surface shadow-xl flex flex-col overflow-hidden">
+            {/* Header */}
+            <div className="sticky top-0 bg-surface border-b border-outline-variant px-4 sm:px-6 py-4 flex items-start justify-between z-10 flex-shrink-0">
+              <div className="min-w-0">
+                <h3 className="text-title-lg font-semibold text-on-surface truncate">{selectedEvent.title}</h3>
+                <div className="flex flex-wrap gap-2 mt-2">
                   {selectedEvent.source === 'beratungsgespraech' && (
-                    <span className={`inline-flex items-center mt-2 px-2 py-1 rounded-full text-xs font-medium ${
-                      selectedEvent.terminart === 'Video' 
-                        ? 'bg-purple-100 text-purple-800' 
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      selectedEvent.terminart === 'Video'
+                        ? 'bg-purple-100 text-purple-800'
                         : 'bg-blue-100 text-blue-800'
                     }`}>
                       {selectedEvent.terminart === 'Video' ? <Video className="w-3 h-3 mr-1" /> : <Phone className="w-3 h-3 mr-1" />}
@@ -622,16 +624,20 @@ function Termine() {
                     </span>
                   )}
                   {selectedEvent.source === 'wiedervorlage' && (
-                    <span className="inline-flex items-center mt-2 px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
                       <PhoneCall className="w-3 h-3 mr-1" />
                       Wiedervorlage
                     </span>
                   )}
                 </div>
-                <button onClick={() => setSelectedEvent(null)} className="p-2 hover:bg-surface-container rounded-lg transition-colors text-muted hover:text-on-surface">
-                  <X className="w-5 h-5" />
-                </button>
               </div>
+              <button onClick={() => setSelectedEvent(null)} className="p-2 hover:bg-surface-container rounded-lg transition-colors flex-shrink-0">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
 
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
@@ -860,13 +866,8 @@ function Termine() {
                     Zum Closing
                   </button>
                 )}
-                <button
-                  onClick={() => setSelectedEvent(null)}
-                  className="btn-ghost flex-1"
-                >
-                  Schließen
-                </button>
               </div>
+            </div>
           </div>
         </div>
       )}

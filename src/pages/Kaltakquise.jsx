@@ -1865,12 +1865,6 @@ function Kaltakquise() {
                       </>
                     ) : (
                       <>
-                        <button
-                          onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
-                          className="px-4 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors"
-                        >
-                          Schließen
-                        </button>
                         {/* Soft Lock: Bei Beratungsgespräch nur Kommentar-Button, sonst Bearbeiten */}
                         {selectedLead.ergebnis === 'Beratungsgespräch' ? (
                           <button

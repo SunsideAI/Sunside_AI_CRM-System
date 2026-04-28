@@ -2683,13 +2683,6 @@ function Closing() {
               ) : (
                 /* Normal-View Footer */
                 <>
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
-                  >
-                    Schließen
-                  </button>
                   {/* Freigabe-Button - nur wenn Lead einem Closer zugewiesen ist */}
                   {selectedLead.closerName && (
                     <button

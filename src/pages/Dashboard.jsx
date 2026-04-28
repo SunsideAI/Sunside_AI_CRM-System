@@ -1191,16 +1191,6 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                 </div>
               </div>
             </div>
-
-            {/* Modal Footer */}
-            <div className="pt-6 flex-shrink-0">
-              <button
-                onClick={closeModal}
-                className="btn-primary w-full"
-              >
-                Schließen
-              </button>
-            </div>
           </div>
         </div>
       )}
