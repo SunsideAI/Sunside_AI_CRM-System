@@ -1611,9 +1611,10 @@ function FollowUp() {
               <div className="border-t border-outline-variant pt-4 space-y-3">
                 <button
                   onClick={() => {
+                    const leadId = selectedKanbanAction.hot_lead_id
                     setSelectedKanbanAction(null)
                     setKanbanActionDeleting(false)
-                    openLeadFromKanban(selectedKanbanAction.hot_lead_id)
+                    openLeadFromKanban(leadId)
                   }}
                   className="w-full flex items-center justify-center gap-2 px-4 py-2 text-primary hover:bg-primary-container rounded-lg transition-colors"
                 >
