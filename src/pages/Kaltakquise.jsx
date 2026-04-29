@@ -84,20 +84,30 @@ function getLandFlag(land) {
 
 function Kaltakquise() {
   const { user, isAdmin } = useAuth()
-  
+
+  // Filter-State aus sessionStorage wiederherstellen
+  const getStoredFilter = (key, defaultValue) => {
+    try {
+      const stored = sessionStorage.getItem(`kaltakquise_${key}`)
+      return stored !== null ? stored : defaultValue
+    } catch {
+      return defaultValue
+    }
+  }
+
   // State
   const [leads, setLeads] = useState([])
   const [users, setUsers] = useState([]) // Liste aller Vertriebler für Filter
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
-  const [searchInput, setSearchInput] = useState('')
-  const [filterContacted, setFilterContacted] = useState('all') // 'all', 'true', 'false'
-  const [filterResult, setFilterResult] = useState('all')
-  const [filterVertriebler, setFilterVertriebler] = useState('all') // NEU: Vertriebler-Filter
-  const [filterLand, setFilterLand] = useState('all') // Land-Filter: 'all', 'Deutschland', 'Österreich', 'Schweiz'
-  const [filterQuelle, setFilterQuelle] = useState('all') // Quelle-Filter: 'all', 'E-Book', 'Kaltakquise', etc.
-  const [viewMode, setViewMode] = useState('own') // 'all', 'own', oder 'ebook' (für E-Book Pool)
+  const [searchInput, setSearchInput] = useState(getStoredFilter('search', ''))
+  const [filterContacted, setFilterContacted] = useState(getStoredFilter('filterContacted', 'all'))
+  const [filterResult, setFilterResult] = useState(getStoredFilter('filterResult', 'all'))
+  const [filterVertriebler, setFilterVertriebler] = useState(getStoredFilter('filterVertriebler', 'all'))
+  const [filterLand, setFilterLand] = useState(getStoredFilter('filterLand', 'all'))
+  const [filterQuelle, setFilterQuelle] = useState(getStoredFilter('filterQuelle', 'all'))
+  const [viewMode, setViewMode] = useState(getStoredFilter('viewMode', 'own'))
   const [offset, setOffset] = useState(null)
   const [hasMore, setHasMore] = useState(false)
   const [pageHistory, setPageHistory] = useState([])
@@ -199,6 +209,21 @@ function Kaltakquise() {
       loadLeads()
     }
   }, [viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle])
+
+  // Filter-State in sessionStorage persistieren
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('kaltakquise_searchInput', searchInput)
+      sessionStorage.setItem('kaltakquise_filterContacted', filterContacted)
+      sessionStorage.setItem('kaltakquise_filterResult', filterResult)
+      sessionStorage.setItem('kaltakquise_filterVertriebler', filterVertriebler)
+      sessionStorage.setItem('kaltakquise_filterLand', filterLand)
+      sessionStorage.setItem('kaltakquise_filterQuelle', filterQuelle)
+      sessionStorage.setItem('kaltakquise_viewMode', viewMode)
+    } catch (e) {
+      // sessionStorage nicht verfügbar
+    }
+  }, [searchInput, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle, viewMode])
 
   // E-Book Pool laden
   const loadEbookLeads = useCallback(async () => {
@@ -884,9 +909,16 @@ function Kaltakquise() {
                 setFilterLand('all')
                 setFilterQuelle('all')
                 setFilterVertriebler('all')
+                setSearchInput('')
                 setOffset(null)
                 setPageHistory([])
                 setLeads([])
+                // sessionStorage zurücksetzen
+                try {
+                  Object.keys(sessionStorage).forEach(key => {
+                    if (key.startsWith('kaltakquise_')) sessionStorage.removeItem(key)
+                  })
+                } catch (e) {}
               }}
               className="px-3 py-2 text-body-sm text-error hover:bg-error-container rounded-lg transition-colors flex items-center gap-1"
             >
