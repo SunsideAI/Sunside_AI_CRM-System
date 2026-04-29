@@ -105,8 +105,8 @@ export async function handler(event) {
         followUpStatus,
         faelligBis,
         search,
-        sortBy = 'follow_up_datum',
-        sortDir = 'asc',
+        sortBy = 'created_at',
+        sortDir = 'desc',
         limit = '100',
         offset = '0'
       } = params
