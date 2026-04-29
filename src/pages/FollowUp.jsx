@@ -666,43 +666,41 @@ function FollowUp() {
         </div>
 
         {/* Tab-Navigation */}
-        <div className="w-full sm:w-auto overflow-x-auto">
-          <div className="flex items-center bg-gray-100 rounded-lg p-1 min-w-max">
-            {/* Liste Tab */}
-            <button
-              onClick={() => setViewMode('liste')}
-              className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
-                viewMode === 'liste'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
-                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
-              }`}
-            >
-              <List className="w-4 h-4 mr-1.5" />
-              <span className="hidden sm:inline">Liste</span>
-              <span className="sm:hidden">Liste</span>
-            </button>
+        <div className="flex items-center bg-surface-container rounded-xl p-1 shadow-ambient-sm">
+          {/* Liste Tab */}
+          <button
+            onClick={() => setViewMode('liste')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-label-lg font-medium transition-all duration-200 ${
+              viewMode === 'liste'
+                ? 'bg-primary text-on-primary shadow-sm'
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+            }`}
+          >
+            <List className="w-4 h-4" />
+            Liste
+          </button>
 
-            {/* Kanban Tab */}
-            <button
-              onClick={() => setViewMode('kanban')}
-              className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+          {/* Kanban Tab */}
+          <button
+            onClick={() => setViewMode('kanban')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-label-lg font-medium transition-all duration-200 ${
+              viewMode === 'kanban'
+                ? 'bg-primary text-on-primary shadow-sm'
+                : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+            }`}
+          >
+            <Columns className="w-4 h-4" />
+            Kanban
+            {kanbanActions.filter(a => (a.kanban_status || 'offen') === 'offen').length > 0 && (
+              <span className={`min-w-[20px] text-center px-1.5 py-0.5 text-label-sm rounded-full ${
                 viewMode === 'kanban'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
-                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
-              }`}
-            >
-              <Columns className="w-4 h-4 mr-1.5" />
-              <span className="hidden sm:inline">Kanban</span>
-              <span className="sm:hidden">Board</span>
-              {kanbanActions.filter(a => a.kanban_status === 'offen').length > 0 && (
-                <span className={`ml-1.5 min-w-[24px] text-center px-1.5 py-0.5 text-label-sm rounded-md ${
-                  viewMode === 'kanban' ? 'bg-white/20 text-white' : 'bg-primary-container text-primary'
-                }`}>
-                  {kanbanActions.filter(a => a.kanban_status === 'offen').length}
-                </span>
-              )}
-            </button>
-          </div>
+                  ? 'bg-on-primary/20 text-on-primary'
+                  : 'bg-primary text-on-primary'
+              }`}>
+                {kanbanActions.filter(a => (a.kanban_status || 'offen') === 'offen').length}
+              </span>
+            )}
+          </button>
         </div>
       </div>
 
