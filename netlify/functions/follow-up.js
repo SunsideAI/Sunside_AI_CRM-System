@@ -222,9 +222,14 @@ export async function handler(event) {
         query = query.eq('closer_id', filterCloserId)
       }
 
-      // Filter: Follow-Up-Status
+      // Filter: Follow-Up-Status (NULL wird als 'aktiv' behandelt)
       if (followUpStatus && followUpStatus !== 'all') {
-        query = query.eq('follow_up_status', followUpStatus)
+        if (followUpStatus === 'aktiv') {
+          // Aktiv = explizit 'aktiv' ODER NULL (Default)
+          query = query.or('follow_up_status.eq.aktiv,follow_up_status.is.null')
+        } else {
+          query = query.eq('follow_up_status', followUpStatus)
+        }
       }
 
       // Filter: Fälligkeit
