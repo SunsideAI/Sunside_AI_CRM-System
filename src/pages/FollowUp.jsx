@@ -114,6 +114,11 @@ function FollowUp() {
   })
   const [addingAction, setAddingAction] = useState(false)
 
+  // Inline Edit State für Aktionen im Drawer
+  const [editingActionId, setEditingActionId] = useState(null)
+  const [editingActionData, setEditingActionData] = useState({})
+  const [deletingActionId, setDeletingActionId] = useState(null)
+
   const LEADS_PER_PAGE = 20
 
   // Datum-Helpers
@@ -438,6 +443,99 @@ function FollowUp() {
       }))
     } catch (err) {
       console.error('Toggle error:', err)
+    }
+  }
+
+  // Inline-Edit für Aktionen starten
+  const handleStartEditAction = (action) => {
+    setEditingActionId(action.id)
+    setEditingActionData({
+      typ: action.typ || 'todo',
+      beschreibung: action.beschreibung || '',
+      faellig_am: action.faellig_am ? action.faellig_am.split('T')[0] : ''
+    })
+  }
+
+  // Inline-Edit abbrechen
+  const handleCancelEditAction = () => {
+    setEditingActionId(null)
+    setEditingActionData({})
+  }
+
+  // Inline-Edit speichern
+  const handleSaveEditAction = async () => {
+    if (!editingActionId) return
+
+    try {
+      setSaving(true)
+
+      const response = await fetch('/.netlify/functions/follow-up', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          actionId: editingActionId,
+          updates: {
+            typ: editingActionData.typ,
+            beschreibung: editingActionData.beschreibung,
+            faellig_am: editingActionData.faellig_am || null
+          }
+        })
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Fehler beim Speichern')
+      }
+
+      // Local state updaten
+      setSelectedLead(prev => ({
+        ...prev,
+        letzte_aktionen: (prev.letzte_aktionen || []).map(a =>
+          a.id === editingActionId
+            ? { ...a, ...editingActionData }
+            : a
+        )
+      }))
+
+      setEditingActionId(null)
+      setEditingActionData({})
+    } catch (err) {
+      console.error('Save action error:', err)
+      alert('Fehler beim Speichern: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Aktion löschen
+  const handleDeleteAction = async (actionId) => {
+    try {
+      const response = await fetch('/.netlify/functions/follow-up', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          actionId
+        })
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Fehler beim Löschen')
+      }
+
+      // Local state updaten
+      setSelectedLead(prev => ({
+        ...prev,
+        letzte_aktionen: (prev.letzte_aktionen || []).filter(a => a.id !== actionId)
+      }))
+
+      setDeletingActionId(null)
+      setEditingActionId(null)
+    } catch (err) {
+      console.error('Delete action error:', err)
+      alert('Fehler beim Löschen: ' + err.message)
     }
   }
 
@@ -1157,41 +1255,129 @@ function FollowUp() {
                 <div className="space-y-3">
                   {(selectedLead.letzte_aktionen || []).map((action) => {
                     const ActionIcon = getActionIcon(action.typ)
+                    const isEditing = editingActionId === action.id
+                    const isDeleting = deletingActionId === action.id
+
                     return (
                       <div
                         key={action.id}
-                        className={`flex items-start gap-3 p-3 rounded-lg ${
+                        className={`rounded-lg ${
                           action.erledigt ? 'bg-surface-container-lowest opacity-60' : 'bg-surface-container'
                         }`}
                       >
-                        <div className={`p-2 rounded-lg ${action.erledigt ? 'bg-green-100' : 'bg-primary-container'}`}>
-                          <ActionIcon className={`h-4 w-4 ${action.erledigt ? 'text-green-700' : 'text-primary'}`} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className={`text-body-md ${action.erledigt ? 'line-through text-on-surface-variant' : 'text-on-surface'}`}>
-                            {action.beschreibung}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1 text-body-sm text-on-surface-variant">
-                            {action.erstellt_von_name && <span>von {action.erstellt_von_name}</span>}
-                            <span>{formatDateTime(action.created_at)}</span>
-                            {action.faellig_am && (
-                              <span className={isOverdue(action.faellig_am) && !action.erledigt ? 'text-error' : ''}>
-                                • Fällig: {formatDate(action.faellig_am)}
-                              </span>
-                            )}
+                        {/* Normal View */}
+                        {!isEditing && (
+                          <div className="flex items-start gap-3 p-3">
+                            <div
+                              className={`p-2 rounded-lg cursor-pointer ${action.erledigt ? 'bg-green-100' : 'bg-primary-container'} hover:ring-2 hover:ring-primary/30`}
+                              onClick={() => handleStartEditAction(action)}
+                              title="Klicken zum Bearbeiten"
+                            >
+                              <ActionIcon className={`h-4 w-4 ${action.erledigt ? 'text-green-700' : 'text-primary'}`} />
+                            </div>
+                            <div
+                              className="flex-1 min-w-0 cursor-pointer"
+                              onClick={() => handleStartEditAction(action)}
+                              title="Klicken zum Bearbeiten"
+                            >
+                              <p className={`text-body-md ${action.erledigt ? 'line-through text-on-surface-variant' : 'text-on-surface'}`}>
+                                {action.beschreibung}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1 text-body-sm text-on-surface-variant">
+                                {action.erstellt_von_name && <span>von {action.erstellt_von_name}</span>}
+                                <span>{formatDateTime(action.created_at)}</span>
+                                {action.faellig_am && (
+                                  <span className={isOverdue(action.faellig_am) && !action.erledigt ? 'text-error' : ''}>
+                                    • Fällig: {formatDate(action.faellig_am)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleToggleActionDone(action.id, action.erledigt) }}
+                              className={`p-2 rounded-lg ${
+                                action.erledigt
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-surface-container-high hover:bg-primary-container'
+                              }`}
+                              title={action.erledigt ? 'Als offen markieren' : 'Als erledigt markieren'}
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
                           </div>
-                        </div>
-                        <button
-                          onClick={() => handleToggleActionDone(action.id, action.erledigt)}
-                          className={`p-2 rounded-lg ${
-                            action.erledigt
-                              ? 'bg-green-100 text-green-700'
-                              : 'bg-surface-container-high hover:bg-primary-container'
-                          }`}
-                          title={action.erledigt ? 'Als offen markieren' : 'Als erledigt markieren'}
-                        >
-                          <Check className="h-4 w-4" />
-                        </button>
+                        )}
+
+                        {/* Edit Mode */}
+                        {isEditing && (
+                          <div className="p-3 space-y-3 border-2 border-primary rounded-lg">
+                            <div className="grid grid-cols-2 gap-3">
+                              <select
+                                value={editingActionData.typ}
+                                onChange={(e) => setEditingActionData(prev => ({ ...prev, typ: e.target.value }))}
+                                className="px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary text-body-sm"
+                              >
+                                {ACTION_TYP_OPTIONS.map(o => (
+                                  <option key={o.value} value={o.value}>{o.label}</option>
+                                ))}
+                              </select>
+                              <input
+                                type="date"
+                                value={editingActionData.faellig_am || ''}
+                                onChange={(e) => setEditingActionData(prev => ({ ...prev, faellig_am: e.target.value }))}
+                                className="px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary text-body-sm"
+                              />
+                            </div>
+                            <textarea
+                              value={editingActionData.beschreibung}
+                              onChange={(e) => setEditingActionData(prev => ({ ...prev, beschreibung: e.target.value }))}
+                              rows={2}
+                              className="w-full px-3 py-2 bg-surface border border-outline-variant rounded-lg focus:border-primary resize-none text-body-sm"
+                            />
+                            <div className="flex items-center justify-between gap-2">
+                              {/* Delete Button / Confirmation */}
+                              {!isDeleting ? (
+                                <button
+                                  onClick={() => setDeletingActionId(action.id)}
+                                  className="px-3 py-1.5 text-error text-body-sm hover:bg-error-container rounded-lg"
+                                >
+                                  Löschen
+                                </button>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <span className="text-body-sm text-error">Wirklich löschen?</span>
+                                  <button
+                                    onClick={() => handleDeleteAction(action.id)}
+                                    className="px-2 py-1 bg-error text-on-error text-label-sm rounded"
+                                  >
+                                    Ja
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingActionId(null)}
+                                    className="px-2 py-1 bg-surface-container text-on-surface text-label-sm rounded"
+                                  >
+                                    Nein
+                                  </button>
+                                </div>
+                              )}
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={handleCancelEditAction}
+                                  className="px-3 py-1.5 text-on-surface-variant hover:bg-surface-container rounded-lg text-body-sm"
+                                >
+                                  Abbrechen
+                                </button>
+                                <button
+                                  onClick={handleSaveEditAction}
+                                  disabled={saving}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 bg-primary text-on-primary rounded-lg hover:bg-primary/90 disabled:opacity-50 text-body-sm"
+                                >
+                                  {saving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                  Speichern
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )
                   })}

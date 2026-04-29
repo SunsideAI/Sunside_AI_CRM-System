@@ -14,7 +14,7 @@ const supabase = createClient(
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Content-Type': 'application/json'
 }
 
@@ -445,11 +445,19 @@ export async function handler(event) {
           }
         }
 
-        // Wenn kanban_status auf 'erledigt' gesetzt wird, auch erledigt=true setzen
+        // Bidirektionaler Sync: kanban_status ↔ erledigt
+        // kanban_status → erledigt
         if (filteredUpdates.kanban_status === 'erledigt') {
           filteredUpdates.erledigt = true
         } else if (filteredUpdates.kanban_status && filteredUpdates.kanban_status !== 'erledigt') {
           filteredUpdates.erledigt = false
+        }
+        // erledigt → kanban_status (wenn nicht explizit gesetzt)
+        if (filteredUpdates.erledigt === true && !filteredUpdates.kanban_status) {
+          filteredUpdates.kanban_status = 'erledigt'
+        }
+        if (filteredUpdates.erledigt === false && !filteredUpdates.kanban_status) {
+          filteredUpdates.kanban_status = 'offen'
         }
 
         const { data: updatedAction, error: actionError } = await supabase
@@ -498,6 +506,40 @@ export async function handler(event) {
           headers: corsHeaders,
           body: JSON.stringify({ lead: updatedLead })
         }
+      }
+    }
+
+    // ==========================================
+    // DELETE: Action löschen
+    // ==========================================
+    if (event.httpMethod === 'DELETE') {
+      const body = JSON.parse(event.body)
+      const { actionId } = body
+
+      if (!actionId) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'actionId ist erforderlich' })
+        }
+      }
+
+      console.log('Follow-Up DELETE - Action:', actionId)
+
+      const { error } = await supabase
+        .from('follow_up_actions')
+        .delete()
+        .eq('id', actionId)
+
+      if (error) {
+        console.error('Delete Action Error:', error)
+        throw new Error(error.message || 'Fehler beim Löschen der Action')
+      }
+
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ deleted: true })
       }
     }
 
