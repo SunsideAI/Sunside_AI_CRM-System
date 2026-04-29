@@ -122,6 +122,7 @@ function FollowUp() {
   // Kanban Action Edit Modal State
   const [selectedKanbanAction, setSelectedKanbanAction] = useState(null)
   const [kanbanActionDeleting, setKanbanActionDeleting] = useState(false)
+  const [loadingLeadId, setLoadingLeadId] = useState(null)
 
   const LEADS_PER_PAGE = 20
 
@@ -304,6 +305,7 @@ function FollowUp() {
     const cachedLead = leads.find(l => l.id === hotLeadId)
     if (cachedLead) {
       handleSelectLead(cachedLead)
+      setLoadingLeadId(null)
       return
     }
 
@@ -319,7 +321,6 @@ function FollowUp() {
       if (data.lead) {
         handleSelectLead(data.lead)
       } else if (data.leads?.length > 0) {
-        // Fallback: In der Liste suchen
         const foundLead = data.leads.find(l => l.id === hotLeadId)
         if (foundLead) {
           handleSelectLead(foundLead)
@@ -327,6 +328,8 @@ function FollowUp() {
       }
     } catch (err) {
       console.error('Lead load error:', err)
+    } finally {
+      setLoadingLeadId(null)
     }
   }
 
@@ -1621,16 +1624,22 @@ function FollowUp() {
               {/* Weitere Aktionen */}
               <div className="border-t border-outline-variant pt-4 space-y-3">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const leadId = selectedKanbanAction.hot_lead_id
+                    setLoadingLeadId(leadId)
+                    await openLeadFromKanban(leadId)
                     setSelectedKanbanAction(null)
                     setKanbanActionDeleting(false)
-                    openLeadFromKanban(leadId)
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-primary hover:bg-primary-container rounded-lg transition-colors"
+                  disabled={loadingLeadId}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-primary hover:bg-primary-container rounded-lg transition-colors disabled:opacity-50"
                 >
-                  <Building2 className="h-4 w-4" />
-                  Lead öffnen
+                  {loadingLeadId ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Building2 className="h-4 w-4" />
+                  )}
+                  {loadingLeadId ? 'Wird geladen...' : 'Lead öffnen'}
                 </button>
 
                 {/* Delete */}
