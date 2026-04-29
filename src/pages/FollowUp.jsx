@@ -119,6 +119,10 @@ function FollowUp() {
   const [editingActionData, setEditingActionData] = useState({})
   const [deletingActionId, setDeletingActionId] = useState(null)
 
+  // Kanban Action Edit Modal State
+  const [selectedKanbanAction, setSelectedKanbanAction] = useState(null)
+  const [kanbanActionDeleting, setKanbanActionDeleting] = useState(false)
+
   const LEADS_PER_PAGE = 20
 
   // Datum-Helpers
@@ -535,6 +539,76 @@ function FollowUp() {
       setEditingActionId(null)
     } catch (err) {
       console.error('Delete action error:', err)
+      alert('Fehler beim Löschen: ' + err.message)
+    }
+  }
+
+  // Kanban Action Modal speichern
+  const handleSaveKanbanAction = async () => {
+    if (!selectedKanbanAction) return
+
+    try {
+      setSaving(true)
+
+      const response = await fetch('/.netlify/functions/follow-up', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          actionId: selectedKanbanAction.id,
+          updates: {
+            typ: selectedKanbanAction.typ,
+            beschreibung: selectedKanbanAction.beschreibung,
+            faellig_am: selectedKanbanAction.faellig_am || null,
+            kanban_status: selectedKanbanAction.kanban_status
+          }
+        })
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Fehler beim Speichern')
+      }
+
+      // Local state updaten
+      setKanbanActions(prev =>
+        prev.map(a => a.id === selectedKanbanAction.id ? { ...a, ...selectedKanbanAction } : a)
+      )
+
+      setSelectedKanbanAction(null)
+    } catch (err) {
+      console.error('Save kanban action error:', err)
+      alert('Fehler beim Speichern: ' + err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Kanban Action löschen
+  const handleDeleteKanbanAction = async () => {
+    if (!selectedKanbanAction) return
+
+    try {
+      const response = await fetch('/.netlify/functions/follow-up', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          actionId: selectedKanbanAction.id
+        })
+      })
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Fehler beim Löschen')
+      }
+
+      // Local state updaten
+      setKanbanActions(prev => prev.filter(a => a.id !== selectedKanbanAction.id))
+      setSelectedKanbanAction(null)
+      setKanbanActionDeleting(false)
+    } catch (err) {
+      console.error('Delete kanban action error:', err)
       alert('Fehler beim Löschen: ' + err.message)
     }
   }
@@ -1046,7 +1120,7 @@ function FollowUp() {
                             key={action.id}
                             draggable
                             onDragStart={() => handleDragStart(action)}
-                            onClick={() => openLeadFromKanban(action.hot_lead_id)}
+                            onClick={() => setSelectedKanbanAction(action)}
                             className={`
                               bg-surface rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing
                               border-l-4 ${actionIsOverdue && column.id !== 'erledigt' ? 'border-error' : 'border-transparent'}
@@ -1430,6 +1504,149 @@ function FollowUp() {
                   >
                     {addingAction ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                     Hinzufügen
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Kanban Action Edit Modal */}
+      {selectedKanbanAction && createPortal(
+        <div
+          className="fixed inset-0 bg-scrim/50 z-50 flex items-center justify-center p-4"
+          onClick={() => { setSelectedKanbanAction(null); setKanbanActionDeleting(false) }}
+        >
+          <div
+            className="bg-surface rounded-xl shadow-xl w-full max-w-md overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between">
+              <h2 className="text-title-lg font-semibold text-on-surface">
+                Aufgabe bearbeiten
+              </h2>
+              <button
+                onClick={() => { setSelectedKanbanAction(null); setKanbanActionDeleting(false) }}
+                className="p-2 rounded-lg hover:bg-surface-container"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-4">
+              {/* Lead-Info (readonly) */}
+              <div className="flex items-center gap-2 text-on-surface-variant bg-surface-container rounded-lg px-3 py-2">
+                <Building2 className="w-4 h-4" />
+                <span className="text-body-md">{selectedKanbanAction.hot_lead?.unternehmen || 'Unbekannt'}</span>
+              </div>
+
+              {/* Typ */}
+              <div>
+                <label className="block text-body-sm text-on-surface-variant mb-1">Typ</label>
+                <select
+                  value={selectedKanbanAction.typ || 'todo'}
+                  onChange={(e) => setSelectedKanbanAction(prev => ({ ...prev, typ: e.target.value }))}
+                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
+                >
+                  {ACTION_TYP_OPTIONS.map(o => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Beschreibung */}
+              <div>
+                <label className="block text-body-sm text-on-surface-variant mb-1">Beschreibung</label>
+                <textarea
+                  value={selectedKanbanAction.beschreibung || ''}
+                  onChange={(e) => setSelectedKanbanAction(prev => ({ ...prev, beschreibung: e.target.value }))}
+                  rows={3}
+                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary resize-none"
+                />
+              </div>
+
+              {/* Fällig am */}
+              <div>
+                <label className="block text-body-sm text-on-surface-variant mb-1">Fällig am</label>
+                <input
+                  type="date"
+                  value={selectedKanbanAction.faellig_am ? selectedKanbanAction.faellig_am.split('T')[0] : ''}
+                  onChange={(e) => setSelectedKanbanAction(prev => ({ ...prev, faellig_am: e.target.value }))}
+                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
+                />
+              </div>
+
+              {/* Status */}
+              <div>
+                <label className="block text-body-sm text-on-surface-variant mb-1">Status</label>
+                <select
+                  value={selectedKanbanAction.kanban_status || 'offen'}
+                  onChange={(e) => setSelectedKanbanAction(prev => ({ ...prev, kanban_status: e.target.value }))}
+                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
+                >
+                  {KANBAN_COLUMNS.map(c => (
+                    <option key={c.id} value={c.id}>{c.title}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 border-t border-outline-variant">
+              {/* Delete Confirmation */}
+              {kanbanActionDeleting ? (
+                <div className="flex items-center justify-between mb-3 p-3 bg-error-container rounded-lg">
+                  <span className="text-body-sm text-error">Aufgabe wirklich löschen?</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleDeleteKanbanAction}
+                      className="px-3 py-1.5 bg-error text-on-error rounded-lg text-body-sm"
+                    >
+                      Ja, löschen
+                    </button>
+                    <button
+                      onClick={() => setKanbanActionDeleting(false)}
+                      className="px-3 py-1.5 bg-surface text-on-surface rounded-lg text-body-sm"
+                    >
+                      Abbrechen
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="flex justify-between gap-3">
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setKanbanActionDeleting(true)}
+                    className="px-4 py-2 text-error hover:bg-error-container rounded-lg transition-colors"
+                  >
+                    Löschen
+                  </button>
+                  <button
+                    onClick={() => openLeadFromKanban(selectedKanbanAction.hot_lead_id)}
+                    className="px-4 py-2 text-primary hover:bg-primary-container rounded-lg transition-colors"
+                  >
+                    Lead öffnen
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setSelectedKanbanAction(null); setKanbanActionDeleting(false) }}
+                    className="px-4 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg"
+                  >
+                    Abbrechen
+                  </button>
+                  <button
+                    onClick={handleSaveKanbanAction}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
+                  >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Speichern
                   </button>
                 </div>
               </div>
