@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
+import * as XLSX from 'xlsx'
 import {
   RotateCcw,
   Search,
@@ -28,7 +29,8 @@ import {
   Columns,
   Circle,
   CheckCircle,
-  GripVertical
+  GripVertical,
+  Download
 } from 'lucide-react'
 
 // Kanban Spalten
@@ -123,6 +125,9 @@ function FollowUp() {
   const [selectedKanbanAction, setSelectedKanbanAction] = useState(null)
   const [kanbanActionDeleting, setKanbanActionDeleting] = useState(false)
   const [loadingLeadId, setLoadingLeadId] = useState(null)
+
+  // Export State
+  const [exporting, setExporting] = useState(false)
 
   const LEADS_PER_PAGE = 20
 
@@ -627,6 +632,85 @@ function FollowUp() {
     }
   }
 
+  // Excel Export
+  const handleExportExcel = async () => {
+    try {
+      setExporting(true)
+
+      // Alle Daten mit aktuellen Filtern laden (ohne Pagination)
+      const params = new URLSearchParams()
+      if (user?.id) params.append('userId', user.id)
+      if (closerFilter !== 'all') params.append('closerId', closerFilter)
+      if (statusFilter !== 'all') params.append('followUpStatus', statusFilter)
+      if (hotLeadStatusFilter !== 'all') params.append('hotLeadStatus', hotLeadStatusFilter)
+      if (searchTerm) params.append('search', searchTerm)
+      params.append('limit', '1000')
+      params.append('offset', '0')
+
+      const response = await fetch(`/.netlify/functions/follow-up?${params.toString()}`)
+      const data = await response.json()
+      const exportLeads = data.leads || []
+
+      if (exportLeads.length === 0) {
+        alert('Keine Daten zum Exportieren vorhanden.')
+        return
+      }
+
+      // Daten für Excel aufbereiten
+      const excelData = exportLeads.map(lead => ({
+        'Unternehmen': lead.unternehmen || '',
+        'Ansprechpartner': `${lead.ansprechpartner_vorname || ''} ${lead.ansprechpartner_nachname || ''}`.trim(),
+        'Telefon': lead.telefonnummer || '',
+        'E-Mail': lead.mail || '',
+        'Website': lead.website || '',
+        'Closer': lead.closer_name || '',
+        'Setter': lead.setter_name || '',
+        'Hot-Lead Status': lead.status || '',
+        'Follow-Up Status': lead.follow_up_status || 'aktiv',
+        'Nächster Schritt': lead.follow_up_naechster_schritt || '',
+        'Fällig am': lead.follow_up_datum ? formatDate(lead.follow_up_datum) : '',
+        'Letzte Aktion': lead.letzte_aktionen?.[0]?.beschreibung || '',
+        'Kommentar': lead.kommentar || ''
+      }))
+
+      // Excel erstellen
+      const worksheet = XLSX.utils.json_to_sheet(excelData)
+      const workbook = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Follow-Up Leads')
+
+      // Spaltenbreiten anpassen
+      const colWidths = [
+        { wch: 30 }, // Unternehmen
+        { wch: 25 }, // Ansprechpartner
+        { wch: 18 }, // Telefon
+        { wch: 30 }, // E-Mail
+        { wch: 25 }, // Website
+        { wch: 18 }, // Closer
+        { wch: 18 }, // Setter
+        { wch: 18 }, // Hot-Lead Status
+        { wch: 15 }, // Follow-Up Status
+        { wch: 35 }, // Nächster Schritt
+        { wch: 12 }, // Fällig am
+        { wch: 40 }, // Letzte Aktion
+        { wch: 40 }  // Kommentar
+      ]
+      worksheet['!cols'] = colWidths
+
+      // Dateiname mit Datum
+      const dateStr = new Date().toISOString().split('T')[0]
+      const fileName = `Follow-Up_Export_${dateStr}.xlsx`
+
+      // Download
+      XLSX.writeFile(workbook, fileName)
+
+    } catch (err) {
+      console.error('Export error:', err)
+      alert('Fehler beim Export: ' + err.message)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   // Formatierung
   const formatDate = (dateStr) => {
     if (!dateStr) return '-'
@@ -748,8 +832,24 @@ function FollowUp() {
                 onClick={() => loadLeads(true)}
                 disabled={refreshing}
                 className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
+                title="Aktualisieren"
               >
                 <RefreshCw className={`w-5 h-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
+              </button>
+
+              {/* Excel Export */}
+              <button
+                onClick={handleExportExcel}
+                disabled={exporting}
+                className="flex items-center gap-2 px-3 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors shadow-ambient-sm disabled:opacity-50"
+                title="Als Excel exportieren"
+              >
+                {exporting ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Download className="w-5 h-5" />
+                )}
+                <span className="hidden sm:inline text-label-md">Export</span>
               </button>
             </div>
 
