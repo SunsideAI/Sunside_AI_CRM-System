@@ -1511,18 +1511,18 @@ function FollowUp() {
         document.body
       )}
 
-      {/* Kanban Action Edit Modal */}
+      {/* Kanban Action Edit Drawer */}
       {selectedKanbanAction && createPortal(
         <div
-          className="fixed inset-0 bg-scrim/50 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-scrim/50 z-50"
           onClick={() => { setSelectedKanbanAction(null); setKanbanActionDeleting(false) }}
         >
           <div
-            className="bg-surface rounded-xl shadow-xl w-full max-w-md overflow-hidden"
+            className="absolute right-0 top-0 h-full w-full max-w-md bg-surface shadow-xl overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Modal Header */}
-            <div className="px-6 py-4 border-b border-outline-variant flex items-center justify-between">
+            {/* Drawer Header */}
+            <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between">
               <h2 className="text-title-lg font-semibold text-on-surface">
                 Aufgabe bearbeiten
               </h2>
@@ -1534,119 +1534,120 @@ function FollowUp() {
               </button>
             </div>
 
-            {/* Modal Body */}
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-6">
               {/* Lead-Info (readonly) */}
-              <div className="flex items-center gap-2 text-on-surface-variant bg-surface-container rounded-lg px-3 py-2">
-                <Building2 className="w-4 h-4" />
-                <span className="text-body-md">{selectedKanbanAction.hot_lead?.unternehmen || 'Unbekannt'}</span>
-              </div>
-
-              {/* Typ */}
-              <div>
-                <label className="block text-body-sm text-on-surface-variant mb-1">Typ</label>
-                <select
-                  value={selectedKanbanAction.typ || 'todo'}
-                  onChange={(e) => setSelectedKanbanAction(prev => ({ ...prev, typ: e.target.value }))}
-                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
-                >
-                  {ACTION_TYP_OPTIONS.map(o => (
-                    <option key={o.value} value={o.value}>{o.label}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Beschreibung */}
-              <div>
-                <label className="block text-body-sm text-on-surface-variant mb-1">Beschreibung</label>
-                <textarea
-                  value={selectedKanbanAction.beschreibung || ''}
-                  onChange={(e) => setSelectedKanbanAction(prev => ({ ...prev, beschreibung: e.target.value }))}
-                  rows={3}
-                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary resize-none"
-                />
-              </div>
-
-              {/* Fällig am */}
-              <div>
-                <label className="block text-body-sm text-on-surface-variant mb-1">Fällig am</label>
-                <input
-                  type="date"
-                  value={selectedKanbanAction.faellig_am ? selectedKanbanAction.faellig_am.split('T')[0] : ''}
-                  onChange={(e) => setSelectedKanbanAction(prev => ({ ...prev, faellig_am: e.target.value }))}
-                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
-                />
-              </div>
-
-              {/* Status */}
-              <div>
-                <label className="block text-body-sm text-on-surface-variant mb-1">Status</label>
-                <select
-                  value={selectedKanbanAction.kanban_status || 'offen'}
-                  onChange={(e) => setSelectedKanbanAction(prev => ({ ...prev, kanban_status: e.target.value }))}
-                  className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
-                >
-                  {KANBAN_COLUMNS.map(c => (
-                    <option key={c.id} value={c.id}>{c.title}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-6 py-4 border-t border-outline-variant">
-              {/* Delete Confirmation */}
-              {kanbanActionDeleting ? (
-                <div className="flex items-center justify-between mb-3 p-3 bg-error-container rounded-lg">
-                  <span className="text-body-sm text-error">Aufgabe wirklich löschen?</span>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleDeleteKanbanAction}
-                      className="px-3 py-1.5 bg-error text-on-error rounded-lg text-body-sm"
-                    >
-                      Ja, löschen
-                    </button>
-                    <button
-                      onClick={() => setKanbanActionDeleting(false)}
-                      className="px-3 py-1.5 bg-surface text-on-surface rounded-lg text-body-sm"
-                    >
-                      Abbrechen
-                    </button>
-                  </div>
+              <div className="flex items-center gap-3 p-3 bg-surface-container rounded-lg">
+                <Building2 className="w-5 h-5 text-primary" />
+                <div>
+                  <p className="text-label-sm text-on-surface-variant">Lead</p>
+                  <p className="text-body-md font-medium text-on-surface">{selectedKanbanAction.hot_lead?.unternehmen || 'Unbekannt'}</p>
                 </div>
-              ) : null}
+              </div>
 
-              <div className="flex justify-between gap-3">
-                <div className="flex gap-2">
+              {/* Formular */}
+              <div className="space-y-4">
+                {/* Typ */}
+                <div>
+                  <label className="block text-body-sm text-on-surface-variant mb-1">Typ</label>
+                  <select
+                    value={selectedKanbanAction.typ || 'todo'}
+                    onChange={(e) => setSelectedKanbanAction(prev => ({ ...prev, typ: e.target.value }))}
+                    className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
+                  >
+                    {ACTION_TYP_OPTIONS.map(o => (
+                      <option key={o.value} value={o.value}>{o.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Beschreibung */}
+                <div>
+                  <label className="block text-body-sm text-on-surface-variant mb-1">Beschreibung</label>
+                  <textarea
+                    value={selectedKanbanAction.beschreibung || ''}
+                    onChange={(e) => setSelectedKanbanAction(prev => ({ ...prev, beschreibung: e.target.value }))}
+                    rows={4}
+                    className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary resize-none"
+                  />
+                </div>
+
+                {/* Fällig am */}
+                <div>
+                  <label className="block text-body-sm text-on-surface-variant mb-1">Fällig am</label>
+                  <input
+                    type="date"
+                    value={selectedKanbanAction.faellig_am ? selectedKanbanAction.faellig_am.split('T')[0] : ''}
+                    onChange={(e) => setSelectedKanbanAction(prev => ({ ...prev, faellig_am: e.target.value }))}
+                    className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
+                  />
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className="block text-body-sm text-on-surface-variant mb-1">Status</label>
+                  <select
+                    value={selectedKanbanAction.kanban_status || 'offen'}
+                    onChange={(e) => setSelectedKanbanAction(prev => ({ ...prev, kanban_status: e.target.value }))}
+                    className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
+                  >
+                    {KANBAN_COLUMNS.map(c => (
+                      <option key={c.id} value={c.id}>{c.title}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Speichern Button */}
+              <button
+                onClick={handleSaveKanbanAction}
+                disabled={saving}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Speichern
+              </button>
+
+              {/* Weitere Aktionen */}
+              <div className="border-t border-outline-variant pt-4 space-y-3">
+                <button
+                  onClick={() => {
+                    setSelectedKanbanAction(null)
+                    setKanbanActionDeleting(false)
+                    openLeadFromKanban(selectedKanbanAction.hot_lead_id)
+                  }}
+                  className="w-full flex items-center justify-center gap-2 px-4 py-2 text-primary hover:bg-primary-container rounded-lg transition-colors"
+                >
+                  <Building2 className="h-4 w-4" />
+                  Lead öffnen
+                </button>
+
+                {/* Delete */}
+                {!kanbanActionDeleting ? (
                   <button
                     onClick={() => setKanbanActionDeleting(true)}
-                    className="px-4 py-2 text-error hover:bg-error-container rounded-lg transition-colors"
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 text-error hover:bg-error-container rounded-lg transition-colors"
                   >
-                    Löschen
+                    Aufgabe löschen
                   </button>
-                  <button
-                    onClick={() => openLeadFromKanban(selectedKanbanAction.hot_lead_id)}
-                    className="px-4 py-2 text-primary hover:bg-primary-container rounded-lg transition-colors"
-                  >
-                    Lead öffnen
-                  </button>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => { setSelectedKanbanAction(null); setKanbanActionDeleting(false) }}
-                    className="px-4 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg"
-                  >
-                    Abbrechen
-                  </button>
-                  <button
-                    onClick={handleSaveKanbanAction}
-                    disabled={saving}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Speichern
-                  </button>
-                </div>
+                ) : (
+                  <div className="p-3 bg-error-container rounded-lg space-y-3">
+                    <p className="text-body-sm text-error text-center">Aufgabe wirklich löschen?</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setKanbanActionDeleting(false)}
+                        className="flex-1 px-3 py-2 bg-surface text-on-surface rounded-lg text-body-sm"
+                      >
+                        Abbrechen
+                      </button>
+                      <button
+                        onClick={handleDeleteKanbanAction}
+                        className="flex-1 px-3 py-2 bg-error text-on-error rounded-lg text-body-sm"
+                      >
+                        Ja, löschen
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
