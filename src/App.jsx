@@ -88,7 +88,7 @@ function App() {
         <Route
           path="follow-up"
           element={
-            <ProtectedRoute allowedRoles={['Admin']}>
+            <ProtectedRoute allowedRoles={['Admin', 'Closer']}>
               <FollowUp />
             </ProtectedRoute>
           }

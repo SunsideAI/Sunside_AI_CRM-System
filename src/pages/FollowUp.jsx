@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -23,8 +23,20 @@ import {
   Check,
   Plus,
   Clock,
-  MessageSquare
+  MessageSquare,
+  List,
+  Columns,
+  Circle,
+  CheckCircle,
+  GripVertical
 } from 'lucide-react'
+
+// Kanban Spalten
+const KANBAN_COLUMNS = [
+  { id: 'offen', title: 'Offen', icon: Circle, color: 'bg-blue-500' },
+  { id: 'in_bearbeitung', title: 'In Bearbeitung', icon: Clock, color: 'bg-amber-500' },
+  { id: 'erledigt', title: 'Erledigt', icon: CheckCircle, color: 'bg-green-500' }
+]
 
 // Follow-Up Status Optionen
 const FOLLOW_UP_STATUS_OPTIONS = [
@@ -65,7 +77,12 @@ const HOT_LEAD_STATUS_OPTIONS = [
 ]
 
 function FollowUp() {
-  const { user } = useAuth()
+  const { user, isAdmin, isCloser } = useAuth()
+
+  // View Mode: Liste oder Kanban
+  const [viewMode, setViewMode] = useState('liste')
+
+  // Liste State
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -78,6 +95,11 @@ function FollowUp() {
   const [totalLeads, setTotalLeads] = useState(0)
   const [closers, setClosers] = useState([])
   const [selectedLead, setSelectedLead] = useState(null)
+
+  // Kanban State
+  const [kanbanActions, setKanbanActions] = useState([])
+  const [kanbanLoading, setKanbanLoading] = useState(false)
+  const [draggedAction, setDraggedAction] = useState(null)
   const [refreshing, setRefreshing] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -165,17 +187,128 @@ function FollowUp() {
   }
 
   useEffect(() => {
-    loadLeads()
-  }, [currentPage, closerFilter, statusFilter, faelligkeitFilter])
-
-  // Debounced Search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setCurrentPage(1)
+    if (viewMode === 'liste') {
       loadLeads()
-    }, 300)
-    return () => clearTimeout(timer)
+    }
+  }, [currentPage, closerFilter, statusFilter, faelligkeitFilter, viewMode])
+
+  // Debounced Search (nur für Liste)
+  useEffect(() => {
+    if (viewMode === 'liste') {
+      const timer = setTimeout(() => {
+        setCurrentPage(1)
+        loadLeads()
+      }, 300)
+      return () => clearTimeout(timer)
+    }
   }, [searchTerm])
+
+  // ==========================================
+  // KANBAN Functions
+  // ==========================================
+
+  // Kanban Actions laden
+  const loadKanbanActions = useCallback(async () => {
+    if (!user?.id) return
+
+    setKanbanLoading(true)
+    try {
+      const params = new URLSearchParams({
+        kanban: 'true',
+        userId: user.id
+      })
+
+      const response = await fetch(`/.netlify/functions/follow-up?${params.toString()}`)
+
+      if (!response.ok) {
+        const err = await response.json()
+        throw new Error(err.error || 'Fehler beim Laden')
+      }
+
+      const data = await response.json()
+      setKanbanActions(data.actions || [])
+    } catch (err) {
+      console.error('Kanban load error:', err)
+      setError(err.message)
+    } finally {
+      setKanbanLoading(false)
+    }
+  }, [user?.id])
+
+  // Kanban laden wenn Tab wechselt
+  useEffect(() => {
+    if (viewMode === 'kanban') {
+      loadKanbanActions()
+    }
+  }, [viewMode, loadKanbanActions])
+
+  // Kanban Drag & Drop Handler
+  const handleDragStart = (action) => {
+    setDraggedAction(action)
+  }
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+  }
+
+  const handleDrop = async (e, newStatus) => {
+    e.preventDefault()
+    if (!draggedAction || draggedAction.kanban_status === newStatus) {
+      setDraggedAction(null)
+      return
+    }
+
+    // Optimistic Update
+    setKanbanActions(prev =>
+      prev.map(a => a.id === draggedAction.id
+        ? { ...a, kanban_status: newStatus }
+        : a
+      )
+    )
+
+    try {
+      const response = await fetch('/.netlify/functions/follow-up', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          actionId: draggedAction.id,
+          updates: { kanban_status: newStatus }
+        })
+      })
+
+      if (!response.ok) {
+        // Revert on error
+        loadKanbanActions()
+      }
+    } catch (err) {
+      console.error('Kanban update error:', err)
+      loadKanbanActions()
+    }
+
+    setDraggedAction(null)
+  }
+
+  // Lead aus Kanban-Karte öffnen
+  const openLeadFromKanban = async (hotLeadId) => {
+    const lead = leads.find(l => l.id === hotLeadId)
+    if (lead) {
+      handleSelectLead(lead)
+    } else {
+      // Lead nicht im Cache, neu laden
+      try {
+        const params = new URLSearchParams({ userId: user.id })
+        const response = await fetch(`/.netlify/functions/follow-up?${params.toString()}`)
+        const data = await response.json()
+        const foundLead = (data.leads || []).find(l => l.id === hotLeadId)
+        if (foundLead) {
+          handleSelectLead(foundLead)
+        }
+      } catch (err) {
+        console.error('Lead load error:', err)
+      }
+    }
+  }
 
   // Lead auswählen und Edit-Data initialisieren
   const handleSelectLead = (lead) => {
@@ -345,16 +478,59 @@ function FollowUp() {
 
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="space-y-6">
+      {/* Header mit Tab-Navigation */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-headline-lg font-display text-on-surface">
             Follow-Up
           </h1>
           <p className="mt-2 text-body-md text-on-surface-variant">
-            {totalLeads} Lead{totalLeads !== 1 ? 's' : ''} im Follow-Up-Prozess
+            {isAdmin()
+              ? `${totalLeads} Lead${totalLeads !== 1 ? 's' : ''} im Follow-Up-Prozess`
+              : `${totalLeads} deiner Leads im Follow-Up`
+            }
           </p>
+        </div>
+
+        {/* Tab-Navigation */}
+        <div className="w-full sm:w-auto overflow-x-auto">
+          <div className="flex items-center bg-gray-100 rounded-lg p-1 min-w-max">
+            {/* Liste Tab */}
+            <button
+              onClick={() => setViewMode('liste')}
+              className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                viewMode === 'liste'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+              }`}
+            >
+              <List className="w-4 h-4 mr-1.5" />
+              <span className="hidden sm:inline">Liste</span>
+              <span className="sm:hidden">Liste</span>
+            </button>
+
+            {/* Kanban Tab */}
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                viewMode === 'kanban'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+              }`}
+            >
+              <Columns className="w-4 h-4 mr-1.5" />
+              <span className="hidden sm:inline">Kanban</span>
+              <span className="sm:hidden">Board</span>
+              {kanbanActions.filter(a => a.kanban_status === 'offen').length > 0 && (
+                <span className={`ml-1.5 min-w-[24px] text-center px-1.5 py-0.5 text-label-sm rounded-md ${
+                  viewMode === 'kanban' ? 'bg-white/20 text-white' : 'bg-primary-container text-primary'
+                }`}>
+                  {kanbanActions.filter(a => a.kanban_status === 'offen').length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -365,47 +541,52 @@ function FollowUp() {
         </div>
       )}
 
-      {/* Filter Bar */}
-      <div className="card p-5 space-y-4">
-        {/* Zeile 1: Suche + Refresh */}
-        <div className="flex gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-outline" />
-            <input
-              type="text"
-              placeholder="Firma, Name suchen..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="input-field pl-10"
-            />
-          </div>
+      {/* ==================== LISTE VIEW ==================== */}
+      {viewMode === 'liste' && (
+        <>
+          {/* Filter Bar */}
+          <div className="card p-5 space-y-4">
+            {/* Zeile 1: Suche + Refresh */}
+            <div className="flex gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-outline" />
+                <input
+                  type="text"
+                  placeholder="Firma, Name suchen..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="input-field pl-10"
+                />
+              </div>
 
-          {/* Refresh */}
-          <button
-            onClick={() => loadLeads(true)}
-            disabled={refreshing}
-            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
-          >
-            <RefreshCw className={`w-5 h-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
+              {/* Refresh */}
+              <button
+                onClick={() => loadLeads(true)}
+                disabled={refreshing}
+                className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
+              >
+                <RefreshCw className={`w-5 h-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
 
-        {/* Zeile 2: Filter - responsive grid on mobile */}
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3">
-          {/* Closer Filter */}
-          <select
-            value={closerFilter}
-            onChange={(e) => { setCloserFilter(e.target.value); setCurrentPage(1) }}
-            className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
-          >
-            <option value="all">Alle Closer</option>
-            {closers.map(c => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
+            {/* Zeile 2: Filter - responsive grid on mobile */}
+            <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3">
+              {/* Closer Filter - nur für Admins */}
+              {isAdmin() && (
+                <select
+                  value={closerFilter}
+                  onChange={(e) => { setCloserFilter(e.target.value); setCurrentPage(1) }}
+                  className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
+                >
+                  <option value="all">Alle Closer</option>
+                  {closers.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              )}
 
-          {/* Hot-Lead Status Filter */}
-          <select
+              {/* Hot-Lead Status Filter */}
+              <select
             value={hotLeadStatusFilter}
             onChange={(e) => { setHotLeadStatusFilter(e.target.value); setCurrentPage(1) }}
             className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
@@ -708,6 +889,113 @@ function FollowUp() {
           </div>
         )}
       </div>
+        </>
+      )}
+
+      {/* ==================== KANBAN VIEW ==================== */}
+      {viewMode === 'kanban' && (
+        <div className="space-y-4">
+          {/* Kanban Header */}
+          <div className="flex items-center justify-between">
+            <p className="text-body-md text-on-surface-variant">
+              {kanbanActions.length} Aufgabe{kanbanActions.length !== 1 ? 'n' : ''} insgesamt
+            </p>
+            <button
+              onClick={loadKanbanActions}
+              disabled={kanbanLoading}
+              className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
+            >
+              <RefreshCw className={`w-5 h-5 text-on-surface-variant ${kanbanLoading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+
+          {/* Kanban Board */}
+          {kanbanLoading ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
+              <p className="text-on-surface-variant">Aufgaben werden geladen...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {KANBAN_COLUMNS.map(column => {
+                const columnActions = kanbanActions.filter(a => (a.kanban_status || 'offen') === column.id)
+                const ColumnIcon = column.icon
+
+                return (
+                  <div
+                    key={column.id}
+                    className="bg-surface-container rounded-xl p-4 min-h-[400px]"
+                    onDragOver={handleDragOver}
+                    onDrop={(e) => handleDrop(e, column.id)}
+                  >
+                    {/* Column Header */}
+                    <div className="flex items-center gap-2 mb-4 pb-3 border-b border-outline-variant">
+                      <div className={`w-3 h-3 rounded-full ${column.color}`} />
+                      <h3 className="font-medium text-on-surface">{column.title}</h3>
+                      <span className="ml-auto px-2 py-0.5 bg-surface-container-high rounded-full text-label-sm text-on-surface-variant">
+                        {columnActions.length}
+                      </span>
+                    </div>
+
+                    {/* Cards */}
+                    <div className="space-y-3">
+                      {columnActions.map(action => {
+                        const ActionIcon = getActionIcon(action.typ)
+                        const actionIsOverdue = action.faellig_am && new Date(action.faellig_am) < new Date()
+
+                        return (
+                          <div
+                            key={action.id}
+                            draggable
+                            onDragStart={() => handleDragStart(action)}
+                            onClick={() => openLeadFromKanban(action.hot_lead_id)}
+                            className={`
+                              bg-surface rounded-lg p-3 shadow-sm cursor-grab active:cursor-grabbing
+                              border-l-4 ${actionIsOverdue && column.id !== 'erledigt' ? 'border-error' : 'border-transparent'}
+                              hover:shadow-md transition-all duration-200
+                              ${draggedAction?.id === action.id ? 'opacity-50 scale-95' : ''}
+                            `}
+                          >
+                            <div className="flex items-start gap-2">
+                              <div className="flex-shrink-0 mt-0.5">
+                                <GripVertical className="w-4 h-4 text-outline-variant" />
+                              </div>
+                              <ActionIcon className="w-4 h-4 text-on-surface-variant mt-0.5 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-sm font-medium text-on-surface truncate">
+                                  {action.hot_lead?.unternehmen || 'Unbekannt'}
+                                </p>
+                                <p className="text-xs text-on-surface-variant line-clamp-2 mt-0.5">
+                                  {action.beschreibung}
+                                </p>
+                                {action.faellig_am && (
+                                  <p className={`text-xs mt-1.5 flex items-center gap-1 ${
+                                    actionIsOverdue && column.id !== 'erledigt' ? 'text-error font-medium' : 'text-on-surface-variant'
+                                  }`}>
+                                    <Calendar className="w-3 h-3" />
+                                    {formatDate(action.faellig_am)}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+
+                      {columnActions.length === 0 && (
+                        <div className="text-center py-8 text-on-surface-variant">
+                          <ColumnIcon className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                          <p className="text-body-sm">Keine Aufgaben</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Detail Drawer */}
       {selectedLead && createPortal(

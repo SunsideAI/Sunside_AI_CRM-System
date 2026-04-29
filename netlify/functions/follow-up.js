@@ -1,5 +1,6 @@
-// Follow-Up API - Admin-only
-// GET: Follow-Up Leads laden (Hot Leads mit Status 'Wiedervorlage' oder 'Verloren')
+// Follow-Up API - Admin + Closer
+// GET: Follow-Up Leads laden (Hot Leads außer Abgeschlossen)
+// GET ?kanban=true: Alle Actions für Kanban Board
 // POST: Neue Action anlegen
 // PATCH: Action oder Lead updaten
 
@@ -17,28 +18,36 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 }
 
-// Admin-Check: User-Rolle über User-ID prüfen
-async function isAdminUser(userId) {
-  if (!userId) return false
+// User-Zugang prüfen: Admin hat vollen Zugriff, Closer nur auf eigene Leads
+async function checkUserAccess(userId) {
+  if (!userId) return { isAdmin: false, isCloser: false, closerId: null }
 
   try {
     const { data: userData, error: userError } = await supabase
       .from('users')
-      .select('rollen')
+      .select('id, rollen')
       .eq('id', userId)
       .single()
 
     if (userError || !userData) {
-      console.log('Admin check - User not found:', userId, userError)
-      return false
+      console.log('User check - User not found:', userId, userError)
+      return { isAdmin: false, isCloser: false, closerId: null }
     }
 
     const rollen = userData.rollen || []
-    console.log('Admin check - User roles:', userId, rollen)
-    return rollen.some(r => r.toLowerCase() === 'admin')
+    console.log('User check - Roles:', userId, rollen)
+
+    const isAdmin = rollen.some(r => r.toLowerCase() === 'admin')
+    const isCloser = rollen.some(r => r.toLowerCase() === 'closer')
+
+    return {
+      isAdmin,
+      isCloser,
+      closerId: isCloser ? userData.id : null
+    }
   } catch (err) {
-    console.error('Admin check failed:', err)
-    return false
+    console.error('User check failed:', err)
+    return { isAdmin: false, isCloser: false, closerId: null }
   }
 }
 
@@ -84,24 +93,25 @@ export async function handler(event) {
     } catch (e) {}
   }
 
-  // Admin-Check für alle Methoden
-  const isAdmin = await isAdminUser(userId)
-  if (!isAdmin) {
+  // User-Zugang prüfen (Admin oder Closer)
+  const { isAdmin, isCloser, closerId } = await checkUserAccess(userId)
+  if (!isAdmin && !isCloser) {
     return {
       statusCode: 403,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Zugriff verweigert. Nur Admins haben Zugriff.' })
+      body: JSON.stringify({ error: 'Zugriff verweigert. Nur Admins und Closer haben Zugriff.' })
     }
   }
 
   try {
     // ==========================================
-    // GET: Follow-Up Leads laden
+    // GET: Follow-Up Leads laden ODER Kanban Actions
     // ==========================================
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
       const {
-        closerId,
+        kanban,
+        closerId: filterCloserId,
         followUpStatus,
         faelligBis,
         search,
@@ -111,12 +121,78 @@ export async function handler(event) {
         offset = '0'
       } = params
 
-      console.log('Follow-Up GET - Params:', params)
+      console.log('Follow-Up GET - Params:', params, '- isAdmin:', isAdmin, '- isCloser:', isCloser)
 
       // User-Map laden
       const userMap = await loadUserMap()
 
-      // Hot Leads mit Status 'Wiedervorlage' oder 'Verloren' laden
+      // ==========================================
+      // KANBAN: Alle Actions für Board laden
+      // ==========================================
+      if (kanban === 'true') {
+        let actionsQuery = supabase
+          .from('follow_up_actions')
+          .select(`
+            id,
+            hot_lead_id,
+            typ,
+            beschreibung,
+            erledigt,
+            faellig_am,
+            kanban_status,
+            erstellt_von,
+            created_at
+          `)
+          .order('faellig_am', { ascending: true, nullsFirst: false })
+
+        const { data: actionsData, error: actionsError } = await actionsQuery
+
+        if (actionsError) {
+          console.error('Kanban Actions Error:', actionsError)
+          throw new Error(actionsError.message || 'Fehler beim Laden der Actions')
+        }
+
+        // Lead-Infos für jede Action laden
+        const leadIds = [...new Set((actionsData || []).map(a => a.hot_lead_id))]
+
+        let leadsQuery = supabase
+          .from('hot_leads')
+          .select('id, unternehmen, closer_id')
+          .in('id', leadIds)
+          .neq('status', 'Abgeschlossen')
+
+        // Closer sieht nur eigene Leads
+        if (isCloser && !isAdmin) {
+          leadsQuery = leadsQuery.eq('closer_id', closerId)
+        }
+
+        const { data: leadsData } = await leadsQuery
+
+        const leadsMap = {}
+        ;(leadsData || []).forEach(lead => {
+          leadsMap[lead.id] = lead
+        })
+
+        // Actions mit Lead-Info anreichern (nur Actions für sichtbare Leads)
+        const actionsWithLeads = (actionsData || [])
+          .filter(action => leadsMap[action.hot_lead_id])
+          .map(action => ({
+            ...action,
+            kanban_status: action.kanban_status || 'offen',
+            erstellt_von_name: action.erstellt_von ? userMap[action.erstellt_von] : null,
+            hot_lead: leadsMap[action.hot_lead_id]
+          }))
+
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ actions: actionsWithLeads })
+        }
+      }
+
+      // ==========================================
+      // STANDARD: Hot Leads laden
+      // ==========================================
       let query = supabase
         .from('hot_leads')
         .select(`
@@ -138,9 +214,12 @@ export async function handler(event) {
         `)
         .neq('status', 'Abgeschlossen')
 
-      // Filter: Closer
-      if (closerId && closerId !== 'all') {
+      // Closer sieht nur eigene Leads
+      if (isCloser && !isAdmin) {
         query = query.eq('closer_id', closerId)
+      } else if (filterCloserId && filterCloserId !== 'all') {
+        // Admin kann nach Closer filtern
+        query = query.eq('closer_id', filterCloserId)
       }
 
       // Filter: Follow-Up-Status
@@ -182,11 +261,17 @@ export async function handler(event) {
         throw new Error(hotLeadsError.message || 'Fehler beim Laden der Follow-Up Leads')
       }
 
-      // Total Count für Pagination
-      const { count: totalCount } = await supabase
+      // Total Count für Pagination (respektiert Closer-Filter)
+      let countQuery = supabase
         .from('hot_leads')
         .select('*', { count: 'exact', head: true })
         .neq('status', 'Abgeschlossen')
+
+      if (isCloser && !isAdmin) {
+        countQuery = countQuery.eq('closer_id', closerId)
+      }
+
+      const { count: totalCount } = await countQuery
 
       // Actions für jeden Lead laden (letzte 5 + nächste offene)
       const leadsWithActions = await Promise.all(
@@ -352,12 +437,19 @@ export async function handler(event) {
 
       // Action updaten
       if (actionId) {
-        const allowedActionFields = ['erledigt', 'beschreibung', 'faellig_am', 'typ']
+        const allowedActionFields = ['erledigt', 'beschreibung', 'faellig_am', 'typ', 'kanban_status']
         const filteredUpdates = {}
         for (const key of allowedActionFields) {
           if (updates[key] !== undefined) {
             filteredUpdates[key] = updates[key]
           }
+        }
+
+        // Wenn kanban_status auf 'erledigt' gesetzt wird, auch erledigt=true setzen
+        if (filteredUpdates.kanban_status === 'erledigt') {
+          filteredUpdates.erledigt = true
+        } else if (filteredUpdates.kanban_status && filteredUpdates.kanban_status !== 'erledigt') {
+          filteredUpdates.erledigt = false
         }
 
         const { data: updatedAction, error: actionError } = await supabase

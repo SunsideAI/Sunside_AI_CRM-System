@@ -364,7 +364,7 @@ function Layout({ children }) {
       name: 'Follow-Up',
       path: '/follow-up',
       icon: RotateCcw,
-      show: isAdmin()
+      show: isCloser() || isAdmin()
     },
     {
       name: 'Termine',
