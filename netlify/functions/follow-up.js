@@ -136,7 +136,7 @@ export async function handler(event) {
           closer_id,
           created_at
         `)
-        .in('status', ['Wiedervorlage', 'Verloren'])
+        .neq('status', 'Abgeschlossen')
 
       // Filter: Closer
       if (closerId && closerId !== 'all') {
@@ -186,7 +186,7 @@ export async function handler(event) {
       const { count: totalCount } = await supabase
         .from('hot_leads')
         .select('*', { count: 'exact', head: true })
-        .in('status', ['Wiedervorlage', 'Verloren'])
+        .neq('status', 'Abgeschlossen')
 
       // Actions für jeden Lead laden (letzte 5 + nächste offene)
       const leadsWithActions = await Promise.all(

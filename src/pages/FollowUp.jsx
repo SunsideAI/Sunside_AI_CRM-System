@@ -51,6 +51,19 @@ const FAELLIGKEIT_OPTIONS = [
   { value: 'next7', label: 'Nächste 7 Tage' }
 ]
 
+// Hot-Lead Status Optionen (für Filter und Badge)
+const HOT_LEAD_STATUS_OPTIONS = [
+  { value: 'Lead', label: 'Lead', color: 'bg-blue-100 text-blue-700' },
+  { value: 'Verloren', label: 'Verloren', color: 'bg-red-100 text-red-700' },
+  { value: 'Angebot versendet', label: 'Angebot versendet', color: 'bg-purple-100 text-purple-700' },
+  { value: 'Termin abgesagt', label: 'Termin abgesagt', color: 'bg-orange-100 text-orange-700' },
+  { value: 'Termin verschoben', label: 'Termin verschoben', color: 'bg-amber-100 text-amber-700' },
+  { value: 'Wiedervorlage', label: 'Wiedervorlage', color: 'bg-cyan-100 text-cyan-700' },
+  { value: 'Geplant', label: 'Geplant', color: 'bg-cyan-100 text-cyan-700' },
+  { value: 'Im Closing', label: 'Im Closing', color: 'bg-indigo-100 text-indigo-700' },
+  { value: 'Angebot', label: 'Angebot', color: 'bg-yellow-100 text-yellow-700' }
+]
+
 function FollowUp() {
   const { user } = useAuth()
   const [leads, setLeads] = useState([])
@@ -60,6 +73,7 @@ function FollowUp() {
   const [closerFilter, setCloserFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
   const [faelligkeitFilter, setFaelligkeitFilter] = useState('all')
+  const [hotLeadStatusFilter, setHotLeadStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalLeads, setTotalLeads] = useState(0)
   const [closers, setClosers] = useState([])
@@ -96,6 +110,11 @@ function FollowUp() {
     d.setDate(d.getDate() + 7)
     return d.toISOString().split('T')[0]
   }
+
+  // Client-seitig gefilterte Leads (für Hot-Lead Status Filter)
+  const filteredLeads = hotLeadStatusFilter === 'all'
+    ? leads
+    : leads.filter(lead => lead.status === hotLeadStatusFilter)
 
   // Daten laden
   const loadLeads = async (showRefreshing = false) => {
@@ -385,13 +404,25 @@ function FollowUp() {
             ))}
           </select>
 
-          {/* Status Filter */}
+          {/* Hot-Lead Status Filter */}
+          <select
+            value={hotLeadStatusFilter}
+            onChange={(e) => { setHotLeadStatusFilter(e.target.value); setCurrentPage(1) }}
+            className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
+          >
+            <option value="all">Alle Hot-Lead Status</option>
+            {HOT_LEAD_STATUS_OPTIONS.map(s => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+
+          {/* Follow-Up Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1) }}
             className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
           >
-            <option value="all">Alle Status</option>
+            <option value="all">Alle Follow-Up Status</option>
             {FOLLOW_UP_STATUS_OPTIONS.map(s => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
@@ -409,12 +440,13 @@ function FollowUp() {
           </select>
 
           {/* Reset Filter Button */}
-          {(closerFilter !== 'all' || statusFilter !== 'all' || faelligkeitFilter !== 'all') && (
+          {(closerFilter !== 'all' || statusFilter !== 'all' || faelligkeitFilter !== 'all' || hotLeadStatusFilter !== 'all') && (
             <button
               onClick={() => {
                 setCloserFilter('all')
                 setStatusFilter('all')
                 setFaelligkeitFilter('all')
+                setHotLeadStatusFilter('all')
                 setCurrentPage(1)
               }}
               className="px-3 py-2 text-body-sm text-error hover:bg-error-container rounded-lg transition-colors flex items-center gap-1 col-span-2 sm:col-span-1"
@@ -433,7 +465,7 @@ function FollowUp() {
             <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
             <p className="text-on-surface-variant">Leads werden geladen...</p>
           </div>
-        ) : leads.length === 0 ? (
+        ) : filteredLeads.length === 0 ? (
           <div className="text-center py-12 text-on-surface-variant">
             <RotateCcw className="w-10 h-10 mx-auto mb-3 text-outline-variant" />
             <p className="text-title-md mb-1">Keine Leads gefunden</p>
@@ -443,11 +475,12 @@ function FollowUp() {
           </div>
         ) : (
         <div className="divide-y divide-outline-variant">
-          {leads.map((lead) => {
+          {filteredLeads.map((lead) => {
             const overdue = isOverdue(lead.follow_up_datum)
             const lastAction = lead.letzte_aktionen?.[0]
             const ActionIcon = lastAction ? getActionIcon(lastAction.typ) : null
             const statusOption = FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)
+            const hotLeadStatusOption = HOT_LEAD_STATUS_OPTIONS.find(s => s.value === lead.status)
 
             return (
               <div
@@ -462,11 +495,18 @@ function FollowUp() {
                       {lead.ansprechpartner_vorname} {lead.ansprechpartner_nachname}
                     </div>
                   </div>
-                  {statusOption && (
-                    <span className={`px-2 py-1 rounded-full text-label-sm flex-shrink-0 ${statusOption.color}`}>
-                      {statusOption.label}
-                    </span>
-                  )}
+                  <div className="flex flex-wrap gap-1 flex-shrink-0">
+                    {hotLeadStatusOption && (
+                      <span className={`px-2 py-1 rounded-full text-label-sm ${hotLeadStatusOption.color}`}>
+                        {hotLeadStatusOption.label}
+                      </span>
+                    )}
+                    {statusOption && (
+                      <span className={`px-2 py-1 rounded-full text-label-sm ${statusOption.color}`}>
+                        {statusOption.label}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-body-sm">
@@ -501,7 +541,7 @@ function FollowUp() {
         )}
 
         {/* Mobile Pagination */}
-        {!loading && leads.length > 0 && totalPages > 1 && (
+        {!loading && filteredLeads.length > 0 && totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
             <span className="text-body-sm text-on-surface-variant">
               Seite {currentPage} von {totalPages}
@@ -533,7 +573,8 @@ function FollowUp() {
             <tr className="bg-surface-container">
               <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Unternehmen</th>
               <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Closer</th>
-              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Status</th>
+              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Hot-Lead Status</th>
+              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Follow-Up Status</th>
               <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Nächster Schritt</th>
               <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Fällig am</th>
               <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Letzte Aktion</th>
@@ -542,16 +583,16 @@ function FollowUp() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-16">
+                <td colSpan={7} className="px-4 py-16">
                   <div className="flex flex-col items-center justify-center">
                     <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
                     <p className="text-on-surface-variant">Leads werden geladen...</p>
                   </div>
                 </td>
               </tr>
-            ) : leads.length === 0 ? (
+            ) : filteredLeads.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-12">
+                <td colSpan={7} className="px-4 py-12">
                   <div className="text-center text-on-surface-variant">
                     <RotateCcw className="w-10 h-10 mx-auto mb-3 text-outline-variant" />
                     <p className="text-title-md mb-1">Keine Leads gefunden</p>
@@ -563,7 +604,7 @@ function FollowUp() {
               </tr>
             ) : (
               <>
-            {leads.map((lead, index) => {
+            {filteredLeads.map((lead, index) => {
               const overdue = isOverdue(lead.follow_up_datum)
               const lastAction = lead.letzte_aktionen?.[0]
               const ActionIcon = lastAction ? getActionIcon(lastAction.typ) : null
@@ -587,6 +628,19 @@ function FollowUp() {
                   </td>
                   <td className="px-4 py-4 text-body-md text-on-surface">
                     {lead.closer_name || '-'}
+                  </td>
+                  <td className="px-4 py-4">
+                    {HOT_LEAD_STATUS_OPTIONS.find(s => s.value === lead.status) ? (
+                      <span className={`px-2 py-1 rounded-full text-label-sm ${
+                        HOT_LEAD_STATUS_OPTIONS.find(s => s.value === lead.status)?.color
+                      }`}>
+                        {HOT_LEAD_STATUS_OPTIONS.find(s => s.value === lead.status)?.label}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 rounded-full text-label-sm bg-gray-100 text-gray-700">
+                        {lead.status || '-'}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-4">
                     {FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status) ? (
@@ -630,7 +684,7 @@ function FollowUp() {
         </table>
 
         {/* Pagination - Desktop */}
-        {!loading && leads.length > 0 && totalPages > 1 && (
+        {!loading && filteredLeads.length > 0 && totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
             <span className="text-body-sm text-on-surface-variant">
               Seite {currentPage} von {totalPages}
