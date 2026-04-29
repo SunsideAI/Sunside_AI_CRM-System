@@ -111,8 +111,10 @@ export async function handler(event) {
       const params = event.queryStringParameters || {}
       const {
         kanban,
+        leadId,
         closerId: filterCloserId,
         followUpStatus,
+        hotLeadStatus,
         faelligBis,
         search,
         sortBy = 'created_at',
@@ -191,6 +193,62 @@ export async function handler(event) {
       }
 
       // ==========================================
+      // SINGLE LEAD: Einzelnen Lead per ID laden
+      // ==========================================
+      if (leadId) {
+        const { data: singleLead, error: singleError } = await supabase
+          .from('hot_leads')
+          .select(`
+            id, unternehmen, ansprechpartner_vorname, ansprechpartner_nachname,
+            telefonnummer, mail, website, status, kommentar,
+            follow_up_status, follow_up_naechster_schritt, follow_up_datum,
+            setter_id, closer_id, created_at
+          `)
+          .eq('id', leadId)
+          .single()
+
+        if (singleError) {
+          console.error('Single Lead Error:', singleError)
+          return {
+            statusCode: 404,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Lead nicht gefunden' })
+          }
+        }
+
+        // Actions laden
+        const { data: actions } = await supabase
+          .from('follow_up_actions')
+          .select('*')
+          .eq('hot_lead_id', leadId)
+          .order('created_at', { ascending: false })
+          .limit(10)
+
+        const formattedActions = (actions || []).map(action => ({
+          id: action.id,
+          typ: action.typ,
+          beschreibung: action.beschreibung,
+          erledigt: action.erledigt,
+          faellig_am: action.faellig_am,
+          erstellt_von_name: action.erstellt_von ? userMap[action.erstellt_von] : null,
+          created_at: action.created_at
+        }))
+
+        const lead = {
+          ...singleLead,
+          setter_name: singleLead.setter_id ? userMap[singleLead.setter_id] : '',
+          closer_name: singleLead.closer_id ? userMap[singleLead.closer_id] : '',
+          letzte_aktionen: formattedActions
+        }
+
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ lead })
+        }
+      }
+
+      // ==========================================
       // STANDARD: Hot Leads laden
       // ==========================================
       let query = supabase
@@ -232,6 +290,11 @@ export async function handler(event) {
         }
       }
 
+      // Filter: Hot-Lead Status (z.B. Lead, Verloren, Wiedervorlage)
+      if (hotLeadStatus && hotLeadStatus !== 'all') {
+        query = query.eq('status', hotLeadStatus)
+      }
+
       // Filter: Fälligkeit
       if (faelligBis) {
         query = query.lte('follow_up_datum', faelligBis)
@@ -266,7 +329,7 @@ export async function handler(event) {
         throw new Error(hotLeadsError.message || 'Fehler beim Laden der Follow-Up Leads')
       }
 
-      // Total Count für Pagination (respektiert Closer-Filter)
+      // Total Count für Pagination (respektiert alle Filter)
       let countQuery = supabase
         .from('hot_leads')
         .select('*', { count: 'exact', head: true })
@@ -274,6 +337,24 @@ export async function handler(event) {
 
       if (isCloser && !isAdmin) {
         countQuery = countQuery.eq('closer_id', closerId)
+      } else if (filterCloserId && filterCloserId !== 'all') {
+        countQuery = countQuery.eq('closer_id', filterCloserId)
+      }
+
+      if (followUpStatus && followUpStatus !== 'all') {
+        if (followUpStatus === 'aktiv') {
+          countQuery = countQuery.or('follow_up_status.eq.aktiv,follow_up_status.is.null')
+        } else {
+          countQuery = countQuery.eq('follow_up_status', followUpStatus)
+        }
+      }
+
+      if (hotLeadStatus && hotLeadStatus !== 'all') {
+        countQuery = countQuery.eq('status', hotLeadStatus)
+      }
+
+      if (search) {
+        countQuery = countQuery.ilike('unternehmen', `%${search}%`)
       }
 
       const { count: totalCount } = await countQuery

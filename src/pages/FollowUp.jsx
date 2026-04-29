@@ -142,10 +142,7 @@ function FollowUp() {
     return d.toISOString().split('T')[0]
   }
 
-  // Client-seitig gefilterte Leads (für Hot-Lead Status Filter)
-  const filteredLeads = hotLeadStatusFilter === 'all'
-    ? leads
-    : leads.filter(lead => lead.status === hotLeadStatusFilter)
+  // Hot-Lead Status Filter ist jetzt server-seitig
 
   // Daten laden
   const loadLeads = async (showRefreshing = false) => {
@@ -157,6 +154,7 @@ function FollowUp() {
       if (user?.id) params.append('userId', user.id)
       if (closerFilter !== 'all') params.append('closerId', closerFilter)
       if (statusFilter !== 'all') params.append('followUpStatus', statusFilter)
+      if (hotLeadStatusFilter !== 'all') params.append('hotLeadStatus', hotLeadStatusFilter)
       if (searchTerm) params.append('search', searchTerm)
       params.append('limit', LEADS_PER_PAGE.toString())
       params.append('offset', ((currentPage - 1) * LEADS_PER_PAGE).toString())
@@ -199,7 +197,7 @@ function FollowUp() {
     if (viewMode === 'liste') {
       loadLeads()
     }
-  }, [currentPage, closerFilter, statusFilter, faelligkeitFilter, viewMode])
+  }, [currentPage, closerFilter, statusFilter, faelligkeitFilter, hotLeadStatusFilter, viewMode])
 
   // Debounced Search (nur für Liste)
   useEffect(() => {
@@ -300,22 +298,35 @@ function FollowUp() {
 
   // Lead aus Kanban-Karte öffnen
   const openLeadFromKanban = async (hotLeadId) => {
-    const lead = leads.find(l => l.id === hotLeadId)
-    if (lead) {
-      handleSelectLead(lead)
-    } else {
-      // Lead nicht im Cache, neu laden
-      try {
-        const params = new URLSearchParams({ userId: user.id })
-        const response = await fetch(`/.netlify/functions/follow-up?${params.toString()}`)
-        const data = await response.json()
-        const foundLead = (data.leads || []).find(l => l.id === hotLeadId)
+    if (!hotLeadId) return
+
+    // Erst im Cache suchen
+    const cachedLead = leads.find(l => l.id === hotLeadId)
+    if (cachedLead) {
+      handleSelectLead(cachedLead)
+      return
+    }
+
+    // Lead spezifisch vom Server laden
+    try {
+      const params = new URLSearchParams({
+        userId: user.id,
+        leadId: hotLeadId
+      })
+      const response = await fetch(`/.netlify/functions/follow-up?${params.toString()}`)
+      const data = await response.json()
+
+      if (data.lead) {
+        handleSelectLead(data.lead)
+      } else if (data.leads?.length > 0) {
+        // Fallback: In der Liste suchen
+        const foundLead = data.leads.find(l => l.id === hotLeadId)
         if (foundLead) {
           handleSelectLead(foundLead)
         }
-      } catch (err) {
-        console.error('Lead load error:', err)
       }
+    } catch (err) {
+      console.error('Lead load error:', err)
     }
   }
 
@@ -816,7 +827,7 @@ function FollowUp() {
             <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
             <p className="text-on-surface-variant">Leads werden geladen...</p>
           </div>
-        ) : filteredLeads.length === 0 ? (
+        ) : leads.length === 0 ? (
           <div className="text-center py-12 text-on-surface-variant">
             <RotateCcw className="w-10 h-10 mx-auto mb-3 text-outline-variant" />
             <p className="text-title-md mb-1">Keine Leads gefunden</p>
@@ -826,7 +837,7 @@ function FollowUp() {
           </div>
         ) : (
         <div className="divide-y divide-outline-variant">
-          {filteredLeads.map((lead) => {
+          {leads.map((lead) => {
             const overdue = isOverdue(lead.follow_up_datum)
             const lastAction = lead.letzte_aktionen?.[0]
             const ActionIcon = lastAction ? getActionIcon(lastAction.typ) : null
@@ -892,7 +903,7 @@ function FollowUp() {
         )}
 
         {/* Mobile Pagination */}
-        {!loading && filteredLeads.length > 0 && totalPages > 1 && (
+        {!loading && leads.length > 0 && totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
             <span className="text-body-sm text-on-surface-variant">
               Seite {currentPage} von {totalPages}
@@ -941,7 +952,7 @@ function FollowUp() {
                   </div>
                 </td>
               </tr>
-            ) : filteredLeads.length === 0 ? (
+            ) : leads.length === 0 ? (
               <tr>
                 <td colSpan={7} className="px-4 py-12">
                   <div className="text-center text-on-surface-variant">
@@ -955,7 +966,7 @@ function FollowUp() {
               </tr>
             ) : (
               <>
-            {filteredLeads.map((lead, index) => {
+            {leads.map((lead, index) => {
               const overdue = isOverdue(lead.follow_up_datum)
               const lastAction = lead.letzte_aktionen?.[0]
               const ActionIcon = lastAction ? getActionIcon(lastAction.typ) : null
@@ -1035,7 +1046,7 @@ function FollowUp() {
         </table>
 
         {/* Pagination - Desktop */}
-        {!loading && filteredLeads.length > 0 && totalPages > 1 && (
+        {!loading && leads.length > 0 && totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
             <span className="text-body-sm text-on-surface-variant">
               Seite {currentPage} von {totalPages}
