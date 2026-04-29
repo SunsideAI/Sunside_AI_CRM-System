@@ -14,7 +14,12 @@ CHECK (kanban_status IN ('offen', 'in_bearbeitung', 'erledigt'));
 CREATE INDEX IF NOT EXISTS idx_follow_up_kanban_status
 ON follow_up_actions(kanban_status);
 
--- 3. Bestehende erledigte Actions migrieren
+-- 3. Alle bestehenden Actions initial auf 'offen' setzen
+UPDATE follow_up_actions
+SET kanban_status = 'offen'
+WHERE kanban_status IS NULL;
+
+-- 4. Erledigte Actions auf 'erledigt' setzen
 UPDATE follow_up_actions
 SET kanban_status = 'erledigt'
-WHERE erledigt = true AND kanban_status = 'offen';
+WHERE erledigt = true;
