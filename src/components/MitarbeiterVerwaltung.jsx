@@ -1001,27 +1001,25 @@ function MitarbeiterVerwaltung() {
               </div>
             </div>
 
-            {/* Closer-Pfad bereitstellen */}
-            {selectedUser?.onboarding !== 'Closer' && selectedUser?.onboarding !== 'Closer-Pfad bereitstellen' && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-start">
-                    <Target className="w-5 h-5 text-success mr-3 mt-0.5" />
-                    <div className="text-sm text-green-700">
-                      <p className="font-medium">Closer-Pfad bereitstellen</p>
-                      <p className="mt-1">Startet das Closer-Onboarding für diesen Mitarbeiter.</p>
-                    </div>
+            {/* Closer-Pfad bereitstellen - immer sichtbar */}
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-start">
+                  <Target className="w-5 h-5 text-success mr-3 mt-0.5" />
+                  <div className="text-sm text-green-700">
+                    <p className="font-medium">Closer-Pfad bereitstellen</p>
+                    <p className="mt-1">Startet das Closer-Onboarding für diesen Mitarbeiter.</p>
                   </div>
-                  <button
-                    onClick={setCloserPfad}
-                    disabled={saving}
-                    className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
-                  >
-                    Starten
-                  </button>
                 </div>
+                <button
+                  onClick={setCloserPfad}
+                  disabled={saving}
+                  className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 disabled:opacity-50"
+                >
+                  Starten
+                </button>
               </div>
-            )}
+            </div>
 
             {/* Vertrag erneut senden */}
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
