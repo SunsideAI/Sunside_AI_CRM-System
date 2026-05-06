@@ -620,25 +620,9 @@ export async function handler(event) {
             : newEntry
 
           filteredUpdates.kommentar = updatedKommentar
-
-          // Auch in original leads Tabelle schreiben (für Sync mit Kaltakquise/Closing)
-          if (hotLead?.lead_id) {
-            const { data: originalLead } = await supabase
-              .from('leads')
-              .select('kommentar')
-              .eq('id', hotLead.lead_id)
-              .single()
-
-            const originalKommentar = originalLead?.kommentar || ''
-            const syncedKommentar = originalKommentar
-              ? `${newEntry}\n${originalKommentar}`
-              : newEntry
-
-            await supabase
-              .from('leads')
-              .update({ kommentar: syncedKommentar })
-              .eq('id', hotLead.lead_id)
-          }
+          // Hinweis: Wir schreiben NICHT mehr in leads.kommentar
+          // um Duplikate zu vermeiden. Follow-Up hat eigene Kommentare,
+          // Kaltakquise-Kommentare werden über kaltakquise_kommentar geladen.
         }
 
         const { data: updatedLead, error: leadError } = await supabase

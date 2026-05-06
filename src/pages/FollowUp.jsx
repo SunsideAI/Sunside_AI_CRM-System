@@ -1587,13 +1587,14 @@ function FollowUp() {
                           selectedLead.kaltakquise_kommentar || '',
                           selectedLead.kommentar || ''
                         ].join('\n')
-                        const lines = allComments.split('\n').filter(line => line.trim())
+                        // Duplikate entfernen (Set für eindeutige Zeilen)
+                        const uniqueLines = [...new Set(allComments.split('\n').filter(line => line.trim()))]
 
                         // Einträge kategorisieren
                         const historyEntries = []
                         const plainLines = []
 
-                        lines.forEach((line) => {
+                        uniqueLines.forEach((line) => {
                           const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
                           if (historyMatch) {
                             // Datum für Sortierung parsen
