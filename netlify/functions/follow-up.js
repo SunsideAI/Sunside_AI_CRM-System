@@ -582,7 +582,12 @@ export async function handler(event) {
         const filteredUpdates = {}
         for (const key of allowedLeadFields) {
           if (updates[key] !== undefined) {
-            filteredUpdates[key] = updates[key]
+            // Leere Strings für Datum-Felder in null umwandeln
+            if (key === 'follow_up_datum' && updates[key] === '') {
+              filteredUpdates[key] = null
+            } else {
+              filteredUpdates[key] = updates[key]
+            }
           }
         }
 

@@ -1050,13 +1050,14 @@ function FollowUp() {
               <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Follow-Up Status</th>
               <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Nächster Schritt</th>
               <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Fällig am</th>
+              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Kommentar</th>
               <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Letzte Aktion</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-16">
+                <td colSpan={8} className="px-4 py-16">
                   <div className="flex flex-col items-center justify-center">
                     <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
                     <p className="text-on-surface-variant">Leads werden geladen...</p>
@@ -1065,7 +1066,7 @@ function FollowUp() {
               </tr>
             ) : leads.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-12">
+                <td colSpan={8} className="px-4 py-12">
                   <div className="text-center text-on-surface-variant">
                     <RotateCcw className="w-10 h-10 mx-auto mb-3 text-outline-variant" />
                     <p className="text-title-md mb-1">Keine Leads gefunden</p>
@@ -1135,6 +1136,15 @@ function FollowUp() {
                     <span className={`text-body-md ${overdue ? 'text-error font-medium' : 'text-on-surface'}`}>
                       {formatDate(lead.follow_up_datum)}
                     </span>
+                  </td>
+                  <td className="px-4 py-4 max-w-[200px]">
+                    {lead.kommentar ? (
+                      <span className="text-body-sm text-on-surface-variant truncate block" title={lead.kommentar}>
+                        {lead.kommentar.split('\n')[0]?.substring(0, 50)}{lead.kommentar.length > 50 ? '...' : ''}
+                      </span>
+                    ) : (
+                      <span className="text-body-sm text-on-surface-variant">-</span>
+                    )}
                   </td>
                   <td className="px-4 py-4">
                     {lastAction ? (
