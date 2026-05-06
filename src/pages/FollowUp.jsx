@@ -1440,20 +1440,6 @@ function FollowUp() {
                   />
                 </div>
 
-                {/* Kommentar-History */}
-                {selectedLead.kommentar && (
-                  <div>
-                    <label className="block text-body-sm text-on-surface-variant mb-1">Kommentar-Verlauf</label>
-                    <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 max-h-48 overflow-y-auto">
-                      {selectedLead.kommentar.split('\n').filter(line => line.trim()).map((line, idx) => (
-                        <p key={idx} className="text-body-sm text-on-surface py-0.5 border-b border-outline-variant/30 last:border-0">
-                          {line}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 <button
                   onClick={handleSaveLead}
                   disabled={saving}
@@ -1462,6 +1448,84 @@ function FollowUp() {
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   Speichern
                 </button>
+              </div>
+
+              {/* STATUS & NOTIZEN - wie in Kaltakquise */}
+              <div className="space-y-4 border-t border-outline-variant pt-6">
+                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                  Status & Notizen
+                </h3>
+
+                {/* Kommentar-History */}
+                <div className="bg-surface-container-lowest rounded-lg p-4 max-h-64 overflow-y-auto">
+                  {selectedLead.kommentar ? (
+                    <div className="space-y-2">
+                      {(() => {
+                        const lines = selectedLead.kommentar.split('\n').filter(line => line.trim())
+                        const groups = []
+                        let currentPlainGroup = []
+
+                        lines.forEach((line) => {
+                          const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
+
+                          if (historyMatch) {
+                            if (currentPlainGroup.length > 0) {
+                              groups.push({ type: 'plain', lines: currentPlainGroup })
+                              currentPlainGroup = []
+                            }
+                            groups.push({ type: 'history', match: historyMatch, line })
+                          } else {
+                            currentPlainGroup.push(line)
+                          }
+                        })
+
+                        if (currentPlainGroup.length > 0) {
+                          groups.push({ type: 'plain', lines: currentPlainGroup })
+                        }
+
+                        return groups.map((group, index) => {
+                          if (group.type === 'history') {
+                            const [, datum, zeit, rest] = group.match
+                            const emojiMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬|🎯|📞|❌|✉️|📄|🔔|💰|🎉|🔄)\s*(.+)$/)
+                            const emoji = emojiMatch ? emojiMatch[1] : '📋'
+                            let text = emojiMatch ? emojiMatch[2] : rest
+                            const userMatch = text.match(/\(([^)]+)\)$/)
+                            const userName = userMatch ? userMatch[1] : null
+                            if (userMatch) text = text.replace(/\s*\([^)]+\)$/, '')
+
+                            return (
+                              <div key={index} className="flex items-start gap-3 p-2 rounded-lg hover:bg-surface-container transition-colors">
+                                <span className="text-lg flex-shrink-0">{emoji}</span>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-body-sm text-on-surface">{text}</p>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <span className="text-label-sm text-outline">{datum}, {zeit}</span>
+                                    {userName && (
+                                      <span className="text-label-sm text-on-surface-variant">• {userName}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          } else {
+                            return (
+                              <div key={index} className="flex items-start gap-3 p-2">
+                                <span className="text-lg flex-shrink-0">💬</span>
+                                <div className="text-body-sm text-on-surface space-y-1">
+                                  {group.lines.map((line, lineIdx) => (
+                                    <p key={lineIdx}>{line}</p>
+                                  ))}
+                                </div>
+                              </div>
+                            )
+                          }
+                        })
+                      })()}
+                    </div>
+                  ) : (
+                    <p className="text-body-sm text-outline italic">Noch keine Notizen vorhanden</p>
+                  )}
+                </div>
               </div>
 
               {/* Action Timeline */}
