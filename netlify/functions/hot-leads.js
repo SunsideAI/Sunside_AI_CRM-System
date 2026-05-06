@@ -237,7 +237,7 @@ export async function handler(event) {
           absprungrate: arrayToNumber(record.absprungrate, null) ?? arrayToNumber(originalLead.absprungrate, null),
           anzahlLeads: arrayToNumber(record.anzahl_leads, null) ?? arrayToNumber(originalLead.anzahl_leads, null),
           produktDienstleistung: record.produkt_dienstleistung || [],
-          kommentar: record.kommentar || originalLead.kommentar || '',
+          kommentar: originalLead.kommentar || '', // SINGLE SOURCE: leads.kommentar
           kundeSeit: record.kunde_seit || '',
           // Angebot konfigurieren - Felder
           vertragsbestandteile: record.vertragsbestandteile || '',
@@ -582,8 +582,14 @@ export async function handler(event) {
         'kurzbeschreibung': 'kurzbeschreibung',
         'leistungsbeschreibung': 'leistungsbeschreibung',
         // Eigene Felder (nicht mehr Lookup)
-        'kommentar': 'kommentar',
+        // 'kommentar' wird separat über leads-Tabelle behandelt
         'attachments': 'attachments'
+      }
+
+      // Kommentar separat behandeln (wird in leads-Tabelle geschrieben)
+      let kommentarToUpdate = null
+      if (updates.kommentar !== undefined) {
+        kommentarToUpdate = updates.kommentar
       }
 
       const fields = {}
@@ -606,7 +612,8 @@ export async function handler(event) {
         }
       }
 
-      if (Object.keys(fields).length === 0) {
+      // Wenn weder hot_leads-Felder noch Kommentar zu updaten sind, Fehler
+      if (Object.keys(fields).length === 0 && kommentarToUpdate === null) {
         return {
           statusCode: 400,
           headers: corsHeaders,
@@ -614,25 +621,60 @@ export async function handler(event) {
         }
       }
 
-      console.log('Updating Hot Lead:', hotLeadId, fields)
+      console.log('Updating Hot Lead:', hotLeadId, fields, 'Kommentar:', kommentarToUpdate !== null)
 
-      const { data, error } = await supabase
-        .from('hot_leads')
-        .update(fields)
-        .eq('id', hotLeadId)
-        .select(`
-          *,
-          closer:users!hot_leads_closer_id_fkey(vor_nachname, email, email_geschaeftlich),
-          original_lead:leads!hot_leads_lead_id_fkey(
-            unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname,
-            kategorie, mail, telefonnummer
-          )
-        `)
-        .single()
+      // Hot Lead laden (auch wenn keine fields zu updaten)
+      let data, error
+      if (Object.keys(fields).length > 0) {
+        const result = await supabase
+          .from('hot_leads')
+          .update(fields)
+          .eq('id', hotLeadId)
+          .select(`
+            *,
+            closer:users!hot_leads_closer_id_fkey(vor_nachname, email, email_geschaeftlich),
+            original_lead:leads!hot_leads_lead_id_fkey(
+              unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname,
+              kategorie, mail, telefonnummer, kommentar
+            )
+          `)
+          .single()
+        data = result.data
+        error = result.error
+      } else {
+        // Nur Kommentar-Update - Hot Lead nur laden, nicht updaten
+        const result = await supabase
+          .from('hot_leads')
+          .select(`
+            *,
+            closer:users!hot_leads_closer_id_fkey(vor_nachname, email, email_geschaeftlich),
+            original_lead:leads!hot_leads_lead_id_fkey(
+              unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname,
+              kategorie, mail, telefonnummer, kommentar
+            )
+          `)
+          .eq('id', hotLeadId)
+          .single()
+        data = result.data
+        error = result.error
+      }
 
       if (error) {
         console.error('Update Hot Lead Error:', error)
         throw new Error(error.message || 'Hot Lead konnte nicht aktualisiert werden')
+      }
+
+      // Kommentar in leads-Tabelle schreiben (SINGLE SOURCE OF TRUTH)
+      if (kommentarToUpdate !== null && data.lead_id) {
+        const { error: kommentarError } = await supabase
+          .from('leads')
+          .update({ kommentar: kommentarToUpdate })
+          .eq('id', data.lead_id)
+
+        if (kommentarError) {
+          console.error('Update Kommentar in leads Error:', kommentarError)
+          // Kein throw - Hot Lead ist bereits gespeichert
+        }
       }
 
       // Zapier-Webhook für Angebotsversand (wenn Status auf 'Angebot' gesetzt wird)

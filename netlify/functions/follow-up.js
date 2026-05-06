@@ -200,7 +200,7 @@ export async function handler(event) {
           .from('hot_leads')
           .select(`
             id, lead_id, unternehmen, ansprechpartner_vorname, ansprechpartner_nachname,
-            telefonnummer, mail, website, status, kommentar,
+            telefonnummer, mail, website, status,
             follow_up_status, follow_up_naechster_schritt, follow_up_datum,
             setter_id, closer_id, created_at
           `)
@@ -224,8 +224,8 @@ export async function handler(event) {
           .order('created_at', { ascending: false })
           .limit(10)
 
-        // Kaltakquise-Kommentare aus Original-Lead laden
-        let kaltakquiseKommentar = null
+        // Kommentar aus Original-Lead laden (SINGLE SOURCE OF TRUTH)
+        let kommentar = null
         if (singleLead.lead_id) {
           const { data: originalLead } = await supabase
             .from('leads')
@@ -233,7 +233,7 @@ export async function handler(event) {
             .eq('id', singleLead.lead_id)
             .single()
 
-          kaltakquiseKommentar = originalLead?.kommentar || null
+          kommentar = originalLead?.kommentar || null
         }
 
         const formattedActions = (actions || []).map(action => ({
@@ -248,7 +248,7 @@ export async function handler(event) {
 
         const lead = {
           ...singleLead,
-          kaltakquise_kommentar: kaltakquiseKommentar,
+          kommentar, // Kommentar kommt jetzt NUR aus leads-Tabelle
           setter_name: singleLead.setter_id ? userMap[singleLead.setter_id] : '',
           closer_name: singleLead.closer_id ? userMap[singleLead.closer_id] : '',
           letzte_aktionen: formattedActions
@@ -276,13 +276,13 @@ export async function handler(event) {
           mail,
           website,
           status,
-          kommentar,
           follow_up_status,
           follow_up_naechster_schritt,
           follow_up_datum,
           setter_id,
           closer_id,
-          created_at
+          created_at,
+          leads!lead_id (kommentar)
         `)
         .neq('status', 'Abgeschlossen')
 
@@ -415,7 +415,7 @@ export async function handler(event) {
             mail: lead.mail || '',
             website: lead.website || '',
             status: lead.status,
-            kommentar: lead.kommentar || '',
+            kommentar: lead.leads?.kommentar || '', // Kommentar aus leads-Tabelle (SINGLE SOURCE)
             follow_up_status: lead.follow_up_status || 'aktiv',
             follow_up_naechster_schritt: lead.follow_up_naechster_schritt || '',
             follow_up_datum: lead.follow_up_datum,
@@ -587,7 +587,7 @@ export async function handler(event) {
         // Hot Lead laden um lead_id zu bekommen
         const { data: hotLead } = await supabase
           .from('hot_leads')
-          .select('lead_id, kommentar')
+          .select('lead_id')
           .eq('id', hotLeadId)
           .single()
 
@@ -604,27 +604,45 @@ export async function handler(event) {
           }
         }
 
-        let updatedKommentar = hotLead?.kommentar || ''
+        // Kommentar aus leads-Tabelle laden (SINGLE SOURCE OF TRUTH)
+        let currentKommentar = ''
+        if (hotLead?.lead_id) {
+          const { data: originalLead } = await supabase
+            .from('leads')
+            .select('kommentar')
+            .eq('id', hotLead.lead_id)
+            .single()
+          currentKommentar = originalLead?.kommentar || ''
+        }
 
-        // Neuer Kommentar mit History-Format (wie Closing/Kaltakquise)
-        if (neuerKommentar && neuerKommentar.trim()) {
+        let updatedKommentar = currentKommentar
+
+        // Neuer Kommentar mit History-Format
+        if (neuerKommentar && neuerKommentar.trim() && hotLead?.lead_id) {
           const timestamp = new Date().toLocaleString('de-DE', {
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
           })
           const newEntry = `[${timestamp}] 💬 ${neuerKommentar.trim()} (${userName || 'Follow-Up'})`
 
-          // An bestehende Kommentare anhängen
-          updatedKommentar = updatedKommentar
-            ? `${newEntry}\n${updatedKommentar}`
+          // An bestehende Kommentare anhängen (neueste oben)
+          updatedKommentar = currentKommentar
+            ? `${newEntry}\n${currentKommentar}`
             : newEntry
 
-          filteredUpdates.kommentar = updatedKommentar
-          // Hinweis: Wir schreiben NICHT mehr in leads.kommentar
-          // um Duplikate zu vermeiden. Follow-Up hat eigene Kommentare,
-          // Kaltakquise-Kommentare werden über kaltakquise_kommentar geladen.
+          // Kommentar in leads-Tabelle schreiben (SINGLE SOURCE OF TRUTH)
+          const { error: kommentarError } = await supabase
+            .from('leads')
+            .update({ kommentar: updatedKommentar })
+            .eq('id', hotLead.lead_id)
+
+          if (kommentarError) {
+            console.error('Update Kommentar Error:', kommentarError)
+            throw new Error(kommentarError.message || 'Fehler beim Speichern des Kommentars')
+          }
         }
 
+        // Hot Lead Follow-Up-Felder updaten (OHNE Kommentar)
         const { data: updatedLead, error: leadError } = await supabase
           .from('hot_leads')
           .update(filteredUpdates)

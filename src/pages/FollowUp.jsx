@@ -346,7 +346,7 @@ function FollowUp() {
   }
 
   // Lead auswählen und Edit-Data initialisieren
-  // Holt immer frische Daten vom Server (inkl. kaltakquise_kommentar)
+  // Holt immer frische Daten vom Server (inkl. Kommentar aus leads-Tabelle)
   const handleSelectLead = async (lead) => {
     // Sofort anzeigen mit gecachten Daten
     setSelectedLead(lead)
@@ -358,7 +358,7 @@ function FollowUp() {
     })
     setNewAction({ typ: 'todo', beschreibung: '', faelligAm: '' })
 
-    // Dann vollständige Daten nachladen (inkl. kaltakquise_kommentar)
+    // Dann vollständige Daten nachladen (inkl. Kommentar aus leads-Tabelle)
     try {
       const params = new URLSearchParams({
         userId: user.id,
@@ -1577,18 +1577,13 @@ function FollowUp() {
                   Status & Notizen
                 </h3>
 
-                {/* Kommentar-History - kombiniert aus Kaltakquise + Follow-Up */}
+                {/* Kommentar-History - aus leads.kommentar (SINGLE SOURCE) */}
                 <div className="bg-surface-container-lowest rounded-lg p-4 max-h-64 overflow-y-auto">
-                  {(selectedLead.kommentar || selectedLead.kaltakquise_kommentar) ? (
+                  {selectedLead.kommentar ? (
                     <div className="space-y-2">
                       {(() => {
-                        // Beide Kommentar-Quellen kombinieren
-                        const allComments = [
-                          selectedLead.kaltakquise_kommentar || '',
-                          selectedLead.kommentar || ''
-                        ].join('\n')
-                        // Duplikate entfernen (Set für eindeutige Zeilen)
-                        const uniqueLines = [...new Set(allComments.split('\n').filter(line => line.trim()))]
+                        // Kommentar aus leads-Tabelle (einzige Quelle)
+                        const uniqueLines = selectedLead.kommentar.split('\n').filter(line => line.trim())
 
                         // Einträge kategorisieren
                         const historyEntries = []
