@@ -199,7 +199,7 @@ export async function handler(event) {
         const { data: singleLead, error: singleError } = await supabase
           .from('hot_leads')
           .select(`
-            id, unternehmen, ansprechpartner_vorname, ansprechpartner_nachname,
+            id, lead_id, unternehmen, ansprechpartner_vorname, ansprechpartner_nachname,
             telefonnummer, mail, website, status, kommentar,
             follow_up_status, follow_up_naechster_schritt, follow_up_datum,
             setter_id, closer_id, created_at
@@ -255,6 +255,7 @@ export async function handler(event) {
         .from('hot_leads')
         .select(`
           id,
+          lead_id,
           unternehmen,
           ansprechpartner_vorname,
           ansprechpartner_nachname,
@@ -393,6 +394,7 @@ export async function handler(event) {
 
           return {
             id: lead.id,
+            lead_id: lead.lead_id,
             unternehmen: lead.unternehmen || '',
             ansprechpartner_vorname: lead.ansprechpartner_vorname || '',
             ansprechpartner_nachname: lead.ansprechpartner_nachname || '',
@@ -567,11 +569,57 @@ export async function handler(event) {
 
       // Hot Lead Follow-Up-Felder updaten
       if (hotLeadId) {
-        const allowedLeadFields = ['follow_up_status', 'follow_up_naechster_schritt', 'follow_up_datum', 'kommentar']
+        const { neuerKommentar, userName } = body
+
+        // Hot Lead laden um lead_id zu bekommen
+        const { data: hotLead } = await supabase
+          .from('hot_leads')
+          .select('lead_id, kommentar')
+          .eq('id', hotLeadId)
+          .single()
+
+        const allowedLeadFields = ['follow_up_status', 'follow_up_naechster_schritt', 'follow_up_datum']
         const filteredUpdates = {}
         for (const key of allowedLeadFields) {
           if (updates[key] !== undefined) {
             filteredUpdates[key] = updates[key]
+          }
+        }
+
+        let updatedKommentar = hotLead?.kommentar || ''
+
+        // Neuer Kommentar mit History-Format (wie Closing/Kaltakquise)
+        if (neuerKommentar && neuerKommentar.trim()) {
+          const timestamp = new Date().toLocaleString('de-DE', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          })
+          const newEntry = `[${timestamp}] 💬 ${neuerKommentar.trim()} (${userName || 'Follow-Up'})`
+
+          // An bestehende Kommentare anhängen
+          updatedKommentar = updatedKommentar
+            ? `${newEntry}\n${updatedKommentar}`
+            : newEntry
+
+          filteredUpdates.kommentar = updatedKommentar
+
+          // Auch in original leads Tabelle schreiben (für Sync mit Kaltakquise/Closing)
+          if (hotLead?.lead_id) {
+            const { data: originalLead } = await supabase
+              .from('leads')
+              .select('kommentar')
+              .eq('id', hotLead.lead_id)
+              .single()
+
+            const originalKommentar = originalLead?.kommentar || ''
+            const syncedKommentar = originalKommentar
+              ? `${newEntry}\n${originalKommentar}`
+              : newEntry
+
+            await supabase
+              .from('leads')
+              .update({ kommentar: syncedKommentar })
+              .eq('id', hotLead.lead_id)
           }
         }
 
@@ -590,7 +638,7 @@ export async function handler(event) {
         return {
           statusCode: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ lead: updatedLead })
+          body: JSON.stringify({ lead: { ...updatedLead, kommentar: updatedKommentar } })
         }
       }
     }

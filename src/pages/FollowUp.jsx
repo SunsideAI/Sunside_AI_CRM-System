@@ -345,7 +345,7 @@ function FollowUp() {
       follow_up_status: lead.follow_up_status || 'aktiv',
       follow_up_naechster_schritt: lead.follow_up_naechster_schritt || '',
       follow_up_datum: lead.follow_up_datum || '',
-      kommentar: lead.kommentar || ''
+      neuerKommentar: ''
     })
     setNewAction({ typ: 'todo', beschreibung: '', faelligAm: '' })
   }
@@ -357,6 +357,8 @@ function FollowUp() {
     try {
       setSaving(true)
 
+      const { neuerKommentar, ...updates } = editData
+
       const response = await fetch('/.netlify/functions/follow-up', {
         method: 'PATCH',
         headers: {
@@ -365,7 +367,9 @@ function FollowUp() {
         body: JSON.stringify({
           userId: user?.id,
           hotLeadId: selectedLead.id,
-          updates: editData
+          updates,
+          neuerKommentar: neuerKommentar?.trim() || null,
+          userName: user?.vor_nachname || 'Follow-Up'
         })
       })
 
@@ -374,11 +378,15 @@ function FollowUp() {
         throw new Error(err.error || 'Fehler beim Speichern')
       }
 
+      const data = await response.json()
+      const updatedKommentar = data.lead?.kommentar || selectedLead.kommentar
+
       // Local state updaten
       setLeads(prev => prev.map(l =>
-        l.id === selectedLead.id ? { ...l, ...editData } : l
+        l.id === selectedLead.id ? { ...l, ...updates, kommentar: updatedKommentar } : l
       ))
-      setSelectedLead(prev => ({ ...prev, ...editData }))
+      setSelectedLead(prev => ({ ...prev, ...updates, kommentar: updatedKommentar }))
+      setEditData(prev => ({ ...prev, neuerKommentar: '' }))
     } catch (err) {
       console.error('Save error:', err)
       alert('Fehler beim Speichern: ' + err.message)
@@ -1410,16 +1418,31 @@ function FollowUp() {
                   />
                 </div>
 
+                {/* Neuer Kommentar */}
                 <div>
-                  <label className="block text-body-sm text-on-surface-variant mb-1">Kommentar</label>
+                  <label className="block text-body-sm text-on-surface-variant mb-1">Neuer Kommentar</label>
                   <textarea
-                    value={editData.kommentar || ''}
-                    onChange={(e) => setEditData(prev => ({ ...prev, kommentar: e.target.value }))}
-                    rows={3}
+                    value={editData.neuerKommentar || ''}
+                    onChange={(e) => setEditData(prev => ({ ...prev, neuerKommentar: e.target.value }))}
+                    rows={2}
                     className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary resize-none"
-                    placeholder="Allgemeiner Kommentar zum Lead..."
+                    placeholder="Kommentar hinzufügen..."
                   />
                 </div>
+
+                {/* Kommentar-History */}
+                {selectedLead.kommentar && (
+                  <div>
+                    <label className="block text-body-sm text-on-surface-variant mb-1">Kommentar-Verlauf</label>
+                    <div className="bg-surface-container-lowest border border-outline-variant rounded-lg p-3 max-h-48 overflow-y-auto">
+                      {selectedLead.kommentar.split('\n').filter(line => line.trim()).map((line, idx) => (
+                        <p key={idx} className="text-body-sm text-on-surface py-0.5 border-b border-outline-variant/30 last:border-0">
+                          {line}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <button
                   onClick={handleSaveLead}
