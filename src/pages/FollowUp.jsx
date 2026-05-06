@@ -30,7 +30,10 @@ import {
   Circle,
   CheckCircle,
   GripVertical,
-  Download
+  Download,
+  Settings,
+  Eye,
+  EyeOff
 } from 'lucide-react'
 
 // Kanban Spalten
@@ -77,6 +80,27 @@ const HOT_LEAD_STATUS_OPTIONS = [
   { value: 'Im Closing', label: 'Im Closing', color: 'bg-indigo-100 text-indigo-700' },
   { value: 'Angebot', label: 'Angebot', color: 'bg-yellow-100 text-yellow-700' }
 ]
+
+// Tabellen-Spalten Konfiguration
+const TABLE_COLUMNS = [
+  { id: 'unternehmen', label: 'Unternehmen', default: true, required: true },
+  { id: 'closer', label: 'Closer', default: true },
+  { id: 'hotLeadStatus', label: 'Hot-Lead Status', default: true },
+  { id: 'followUpStatus', label: 'Follow-Up Status', default: true },
+  { id: 'naechsterSchritt', label: 'Nächster Schritt', default: true },
+  { id: 'faelligAm', label: 'Fällig am', default: true },
+  { id: 'kommentar', label: 'Kommentar', default: true },
+  { id: 'letzteAktion', label: 'Letzte Aktion', default: true }
+]
+
+// Default sichtbare Spalten laden (aus localStorage oder alle defaults)
+const getDefaultVisibleColumns = () => {
+  try {
+    const saved = localStorage.getItem('followup_visible_columns')
+    if (saved) return JSON.parse(saved)
+  } catch (e) {}
+  return TABLE_COLUMNS.filter(c => c.default).map(c => c.id)
+}
 
 function FollowUp() {
   const { user, isAdmin, isCloser } = useAuth()
@@ -128,6 +152,10 @@ function FollowUp() {
 
   // Export State
   const [exporting, setExporting] = useState(false)
+
+  // Spalten-Einstellungen
+  const [visibleColumns, setVisibleColumns] = useState(getDefaultVisibleColumns)
+  const [showColumnSettings, setShowColumnSettings] = useState(false)
 
   const LEADS_PER_PAGE = 20
 
@@ -643,6 +671,28 @@ function FollowUp() {
     }
   }
 
+  // Spalten-Sichtbarkeit togglen
+  const toggleColumn = (columnId) => {
+    const column = TABLE_COLUMNS.find(c => c.id === columnId)
+    if (column?.required) return // Required columns können nicht ausgeblendet werden
+
+    setVisibleColumns(prev => {
+      const newColumns = prev.includes(columnId)
+        ? prev.filter(id => id !== columnId)
+        : [...prev, columnId]
+
+      // In localStorage speichern
+      try {
+        localStorage.setItem('followup_visible_columns', JSON.stringify(newColumns))
+      } catch (e) {}
+
+      return newColumns
+    })
+  }
+
+  // Prüfen ob Spalte sichtbar ist
+  const isColumnVisible = (columnId) => visibleColumns.includes(columnId)
+
   // Excel Export
   const handleExportExcel = async () => {
     try {
@@ -862,6 +912,58 @@ function FollowUp() {
                 )}
                 <span className="hidden sm:inline text-label-md">Export</span>
               </button>
+
+              {/* Spalten-Einstellungen */}
+              <div className="relative">
+                <button
+                  onClick={() => setShowColumnSettings(!showColumnSettings)}
+                  className={`p-2.5 rounded-lg transition-colors shadow-ambient-sm ${
+                    showColumnSettings
+                      ? 'bg-primary text-on-primary'
+                      : 'bg-surface-container-lowest hover:bg-surface-container'
+                  }`}
+                  title="Spalten anpassen"
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+
+                {/* Dropdown */}
+                {showColumnSettings && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowColumnSettings(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-56 bg-surface rounded-xl shadow-xl border border-outline-variant z-50">
+                      <div className="px-4 py-3 border-b border-outline-variant">
+                        <p className="text-label-lg font-medium text-on-surface">Spalten anzeigen</p>
+                      </div>
+                      <div className="py-2 max-h-64 overflow-y-auto">
+                        {TABLE_COLUMNS.map(column => (
+                          <button
+                            key={column.id}
+                            onClick={() => toggleColumn(column.id)}
+                            disabled={column.required}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-surface-container transition-colors ${
+                              column.required ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            {isColumnVisible(column.id) ? (
+                              <Eye className="w-4 h-4 text-primary" />
+                            ) : (
+                              <EyeOff className="w-4 h-4 text-outline" />
+                            )}
+                            <span className="text-body-md text-on-surface">{column.label}</span>
+                            {column.required && (
+                              <span className="ml-auto text-label-sm text-outline">(Pflicht)</span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
 
             {/* Zeile 2: Filter - responsive grid on mobile */}
@@ -1047,20 +1149,20 @@ function FollowUp() {
         <table className="w-full">
           <thead>
             <tr className="bg-surface-container">
-              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Unternehmen</th>
-              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Closer</th>
-              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Hot-Lead Status</th>
-              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Follow-Up Status</th>
-              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Nächster Schritt</th>
-              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Fällig am</th>
-              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Kommentar</th>
-              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Letzte Aktion</th>
+              {isColumnVisible('unternehmen') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Unternehmen</th>}
+              {isColumnVisible('closer') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Closer</th>}
+              {isColumnVisible('hotLeadStatus') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Hot-Lead Status</th>}
+              {isColumnVisible('followUpStatus') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Follow-Up Status</th>}
+              {isColumnVisible('naechsterSchritt') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Nächster Schritt</th>}
+              {isColumnVisible('faelligAm') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Fällig am</th>}
+              {isColumnVisible('kommentar') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant min-w-[250px]">Kommentar</th>}
+              {isColumnVisible('letzteAktion') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Letzte Aktion</th>}
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={8} className="px-4 py-16">
+                <td colSpan={visibleColumns.length} className="px-4 py-16">
                   <div className="flex flex-col items-center justify-center">
                     <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
                     <p className="text-on-surface-variant">Leads werden geladen...</p>
@@ -1069,7 +1171,7 @@ function FollowUp() {
               </tr>
             ) : leads.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-12">
+                <td colSpan={visibleColumns.length} className="px-4 py-12">
                   <div className="text-center text-on-surface-variant">
                     <RotateCcw className="w-10 h-10 mx-auto mb-3 text-outline-variant" />
                     <p className="text-title-md mb-1">Keine Leads gefunden</p>
@@ -1097,70 +1199,86 @@ function FollowUp() {
                     hover:bg-primary-fixed/20
                   `}
                 >
-                  <td className="px-4 py-4">
-                    <div className="font-medium text-on-surface">{lead.unternehmen || '-'}</div>
-                    <div className="text-body-sm text-on-surface-variant">
-                      {lead.ansprechpartner_vorname} {lead.ansprechpartner_nachname}
-                    </div>
-                  </td>
-                  <td className="px-4 py-4 text-body-md text-on-surface">
-                    {lead.closer_name || '-'}
-                  </td>
-                  <td className="px-4 py-4">
-                    {HOT_LEAD_STATUS_OPTIONS.find(s => s.value === lead.status) ? (
-                      <span className={`px-2 py-1 rounded-full text-label-sm ${
-                        HOT_LEAD_STATUS_OPTIONS.find(s => s.value === lead.status)?.color
-                      }`}>
-                        {HOT_LEAD_STATUS_OPTIONS.find(s => s.value === lead.status)?.label}
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 rounded-full text-label-sm bg-gray-100 text-gray-700">
-                        {lead.status || '-'}
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4">
-                    {FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status) ? (
-                      <span className={`px-2 py-1 rounded-full text-label-sm ${
-                        FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)?.color
-                      }`}>
-                        {FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)?.label}
-                      </span>
-                    ) : (
-                      <span className="px-2 py-1 rounded-full text-label-sm bg-gray-100 text-gray-700">
-                        -
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4 text-body-md text-on-surface max-w-[200px] truncate">
-                    {lead.follow_up_naechster_schritt || '-'}
-                  </td>
-                  <td className="px-4 py-4">
-                    <span className={`text-body-md ${overdue ? 'text-error font-medium' : 'text-on-surface'}`}>
-                      {formatDate(lead.follow_up_datum)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-4 max-w-[200px]">
-                    {lead.kommentar ? (
-                      <span className="text-body-sm text-on-surface-variant truncate block" title={lead.kommentar}>
-                        {lead.kommentar.split('\n')[0]?.substring(0, 50)}{lead.kommentar.length > 50 ? '...' : ''}
-                      </span>
-                    ) : (
-                      <span className="text-body-sm text-on-surface-variant">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-4">
-                    {lastAction ? (
-                      <div className="flex items-center gap-2">
-                        <ActionIcon className="h-4 w-4 text-on-surface-variant" />
-                        <span className="text-body-sm text-on-surface-variant truncate max-w-[150px]">
-                          {lastAction.beschreibung?.substring(0, 50)}
-                        </span>
+                  {isColumnVisible('unternehmen') && (
+                    <td className="px-4 py-4">
+                      <div className="font-medium text-on-surface">{lead.unternehmen || '-'}</div>
+                      <div className="text-body-sm text-on-surface-variant">
+                        {lead.ansprechpartner_vorname} {lead.ansprechpartner_nachname}
                       </div>
-                    ) : (
-                      <span className="text-body-sm text-on-surface-variant">-</span>
-                    )}
-                  </td>
+                    </td>
+                  )}
+                  {isColumnVisible('closer') && (
+                    <td className="px-4 py-4 text-body-md text-on-surface">
+                      {lead.closer_name || '-'}
+                    </td>
+                  )}
+                  {isColumnVisible('hotLeadStatus') && (
+                    <td className="px-4 py-4">
+                      {HOT_LEAD_STATUS_OPTIONS.find(s => s.value === lead.status) ? (
+                        <span className={`px-2 py-1 rounded-full text-label-sm ${
+                          HOT_LEAD_STATUS_OPTIONS.find(s => s.value === lead.status)?.color
+                        }`}>
+                          {HOT_LEAD_STATUS_OPTIONS.find(s => s.value === lead.status)?.label}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-full text-label-sm bg-gray-100 text-gray-700">
+                          {lead.status || '-'}
+                        </span>
+                      )}
+                    </td>
+                  )}
+                  {isColumnVisible('followUpStatus') && (
+                    <td className="px-4 py-4">
+                      {FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status) ? (
+                        <span className={`px-2 py-1 rounded-full text-label-sm ${
+                          FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)?.color
+                        }`}>
+                          {FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)?.label}
+                        </span>
+                      ) : (
+                        <span className="px-2 py-1 rounded-full text-label-sm bg-gray-100 text-gray-700">
+                          -
+                        </span>
+                      )}
+                    </td>
+                  )}
+                  {isColumnVisible('naechsterSchritt') && (
+                    <td className="px-4 py-4 text-body-md text-on-surface max-w-[200px] truncate">
+                      {lead.follow_up_naechster_schritt || '-'}
+                    </td>
+                  )}
+                  {isColumnVisible('faelligAm') && (
+                    <td className="px-4 py-4">
+                      <span className={`text-body-md ${overdue ? 'text-error font-medium' : 'text-on-surface'}`}>
+                        {formatDate(lead.follow_up_datum)}
+                      </span>
+                    </td>
+                  )}
+                  {isColumnVisible('kommentar') && (
+                    <td className="px-4 py-4">
+                      {lead.kommentar ? (
+                        <span className="text-body-sm text-on-surface-variant line-clamp-2" title={lead.kommentar}>
+                          {lead.kommentar.split('\n')[0]?.substring(0, 80)}{lead.kommentar.length > 80 ? '...' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-body-sm text-on-surface-variant">-</span>
+                      )}
+                    </td>
+                  )}
+                  {isColumnVisible('letzteAktion') && (
+                    <td className="px-4 py-4">
+                      {lastAction ? (
+                        <div className="flex items-center gap-2">
+                          <ActionIcon className="h-4 w-4 text-on-surface-variant" />
+                          <span className="text-body-sm text-on-surface-variant truncate max-w-[150px]">
+                            {lastAction.beschreibung?.substring(0, 50)}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-body-sm text-on-surface-variant">-</span>
+                      )}
+                    </td>
+                  )}
                 </tr>
               )
             })}
@@ -1470,64 +1588,71 @@ function FollowUp() {
                           selectedLead.kommentar || ''
                         ].join('\n')
                         const lines = allComments.split('\n').filter(line => line.trim())
-                        const groups = []
-                        let currentPlainGroup = []
+
+                        // Einträge kategorisieren
+                        const historyEntries = []
+                        const plainLines = []
 
                         lines.forEach((line) => {
                           const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
-
                           if (historyMatch) {
-                            if (currentPlainGroup.length > 0) {
-                              groups.push({ type: 'plain', lines: currentPlainGroup })
-                              currentPlainGroup = []
-                            }
-                            groups.push({ type: 'history', match: historyMatch, line })
+                            // Datum für Sortierung parsen
+                            const [, datum, zeit, rest] = historyMatch
+                            const [day, month, year] = datum.split('.')
+                            const sortDate = new Date(`${year}-${month}-${day}T${zeit}:00`)
+                            historyEntries.push({ match: historyMatch, line, sortDate })
                           } else {
-                            currentPlainGroup.push(line)
+                            plainLines.push(line)
                           }
                         })
 
-                        if (currentPlainGroup.length > 0) {
-                          groups.push({ type: 'plain', lines: currentPlainGroup })
-                        }
+                        // History nach Datum sortieren (neueste zuerst)
+                        historyEntries.sort((a, b) => b.sortDate - a.sortDate)
 
-                        return groups.map((group, index) => {
-                          if (group.type === 'history') {
-                            const [, datum, zeit, rest] = group.match
-                            const emojiMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬|🎯|📞|❌|✉️|📄|🔔|💰|🎉|🔄)\s*(.+)$/)
-                            const emoji = emojiMatch ? emojiMatch[1] : '📋'
-                            let text = emojiMatch ? emojiMatch[2] : rest
-                            const userMatch = text.match(/\(([^)]+)\)$/)
-                            const userName = userMatch ? userMatch[1] : null
-                            if (userMatch) text = text.replace(/\s*\([^)]+\)$/, '')
+                        return (
+                          <>
+                            {/* Neueste History-Einträge zuerst */}
+                            {historyEntries.map((entry, index) => {
+                              const [, datum, zeit, rest] = entry.match
+                              const emojiMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬|🎯|📞|❌|✉️|📄|🔔|💰|🎉|🔄)\s*(.+)$/)
+                              const emoji = emojiMatch ? emojiMatch[1] : '📋'
+                              let text = emojiMatch ? emojiMatch[2] : rest
+                              const userMatch = text.match(/\(([^)]+)\)$/)
+                              const userName = userMatch ? userMatch[1] : null
+                              if (userMatch) text = text.replace(/\s*\([^)]+\)$/, '')
 
-                            return (
-                              <div key={index} className="flex items-start gap-3 p-2 rounded-lg hover:bg-surface-container transition-colors">
-                                <span className="text-lg flex-shrink-0">{emoji}</span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-body-sm text-on-surface">{text}</p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-label-sm text-outline">{datum}, {zeit}</span>
-                                    {userName && (
-                                      <span className="text-label-sm text-on-surface-variant">• {userName}</span>
-                                    )}
+                              return (
+                                <div key={`h-${index}`} className="flex items-start gap-3 p-2 rounded-lg hover:bg-surface-container transition-colors">
+                                  <span className="text-lg flex-shrink-0">{emoji}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-body-sm text-on-surface">{text}</p>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <span className="text-label-sm text-outline">{datum}, {zeit}</span>
+                                      {userName && (
+                                        <span className="text-label-sm text-on-surface-variant">• {userName}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
+
+                            {/* Ältere Notizen ohne Datum am Ende */}
+                            {plainLines.length > 0 && (
+                              <div className="mt-3 pt-3 border-t border-outline-variant/50">
+                                <p className="text-label-sm text-outline mb-2">Ältere Notizen</p>
+                                <div className="flex items-start gap-3 p-2">
+                                  <span className="text-lg flex-shrink-0">📝</span>
+                                  <div className="text-body-sm text-on-surface-variant space-y-1">
+                                    {plainLines.map((line, lineIdx) => (
+                                      <p key={lineIdx}>{line}</p>
+                                    ))}
                                   </div>
                                 </div>
                               </div>
-                            )
-                          } else {
-                            return (
-                              <div key={index} className="flex items-start gap-3 p-2">
-                                <span className="text-lg flex-shrink-0">💬</span>
-                                <div className="text-body-sm text-on-surface space-y-1">
-                                  {group.lines.map((line, lineIdx) => (
-                                    <p key={lineIdx}>{line}</p>
-                                  ))}
-                                </div>
-                              </div>
-                            )
-                          }
-                        })
+                            )}
+                          </>
+                        )
                       })()}
                     </div>
                   ) : (
