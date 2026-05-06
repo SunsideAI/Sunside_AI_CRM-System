@@ -200,7 +200,7 @@ export async function handler(event) {
           .from('hot_leads')
           .select(`
             id, lead_id, unternehmen, ansprechpartner_vorname, ansprechpartner_nachname,
-            telefonnummer, mail, website, status,
+            telefonnummer, mail, website, status, termin_beratungsgespraech,
             follow_up_status, follow_up_naechster_schritt, follow_up_datum,
             setter_id, closer_id, created_at
           `)
@@ -276,6 +276,7 @@ export async function handler(event) {
           mail,
           website,
           status,
+          termin_beratungsgespraech,
           follow_up_status,
           follow_up_naechster_schritt,
           follow_up_datum,
@@ -415,21 +416,15 @@ export async function handler(event) {
             mail: lead.mail || '',
             website: lead.website || '',
             status: lead.status,
-            kommentar: lead.leads?.kommentar || '', // Kommentar aus leads-Tabelle (SINGLE SOURCE)
+            termin_beratungsgespraech: lead.termin_beratungsgespraech,
+            kommentar: lead.leads?.kommentar || '',
             follow_up_status: lead.follow_up_status || 'aktiv',
             follow_up_naechster_schritt: lead.follow_up_naechster_schritt || '',
             follow_up_datum: lead.follow_up_datum,
             setter_name: lead.setter_id ? userMap[lead.setter_id] : '',
             closer_name: lead.closer_id ? userMap[lead.closer_id] : '',
             setter_id: lead.setter_id,
-            closer_id: lead.closer_id,
-            letzte_aktionen: formattedActions,
-            naechste_aktion: nextAction?.[0] ? {
-              id: nextAction[0].id,
-              typ: nextAction[0].typ,
-              beschreibung: nextAction[0].beschreibung,
-              faellig_am: nextAction[0].faellig_am
-            } : null
+            closer_id: lead.closer_id
           }
         })
       )

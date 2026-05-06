@@ -45,10 +45,20 @@ const HOT_LEAD_STATUS_OPTIONS = [
 const TABLE_COLUMNS = [
   { id: 'unternehmen', label: 'Unternehmen', default: true, required: true },
   { id: 'closer', label: 'Closer', default: true },
+  { id: 'termin', label: 'Beratungsgespräch', default: true },
   { id: 'status', label: 'Status', default: true },
   { id: 'naechsterSchritt', label: 'Nächster Schritt', default: true },
   { id: 'bisWann', label: 'Bis wann', default: true },
-  { id: 'kommentar', label: 'Kommentar', default: true }
+  { id: 'kommentar', label: 'Kommentar', default: false }
+]
+
+// Termin-Filter Optionen
+const TERMIN_FILTER_OPTIONS = [
+  { value: 'all', label: 'Alle Termine' },
+  { value: 'today', label: 'Heute' },
+  { value: 'tomorrow', label: 'Morgen' },
+  { value: 'week', label: 'Diese Woche' },
+  { value: 'past', label: 'Vergangen' }
 ]
 
 const getDefaultVisibleColumns = () => {
@@ -69,6 +79,7 @@ function FollowUp() {
   const [searchTerm, setSearchTerm] = useState('')
   const [closerFilter, setCloserFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [terminFilter, setTerminFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalLeads, setTotalLeads] = useState(0)
   const [closers, setClosers] = useState([])
@@ -290,10 +301,44 @@ function FollowUp() {
     setSearchTerm('')
     setCloserFilter('all')
     setStatusFilter('all')
+    setTerminFilter('all')
     setCurrentPage(1)
   }
 
-  const hasActiveFilters = searchTerm || closerFilter !== 'all' || statusFilter !== 'all'
+  const hasActiveFilters = searchTerm || closerFilter !== 'all' || statusFilter !== 'all' || terminFilter !== 'all'
+
+  // Termin-Filter anwenden (client-side)
+  const filterByTermin = (leadsToFilter) => {
+    if (terminFilter === 'all') return leadsToFilter
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const weekEnd = new Date(today)
+    weekEnd.setDate(weekEnd.getDate() + 7)
+
+    return leadsToFilter.filter(lead => {
+      if (!lead.termin_beratungsgespraech) return false
+      const termin = new Date(lead.termin_beratungsgespraech)
+      termin.setHours(0, 0, 0, 0)
+
+      switch (terminFilter) {
+        case 'today':
+          return termin.getTime() === today.getTime()
+        case 'tomorrow':
+          return termin.getTime() === tomorrow.getTime()
+        case 'week':
+          return termin >= today && termin <= weekEnd
+        case 'past':
+          return termin < today
+        default:
+          return true
+      }
+    })
+  }
+
+  const filteredLeads = filterByTermin(leads)
 
   // Kommentar-History parsen
   const parseKommentar = (kommentar) => {
@@ -328,95 +373,115 @@ function FollowUp() {
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="card-elevated p-4 space-y-4">
-        {/* Suche & Buttons */}
-        <div className="flex flex-col sm:flex-row gap-3">
+      {/* Filter & Suche - gleiches Layout wie Closing/Kaltakquise */}
+      <div className="card p-5 space-y-4">
+        {/* Zeile 1: Suche + Buttons */}
+        <div className="flex gap-4">
           <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-outline" />
             <input
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Firma, Name suchen..."
-              className="input-field w-full pl-10"
+              className="input-field pl-10 pr-10"
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
-          <div className="flex gap-2">
-            <button
-              onClick={() => loadLeads(true)}
-              className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container"
-              title="Aktualisieren"
-            >
-              <RefreshCw className={`w-5 h-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
-            </button>
+          <button
+            onClick={() => loadLeads(true)}
+            disabled={refreshing || loading}
+            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
+          >
+            <RefreshCw className={`w-5 h-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
+          </button>
 
-            <button
-              onClick={handleExportExcel}
-              disabled={exporting}
-              className="flex items-center gap-2 px-3 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
-            >
-              {exporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
-              <span className="hidden sm:inline">Export</span>
-            </button>
+          <button
+            onClick={handleExportExcel}
+            disabled={exporting}
+            className="flex items-center gap-2 px-3 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 shadow-ambient-sm"
+          >
+            {exporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+            <span className="hidden sm:inline">Export</span>
+          </button>
 
-            <div className="relative">
-              <button
-                onClick={() => setShowColumnSettings(!showColumnSettings)}
-                className={`p-2.5 rounded-lg ${showColumnSettings ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest hover:bg-surface-container'}`}
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-              {showColumnSettings && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setShowColumnSettings(false)} />
-                  <div className="absolute right-0 mt-2 w-56 bg-surface rounded-xl shadow-xl border border-outline-variant z-50">
-                    <div className="px-4 py-3 border-b border-outline-variant">
-                      <p className="text-label-lg font-medium">Spalten</p>
-                    </div>
-                    <div className="py-2">
-                      {TABLE_COLUMNS.map(col => (
-                        <button
-                          key={col.id}
-                          onClick={() => toggleColumn(col.id)}
-                          disabled={col.required}
-                          className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-container ${col.required ? 'opacity-50' : ''}`}
-                        >
-                          {isColumnVisible(col.id) ? <Eye className="w-4 h-4 text-primary" /> : <EyeOff className="w-4 h-4 text-outline" />}
-                          <span>{col.label}</span>
-                        </button>
-                      ))}
-                    </div>
+          <div className="relative">
+            <button
+              onClick={() => setShowColumnSettings(!showColumnSettings)}
+              className={`p-2.5 rounded-lg shadow-ambient-sm ${showColumnSettings ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest hover:bg-surface-container'}`}
+            >
+              <Settings className="w-5 h-5" />
+            </button>
+            {showColumnSettings && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowColumnSettings(false)} />
+                <div className="absolute right-0 mt-2 w-56 bg-surface rounded-xl shadow-xl border border-outline-variant z-50">
+                  <div className="px-4 py-3 border-b border-outline-variant">
+                    <p className="text-label-lg font-medium">Spalten</p>
                   </div>
-                </>
-              )}
-            </div>
+                  <div className="py-2">
+                    {TABLE_COLUMNS.map(col => (
+                      <button
+                        key={col.id}
+                        onClick={() => toggleColumn(col.id)}
+                        disabled={col.required}
+                        className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-container ${col.required ? 'opacity-50' : ''}`}
+                      >
+                        {isColumnVisible(col.id) ? <Eye className="w-4 h-4 text-primary" /> : <EyeOff className="w-4 h-4 text-outline" />}
+                        <span>{col.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Filter */}
-        <div className="flex flex-wrap items-center gap-3">
+        {/* Zeile 2: Filter */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* Closer Filter - nur für Admins */}
           {isAdmin() && (
             <select
               value={closerFilter}
               onChange={(e) => { setCloserFilter(e.target.value); setCurrentPage(1) }}
-              className="select-field"
+              className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
             >
               <option value="all">Alle Closer</option>
               {closers.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           )}
 
+          {/* Beratungsgespräch Filter */}
+          <select
+            value={terminFilter}
+            onChange={(e) => { setTerminFilter(e.target.value); setCurrentPage(1) }}
+            className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
+          >
+            {TERMIN_FILTER_OPTIONS.map(opt => (
+              <option key={opt.value} value={opt.value}>{opt.label}</option>
+            ))}
+          </select>
+
+          {/* Follow-Up Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1) }}
-            className="select-field"
+            className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
           >
             <option value="all">Alle Status</option>
             {FOLLOW_UP_STATUS_OPTIONS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
 
+          {/* Filter zurücksetzen */}
           {hasActiveFilters && (
             <button onClick={resetFilters} className="text-primary text-body-sm hover:underline">
               Filter zurücksetzen
@@ -432,6 +497,7 @@ function FollowUp() {
             <tr className="bg-surface-container">
               {isColumnVisible('unternehmen') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Unternehmen</th>}
               {isColumnVisible('closer') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Closer</th>}
+              {isColumnVisible('termin') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Beratungsgespräch</th>}
               {isColumnVisible('status') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Status</th>}
               {isColumnVisible('naechsterSchritt') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Nächster Schritt</th>}
               {isColumnVisible('bisWann') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Bis wann</th>}
@@ -446,15 +512,20 @@ function FollowUp() {
                   <p className="text-on-surface-variant">Lädt...</p>
                 </td>
               </tr>
-            ) : leads.length === 0 ? (
+            ) : filteredLeads.length === 0 ? (
               <tr>
                 <td colSpan={visibleColumns.length} className="px-4 py-12 text-center">
                   <RotateCcw className="w-10 h-10 mx-auto mb-3 text-outline-variant" />
                   <p className="text-title-md mb-1">Keine Leads gefunden</p>
+                  {hasActiveFilters && (
+                    <button onClick={resetFilters} className="text-primary hover:underline mt-2">
+                      Filter zurücksetzen
+                    </button>
+                  )}
                 </td>
               </tr>
             ) : (
-              leads.map((lead, index) => {
+              filteredLeads.map((lead, index) => {
                 const overdue = isOverdue(lead.follow_up_datum)
                 return (
                   <tr
@@ -472,6 +543,18 @@ function FollowUp() {
                     )}
                     {isColumnVisible('closer') && (
                       <td className="px-4 py-4 text-body-md">{lead.closer_name || '-'}</td>
+                    )}
+                    {isColumnVisible('termin') && (
+                      <td className="px-4 py-4 text-body-md">
+                        {lead.termin_beratungsgespraech ? (
+                          <div>
+                            <div>{formatDate(lead.termin_beratungsgespraech)}</div>
+                            <div className="text-body-sm text-on-surface-variant">
+                              {new Date(lead.termin_beratungsgespraech).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
+                            </div>
+                          </div>
+                        ) : '-'}
+                      </td>
                     )}
                     {isColumnVisible('status') && (
                       <td className="px-4 py-4">
