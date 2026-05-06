@@ -306,40 +306,21 @@ function FollowUp() {
   const openLeadFromKanban = async (hotLeadId) => {
     if (!hotLeadId) return
 
-    // Erst im Cache suchen
+    // Nutze handleSelectLead mit Basis-Daten - es lädt dann vollständige Daten nach
     const cachedLead = leads.find(l => l.id === hotLeadId)
     if (cachedLead) {
-      handleSelectLead(cachedLead)
-      setLoadingLeadId(null)
-      return
+      await handleSelectLead(cachedLead)
+    } else {
+      // Wenn nicht im Cache, mit minimalen Daten starten
+      await handleSelectLead({ id: hotLeadId, unternehmen: 'Lädt...' })
     }
-
-    // Lead spezifisch vom Server laden
-    try {
-      const params = new URLSearchParams({
-        userId: user.id,
-        leadId: hotLeadId
-      })
-      const response = await fetch(`/.netlify/functions/follow-up?${params.toString()}`)
-      const data = await response.json()
-
-      if (data.lead) {
-        handleSelectLead(data.lead)
-      } else if (data.leads?.length > 0) {
-        const foundLead = data.leads.find(l => l.id === hotLeadId)
-        if (foundLead) {
-          handleSelectLead(foundLead)
-        }
-      }
-    } catch (err) {
-      console.error('Lead load error:', err)
-    } finally {
-      setLoadingLeadId(null)
-    }
+    setLoadingLeadId(null)
   }
 
   // Lead auswählen und Edit-Data initialisieren
-  const handleSelectLead = (lead) => {
+  // Holt immer frische Daten vom Server (inkl. kaltakquise_kommentar)
+  const handleSelectLead = async (lead) => {
+    // Sofort anzeigen mit gecachten Daten
     setSelectedLead(lead)
     setEditData({
       follow_up_status: lead.follow_up_status || 'aktiv',
@@ -348,6 +329,28 @@ function FollowUp() {
       neuerKommentar: ''
     })
     setNewAction({ typ: 'todo', beschreibung: '', faelligAm: '' })
+
+    // Dann vollständige Daten nachladen (inkl. kaltakquise_kommentar)
+    try {
+      const params = new URLSearchParams({
+        userId: user.id,
+        leadId: lead.id
+      })
+      const response = await fetch(`/.netlify/functions/follow-up?${params.toString()}`)
+      const data = await response.json()
+
+      if (data.lead) {
+        setSelectedLead(data.lead)
+        setEditData({
+          follow_up_status: data.lead.follow_up_status || 'aktiv',
+          follow_up_naechster_schritt: data.lead.follow_up_naechster_schritt || '',
+          follow_up_datum: data.lead.follow_up_datum || '',
+          neuerKommentar: ''
+        })
+      }
+    } catch (err) {
+      console.error('Error fetching full lead data:', err)
+    }
   }
 
   // Lead-Daten speichern
