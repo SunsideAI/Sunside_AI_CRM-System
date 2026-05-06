@@ -224,6 +224,18 @@ export async function handler(event) {
           .order('created_at', { ascending: false })
           .limit(10)
 
+        // Kaltakquise-Kommentare aus Original-Lead laden
+        let kaltakquiseKommentar = null
+        if (singleLead.lead_id) {
+          const { data: originalLead } = await supabase
+            .from('leads')
+            .select('kommentar')
+            .eq('id', singleLead.lead_id)
+            .single()
+
+          kaltakquiseKommentar = originalLead?.kommentar || null
+        }
+
         const formattedActions = (actions || []).map(action => ({
           id: action.id,
           typ: action.typ,
@@ -236,6 +248,7 @@ export async function handler(event) {
 
         const lead = {
           ...singleLead,
+          kaltakquise_kommentar: kaltakquiseKommentar,
           setter_name: singleLead.setter_id ? userMap[singleLead.setter_id] : '',
           closer_name: singleLead.closer_id ? userMap[singleLead.closer_id] : '',
           letzte_aktionen: formattedActions

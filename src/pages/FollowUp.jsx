@@ -1456,12 +1456,17 @@ function FollowUp() {
                   Status & Notizen
                 </h3>
 
-                {/* Kommentar-History */}
+                {/* Kommentar-History - kombiniert aus Kaltakquise + Follow-Up */}
                 <div className="bg-surface-container-lowest rounded-lg p-4 max-h-64 overflow-y-auto">
-                  {selectedLead.kommentar ? (
+                  {(selectedLead.kommentar || selectedLead.kaltakquise_kommentar) ? (
                     <div className="space-y-2">
                       {(() => {
-                        const lines = selectedLead.kommentar.split('\n').filter(line => line.trim())
+                        // Beide Kommentar-Quellen kombinieren
+                        const allComments = [
+                          selectedLead.kaltakquise_kommentar || '',
+                          selectedLead.kommentar || ''
+                        ].join('\n')
+                        const lines = allComments.split('\n').filter(line => line.trim())
                         const groups = []
                         let currentPlainGroup = []
 
