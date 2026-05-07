@@ -8,6 +8,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ChevronDown,
   Loader2,
   RefreshCw,
   Phone,
@@ -20,7 +22,8 @@ import {
   Settings,
   Eye,
   EyeOff,
-  MessageSquare
+  MessageSquare,
+  ArrowUpDown
 } from 'lucide-react'
 
 // Follow-Up Status Optionen
@@ -88,6 +91,10 @@ function FollowUp() {
   const [exporting, setExporting] = useState(false)
   const [visibleColumns, setVisibleColumns] = useState(getDefaultVisibleColumns)
   const [showColumnSettings, setShowColumnSettings] = useState(false)
+
+  // Sort State
+  const [sortColumn, setSortColumn] = useState('termin') // Default: nach Beratungsgespräch
+  const [sortDirection, setSortDirection] = useState('asc') // 'asc' oder 'desc'
 
   // Edit State
   const [editData, setEditData] = useState({
@@ -338,7 +345,59 @@ function FollowUp() {
     })
   }
 
-  const filteredLeads = filterByTermin(leads)
+  // Sortierung anwenden
+  const sortLeads = (leadsToSort) => {
+    return [...leadsToSort].sort((a, b) => {
+      let aVal, bVal
+
+      switch (sortColumn) {
+        case 'termin':
+          aVal = a.termin_beratungsgespraech ? new Date(a.termin_beratungsgespraech).getTime() : 0
+          bVal = b.termin_beratungsgespraech ? new Date(b.termin_beratungsgespraech).getTime() : 0
+          break
+        case 'bisWann':
+          aVal = a.follow_up_datum ? new Date(a.follow_up_datum).getTime() : 0
+          bVal = b.follow_up_datum ? new Date(b.follow_up_datum).getTime() : 0
+          break
+        case 'unternehmen':
+          aVal = (a.unternehmen || '').toLowerCase()
+          bVal = (b.unternehmen || '').toLowerCase()
+          break
+        case 'closer':
+          aVal = (a.closer_name || '').toLowerCase()
+          bVal = (b.closer_name || '').toLowerCase()
+          break
+        default:
+          return 0
+      }
+
+      if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1
+      return 0
+    })
+  }
+
+  // Spalte sortieren
+  const handleSort = (column) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortColumn(column)
+      setSortDirection('asc')
+    }
+  }
+
+  // Sort-Icon für Header
+  const SortIcon = ({ column }) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="w-4 h-4 text-outline opacity-50" />
+    }
+    return sortDirection === 'asc'
+      ? <ChevronUp className="w-4 h-4 text-primary" />
+      : <ChevronDown className="w-4 h-4 text-primary" />
+  }
+
+  const filteredLeads = sortLeads(filterByTermin(leads))
 
   // Kommentar-History parsen
   const parseKommentar = (kommentar) => {
@@ -495,13 +554,59 @@ function FollowUp() {
         <table className="w-full">
           <thead>
             <tr className="bg-surface-container">
-              {isColumnVisible('unternehmen') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Unternehmen</th>}
-              {isColumnVisible('closer') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Closer</th>}
-              {isColumnVisible('termin') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Beratungsgespräch</th>}
-              {isColumnVisible('status') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Status</th>}
-              {isColumnVisible('naechsterSchritt') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Nächster Schritt</th>}
-              {isColumnVisible('bisWann') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Bis wann</th>}
-              {isColumnVisible('kommentar') && <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Kommentar</th>}
+              {isColumnVisible('unternehmen') && (
+                <th
+                  className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant cursor-pointer hover:bg-surface-container-high select-none"
+                  onClick={() => handleSort('unternehmen')}
+                >
+                  <div className="flex items-center gap-2">
+                    Unternehmen
+                    <SortIcon column="unternehmen" />
+                  </div>
+                </th>
+              )}
+              {isColumnVisible('closer') && (
+                <th
+                  className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant cursor-pointer hover:bg-surface-container-high select-none"
+                  onClick={() => handleSort('closer')}
+                >
+                  <div className="flex items-center gap-2">
+                    Closer
+                    <SortIcon column="closer" />
+                  </div>
+                </th>
+              )}
+              {isColumnVisible('termin') && (
+                <th
+                  className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant cursor-pointer hover:bg-surface-container-high select-none"
+                  onClick={() => handleSort('termin')}
+                >
+                  <div className="flex items-center gap-2">
+                    Beratungsgespräch
+                    <SortIcon column="termin" />
+                  </div>
+                </th>
+              )}
+              {isColumnVisible('status') && (
+                <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Status</th>
+              )}
+              {isColumnVisible('naechsterSchritt') && (
+                <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Nächster Schritt</th>
+              )}
+              {isColumnVisible('bisWann') && (
+                <th
+                  className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant cursor-pointer hover:bg-surface-container-high select-none"
+                  onClick={() => handleSort('bisWann')}
+                >
+                  <div className="flex items-center gap-2">
+                    Bis wann
+                    <SortIcon column="bisWann" />
+                  </div>
+                </th>
+              )}
+              {isColumnVisible('kommentar') && (
+                <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Kommentar</th>
+              )}
             </tr>
           </thead>
           <tbody>
