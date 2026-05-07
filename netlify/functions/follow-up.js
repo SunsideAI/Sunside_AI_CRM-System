@@ -321,16 +321,12 @@ export async function handler(event) {
       }
 
       // Sortierung
-      const validSortColumns = ['follow_up_datum', 'unternehmen', 'created_at']
-      const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'follow_up_datum'
+      const validSortColumns = ['follow_up_datum', 'unternehmen', 'created_at', 'termin_beratungsgespraech']
+      const sortColumn = validSortColumns.includes(sortBy) ? sortBy : 'termin_beratungsgespraech'
       const ascending = sortDir === 'asc'
 
-      // NULL-Werte bei follow_up_datum ans Ende sortieren
-      if (sortColumn === 'follow_up_datum') {
-        query = query.order('follow_up_datum', { ascending, nullsFirst: false })
-      } else {
-        query = query.order(sortColumn, { ascending })
-      }
+      // NULL-Werte ans Ende sortieren
+      query = query.order(sortColumn, { ascending, nullsFirst: false })
 
       // Pagination
       const limitNum = Math.min(parseInt(limit) || 100, 500)
