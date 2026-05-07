@@ -49,7 +49,7 @@ const TABLE_COLUMNS = [
   { id: 'status', label: 'Status', default: true },
   { id: 'naechsterSchritt', label: 'Nächster Schritt', default: true },
   { id: 'bisWann', label: 'Bis wann', default: true },
-  { id: 'kommentar', label: 'Kommentar', default: false }
+  { id: 'kommentar', label: 'Kommentar', default: true }
 ]
 
 // Termin-Filter Optionen
