@@ -380,6 +380,7 @@ export async function handler(event) {
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
   <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
+      <div style="font-size: 48px; margin-bottom: 10px;">🔄</div>
       <h1 style="color: white; margin: 0; font-size: 24px;">Neue Leads im Pool</h1>
     </div>
     <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
@@ -388,11 +389,14 @@ export async function handler(event) {
         <strong style="color: #3B82F6;">${closerLeads.length} Beratungsgespraeche</strong> sind jetzt im Closer-Pool verfuegbar.
       </p>
       <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crm.sunside.ai/closing" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        <a href="https://crmsunsideai.netlify.app/closing" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Zum Closer-Pool
         </a>
       </div>
     </div>
+    <p style="text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 20px;">
+      Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
+    </p>
   </div>
 </body>
 </html>`
@@ -404,7 +408,7 @@ export async function handler(event) {
                   'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                  from: 'Sunside AI <noreply@sunside.ai>',
+                  from: 'Sunside CRM <noreply@sunsideai.de>',
                   to: closer.email,
                   subject: `${closerLeads.length} neue Leads im Closer-Pool`,
                   html: emailHtml

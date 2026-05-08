@@ -219,7 +219,18 @@ export async function handler(event) {
           kommentar: kommentar || null
         })
       } catch (e) {
-        console.error('Admin-Benachrichtigung fehlgeschlagen:', e)
+        console.error('Admin E-Mail-Benachrichtigung fehlgeschlagen:', e)
+      }
+
+      // In-App-Benachrichtigung für Admins
+      try {
+        await sendAdminInAppNotification({
+          hotLead,
+          closerName,
+          bewerbungId
+        })
+      } catch (e) {
+        console.error('Admin In-App-Benachrichtigung fehlgeschlagen:', e)
       }
 
       return {
@@ -455,7 +466,7 @@ async function sendAdminNotification({ hotLead, closerName, bewerbungId, komment
       </p>
 
       <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crm.sunside.ai/einstellungen?tab=hot-lead-bewerbungen" style="display: inline-block; background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        <a href="https://crmsunsideai.netlify.app/einstellungen?tab=hot-lead-bewerbungen" style="display: inline-block; background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Bewerbung prüfen
         </a>
       </div>
@@ -482,6 +493,46 @@ async function sendAdminNotification({ hotLead, closerName, bewerbungId, komment
   })
 
   console.log('[Hot-Lead-Applications] Admin-Benachrichtigung gesendet an', recipients.length, 'Empfänger')
+}
+
+// In-App-Benachrichtigung für alle Admins
+async function sendAdminInAppNotification({ hotLead, closerName, bewerbungId }) {
+  // Alle aktiven Admins laden
+  const { data: admins } = await supabase
+    .from('users')
+    .select('id')
+    .eq('status', true)
+    .contains('rollen', ['Admin'])
+
+  if (!admins || admins.length === 0) {
+    console.log('[Hot-Lead-Applications] Keine Admins für In-App-Benachrichtigung gefunden')
+    return
+  }
+
+  const unternehmen = hotLead.original_lead?.unternehmensname || 'Unbekannt'
+  const titel = 'Neue Hot-Lead-Bewerbung'
+  const nachricht = `${closerName} hat sich auf "${unternehmen}" beworben. Bewerbungs-ID: ${bewerbungId}`
+
+  // Für jeden Admin eine Nachricht erstellen
+  const messages = admins.map(admin => ({
+    message_id: `HLB-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`,
+    empfaenger_id: admin.id,
+    typ: 'Pool Update',
+    titel,
+    nachricht,
+    hot_lead_id: hotLead.id,
+    gelesen: false
+  }))
+
+  const { error } = await supabase
+    .from('system_messages')
+    .insert(messages)
+
+  if (error) {
+    console.error('[Hot-Lead-Applications] Fehler beim Erstellen der In-App-Benachrichtigungen:', error)
+  } else {
+    console.log('[Hot-Lead-Applications] In-App-Benachrichtigungen erstellt für', admins.length, 'Admins')
+  }
 }
 
 // E-Mail an Closer nach Genehmigung/Ablehnung
@@ -530,7 +581,7 @@ async function sendCloserNotification({ closerEmail, closerName, unternehmen, st
       </p>
       ${kommentarHtml}
       <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crm.sunside.ai/closing" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        <a href="https://crmsunsideai.netlify.app/closing" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Zum Closing
         </a>
       </div>

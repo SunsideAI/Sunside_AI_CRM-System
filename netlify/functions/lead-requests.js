@@ -448,7 +448,7 @@ function buildUserNotificationHtml({ userName, statusTitle, statusColor, statusI
       </p>
       ${kommentarSection}
       <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crm.sunside.ai/kaltakquise" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        <a href="https://crmsunsideai.netlify.app/kaltakquise" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Zum CRM
         </a>
       </div>

@@ -162,7 +162,7 @@ export async function handler(event) {
         Bitte aendere dein Passwort nach dem Login in deinen Profileinstellungen.
       </p>
       <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crm.sunside.ai/login" style="display: inline-block; background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        <a href="https://crmsunsideai.netlify.app/login" style="display: inline-block; background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Zum Login
         </a>
       </div>
@@ -170,7 +170,7 @@ export async function handler(event) {
         Falls du kein neues Passwort angefordert hast, kontaktiere bitte deinen Admin.
       </p>
       <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 20px; margin-bottom: 0;">
-        Sunside AI CRM System
+        Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
       </p>
     </div>
   </div>

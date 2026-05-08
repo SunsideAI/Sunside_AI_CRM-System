@@ -101,12 +101,12 @@ async function notifyVertrieblers(vertriebler, leadData) {
         </table>
       </div>
       <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crm.sunside.ai/kaltakquise" style="display: inline-block; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        <a href="https://crmsunsideai.netlify.app/kaltakquise" style="display: inline-block; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Jetzt im E-Book Pool uebernehmen
         </a>
       </div>
       <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 30px; margin-bottom: 0;">
-        Sunside AI CRM System
+        Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
       </p>
     </div>
   </div>
@@ -121,7 +121,7 @@ async function notifyVertrieblers(vertriebler, leadData) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Sunside AI CRM <team@sunsideai.de>',
+        from: 'Sunside CRM <noreply@sunsideai.de>',
         to: emailAddresses,
         subject: `Neuer E-Book Lead: ${leadData.vorname} ${leadData.nachname} - ${leadData.unternehmen || 'Unbekannt'}`,
         html: htmlContent

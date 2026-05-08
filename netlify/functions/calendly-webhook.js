@@ -570,12 +570,12 @@ async function sendNotificationEmail(user, titel, nachricht, typ, icon, color, d
         </table>
       </div>
       <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crm.sunside.ai/closing" style="display: inline-block; background: linear-gradient(135deg, ${color} 0%, ${color}dd 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        <a href="https://crmsunsideai.netlify.app/closing" style="display: inline-block; background: linear-gradient(135deg, ${color} 0%, ${color}dd 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Im CRM ansehen
         </a>
       </div>
       <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 30px; margin-bottom: 0;">
-        Sunside AI CRM System
+        Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
       </p>
     </div>
   </div>
@@ -590,7 +590,7 @@ async function sendNotificationEmail(user, titel, nachricht, typ, icon, color, d
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Sunside AI <noreply@sunside.ai>',
+        from: 'Sunside CRM <noreply@sunsideai.de>',
         to: userEmail,
         subject: `${icon} ${titel}: ${unternehmen}`,
         html: emailHtml
