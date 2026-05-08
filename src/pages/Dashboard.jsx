@@ -2336,44 +2336,45 @@ function ClosingAnalytics({ user, isAdmin }) {
           {/* Aktuelle Leads pro Closer (Admin only) */}
           {isAdmin() && stats.leadsProCloser && stats.leadsProCloser.length > 0 && (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Balkendiagramm */}
+              {/* Balkendiagramm - Alle Leads mit Status */}
               <div className="card p-6">
-                <h3 className="text-label-lg text-on-surface mb-4">Aktuelle Leads pro Closer</h3>
-                <p className="text-body-sm text-on-surface-variant mb-4">Aktuelle Verteilung aller Hot Leads</p>
-                <ResponsiveContainer width="100%" height={Math.max(200, stats.leadsProCloser.length * 50)}>
+                <h3 className="text-label-lg text-on-surface mb-4">Alle Leads pro Closer</h3>
+                <p className="text-body-sm text-on-surface-variant mb-4">Komplette Verteilung nach Status</p>
+                <ResponsiveContainer width="100%" height={Math.max(250, stats.leadsProCloser.length * 50)}>
                   <BarChart data={stats.leadsProCloser} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" stroke="#E1E2EC" />
                     <XAxis type="number" tick={{ fill: '#44474F' }} />
-                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12, fill: '#44474F' }} />
+                    <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 11, fill: '#44474F' }} />
                     <Tooltip
                       contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }}
                       formatter={(value, name) => {
                         const labels = {
-                          aktiv: 'Aktive Leads',
-                          imClosing: 'Im Closing',
-                          angebotVersendet: 'Angebot versendet',
+                          aktiv: 'Aktiv (offen)',
                           abgeschlossen: 'Abgeschlossen',
-                          verloren: 'Verloren',
-                          gesamt: 'Gesamt'
+                          verloren: 'Verloren'
                         }
                         return [value, labels[name] || name]
                       }}
                     />
                     <Legend />
-                    <Bar dataKey="aktiv" name="Aktive Leads" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="aktiv" name="Aktiv" fill="#8B5CF6" stackId="a" />
+                    <Bar dataKey="abgeschlossen" name="Abgeschlossen" fill="#10B981" stackId="a" />
+                    <Bar dataKey="verloren" name="Verloren" fill="#EF4444" stackId="a" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
 
-              {/* Kuchendiagramm - Prozentuale Verteilung */}
+              {/* Kuchendiagramm - Prozentuale Verteilung ALLER Leads */}
               <div className="card p-6">
-                <h3 className="text-label-lg text-on-surface mb-4">Verteilung in Prozent</h3>
-                <p className="text-body-sm text-on-surface-variant mb-4">Anteil aktiver Leads pro Closer</p>
+                <h3 className="text-label-lg text-on-surface mb-4">Verteilung aller Leads</h3>
+                <p className="text-body-sm text-on-surface-variant mb-4">
+                  Alle {stats.leadsProCloser.reduce((sum, c) => sum + c.gesamt, 0)} Hot Leads im System
+                </p>
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={stats.leadsProCloser.filter(c => c.aktiv > 0)}
-                      dataKey="aktiv"
+                      data={stats.leadsProCloser.filter(c => c.gesamt > 0)}
+                      dataKey="gesamt"
                       nameKey="name"
                       cx="50%"
                       cy="50%"
@@ -2383,7 +2384,7 @@ function ClosingAnalytics({ user, isAdmin }) {
                       label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       labelLine={{ stroke: '#44474F', strokeWidth: 1 }}
                     >
-                      {stats.leadsProCloser.filter(c => c.aktiv > 0).map((entry, index) => {
+                      {stats.leadsProCloser.filter(c => c.gesamt > 0).map((entry, index) => {
                         const colors = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#6366F1', '#14B8A6', '#F97316', '#84CC16']
                         return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
                       })}
@@ -2391,7 +2392,7 @@ function ClosingAnalytics({ user, isAdmin }) {
                     <Tooltip
                       contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }}
                       formatter={(value, name, props) => {
-                        const total = stats.leadsProCloser.reduce((sum, c) => sum + c.aktiv, 0)
+                        const total = stats.leadsProCloser.reduce((sum, c) => sum + c.gesamt, 0)
                         const percent = total > 0 ? ((value / total) * 100).toFixed(1) : 0
                         return [`${value} Leads (${percent}%)`, props.payload.name]
                       }}

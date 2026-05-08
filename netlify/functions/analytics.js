@@ -146,15 +146,16 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
 
   console.log('Hot Leads geladen:', allRecords.length, `(${hotLeadsPage} Seiten)`)
 
-  // Leads pro Closer (unabhängig vom Datumsfilter - aktuelle Verteilung)
+  // Leads pro Closer (unabhängig vom Datumsfilter - ALLE Leads)
   const leadsProCloserMap = {}
+  let totalLeadsCount = 0
   if (isAdmin) {
     for (const record of allRecords) {
-      const closerName = record.closer?.vor_nachname
-      if (!closerName) continue
-
+      // Closer-Name oder "Pool" für nicht zugewiesene Leads
+      const closerName = record.closer?.vor_nachname || 'Pool (nicht zugewiesen)'
       const statusRaw = (record.status || '').toLowerCase().trim()
-      const istAbgeschlossen = statusRaw.includes('abgeschlossen') || statusRaw === 'verloren'
+
+      totalLeadsCount++
 
       if (!leadsProCloserMap[closerName]) {
         leadsProCloserMap[closerName] = {
@@ -182,6 +183,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
         }
       }
     }
+    console.log('[Analytics] Leads pro Closer - Total:', totalLeadsCount, 'Closer:', Object.keys(leadsProCloserMap).length)
   }
 
   let gewonnen = 0
