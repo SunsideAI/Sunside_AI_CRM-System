@@ -61,7 +61,7 @@ export async function handler(event) {
             id,
             status,
             termin_beratungsgespraech,
-            lead:leads!hot_leads_lead_id_fkey(unternehmensname, ansprechpartner, stadt),
+            original_lead:leads!hot_leads_lead_id_fkey(unternehmensname, ansprechpartner, stadt),
             setter:users!hot_leads_setter_id_fkey(vor_nachname)
           )
         `)
@@ -99,9 +99,9 @@ export async function handler(event) {
         bearbeitetAm: record.bearbeitet_am || null,
         erstelltAm: record.erstellt_am || null,
         // Hot Lead Details
-        unternehmen: record.hot_lead?.lead?.unternehmensname || 'Unbekannt',
-        ansprechpartner: record.hot_lead?.lead?.ansprechpartner || '',
-        stadt: record.hot_lead?.lead?.stadt || '',
+        unternehmen: record.hot_lead?.original_lead?.unternehmensname || 'Unbekannt',
+        ansprechpartner: record.hot_lead?.original_lead?.ansprechpartner || '',
+        stadt: record.hot_lead?.original_lead?.stadt || '',
         terminDatum: record.hot_lead?.termin_beratungsgespraech || null,
         hotLeadStatus: record.hot_lead?.status || '',
         setterName: record.hot_lead?.setter?.vor_nachname || ''
@@ -126,6 +126,8 @@ export async function handler(event) {
         }
       }
 
+      console.log('[Hot-Lead-Applications POST] closerId:', closerId, 'hotLeadId:', hotLeadId)
+
       // Prüfen ob Hot Lead noch verfügbar (closer_id = null)
       const { data: hotLead, error: hotLeadError } = await supabase
         .from('hot_leads')
@@ -133,12 +135,22 @@ export async function handler(event) {
           id,
           closer_id,
           termin_beratungsgespraech,
-          lead:leads!hot_leads_lead_id_fkey(unternehmensname, ansprechpartner)
+          original_lead:leads!hot_leads_lead_id_fkey(unternehmensname, ansprechpartner)
         `)
         .eq('id', hotLeadId)
         .single()
 
-      if (hotLeadError || !hotLead) {
+      if (hotLeadError) {
+        console.error('[Hot-Lead-Applications POST] Hot Lead query error:', hotLeadError)
+        return {
+          statusCode: 404,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Hot Lead nicht gefunden: ' + hotLeadError.message })
+        }
+      }
+
+      if (!hotLead) {
+        console.error('[Hot-Lead-Applications POST] Hot Lead not found for id:', hotLeadId)
         return {
           statusCode: 404,
           headers: corsHeaders,
@@ -249,7 +261,7 @@ export async function handler(event) {
           hot_lead:hot_leads!hot_lead_applications_hot_lead_id_fkey(
             id,
             closer_id,
-            lead:leads!hot_leads_lead_id_fkey(unternehmensname)
+            original_lead:leads!hot_leads_lead_id_fkey(unternehmensname)
           )
         `)
         .eq('id', bewerbungId)
@@ -328,7 +340,7 @@ export async function handler(event) {
         await sendCloserNotification({
           closerEmail: application.closer?.email_geschaeftlich || application.closer?.email,
           closerName: application.closer?.vor_nachname || 'Closer',
-          unternehmen: application.hot_lead?.lead?.unternehmensname || 'Unbekannt',
+          unternehmen: application.hot_lead?.original_lead?.unternehmensname || 'Unbekannt',
           status,
           adminKommentar
         })
@@ -389,8 +401,8 @@ async function sendAdminNotification({ hotLead, closerName, bewerbungId, komment
     return
   }
 
-  const unternehmen = hotLead.lead?.unternehmensname || 'Unbekannt'
-  const ansprechpartner = hotLead.lead?.ansprechpartner || ''
+  const unternehmen = hotLead.original_lead?.unternehmensname || 'Unbekannt'
+  const ansprechpartner = hotLead.original_lead?.ansprechpartner || ''
   const terminDatum = hotLead.termin_beratungsgespraech
     ? new Date(hotLead.termin_beratungsgespraech).toLocaleString('de-DE', {
         weekday: 'long',
