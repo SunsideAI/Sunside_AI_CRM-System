@@ -2333,6 +2333,46 @@ function ClosingAnalytics({ user, isAdmin }) {
             </div>
           </div>
 
+          {/* Aktuelle Leads pro Closer (Admin only) */}
+          {isAdmin() && (
+            <div className="card p-6">
+              <h3 className="text-label-lg text-on-surface mb-4">Aktuelle Leads pro Closer</h3>
+              <p className="text-body-sm text-on-surface-variant mb-4">Aktuelle Verteilung aller Hot Leads (unabhängig vom Zeitraum)</p>
+              {stats.leadsProCloser && stats.leadsProCloser.length > 0 ? (
+                <ResponsiveContainer width="100%" height={Math.max(200, stats.leadsProCloser.length * 50)}>
+                  <BarChart data={stats.leadsProCloser} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E1E2EC" />
+                    <XAxis type="number" tick={{ fill: '#44474F' }} />
+                    <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12, fill: '#44474F' }} />
+                    <Tooltip
+                      contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }}
+                      formatter={(value, name) => {
+                        const labels = {
+                          aktiv: 'Aktive Leads',
+                          imClosing: 'Im Closing',
+                          angebotVersendet: 'Angebot versendet',
+                          abgeschlossen: 'Abgeschlossen',
+                          verloren: 'Verloren',
+                          gesamt: 'Gesamt'
+                        }
+                        return [value, labels[name] || name]
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="aktiv" name="Aktive Leads" fill="#8B5CF6" radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[150px] text-outline">
+                  <div className="text-center">
+                    <Users className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                    <p className="text-body-sm">Keine Closer mit zugewiesenen Leads</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Per Closer Stats (Admin only) */}
           {isAdmin() && (
             <div className="card p-6">

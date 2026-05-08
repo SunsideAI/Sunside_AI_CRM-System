@@ -146,6 +146,44 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
 
   console.log('Hot Leads geladen:', allRecords.length, `(${hotLeadsPage} Seiten)`)
 
+  // Leads pro Closer (unabhängig vom Datumsfilter - aktuelle Verteilung)
+  const leadsProCloserMap = {}
+  if (isAdmin) {
+    for (const record of allRecords) {
+      const closerName = record.closer?.vor_nachname
+      if (!closerName) continue
+
+      const statusRaw = (record.status || '').toLowerCase().trim()
+      const istAbgeschlossen = statusRaw.includes('abgeschlossen') || statusRaw === 'verloren'
+
+      if (!leadsProCloserMap[closerName]) {
+        leadsProCloserMap[closerName] = {
+          gesamt: 0,
+          aktiv: 0,
+          imClosing: 0,
+          angebotVersendet: 0,
+          abgeschlossen: 0,
+          verloren: 0
+        }
+      }
+
+      leadsProCloserMap[closerName].gesamt++
+
+      if (statusRaw.includes('abgeschlossen')) {
+        leadsProCloserMap[closerName].abgeschlossen++
+      } else if (statusRaw === 'verloren') {
+        leadsProCloserMap[closerName].verloren++
+      } else {
+        leadsProCloserMap[closerName].aktiv++
+        if (statusRaw.includes('closing') || statusRaw === 'im closing') {
+          leadsProCloserMap[closerName].imClosing++
+        } else if (statusRaw.includes('angebot')) {
+          leadsProCloserMap[closerName].angebotVersendet++
+        }
+      }
+    }
+  }
+
   let gewonnen = 0
   let verloren = 0
   let angebotVersendet = 0
@@ -278,6 +316,11 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
     .map(([name, stats]) => ({ name, ...stats }))
     .sort((a, b) => b.umsatz - a.umsatz)
 
+  // Leads pro Closer sortieren (nach aktiven Leads)
+  const leadsProCloser = Object.entries(leadsProCloserMap)
+    .map(([name, stats]) => ({ name, ...stats }))
+    .sort((a, b) => b.aktiv - a.aktiv)
+
   return {
     summary: {
       gewonnen,
@@ -290,7 +333,8 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
       umsatzDurchschnitt
     },
     zeitverlauf,
-    perUser
+    perUser,
+    leadsProCloser
   }
 }
 
