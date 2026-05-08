@@ -689,7 +689,7 @@ function Closing() {
               }) : 'Nicht festgelegt',
               art: selectedLead.terminart || 'Unbekannt',
               unternehmen: selectedLead.unternehmen,
-              ansprechpartner: selectedLead.ansprechpartner,
+              ansprechpartner: [selectedLead.ansprechpartnerVorname, selectedLead.ansprechpartnerNachname].filter(Boolean).join(' ') || '',
               releasedBy: userName,
               releaseReason: releaseReason || 'Keine Angabe'
             }

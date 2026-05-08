@@ -61,7 +61,7 @@ export async function handler(event) {
             id,
             status,
             termin_beratungsgespraech,
-            original_lead:leads!hot_leads_lead_id_fkey(unternehmensname, ansprechpartner, stadt),
+            original_lead:leads!hot_leads_lead_id_fkey(unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname, stadt),
             setter:users!hot_leads_setter_id_fkey(vor_nachname)
           )
         `)
@@ -100,7 +100,7 @@ export async function handler(event) {
         erstelltAm: record.erstellt_am || null,
         // Hot Lead Details
         unternehmen: record.hot_lead?.original_lead?.unternehmensname || 'Unbekannt',
-        ansprechpartner: record.hot_lead?.original_lead?.ansprechpartner || '',
+        ansprechpartner: [record.hot_lead?.original_lead?.ansprechpartner_vorname, record.hot_lead?.original_lead?.ansprechpartner_nachname].filter(Boolean).join(' ') || '',
         stadt: record.hot_lead?.original_lead?.stadt || '',
         terminDatum: record.hot_lead?.termin_beratungsgespraech || null,
         hotLeadStatus: record.hot_lead?.status || '',
@@ -135,7 +135,7 @@ export async function handler(event) {
           id,
           closer_id,
           termin_beratungsgespraech,
-          original_lead:leads!hot_leads_lead_id_fkey(unternehmensname, ansprechpartner)
+          original_lead:leads!hot_leads_lead_id_fkey(unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname)
         `)
         .eq('id', hotLeadId)
         .single()
@@ -402,7 +402,7 @@ async function sendAdminNotification({ hotLead, closerName, bewerbungId, komment
   }
 
   const unternehmen = hotLead.original_lead?.unternehmensname || 'Unbekannt'
-  const ansprechpartner = hotLead.original_lead?.ansprechpartner || ''
+  const ansprechpartner = [hotLead.original_lead?.ansprechpartner_vorname, hotLead.original_lead?.ansprechpartner_nachname].filter(Boolean).join(' ') || ''
   const terminDatum = hotLead.termin_beratungsgespraech
     ? new Date(hotLead.termin_beratungsgespraech).toLocaleString('de-DE', {
         weekday: 'long',
