@@ -14,6 +14,7 @@ import PasswordManager from '../components/PasswordManager'
 import EmailTemplateManager from '../components/EmailTemplateManager'
 import MitarbeiterVerwaltung from '../components/MitarbeiterVerwaltung'
 import LeadAnfragenVerwaltung from '../components/LeadAnfragenVerwaltung'
+import HotLeadBewerbungenVerwaltung from '../components/HotLeadBewerbungenVerwaltung'
 
 function Einstellungen() {
   const { user } = useAuth()
@@ -24,7 +25,7 @@ function Einstellungen() {
   // Update tab when URL changes
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab')
-    if (tabFromUrl && ['mitarbeiter', 'anfragen', 'system'].includes(tabFromUrl)) {
+    if (tabFromUrl && ['mitarbeiter', 'anfragen', 'hot-lead-bewerbungen', 'system'].includes(tabFromUrl)) {
       setActiveTab(tabFromUrl)
     }
   }, [searchParams])
@@ -38,6 +39,7 @@ function Einstellungen() {
           <p className="mt-2 text-body-md text-on-surface-variant">
             {activeTab === 'mitarbeiter' && 'Mitarbeiter verwalten und Onboarding'}
             {activeTab === 'anfragen' && 'Lead-Anfragen der Vertriebler bearbeiten'}
+            {activeTab === 'hot-lead-bewerbungen' && 'Hot-Lead-Bewerbungen der Closer prüfen'}
             {activeTab === 'system' && 'Systemkonfiguration und Verwaltung'}
           </p>
         </div>
@@ -69,6 +71,18 @@ function Einstellungen() {
           </button>
 
           <button
+            onClick={() => setActiveTab('hot-lead-bewerbungen')}
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all ${
+              activeTab === 'hot-lead-bewerbungen'
+                ? 'bg-gradient-primary text-white shadow-glow-primary'
+                : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+            }`}
+          >
+            <Bell className="h-4 w-4" />
+            Hot-Leads
+          </button>
+
+          <button
             onClick={() => setActiveTab('system')}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all ${
               activeTab === 'system'
@@ -89,6 +103,10 @@ function Einstellungen() {
 
       {activeTab === 'anfragen' && (
         <LeadAnfragenVerwaltung />
+      )}
+
+      {activeTab === 'hot-lead-bewerbungen' && (
+        <HotLeadBewerbungenVerwaltung />
       )}
 
       {activeTab === 'system' && (

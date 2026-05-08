@@ -151,6 +151,12 @@ function Closing() {
   const [uploadError, setUploadError] = useState('')
   const fileInputRef = useRef(null)
 
+  // Hot-Lead-Bewerbung State
+  const [showApplyModal, setShowApplyModal] = useState(false)
+  const [applyingLead, setApplyingLead] = useState(null)
+  const [applyKommentar, setApplyKommentar] = useState('')
+  const [submittingApplication, setSubmittingApplication] = useState(false)
+
   const LEADS_PER_PAGE = 10
 
   // Toast anzeigen (verschwindet nach 4 Sekunden)
@@ -595,41 +601,45 @@ function Closing() {
     }
   }
 
-  // Termin übernehmen
-  const claimLead = async (lead) => {
-    if (!user) return
-    
-    const userName = user.vor_nachname || user.name
-    
+  // Bewerbungs-Modal öffnen (ersetzt direktes Übernehmen)
+  const startApplyForLead = (lead) => {
+    setApplyingLead(lead)
+    setApplyKommentar('')
+    setShowApplyModal(true)
+  }
+
+  // Bewerbung absenden
+  const submitApplication = async () => {
+    if (!user || !applyingLead) return
+
     try {
-      setClaimingLead(lead.id)
-      
-      const response = await fetch('/.netlify/functions/hot-leads', {
-        method: 'PATCH',
+      setSubmittingApplication(true)
+
+      const response = await fetch('/.netlify/functions/hot-lead-applications', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          hotLeadId: lead.id,
-          updates: {
-            closerName: userName
-          }
+          closerId: user.id,
+          hotLeadId: applyingLead.id,
+          kommentar: applyKommentar.trim() || null
         })
       })
-      
+
       const data = await response.json()
-      
+
       if (response.ok && data.success) {
-        // Lead aus Pool entfernen
-        setPoolLeads(prev => prev.filter(l => l.id !== lead.id))
-        // Success-Toast
-        showToast('success', `Termin mit ${lead.unternehmen} erfolgreich übernommen!`)
+        showToast('success', `Bewerbung für ${applyingLead.unternehmen} eingereicht! Ein Admin wird diese prüfen.`)
+        setShowApplyModal(false)
+        setApplyingLead(null)
+        setApplyKommentar('')
       } else {
-        throw new Error(data.error || 'Fehler beim Übernehmen')
+        throw new Error(data.error || 'Fehler bei der Bewerbung')
       }
     } catch (err) {
-      console.error('Termin übernehmen fehlgeschlagen:', err)
-      showToast('error', 'Fehler: ' + err.message)
+      console.error('Bewerbung fehlgeschlagen:', err)
+      showToast('error', err.message)
     } finally {
-      setClaimingLead(null)
+      setSubmittingApplication(false)
     }
   }
 
@@ -1289,9 +1299,9 @@ function Closing() {
                           )}
                         </div>
 
-                        {/* Übernehmen Button */}
+                        {/* Bewerben Button (Admin-Genehmigung erforderlich) */}
                         <button
-                          onClick={() => claimLead(lead)}
+                          onClick={() => startApplyForLead(lead)}
                           disabled={claimingLead === lead.id}
                           className="btn-primary flex items-center justify-center whitespace-nowrap disabled:opacity-50"
                         >
@@ -1299,8 +1309,8 @@ function Closing() {
                             <Loader2 className="w-4 h-4 animate-spin" />
                           ) : (
                             <>
-                              <CheckCircle className="w-4 h-4 mr-2" />
-                              Übernehmen
+                              <Send className="w-4 h-4 mr-2" />
+                              Bewerben
                             </>
                           )}
                         </button>
@@ -2697,6 +2707,98 @@ function Closing() {
         document.body
       )}
         </>
+      )}
+
+      {/* Bewerbungs-Modal */}
+      {showApplyModal && applyingLead && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-primary to-primary-container p-5">
+              <h3 className="text-xl font-semibold text-white">
+                Auf Lead bewerben
+              </h3>
+              <p className="text-white/80 text-sm mt-1">
+                {applyingLead.unternehmen}
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-4">
+              <p className="text-on-surface-variant">
+                Deine Bewerbung wird an einen Admin zur Genehmigung gesendet. Du wirst per E-Mail benachrichtigt, sobald eine Entscheidung getroffen wurde.
+              </p>
+
+              <div>
+                <label className="block text-sm font-medium text-on-surface mb-1">
+                  Kommentar (optional)
+                </label>
+                <textarea
+                  value={applyKommentar}
+                  onChange={(e) => setApplyKommentar(e.target.value)}
+                  placeholder="Warum möchtest du diesen Lead übernehmen?"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
+                />
+              </div>
+
+              {/* Lead-Details */}
+              <div className="bg-surface-container rounded-lg p-3 text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">Termin:</span>
+                  <span className="font-medium">
+                    {applyingLead.terminDatum
+                      ? new Date(applyingLead.terminDatum).toLocaleString('de-DE', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : 'Nicht festgelegt'}
+                  </span>
+                </div>
+                {applyingLead.setterName && (
+                  <div className="flex justify-between">
+                    <span className="text-on-surface-variant">Gebucht von:</span>
+                    <span className="font-medium">{applyingLead.setterName}</span>
+                  </div>
+                )}
+                {applyingLead.ansprechpartner && (
+                  <div className="flex justify-between">
+                    <span className="text-on-surface-variant">Ansprechpartner:</span>
+                    <span className="font-medium">{applyingLead.ansprechpartner}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 p-5 pt-0">
+              <button
+                onClick={() => { setShowApplyModal(false); setApplyingLead(null); setApplyKommentar(''); }}
+                className="flex-1 px-4 py-2.5 border border-outline-variant rounded-lg hover:bg-surface-container transition-colors"
+              >
+                Abbrechen
+              </button>
+              <button
+                onClick={submitApplication}
+                disabled={submittingApplication}
+                className="flex-1 btn-primary flex items-center justify-center"
+              >
+                {submittingApplication ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Send className="w-4 h-4 mr-2" />
+                    Bewerbung senden
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   )
