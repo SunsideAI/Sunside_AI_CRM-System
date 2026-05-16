@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
+import AbschlussModal from '../components/AbschlussModal'
 import { 
   Calendar, 
   Users,
@@ -116,6 +117,9 @@ function Closing() {
   const [claimingLead, setClaimingLead] = useState(null)
   const [toast, setToast] = useState(null) // { type: 'success'|'error', message: string }
   
+  // Abschluss-Modal State
+  const [showAbschlussModal, setShowAbschlussModal] = useState(false)
+
   // Angebot-View State (innerhalb des Modals)
   const [showAngebotView, setShowAngebotView] = useState(false)
   const [angebotData, setAngebotData] = useState({
@@ -866,15 +870,70 @@ function Closing() {
       return // Nichts zu speichern
     }
 
+    // NEU: Wenn Status auf "Abgeschlossen" wechselt -> erst Abschluss-Modal zeigen
+    if (editData.status === 'Abgeschlossen' && selectedLead.status !== 'Abgeschlossen') {
+      setShowAbschlussModal(true)
+      return
+    }
+
+    // Normale Speicherung (ohne Abschluss-Modal)
+    await doSave(editData)
+  }
+
+  // Handler für Abschluss-Modal Submit
+  const handleAbschlussSubmit = async (billingData) => {
+    setShowAbschlussModal(false)
+    await doSave({ ...editData, ...billingData })
+  }
+
+  // Handler für Abschluss-Modal Abbrechen
+  const handleAbschlussCancel = () => {
+    setShowAbschlussModal(false)
+    // Status zurücksetzen auf alten Wert
+    setEditData(prev => ({ ...prev, status: selectedLead.status }))
+  }
+
+  // Interne Save-Funktion (früher handleSave)
+  const doSave = async (data) => {
+    if (!selectedLead) return
+
+    const hasStatusChange = data.status && data.status !== selectedLead.status
+    const hasNeuerKommentar = data.neuerKommentar && data.neuerKommentar.trim()
+    const hasTerminChange = data.terminDatum && data.terminDatum !== selectedLead.terminDatum
+    const hasBillingData = data.rechnung_firma || data.rechnung_strasse
+
     try {
       setSaving(true)
 
-      // Hot Lead Updates sammeln
+      // Hot Lead Updates sammeln (inkl. Billing-Daten bei Abschluss)
       const hotLeadUpdates = {}
-      if (hasStatusChange) hotLeadUpdates.status = editData.status
-      if (hasTerminChange) hotLeadUpdates.terminDatum = editData.terminDatum
+      if (hasStatusChange) hotLeadUpdates.status = data.status
+      if (hasTerminChange) hotLeadUpdates.terminDatum = data.terminDatum
 
-      // Hot Lead updaten (Status und/oder Termin)
+      // Billing-Daten hinzufügen wenn vorhanden (bei Abschluss)
+      if (hasBillingData) {
+        Object.assign(hotLeadUpdates, {
+          rechnung_anrede: data.rechnung_anrede,
+          rechnung_firma: data.rechnung_firma,
+          ansprechpartner_vorname: data.ansprechpartner_vorname,
+          ansprechpartner_nachname: data.ansprechpartner_nachname,
+          rechnung_email: data.rechnung_email,
+          telefonnummer: data.telefonnummer,
+          rechnung_strasse: data.rechnung_strasse,
+          rechnung_zusatz: data.rechnung_zusatz,
+          rechnung_plz: data.rechnung_plz,
+          rechnung_ort: data.rechnung_ort,
+          rechnung_land: data.rechnung_land,
+          ust_id: data.ust_id,
+          steuernummer: data.steuernummer,
+          vertragsbeginn: data.vertragsbeginn,
+          zahlungsziel_tage: data.zahlungsziel_tage,
+          retainer_start_offset_months: data.retainer_start_offset_months,
+          billing_notes: data.billing_notes,
+        })
+      }
+
+      // Hot Lead updaten (Status und/oder Termin und/oder Billing)
       if (Object.keys(hotLeadUpdates).length > 0) {
         const response = await fetch('/.netlify/functions/hot-leads', {
           method: 'PATCH',
@@ -885,20 +944,20 @@ function Closing() {
           })
         })
 
-        const data = await response.json()
+        const responseData = await response.json()
 
         if (!response.ok) {
-          showToast('error', 'Fehler beim Speichern: ' + (data.error || 'Unbekannt'))
+          showToast('error', 'Fehler beim Speichern: ' + (responseData.error || 'Unbekannt'))
           return
         }
       }
 
       // Kommentar im Original-Lead (Immobilienmakler_Leads) updaten
       let updatedKommentar = selectedLead.kommentar
-      
+
       if (selectedLead.originalLeadId && (hasNeuerKommentar || hasStatusChange)) {
         const userName = user?.vor_nachname || user?.name || 'Closer'
-        
+
         try {
           // Neuer Kommentar als History-Eintrag hinzufügen
           if (hasNeuerKommentar) {
@@ -910,30 +969,30 @@ function Closing() {
                 updates: {},
                 historyEntry: {
                   action: 'kommentar',
-                  details: editData.neuerKommentar.trim(),
+                  details: data.neuerKommentar.trim(),
                   userName: userName
                 }
               })
             })
-            
+
             if (kommentarResponse.ok) {
               const kommentarData = await kommentarResponse.json()
               updatedKommentar = kommentarData.lead?.kommentar || updatedKommentar
             }
           }
-          
+
           // History-Eintrag für Status-Änderung
           if (hasStatusChange) {
-            const statusText = editData.status === 'Abgeschlossen' 
-              ? 'Deal abgeschlossen ✅' 
-              : editData.status === 'Verloren'
+            const statusText = data.status === 'Abgeschlossen'
+              ? 'Deal abgeschlossen ✅'
+              : data.status === 'Verloren'
                 ? 'Lead verloren ❌'
-                : editData.status === 'Termin abgesagt'
+                : data.status === 'Termin abgesagt'
                   ? 'Termin abgesagt ❌'
-                  : editData.status === 'Termin verschoben'
+                  : data.status === 'Termin verschoben'
                     ? 'Termin verschoben 🔄'
-                    : `Status: ${editData.status}`
-            
+                    : `Status: ${data.status}`
+
             const statusResponse = await fetch('/.netlify/functions/leads', {
               method: 'PATCH',
               headers: { 'Content-Type': 'application/json' },
@@ -941,10 +1000,10 @@ function Closing() {
                 leadId: selectedLead.originalLeadId,
                 updates: {},
                 historyEntry: {
-                  action: editData.status === 'Abgeschlossen' ? 'abgeschlossen' : 
-                          editData.status === 'Verloren' ? 'verloren' :
-                          editData.status === 'Termin abgesagt' ? 'termin_abgesagt' :
-                          editData.status === 'Termin verschoben' ? 'termin_verschoben' : 'status_update',
+                  action: data.status === 'Abgeschlossen' ? 'abgeschlossen' :
+                          data.status === 'Verloren' ? 'verloren' :
+                          data.status === 'Termin abgesagt' ? 'termin_abgesagt' :
+                          data.status === 'Termin verschoben' ? 'termin_verschoben' : 'status_update',
                   details: statusText,
                   userName: userName
                 }
@@ -974,7 +1033,7 @@ function Closing() {
           try {
             let messageData = null
 
-            if (editData.status === 'Termin abgesagt') {
+            if (data.status === 'Termin abgesagt') {
               messageData = {
                 empfaengerId: setterId,
                 typ: 'Termin abgesagt',
@@ -982,7 +1041,7 @@ function Closing() {
                 nachricht: `Der Termin mit ${unternehmen}${terminDatum ? ` am ${terminDatum}` : ''} wurde abgesagt.`,
                 hotLeadId: selectedLead.id
               }
-            } else if (editData.status === 'Termin verschoben') {
+            } else if (data.status === 'Termin verschoben') {
               messageData = {
                 empfaengerId: setterId,
                 typ: 'Termin verschoben',
@@ -990,7 +1049,7 @@ function Closing() {
                 nachricht: `Der Termin mit ${unternehmen}${terminDatum ? ` (ursprünglich ${terminDatum})` : ''} wurde verschoben. Ein neuer Termin wird vereinbart.`,
                 hotLeadId: selectedLead.id
               }
-            } else if (editData.status === 'Abgeschlossen') {
+            } else if (data.status === 'Abgeschlossen') {
               messageData = {
                 empfaengerId: setterId,
                 typ: 'Lead gewonnen',
@@ -998,7 +1057,7 @@ function Closing() {
                 nachricht: `Herzlichen Glückwunsch! Dein Lead "${unternehmen}" wurde erfolgreich abgeschlossen!`,
                 hotLeadId: selectedLead.id
               }
-            } else if (editData.status === 'Verloren') {
+            } else if (data.status === 'Verloren') {
               messageData = {
                 empfaengerId: setterId,
                 typ: 'Lead verloren',
@@ -1014,7 +1073,7 @@ function Closing() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(messageData)
               })
-              console.log('System Message an Setter gesendet:', editData.status, response.ok ? 'OK' : 'Fehler')
+              console.log('System Message an Setter gesendet:', data.status, response.ok ? 'OK' : 'Fehler')
             }
           } catch (msgErr) {
             console.warn('System Message konnte nicht gesendet werden:', msgErr)
@@ -1027,7 +1086,7 @@ function Closing() {
       // History-Eintrag für manuelles Termin-Verschieben
       if (hasTerminChange && selectedLead.originalLeadId) {
         const userName = user?.vor_nachname || user?.name || 'Closer'
-        const neuesDatum = new Date(editData.terminDatum).toLocaleDateString('de-DE', {
+        const neuesDatum = new Date(data.terminDatum).toLocaleDateString('de-DE', {
           weekday: 'long',
           day: '2-digit',
           month: '2-digit',
@@ -1061,21 +1120,21 @@ function Closing() {
         l.id === selectedLead.id
           ? {
               ...l,
-              status: hasStatusChange ? editData.status : l.status,
+              status: hasStatusChange ? data.status : l.status,
               kommentar: updatedKommentar,
-              terminDatum: hasTerminChange ? editData.terminDatum : l.terminDatum
+              terminDatum: hasTerminChange ? data.terminDatum : l.terminDatum
             }
           : l
       ))
       setSelectedLead(prev => ({
         ...prev,
-        status: hasStatusChange ? editData.status : prev.status,
+        status: hasStatusChange ? data.status : prev.status,
         kommentar: updatedKommentar,
-        terminDatum: hasTerminChange ? editData.terminDatum : prev.terminDatum
+        terminDatum: hasTerminChange ? data.terminDatum : prev.terminDatum
       }))
       setEditData(prev => ({ ...prev, neuerKommentar: '', kommentar: updatedKommentar }))
       setEditMode(false)
-      showToast('success', hasTerminChange ? 'Termin verschoben' : 'Änderungen gespeichert')
+      showToast('success', data.status === 'Abgeschlossen' ? 'Lead erfolgreich abgeschlossen!' : hasTerminChange ? 'Termin verschoben' : 'Änderungen gespeichert')
       
       // Bei Status-Änderung Modal schließen (wie vorher)
       if (hasStatusChange) {
@@ -2800,6 +2859,15 @@ function Closing() {
         </div>,
         document.body
       )}
+
+      {/* Abschluss-Modal für Billing-Daten */}
+      <AbschlussModal
+        lead={selectedLead}
+        isOpen={showAbschlussModal}
+        onClose={handleAbschlussCancel}
+        onSubmit={handleAbschlussSubmit}
+        isLoading={saving}
+      />
     </div>
   )
 }
