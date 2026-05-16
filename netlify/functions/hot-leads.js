@@ -250,7 +250,22 @@ export async function handler(event) {
           setterId: record.setter_id || null,
           closerId: record.closer_id || null,
           setterName: record.setter?.vor_nachname || '',
-          closerName: record.closer?.vor_nachname || ''
+          closerName: record.closer?.vor_nachname || '',
+          // Billing-Felder für Abschluss-Modal
+          rechnung_anrede: record.rechnung_anrede || '',
+          rechnung_firma: record.rechnung_firma || '',
+          rechnung_strasse: record.rechnung_strasse || '',
+          rechnung_zusatz: record.rechnung_zusatz || '',
+          rechnung_plz: record.rechnung_plz || '',
+          rechnung_ort: record.rechnung_ort || '',
+          rechnung_land: record.rechnung_land || 'DE',
+          rechnung_email: record.rechnung_email || '',
+          ust_id: record.ust_id || '',
+          steuernummer: record.steuernummer || '',
+          vertragsbeginn: record.vertragsbeginn || null,
+          zahlungsziel_tage: record.zahlungsziel_tage || 14,
+          retainer_start_offset_months: record.retainer_start_offset_months || 0,
+          billing_notes: record.billing_notes || ''
         }
       })
 
@@ -587,7 +602,25 @@ export async function handler(event) {
         'leistungsbeschreibung': 'leistungsbeschreibung',
         // Eigene Felder (nicht mehr Lookup)
         // 'kommentar' wird separat über leads-Tabelle behandelt
-        'attachments': 'attachments'
+        'attachments': 'attachments',
+        // Billing-Felder (Abschluss-Modal)
+        'rechnung_anrede': 'rechnung_anrede',
+        'rechnung_firma': 'rechnung_firma',
+        'rechnung_strasse': 'rechnung_strasse',
+        'rechnung_zusatz': 'rechnung_zusatz',
+        'rechnung_plz': 'rechnung_plz',
+        'rechnung_ort': 'rechnung_ort',
+        'rechnung_land': 'rechnung_land',
+        'rechnung_email': 'rechnung_email',
+        'ust_id': 'ust_id',
+        'steuernummer': 'steuernummer',
+        'vertragsbeginn': 'vertragsbeginn',
+        'zahlungsziel_tage': 'zahlungsziel_tage',
+        'retainer_start_offset_months': 'retainer_start_offset_months',
+        'billing_notes': 'billing_notes',
+        'ansprechpartner_vorname': 'ansprechpartner_vorname',
+        'ansprechpartner_nachname': 'ansprechpartner_nachname',
+        'telefonnummer': 'telefonnummer'
       }
 
       // Kommentar separat behandeln (wird in leads-Tabelle geschrieben)
