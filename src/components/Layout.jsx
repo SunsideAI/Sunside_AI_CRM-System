@@ -15,13 +15,14 @@ import {
   Check,
   Clock,
   CheckCheck,
-  RotateCcw
+  RotateCcw,
+  Euro
 } from 'lucide-react'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Clippy from './Clippy'
 
 function Layout({ children }) {
-  const { user, logout, isColdcaller, isCloser, isAdmin } = useAuth()
+  const { user, logout, isColdcaller, isCloser, isAdmin, isGeschaeftsfuehrer } = useAuth()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -365,6 +366,12 @@ function Layout({ children }) {
       path: '/follow-up',
       icon: RotateCcw,
       show: isCloser() || isAdmin()
+    },
+    {
+      name: 'Finanzen',
+      path: '/finanzen',
+      icon: Euro,
+      show: isGeschaeftsfuehrer()
     },
     {
       name: 'Termine',

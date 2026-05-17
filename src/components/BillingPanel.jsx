@@ -37,17 +37,17 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('de-DE')
 }
 
-export default function BillingPanel({ leadId, leadStatus }) {
+export default function BillingPanel({ leadId, leadStatus, userId }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [data, setData] = useState(null)
 
   async function load() {
-    if (!leadId) return
+    if (!leadId || !userId) return
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`/.netlify/functions/billing-info?hot_lead_id=${leadId}`)
+      const res = await fetch(`/.netlify/functions/billing-info?hot_lead_id=${leadId}&user_id=${userId}`)
       if (!res.ok) throw new Error('Billing-Daten konnten nicht geladen werden')
       const json = await res.json()
       setData(json)
@@ -60,7 +60,7 @@ export default function BillingPanel({ leadId, leadStatus }) {
 
   useEffect(() => {
     load()
-  }, [leadId])
+  }, [leadId, userId])
 
   if (leadStatus !== 'Abgeschlossen') return null
 

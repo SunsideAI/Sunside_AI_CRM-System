@@ -14,6 +14,7 @@ import Termine from './pages/Termine'
 import Profil from './pages/Profil'
 import Einstellungen from './pages/Einstellungen'
 import FollowUp from './pages/FollowUp'
+import Finanzen from './pages/Finanzen'
 
 // Protected Route Komponente
 function ProtectedRoute({ children, allowedRoles = [] }) {
@@ -90,6 +91,15 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={['Admin', 'Closer']}>
               <FollowUp />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="finanzen"
+          element={
+            <ProtectedRoute allowedRoles={['Geschäftsführer']}>
+              <Finanzen />
             </ProtectedRoute>
           }
         />

@@ -28,6 +28,30 @@ export async function handler(event) {
     }
   }
 
+  // Auth-Check: nur Geschäftsführer dürfen Billing-Daten lesen
+  const userId = event.queryStringParameters?.user_id
+  if (!userId) {
+    return {
+      statusCode: 401,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'User ID required' })
+    }
+  }
+
+  const { data: authUser } = await supabase
+    .from('users')
+    .select('rollen')
+    .eq('id', userId)
+    .maybeSingle()
+
+  if (!authUser || !authUser.rollen?.includes('Geschäftsführer')) {
+    return {
+      statusCode: 403,
+      headers: corsHeaders,
+      body: JSON.stringify({ error: 'Forbidden — Geschäftsführer only' })
+    }
+  }
+
   const hotLeadId = event.queryStringParameters?.hot_lead_id
   if (!hotLeadId) {
     return {

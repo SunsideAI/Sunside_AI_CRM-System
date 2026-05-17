@@ -97,7 +97,7 @@ const STATUS_OPTIONS = [
 ]
 
 function Closing() {
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, isGeschaeftsfuehrer } = useAuth()
   const location = useLocation()
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
@@ -2352,11 +2352,12 @@ function Closing() {
                     </div>
                   )}
 
-                  {/* BILLING Section (nur bei Abgeschlossen) */}
-                  {selectedLead.status === 'Abgeschlossen' && (
+                  {/* BILLING Section (nur bei Abgeschlossen UND nur für Geschäftsführer) */}
+                  {selectedLead.status === 'Abgeschlossen' && isGeschaeftsfuehrer() && (
                     <BillingPanel
                       leadId={selectedLead.id}
                       leadStatus={selectedLead.status}
+                      userId={user.id}
                     />
                   )}
 

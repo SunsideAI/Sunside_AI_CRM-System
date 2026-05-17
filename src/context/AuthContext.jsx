@@ -39,6 +39,7 @@ export function AuthProvider({ children }) {
   const isAdmin = () => hasRole('Admin')
   const isColdcaller = () => hasRole('Coldcaller')
   const isCloser = () => hasRole('Closer')
+  const isGeschaeftsfuehrer = () => hasRole('Geschäftsführer')
 
   const value = {
     user,
@@ -49,7 +50,8 @@ export function AuthProvider({ children }) {
     hasRole,
     isAdmin,
     isColdcaller,
-    isCloser
+    isCloser,
+    isGeschaeftsfuehrer
   }
 
   return (
