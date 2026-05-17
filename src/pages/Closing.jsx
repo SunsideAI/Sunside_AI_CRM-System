@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
-import AbschlussModal from '../components/AbschlussModal'
+import AbschlussForm from '../components/AbschlussForm'
 import BillingPanel from '../components/BillingPanel'
 import { 
   Calendar, 
@@ -119,7 +119,7 @@ function Closing() {
   const [toast, setToast] = useState(null) // { type: 'success'|'error', message: string }
   
   // Abschluss-Modal State
-  const [showAbschlussModal, setShowAbschlussModal] = useState(false)
+  const [showAbschlussForm, setShowAbschlussForm] = useState(false)
 
   // Angebot-View State (innerhalb des Modals)
   const [showAngebotView, setShowAngebotView] = useState(false)
@@ -849,6 +849,7 @@ function Closing() {
     setAngebotSuccess(false)
     setShowEmailComposer(false)
     setShowTerminPicker(false)
+    setShowAbschlussForm(false)
     setShowWebsiteStats(false)
     setShowReleaseConfirm(false)
     setReleaseReason('')
@@ -873,7 +874,7 @@ function Closing() {
 
     // NEU: Wenn Status auf "Abgeschlossen" wechselt -> erst Abschluss-Modal zeigen
     if (editData.status === 'Abgeschlossen' && selectedLead.status !== 'Abgeschlossen') {
-      setShowAbschlussModal(true)
+      setShowAbschlussForm(true)
       return
     }
 
@@ -883,13 +884,13 @@ function Closing() {
 
   // Handler für Abschluss-Modal Submit
   const handleAbschlussSubmit = async (billingData) => {
-    setShowAbschlussModal(false)
+    setShowAbschlussForm(false)
     await doSave({ ...editData, ...billingData })
   }
 
-  // Handler für Abschluss-Modal Abbrechen
+  // Handler für Abschluss-Form Abbrechen
   const handleAbschlussCancel = () => {
-    setShowAbschlussModal(false)
+    setShowAbschlussForm(false)
     // Status zurücksetzen auf alten Wert
     setEditData(prev => ({ ...prev, status: selectedLead.status }))
   }
@@ -1712,6 +1713,28 @@ function Closing() {
                     <CheckCircle className="w-8 h-8 text-green-600" />
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900">Angebot wird versendet!</h3>
+                </div>
+              ) : showAbschlussForm ? (
+                /* ========================================
+                   ABSCHLUSS-FORM für Billing-Daten
+                   ======================================== */
+                <div>
+                  {/* Zurück-Link */}
+                  <button
+                    type="button"
+                    onClick={handleAbschlussCancel}
+                    className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
+                  >
+                    <ChevronLeft className="w-4 h-4 mr-1" />
+                    Zurück zur Übersicht
+                  </button>
+
+                  <AbschlussForm
+                    lead={selectedLead}
+                    onCancel={handleAbschlussCancel}
+                    onSubmit={handleAbschlussSubmit}
+                    isLoading={saving}
+                  />
                 </div>
               ) : showEmailComposer ? (
                 /* ========================================
@@ -2616,8 +2639,8 @@ function Closing() {
               )}
             </div>
 
-            {/* Footer - unterschiedlich je nach View (nicht bei Success, EmailComposer oder TerminPicker) */}
-            {!angebotSuccess && !showEmailComposer && !showTerminPicker && (
+            {/* Footer - unterschiedlich je nach View (nicht bei Success, EmailComposer, TerminPicker oder AbschlussForm) */}
+            {!angebotSuccess && !showEmailComposer && !showTerminPicker && !showAbschlussForm && (
               <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
                 {showAngebotView ? (
                   /* Angebot-View Footer */
@@ -2868,15 +2891,6 @@ function Closing() {
         </div>,
         document.body
       )}
-
-      {/* Abschluss-Modal für Billing-Daten */}
-      <AbschlussModal
-        lead={selectedLead}
-        isOpen={showAbschlussModal}
-        onClose={handleAbschlussCancel}
-        onSubmit={handleAbschlussSubmit}
-        isLoading={saving}
-      />
     </div>
   )
 }
