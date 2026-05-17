@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
 import AbschlussModal from '../components/AbschlussModal'
+import BillingPanel from '../components/BillingPanel'
 import { 
   Calendar, 
   Users,
@@ -2326,6 +2327,14 @@ function Closing() {
                         </div>
                       </div>
                     </div>
+                  )}
+
+                  {/* BILLING Section (nur bei Abgeschlossen) */}
+                  {selectedLead.status === 'Abgeschlossen' && (
+                    <BillingPanel
+                      leadId={selectedLead.id}
+                      leadStatus={selectedLead.status}
+                    />
                   )}
 
                   {/* WEBSITE-STATISTIKEN Section */}
