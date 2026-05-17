@@ -154,7 +154,7 @@ export default function BillingPanel({ leadId, leadStatus }) {
                         rel="noopener noreferrer"
                         className="text-purple-600 hover:underline inline-flex items-center gap-1"
                       >
-                        #{data.contact.lexware_customer_number || 'Öffnen'}
+                        {data.contact.lexware_customer_number ? `#${data.contact.lexware_customer_number}` : 'Öffnen'}
                         <ExternalLink size={12} />
                       </a>
                     }
