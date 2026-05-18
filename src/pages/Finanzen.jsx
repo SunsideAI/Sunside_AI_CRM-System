@@ -308,7 +308,7 @@ function AnalyticsTab({ data }) {
         </ChartCard>
 
         {/* Umsatz pro Monat (stacked) */}
-        <ChartCard title="Umsatz pro Monat" subtitle="Letzte 12 Monate, brutto">
+        <ChartCard title="Umsatz pro Monat" subtitle="Letzte 12 Monate, brutto (ohne Reminder/Provision)">
           {(a.revenue_history || []).some(r => r.total > 0) ? (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={a.revenue_history}>
@@ -321,7 +321,8 @@ function AnalyticsTab({ data }) {
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="erstrechnung" stackId="a" fill={CHART_COLORS.primary} name="Erstrechnung" />
-                <Bar dataKey="retainer" stackId="a" fill={CHART_COLORS.blue} name="Retainer" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="retainer" stackId="a" fill={CHART_COLORS.blue} name="Retainer" />
+                <Bar dataKey="one_time" stackId="a" fill={CHART_COLORS.green} name="Einmalig" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (

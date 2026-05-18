@@ -113,23 +113,45 @@ export async function handler(event) {
     const now = new Date()
 
     // === KPIs berechnen ===
-    const activeContracts = contracts.filter(c => c.status === 'active')
+    // MRR: nur aktive Verträge mit monthly_net_amount > 0 (keine 0€-Serien)
+    const activeContracts = contracts.filter(c => c.status === 'active' && Number(c.monthly_net_amount || 0) > 0)
     const mrrNet = activeContracts.reduce((sum, c) => sum + Number(c.monthly_net_amount || 0), 0)
     const mrrGross = activeContracts.reduce((sum, c) => sum + Number(c.monthly_gross_amount || 0), 0)
     const aktiveKunden = new Set(activeContracts.map(c => c.hot_lead_id)).size
 
-    const openInvoices = invoices.filter(i => ['open', 'overdue'].includes(i.status))
+    // Offene Beträge: ohne Reminder-Belege
+    const openInvoices = invoices.filter(i =>
+      ['open', 'overdue'].includes(i.status) &&
+      !['reminder', 'provision'].includes(i.invoice_type)
+    )
     const offenerBetrag = openInvoices.reduce((sum, i) => sum + Number(i.gross_amount || 0), 0)
-    const ueberfaelligCount = invoices.filter(i => i.status === 'overdue').length
+    const ueberfaelligCount = invoices.filter(i =>
+      i.status === 'overdue' &&
+      !['reminder', 'provision'].includes(i.invoice_type)
+    ).length
 
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const startOfYear = new Date(now.getFullYear(), 0, 1)
 
-    const paidInvoices = invoices.filter(i => ['paid', 'paidoff'].includes(i.status))
+    // Umsatz: nur echte Rechnungen (ohne Reminder/Provision)
+    const revenueInvoiceTypes = ['erstrechnung', 'retainer', 'one_time', 'manual']
+    const paidInvoices = invoices.filter(i =>
+      ['paid', 'paidoff'].includes(i.status) &&
+      revenueInvoiceTypes.includes(i.invoice_type)
+    )
     const umsatzMonat = paidInvoices
       .filter(i => new Date(i.voucher_date) >= startOfMonth)
       .reduce((sum, i) => sum + Number(i.gross_amount || 0), 0)
     const umsatzYtd = paidInvoices
+      .filter(i => new Date(i.voucher_date) >= startOfYear)
+      .reduce((sum, i) => sum + Number(i.gross_amount || 0), 0)
+
+    // NEU: Provisions-Einnahmen YTD
+    const provisionInvoices = invoices.filter(i =>
+      ['paid', 'paidoff'].includes(i.status) &&
+      i.invoice_type === 'provision'
+    )
+    const provisionYtd = provisionInvoices
       .filter(i => new Date(i.voucher_date) >= startOfYear)
       .reduce((sum, i) => sum + Number(i.gross_amount || 0), 0)
 
@@ -138,10 +160,12 @@ export async function handler(event) {
     for (let i = 11; i >= 0; i--) {
       const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0)
       const monthLabel = monthEnd.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' })
+      // Nur Verträge mit monthly_net_amount > 0
       const activeAtDate = contracts.filter(c => {
         const start = new Date(c.start_date)
         const end = c.end_date ? new Date(c.end_date) : null
-        return start <= monthEnd && (!end || end >= monthEnd) && c.status === 'active'
+        return start <= monthEnd && (!end || end >= monthEnd) &&
+               c.status === 'active' && Number(c.monthly_net_amount || 0) > 0
       })
       const mrrAtDate = activeAtDate.reduce((sum, c) => sum + Number(c.monthly_net_amount || 0), 0)
       mrrHistory.push({
@@ -160,6 +184,7 @@ export async function handler(event) {
       : (mrrCurrentMonth > 0 ? 100 : 0)
 
     // === Time-Series: Umsatz pro Monat (12 Monate, gestackt) ===
+    // Nur echte Umsätze: erstrechnung, retainer, one_time, manual (KEINE reminder/provision)
     const revenueHistory = []
     for (let i = 11; i >= 0; i--) {
       const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
@@ -168,6 +193,7 @@ export async function handler(event) {
       const paidThisMonth = invoices.filter(inv => {
         if (!['paid', 'paidoff'].includes(inv.status)) return false
         if (!inv.paid_at) return false
+        if (!revenueInvoiceTypes.includes(inv.invoice_type)) return false
         const paidDate = new Date(inv.paid_at)
         return paidDate >= monthDate && paidDate <= monthEnd
       })
@@ -177,11 +203,15 @@ export async function handler(event) {
       const retainer = paidThisMonth
         .filter(i => i.invoice_type === 'retainer')
         .reduce((sum, i) => sum + Number(i.gross_amount || 0), 0)
+      const oneTime = paidThisMonth
+        .filter(i => ['one_time', 'manual'].includes(i.invoice_type))
+        .reduce((sum, i) => sum + Number(i.gross_amount || 0), 0)
       revenueHistory.push({
         month: monthLabel,
         erstrechnung: Number(erstrechnung.toFixed(2)),
         retainer: Number(retainer.toFixed(2)),
-        total: Number((erstrechnung + retainer).toFixed(2))
+        one_time: Number(oneTime.toFixed(2)),
+        total: Number((erstrechnung + retainer + oneTime).toFixed(2))
       })
     }
 
@@ -254,6 +284,7 @@ export async function handler(event) {
           ueberfaellig_count: ueberfaelligCount,
           umsatz_monat: Number(umsatzMonat.toFixed(2)),
           umsatz_ytd: Number(umsatzYtd.toFixed(2)),
+          provision_ytd: Number(provisionYtd.toFixed(2)),
           avg_days_to_payment: avgDaysToPayment
         },
         analytics: {

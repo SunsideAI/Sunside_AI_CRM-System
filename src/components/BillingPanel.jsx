@@ -18,7 +18,10 @@ const STATUS_CONFIG = {
 const TYPE_LABELS = {
   erstrechnung: 'Erstrechnung',
   retainer: 'Monatliche Rechnung',
-  manual: 'Manuell'
+  one_time: 'Einmalig',
+  manual: 'Manuell',
+  provision: 'Provision',
+  reminder: 'Mahnung'
 }
 
 const CONTRACT_STATUS = {
@@ -110,6 +113,14 @@ export default function BillingPanel({ leadId, leadStatus, userId }) {
       {/* Data loaded */}
       {!loading && !error && data && (data.contract || data.invoices?.length > 0) && (
         <>
+          {/* Provisions-Partner Badge */}
+          {data.contract?.billing_mode === 'provision_partner' && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4 flex items-center gap-2">
+              <span className="text-purple-600 font-medium text-sm">🤝 Provisions-Partner</span>
+              <span className="text-purple-600 text-xs">– Keine monatliche Abrechnung, nur Provision bei vermittelten Leads</span>
+            </div>
+          )}
+
           {/* KPIs */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
             <KPI label="Gesamt fakturiert" value={formatEUR(data.stats?.total_invoiced)} />
@@ -126,7 +137,7 @@ export default function BillingPanel({ leadId, leadStatus, userId }) {
             />
           </div>
 
-          {/* Vertrag */}
+          {/* Vertrag - für Provisions-Partner angepasste Anzeige */}
           {data.contract && (
             <div className="bg-gray-50 rounded-lg p-4 mb-6">
               <div className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
@@ -134,12 +145,18 @@ export default function BillingPanel({ leadId, leadStatus, userId }) {
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                 <Field label="Produkt" value={data.contract.produkt} />
-                <Field label="Monatlich (netto)" value={formatEUR(data.contract.monthly_net_amount)} />
-                <Field label="Monatlich (brutto)" value={formatEUR(data.contract.monthly_gross_amount)} />
+                {data.contract.billing_mode !== 'provision_partner' && (
+                  <>
+                    <Field label="Monatlich (netto)" value={formatEUR(data.contract.monthly_net_amount)} />
+                    <Field label="Monatlich (brutto)" value={formatEUR(data.contract.monthly_gross_amount)} />
+                  </>
+                )}
                 <Field label="Laufzeit" value={data.contract.laufzeit_months ? `${data.contract.laufzeit_months} Monate` : '–'} />
                 <Field label="Vertragsbeginn" value={formatDate(data.contract.start_date)} />
                 <Field label="Vertragsende" value={formatDate(data.contract.end_date)} />
-                <Field label="Nächste Rechnung" value={formatDate(data.contract.next_invoice_date)} />
+                {data.contract.billing_mode !== 'provision_partner' && (
+                  <Field label="Nächste Rechnung" value={formatDate(data.contract.next_invoice_date)} />
+                )}
                 <div>
                   <div className="text-xs text-gray-500 mb-0.5">Status</div>
                   <ContractStatusBadge status={data.contract.status} />
@@ -164,11 +181,17 @@ export default function BillingPanel({ leadId, leadStatus, userId }) {
             </div>
           )}
 
-          {/* Rechnungs-Tabelle */}
-          {data.invoices?.length > 0 && (
+          {/* Rechnungs-Tabelle - für Provisions-Partner nur Provisions-Rechnungen zeigen */}
+          {(() => {
+            const isProvisionPartner = data.contract?.billing_mode === 'provision_partner'
+            const filteredInvoices = isProvisionPartner
+              ? data.invoices?.filter(inv => inv.invoice_type === 'provision') || []
+              : data.invoices?.filter(inv => inv.invoice_type !== 'reminder') || []
+
+            return filteredInvoices.length > 0 && (
             <div>
               <div className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
-                <span>🧾</span> Rechnungen ({data.invoices.length})
+                <span>🧾</span> {isProvisionPartner ? 'Provisions-Zahlungen' : 'Rechnungen'} ({filteredInvoices.length})
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -185,7 +208,7 @@ export default function BillingPanel({ leadId, leadStatus, userId }) {
                     </tr>
                   </thead>
                   <tbody>
-                    {data.invoices.map(inv => {
+                    {filteredInvoices.map(inv => {
                       const cfg = STATUS_CONFIG[inv.status] || STATUS_CONFIG.draft
                       const Icon = cfg.icon
                       return (
@@ -239,7 +262,8 @@ export default function BillingPanel({ leadId, leadStatus, userId }) {
                 </table>
               </div>
             </div>
-          )}
+          )
+          })()}
         </>
       )}
     </div>

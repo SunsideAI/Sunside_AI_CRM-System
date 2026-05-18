@@ -43,6 +43,7 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
     vertragsbeginn: new Date().toISOString().slice(0, 10),
     zahlungsziel_tage: 14,
     retainer_start_offset_months: 0,
+    billing_mode: 'standard',
     // Sektion 5 - Notiz
     billing_notes: '',
   })
@@ -70,6 +71,7 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
         vertragsbeginn: lead.vertragsbeginn || new Date().toISOString().slice(0, 10),
         zahlungsziel_tage: lead.zahlungsziel_tage || 14,
         retainer_start_offset_months: lead.retainer_start_offset_months || 0,
+        billing_mode: lead.billing_mode || 'standard',
         billing_notes: lead.billing_notes || '',
       })
       setErrors({})
@@ -401,6 +403,24 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
               className={inputClass}
             />
           </div>
+        </div>
+
+        {/* Billing-Modus */}
+        <div>
+          <label className={labelClass}>Abrechnungsmodell</label>
+          <select
+            value={form.billing_mode}
+            onChange={(e) => setField('billing_mode', e.target.value)}
+            className={inputClass}
+          >
+            <option value="standard">Standard – Monatliche Retainer-Abrechnung</option>
+            <option value="provision_partner">Provisions-Vermittler – Keine monatliche Abrechnung, nur Provision bei vermittelten Leads</option>
+          </select>
+          {form.billing_mode === 'provision_partner' && (
+            <p className="text-xs text-purple-600 mt-1">
+              🤝 Bei diesem Modell wird keine monatliche Rechnung erstellt. Provisionen werden separat abgerechnet.
+            </p>
+          )}
         </div>
       </div>
 
