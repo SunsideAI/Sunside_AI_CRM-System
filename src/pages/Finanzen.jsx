@@ -3,7 +3,8 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import {
   ExternalLink, RefreshCw, TrendingUp, TrendingDown, AlertCircle,
-  Users, Euro, FileText, Clock, CheckCircle2, PieChart as PieIcon, BarChart3
+  Users, Euro, FileText, Clock, CheckCircle2, PieChart as PieIcon, BarChart3,
+  Loader2, Receipt, ScrollText
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -60,8 +61,9 @@ export default function Finanzen() {
   const navigate = useNavigate()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const [error, setError] = useState(null)
-  const [activeTab, setActiveTab] = useState('analytics')
+  const [activeView, setActiveView] = useState('analytics')
 
   useEffect(() => {
     if (!isGeschaeftsfuehrer()) {
@@ -71,8 +73,9 @@ export default function Finanzen() {
     load()
   }, [])
 
-  async function load() {
-    setLoading(true)
+  async function load(isRefresh = false) {
+    if (isRefresh) setRefreshing(true)
+    else setLoading(true)
     setError(null)
     try {
       const res = await fetch(`/.netlify/functions/billing-dashboard?user_id=${user.id}`)
@@ -86,21 +89,13 @@ export default function Finanzen() {
       setError(err.message)
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
   if (!isGeschaeftsfuehrer()) return null
 
-  if (loading) {
-    return (
-      <div className="p-8 flex items-center justify-center">
-        <RefreshCw className="w-6 h-6 animate-spin text-gray-400 mr-2" />
-        <span className="text-gray-600">Lade Finanzdaten…</span>
-      </div>
-    )
-  }
-
-  if (error) {
+  if (error && !data) {
     return (
       <div className="p-8">
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
@@ -110,59 +105,99 @@ export default function Finanzen() {
     )
   }
 
-  if (!data) return <div className="p-8 text-gray-500">Keine Daten verfügbar</div>
-
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-8">
+      {/* Header mit Toggle Bubbles */}
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Finanzen</h1>
-          <p className="text-sm text-gray-500">Übersicht über alle Rechnungen, Verträge und KPIs</p>
+          <h1 className="text-headline-lg font-display text-on-surface">Finanzen</h1>
+          <p className="mt-2 text-body-md text-on-surface-variant">
+            {activeView === 'analytics' && 'Finanz-Analytics und KPIs'}
+            {activeView === 'contracts' && 'Aktive Verträge und Abonnements'}
+            {activeView === 'invoices' && 'Alle Rechnungen im Überblick'}
+          </p>
         </div>
+
+        {/* Toggle Buttons - Bubble Style */}
+        <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="flex items-center bg-gray-100 rounded-lg p-1 min-w-max">
+            <button
+              onClick={() => setActiveView('analytics')}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                activeView === 'analytics'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+              }`}
+            >
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Analytics</span>
+              <span className="sm:hidden">Stats</span>
+            </button>
+
+            <button
+              onClick={() => setActiveView('contracts')}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                activeView === 'contracts'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+              }`}
+            >
+              <ScrollText className="h-4 w-4" />
+              <span className="hidden sm:inline">Verträge</span>
+              <span className="sm:hidden">Verträge</span>
+            </button>
+
+            <button
+              onClick={() => setActiveView('invoices')}
+              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                activeView === 'invoices'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+              }`}
+            >
+              <Receipt className="h-4 w-4" />
+              <span className="hidden sm:inline">Rechnungen</span>
+              <span className="sm:hidden">RE</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Refresh Button */}
+      <div className="flex justify-end">
         <button
-          onClick={load}
-          disabled={loading}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-          title="Aktualisieren"
+          onClick={() => load(true)}
+          disabled={refreshing || loading}
+          className="flex items-center gap-2 px-3 py-1.5 text-sm text-on-surface-variant hover:text-primary hover:bg-primary-fixed/20 rounded-lg transition-colors disabled:opacity-50"
         >
-          <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
+          <RefreshCw className={`h-4 w-4 ${(refreshing || loading) ? 'animate-spin' : ''}`} />
+          Aktualisieren
         </button>
       </div>
 
-      {/* Tabs */}
-      <div className="border-b mb-6 flex gap-4">
-        <button
-          onClick={() => setActiveTab('analytics')}
-          className={`pb-2 px-1 transition-colors ${activeTab === 'analytics' ? 'border-b-2 border-purple-600 text-purple-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          📊 Analytics
-        </button>
-        <button
-          onClick={() => setActiveTab('contracts')}
-          className={`pb-2 px-1 transition-colors ${activeTab === 'contracts' ? 'border-b-2 border-purple-600 text-purple-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          📋 Aktive Verträge ({data.contracts?.length || 0})
-        </button>
-        <button
-          onClick={() => setActiveTab('invoices')}
-          className={`pb-2 px-1 transition-colors ${activeTab === 'invoices' ? 'border-b-2 border-purple-600 text-purple-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
-        >
-          🧾 Alle Rechnungen ({data.invoices?.length || 0})
-        </button>
-      </div>
-
-      {/* Tab-Inhalt */}
-      {activeTab === 'analytics' ? (
-        <AnalyticsTab data={data} />
-      ) : activeTab === 'contracts' ? (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <ContractsTable contracts={data.contracts || []} />
+      {/* Loading State */}
+      {loading && !refreshing ? (
+        <div className="card p-6">
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+            <p className="text-on-surface-variant">Finanzdaten werden geladen...</p>
+          </div>
         </div>
-      ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-          <InvoicesTable invoices={data.invoices || []} />
-        </div>
+      ) : data && (
+        <>
+          {/* Content based on active view */}
+          {activeView === 'analytics' && <AnalyticsTab data={data} />}
+          {activeView === 'contracts' && (
+            <div className="card overflow-hidden">
+              <ContractsTable contracts={data.contracts || []} />
+            </div>
+          )}
+          {activeView === 'invoices' && (
+            <div className="card overflow-hidden">
+              <InvoicesTable invoices={data.invoices || []} />
+            </div>
+          )}
+        </>
       )}
     </div>
   )
@@ -375,19 +410,19 @@ function HeroKPI({ label, value, change, icon: Icon }) {
 
 function StandardKPI({ label, value, subtitle, icon: Icon, color = 'neutral' }) {
   const colorClasses = {
-    green: 'bg-green-100 text-green-700',
-    blue: 'bg-blue-100 text-blue-700',
-    amber: 'bg-amber-100 text-amber-700',
-    red: 'bg-red-100 text-red-700',
-    neutral: 'bg-gray-100 text-gray-700'
+    green: 'bg-success/10 text-success',
+    blue: 'bg-primary/10 text-primary',
+    amber: 'bg-warning/10 text-warning',
+    red: 'bg-error/10 text-error',
+    neutral: 'bg-on-surface/10 text-on-surface-variant'
   }
   return (
-    <div className="rounded-xl p-6 bg-white border border-gray-200 hover:shadow-md transition-shadow">
+    <div className="metric-card hover:shadow-card-hover transition-shadow">
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
-          <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
-          {subtitle && <p className="mt-1 text-xs text-gray-500">{subtitle}</p>}
+          <p className="text-label-sm uppercase tracking-wide text-on-surface-variant">{label}</p>
+          <p className="mt-2 text-headline-md font-bold text-on-surface">{value}</p>
+          {subtitle && <p className="mt-1 text-body-sm text-on-surface-variant">{subtitle}</p>}
         </div>
         <div className={`p-2.5 rounded-lg ${colorClasses[color]}`}>
           <Icon className="w-4 h-4" />
@@ -399,10 +434,10 @@ function StandardKPI({ label, value, subtitle, icon: Icon, color = 'neutral' }) 
 
 function ChartCard({ title, subtitle, children }) {
   return (
-    <div className="bg-white rounded-xl p-6 border border-gray-200">
+    <div className="card p-6">
       <div className="mb-4">
-        <h3 className="font-semibold text-gray-900">{title}</h3>
-        {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+        <h3 className="text-label-lg font-semibold text-on-surface">{title}</h3>
+        {subtitle && <p className="text-body-sm text-on-surface-variant mt-0.5">{subtitle}</p>}
       </div>
       {children}
     </div>
@@ -411,9 +446,9 @@ function ChartCard({ title, subtitle, children }) {
 
 function EmptyState({ icon: Icon, message }) {
   return (
-    <div className="flex flex-col items-center justify-center h-[280px] text-gray-400">
+    <div className="flex flex-col items-center justify-center h-[280px] text-on-surface-variant">
       <Icon className="w-12 h-12 mb-2 opacity-50" />
-      <p className="text-sm">{message}</p>
+      <p className="text-body-md">{message}</p>
     </div>
   )
 }
