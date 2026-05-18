@@ -1,5 +1,5 @@
 // Billing-Dashboard API für Finanzen-Seite (nur Geschäftsführer)
-// GET: Liest KPIs, aktive Verträge und alle Rechnungen
+// GET: Liest KPIs, aktive Verträge, Rechnungen und Analytics-Daten
 
 import { createClient } from '@supabase/supabase-js'
 
@@ -13,6 +13,14 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
   'Content-Type': 'application/json'
+}
+
+function getWeekNumber(d) {
+  const date = new Date(d)
+  date.setHours(0, 0, 0, 0)
+  date.setDate(date.getDate() + 3 - (date.getDay() + 6) % 7)
+  const week1 = new Date(date.getFullYear(), 0, 4)
+  return Math.round(((date - week1) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7) + 1
 }
 
 export async function handler(event) {
@@ -72,7 +80,7 @@ export async function handler(event) {
           hot_leads!inner(unternehmen)
         `)
         .order('voucher_date', { ascending: false })
-        .limit(100)
+        .limit(200)
     ])
 
     if (contractsRes.error) {
@@ -102,7 +110,9 @@ export async function handler(event) {
       }
     })
 
-    // KPIs berechnen
+    const now = new Date()
+
+    // === KPIs berechnen ===
     const activeContracts = contracts.filter(c => c.status === 'active')
     const mrrNet = activeContracts.reduce((sum, c) => sum + Number(c.monthly_net_amount || 0), 0)
     const mrrGross = activeContracts.reduce((sum, c) => sum + Number(c.monthly_gross_amount || 0), 0)
@@ -112,7 +122,6 @@ export async function handler(event) {
     const offenerBetrag = openInvoices.reduce((sum, i) => sum + Number(i.gross_amount || 0), 0)
     const ueberfaelligCount = invoices.filter(i => i.status === 'overdue').length
 
-    const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const startOfYear = new Date(now.getFullYear(), 0, 1)
 
@@ -123,6 +132,103 @@ export async function handler(event) {
     const umsatzYtd = paidInvoices
       .filter(i => new Date(i.voucher_date) >= startOfYear)
       .reduce((sum, i) => sum + Number(i.gross_amount || 0), 0)
+
+    // === Time-Series: MRR-Verlauf über 12 Monate ===
+    const mrrHistory = []
+    for (let i = 11; i >= 0; i--) {
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0)
+      const monthLabel = monthEnd.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' })
+      const activeAtDate = contracts.filter(c => {
+        const start = new Date(c.start_date)
+        const end = c.end_date ? new Date(c.end_date) : null
+        return start <= monthEnd && (!end || end >= monthEnd) && c.status === 'active'
+      })
+      const mrrAtDate = activeAtDate.reduce((sum, c) => sum + Number(c.monthly_net_amount || 0), 0)
+      mrrHistory.push({
+        month: monthLabel,
+        mrr_net: Number(mrrAtDate.toFixed(2)),
+        mrr_gross: Number((mrrAtDate * 1.19).toFixed(2)),
+        customers: activeAtDate.length
+      })
+    }
+
+    // MRR change vs last month
+    const mrrCurrentMonth = mrrHistory[mrrHistory.length - 1]?.mrr_net || 0
+    const mrrPrevMonth = mrrHistory[mrrHistory.length - 2]?.mrr_net || 0
+    const mrrChangePct = mrrPrevMonth > 0
+      ? Number(((mrrCurrentMonth - mrrPrevMonth) / mrrPrevMonth * 100).toFixed(1))
+      : (mrrCurrentMonth > 0 ? 100 : 0)
+
+    // === Time-Series: Umsatz pro Monat (12 Monate, gestackt) ===
+    const revenueHistory = []
+    for (let i = 11; i >= 0; i--) {
+      const monthDate = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0)
+      const monthLabel = monthDate.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' })
+      const paidThisMonth = invoices.filter(inv => {
+        if (!['paid', 'paidoff'].includes(inv.status)) return false
+        if (!inv.paid_at) return false
+        const paidDate = new Date(inv.paid_at)
+        return paidDate >= monthDate && paidDate <= monthEnd
+      })
+      const erstrechnung = paidThisMonth
+        .filter(i => i.invoice_type === 'erstrechnung')
+        .reduce((sum, i) => sum + Number(i.gross_amount || 0), 0)
+      const retainer = paidThisMonth
+        .filter(i => i.invoice_type === 'retainer')
+        .reduce((sum, i) => sum + Number(i.gross_amount || 0), 0)
+      revenueHistory.push({
+        month: monthLabel,
+        erstrechnung: Number(erstrechnung.toFixed(2)),
+        retainer: Number(retainer.toFixed(2)),
+        total: Number((erstrechnung + retainer).toFixed(2))
+      })
+    }
+
+    // === Pie-Chart: Status-Verteilung ===
+    const statusDistribution = [
+      { name: 'Bezahlt', value: invoices.filter(i => ['paid', 'paidoff'].includes(i.status)).length, color: '#10B981' },
+      { name: 'Offen', value: invoices.filter(i => i.status === 'open').length, color: '#3B82F6' },
+      { name: 'Überfällig', value: invoices.filter(i => i.status === 'overdue').length, color: '#EF4444' },
+      { name: 'Entwurf', value: invoices.filter(i => ['draft', 'pending'].includes(i.status)).length, color: '#8B8B9A' },
+      { name: 'Storniert', value: invoices.filter(i => i.status === 'voided').length, color: '#F59E0B' }
+    ].filter(s => s.value > 0)
+
+    // === Forecast: nächste 5 Wochen erwartete Eingänge ===
+    const forecast = []
+    for (let week = 0; week < 5; week++) {
+      const weekStart = new Date(now)
+      weekStart.setDate(weekStart.getDate() + (week * 7))
+      weekStart.setHours(0, 0, 0, 0)
+      const weekEnd = new Date(weekStart)
+      weekEnd.setDate(weekEnd.getDate() + 6)
+      weekEnd.setHours(23, 59, 59, 999)
+      const weekLabel = `KW ${getWeekNumber(weekStart)}`
+      const expectedInflow = contracts
+        .filter(c => c.status === 'active' && c.next_invoice_date)
+        .filter(c => {
+          const nextDate = new Date(c.next_invoice_date)
+          return nextDate >= weekStart && nextDate <= weekEnd
+        })
+        .reduce((sum, c) => sum + Number(c.monthly_gross_amount || 0), 0)
+      forecast.push({
+        week: weekLabel,
+        expected: Number(expectedInflow.toFixed(2))
+      })
+    }
+
+    // === Avg days to payment (letzte 30 Tage) ===
+    const last30Days = new Date(now - 30 * 86400000)
+    const paidLast30 = invoices.filter(i =>
+      ['paid', 'paidoff'].includes(i.status) &&
+      i.paid_at && new Date(i.paid_at) >= last30Days
+    )
+    const avgDaysToPayment = paidLast30.length > 0
+      ? Math.round(paidLast30.reduce((sum, i) => {
+          const days = Math.floor((new Date(i.paid_at) - new Date(i.voucher_date)) / 86400000)
+          return sum + days
+        }, 0) / paidLast30.length)
+      : null
 
     // Bezahlte/Gesamt Rechnungen pro Vertrag zählen
     const contractsWithCounts = contracts.map(c => {
@@ -141,12 +247,20 @@ export async function handler(event) {
         kpis: {
           mrr_net: Number(mrrNet.toFixed(2)),
           mrr_gross: Number(mrrGross.toFixed(2)),
+          mrr_change_pct: mrrChangePct,
           aktive_kunden: aktiveKunden,
           offene_rechnungen_count: openInvoices.length,
           offener_betrag: Number(offenerBetrag.toFixed(2)),
           ueberfaellig_count: ueberfaelligCount,
           umsatz_monat: Number(umsatzMonat.toFixed(2)),
-          umsatz_ytd: Number(umsatzYtd.toFixed(2))
+          umsatz_ytd: Number(umsatzYtd.toFixed(2)),
+          avg_days_to_payment: avgDaysToPayment
+        },
+        analytics: {
+          mrr_history: mrrHistory,
+          revenue_history: revenueHistory,
+          status_distribution: statusDistribution,
+          forecast: forecast
         },
         contracts: contractsWithCounts,
         invoices

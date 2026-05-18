@@ -1,9 +1,26 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { ExternalLink, RefreshCw, TrendingUp, AlertCircle, Users, Euro, FileText, Clock, CheckCircle2 } from 'lucide-react'
+import {
+  ExternalLink, RefreshCw, TrendingUp, TrendingDown, AlertCircle,
+  Users, Euro, FileText, Clock, CheckCircle2, PieChart as PieIcon, BarChart3
+} from 'lucide-react'
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, Legend, PieChart, Pie, Cell
+} from 'recharts'
 
 const LEXWARE_INVOICE_URL = 'https://app.lexware.de/permalink/invoices/view'
+
+const CHART_COLORS = {
+  primary: '#7C3AED',
+  primaryLight: '#A78BFA',
+  blue: '#3B82F6',
+  green: '#10B981',
+  amber: '#F59E0B',
+  red: '#EF4444',
+  neutral: '#8B8B9A'
+}
 
 function formatEUR(n) {
   return new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(n || 0)
@@ -44,7 +61,7 @@ export default function Finanzen() {
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
-  const [activeTab, setActiveTab] = useState('contracts')
+  const [activeTab, setActiveTab] = useState('analytics')
 
   useEffect(() => {
     if (!isGeschaeftsfuehrer()) {
@@ -95,8 +112,6 @@ export default function Finanzen() {
 
   if (!data) return <div className="p-8 text-gray-500">Keine Daten verfügbar</div>
 
-  const k = data.kpis || {}
-
   return (
     <div className="p-6 max-w-7xl mx-auto">
       {/* Header */}
@@ -115,61 +130,290 @@ export default function Finanzen() {
         </button>
       </div>
 
-      {/* KPI-Karten */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <KPI label="MRR (netto)" value={formatEUR(k.mrr_net)} icon={TrendingUp} />
-        <KPI label="MRR (brutto)" value={formatEUR(k.mrr_gross)} icon={Euro} />
-        <KPI label="Aktive Kunden" value={k.aktive_kunden || 0} icon={Users} />
-        <KPI label="Umsatz Monat" value={formatEUR(k.umsatz_monat)} icon={Euro} positive />
-        <KPI label="Umsatz YTD" value={formatEUR(k.umsatz_ytd)} icon={TrendingUp} positive />
-        <KPI label="Offen" value={formatEUR(k.offener_betrag)} icon={AlertCircle} warning={k.offene_rechnungen_count > 0} />
-        <KPI label="Offene Rechnungen" value={k.offene_rechnungen_count || 0} icon={FileText} warning={k.offene_rechnungen_count > 0} />
-        <KPI label="Überfällig" value={k.ueberfaellig_count || 0} icon={AlertCircle} alert={k.ueberfaellig_count > 0} />
-      </div>
-
       {/* Tabs */}
-      <div className="border-b mb-4 flex gap-4">
+      <div className="border-b mb-6 flex gap-4">
+        <button
+          onClick={() => setActiveTab('analytics')}
+          className={`pb-2 px-1 transition-colors ${activeTab === 'analytics' ? 'border-b-2 border-purple-600 text-purple-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
+        >
+          📊 Analytics
+        </button>
         <button
           onClick={() => setActiveTab('contracts')}
           className={`pb-2 px-1 transition-colors ${activeTab === 'contracts' ? 'border-b-2 border-purple-600 text-purple-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
         >
-          Aktive Verträge ({data.contracts?.length || 0})
+          📋 Aktive Verträge ({data.contracts?.length || 0})
         </button>
         <button
           onClick={() => setActiveTab('invoices')}
           className={`pb-2 px-1 transition-colors ${activeTab === 'invoices' ? 'border-b-2 border-purple-600 text-purple-600 font-medium' : 'text-gray-500 hover:text-gray-700'}`}
         >
-          Alle Rechnungen ({data.invoices?.length || 0})
+          🧾 Alle Rechnungen ({data.invoices?.length || 0})
         </button>
       </div>
 
       {/* Tab-Inhalt */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-        {activeTab === 'contracts' ? (
+      {activeTab === 'analytics' ? (
+        <AnalyticsTab data={data} />
+      ) : activeTab === 'contracts' ? (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <ContractsTable contracts={data.contracts || []} />
-        ) : (
+        </div>
+      ) : (
+        <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
           <InvoicesTable invoices={data.invoices || []} />
-        )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function AnalyticsTab({ data }) {
+  const k = data.kpis || {}
+  const a = data.analytics || {}
+
+  return (
+    <div className="space-y-6">
+      {/* TOP-ROW: 4 Primary KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <HeroKPI
+          label="MRR (brutto)"
+          value={formatEUR(k.mrr_gross)}
+          change={k.mrr_change_pct}
+          icon={TrendingUp}
+        />
+        <StandardKPI
+          label="Umsatz Monat"
+          value={formatEUR(k.umsatz_monat)}
+          subtitle={new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}
+          icon={Euro}
+          color="green"
+        />
+        <StandardKPI
+          label="Umsatz YTD"
+          value={formatEUR(k.umsatz_ytd)}
+          subtitle={`Jahr ${new Date().getFullYear()}`}
+          icon={TrendingUp}
+          color="green"
+        />
+        <StandardKPI
+          label="Aktive Kunden"
+          value={k.aktive_kunden || 0}
+          subtitle="aktuell"
+          icon={Users}
+          color="blue"
+        />
+      </div>
+
+      {/* BOTTOM-ROW: 4 Operations KPIs */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <StandardKPI
+          label="Offener Betrag"
+          value={formatEUR(k.offener_betrag)}
+          subtitle={`${k.offene_rechnungen_count || 0} Rechnungen`}
+          icon={Clock}
+          color="amber"
+        />
+        <StandardKPI
+          label="Überfällig"
+          value={k.ueberfaellig_count || 0}
+          subtitle={k.ueberfaellig_count > 0 ? 'sofort prüfen' : 'alles gut'}
+          icon={AlertCircle}
+          color={k.ueberfaellig_count > 0 ? 'red' : 'neutral'}
+        />
+        <StandardKPI
+          label="Ø Tage bis Zahlung"
+          value={k.avg_days_to_payment !== null ? `${k.avg_days_to_payment} Tage` : '–'}
+          subtitle="letzte 30 Tage"
+          icon={Clock}
+          color="neutral"
+        />
+        <StandardKPI
+          label="MRR-Wachstum"
+          value={k.mrr_change_pct !== undefined ? (k.mrr_change_pct >= 0 ? `+${k.mrr_change_pct}%` : `${k.mrr_change_pct}%`) : '–'}
+          subtitle="vs. Vormonat"
+          icon={k.mrr_change_pct >= 0 ? TrendingUp : TrendingDown}
+          color={k.mrr_change_pct >= 0 ? 'green' : 'red'}
+        />
+      </div>
+
+      {/* CHARTS-ROW 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* MRR-Entwicklung */}
+        <ChartCard title="MRR-Entwicklung" subtitle="Letzte 12 Monate, netto">
+          {(a.mrr_history || []).length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <AreaChart data={a.mrr_history}>
+                <defs>
+                  <linearGradient id="mrrGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={CHART_COLORS.primary} stopOpacity={0.4} />
+                    <stop offset="95%" stopColor={CHART_COLORS.primary} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <YAxis tickFormatter={(v) => `${v}€`} tick={{ fontSize: 12 }} />
+                <Tooltip
+                  formatter={(v) => formatEUR(v)}
+                  contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="mrr_net"
+                  stroke={CHART_COLORS.primary}
+                  strokeWidth={2}
+                  fill="url(#mrrGrad)"
+                  name="MRR netto"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState icon={BarChart3} message="Noch keine MRR-Daten" />
+          )}
+        </ChartCard>
+
+        {/* Umsatz pro Monat (stacked) */}
+        <ChartCard title="Umsatz pro Monat" subtitle="Letzte 12 Monate, brutto">
+          {(a.revenue_history || []).some(r => r.total > 0) ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={a.revenue_history}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                <YAxis tickFormatter={(v) => `${v}€`} tick={{ fontSize: 12 }} />
+                <Tooltip
+                  formatter={(v) => formatEUR(v)}
+                  contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb' }}
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="erstrechnung" stackId="a" fill={CHART_COLORS.primary} name="Erstrechnung" />
+                <Bar dataKey="retainer" stackId="a" fill={CHART_COLORS.blue} name="Retainer" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState icon={BarChart3} message="Noch keine Zahlungen" />
+          )}
+        </ChartCard>
+      </div>
+
+      {/* CHARTS-ROW 2 */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Status-Verteilung */}
+        <ChartCard title="Rechnungs-Status" subtitle={`${data.invoices?.length || 0} Rechnungen gesamt`}>
+          {(a.status_distribution || []).length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={a.status_distribution}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={100}
+                  paddingAngle={2}
+                  label={({ name, value }) => `${name}: ${value}`}
+                >
+                  {a.status_distribution.map((entry, index) => (
+                    <Cell key={index} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb' }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState icon={PieIcon} message="Noch keine Rechnungen" />
+          )}
+        </ChartCard>
+
+        {/* Forecast nächste 5 Wochen */}
+        <ChartCard title="Forecast" subtitle="Erwartete Eingänge nächste 5 Wochen, brutto">
+          {(a.forecast || []).some(f => f.expected > 0) ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <BarChart data={a.forecast}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="week" tick={{ fontSize: 12 }} />
+                <YAxis tickFormatter={(v) => `${v}€`} tick={{ fontSize: 12 }} />
+                <Tooltip
+                  formatter={(v) => formatEUR(v)}
+                  contentStyle={{ borderRadius: 8, border: '1px solid #e5e7eb' }}
+                />
+                <Bar dataKey="expected" fill={CHART_COLORS.primary} radius={[4, 4, 0, 0]} name="Erwartet" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <EmptyState icon={BarChart3} message="Keine geplanten Rechnungen" />
+          )}
+        </ChartCard>
       </div>
     </div>
   )
 }
 
-function KPI({ label, value, icon: Icon, positive, warning, alert }) {
-  const colorClass = alert
-    ? 'text-red-700 bg-red-50 border-red-200'
-    : warning
-      ? 'text-orange-700 bg-orange-50 border-orange-200'
-      : positive
-        ? 'text-green-700 bg-green-50 border-green-200'
-        : 'text-gray-700 bg-gray-50 border-gray-200'
-
+function HeroKPI({ label, value, change, icon: Icon }) {
   return (
-    <div className={`rounded-lg p-3 border ${colorClass}`}>
-      <div className="text-xs opacity-75 flex items-center gap-1">
-        {Icon && <Icon size={12} />} {label}
+    <div className="relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-purple-600 to-purple-700 text-white">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <p className="text-xs uppercase tracking-wide text-white/80">{label}</p>
+          <p className="mt-2 text-3xl font-bold">{value}</p>
+          {change !== undefined && change !== null && (
+            <p className="mt-1 text-sm text-white/80">
+              {change >= 0 ? '↑' : '↓'} {Math.abs(change)}% vs. Vormonat
+            </p>
+          )}
+        </div>
+        <div className="p-3 rounded-lg bg-white/20">
+          <Icon className="w-5 h-5 text-white" />
+        </div>
       </div>
-      <div className="text-lg font-bold mt-1">{value}</div>
+      <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-white/10 blur-xl" />
+    </div>
+  )
+}
+
+function StandardKPI({ label, value, subtitle, icon: Icon, color = 'neutral' }) {
+  const colorClasses = {
+    green: 'bg-green-100 text-green-700',
+    blue: 'bg-blue-100 text-blue-700',
+    amber: 'bg-amber-100 text-amber-700',
+    red: 'bg-red-100 text-red-700',
+    neutral: 'bg-gray-100 text-gray-700'
+  }
+  return (
+    <div className="rounded-xl p-6 bg-white border border-gray-200 hover:shadow-md transition-shadow">
+      <div className="flex items-start justify-between">
+        <div className="flex-1">
+          <p className="text-xs uppercase tracking-wide text-gray-500">{label}</p>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{value}</p>
+          {subtitle && <p className="mt-1 text-xs text-gray-500">{subtitle}</p>}
+        </div>
+        <div className={`p-2.5 rounded-lg ${colorClasses[color]}`}>
+          <Icon className="w-4 h-4" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ChartCard({ title, subtitle, children }) {
+  return (
+    <div className="bg-white rounded-xl p-6 border border-gray-200">
+      <div className="mb-4">
+        <h3 className="font-semibold text-gray-900">{title}</h3>
+        {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function EmptyState({ icon: Icon, message }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-[280px] text-gray-400">
+      <Icon className="w-12 h-12 mb-2 opacity-50" />
+      <p className="text-sm">{message}</p>
     </div>
   )
 }
