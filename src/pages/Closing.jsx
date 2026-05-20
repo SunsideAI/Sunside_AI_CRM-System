@@ -89,6 +89,7 @@ const STATUS_OPTIONS = [
   { value: 'Lead', label: 'Lead', color: 'bg-blue-100 text-blue-700' },
   { value: 'Geplant', label: 'Geplant', color: 'bg-cyan-100 text-cyan-700' },
   { value: 'Im Closing', label: 'Im Closing', color: 'bg-indigo-100 text-indigo-700' },
+  { value: 'Nicht erschienen', label: 'Nicht erschienen', color: 'bg-rose-100 text-rose-700' },
   { value: 'Angebot', label: 'Angebot', color: 'bg-yellow-100 text-yellow-700' },
   { value: 'Angebot versendet', label: 'Angebot versendet', color: 'bg-purple-100 text-purple-700' },
   { value: 'Abgeschlossen', label: 'Abgeschlossen', color: 'bg-green-100 text-green-700' },
@@ -163,6 +164,14 @@ function Closing() {
   const [applyKommentar, setApplyKommentar] = useState('')
   const [submittingApplication, setSubmittingApplication] = useState(false)
   const [selectedPoolLead, setSelectedPoolLead] = useState(null)
+
+  // No-Show Modal State
+  const [showNoShowModal, setShowNoShowModal] = useState(false)
+  const [noShowProcessing, setNoShowProcessing] = useState(false)
+
+  // Setter No-Show Leads State (für Re-Termin Widget)
+  const [setterNoShowLeads, setSetterNoShowLeads] = useState([])
+  const [loadingSetterNoShows, setLoadingSetterNoShows] = useState(false)
 
   const LEADS_PER_PAGE = 10
 
@@ -502,6 +511,7 @@ function Closing() {
   useEffect(() => {
     if (user) {
       loadPoolCount()
+      loadSetterNoShowLeads() // Setter No-Show Leads laden
     }
   }, [user])
 
@@ -605,6 +615,33 @@ function Closing() {
       setPoolLeads([])
     } finally {
       setLoadingPool(false)
+    }
+  }
+
+  // Setter No-Show Leads laden (Leads wo aktueller User Setter ist und Status = "Nicht erschienen")
+  const loadSetterNoShowLeads = async () => {
+    if (!user?.id) return
+
+    try {
+      setLoadingSetterNoShows(true)
+      const response = await fetch(`/.netlify/functions/hot-leads?setterId=${user.id}&status=Nicht%20erschienen`)
+      const data = await response.json()
+
+      if (response.ok && data.hotLeads) {
+        const sorted = data.hotLeads.sort((a, b) => {
+          const dateA = a.no_show_marked_at ? new Date(a.no_show_marked_at) : new Date(0)
+          const dateB = b.no_show_marked_at ? new Date(b.no_show_marked_at) : new Date(0)
+          return dateB - dateA // Neueste No-Shows zuerst
+        })
+        setSetterNoShowLeads(sorted)
+      } else {
+        setSetterNoShowLeads([])
+      }
+    } catch (err) {
+      console.warn('Setter No-Show Leads laden fehlgeschlagen:', err)
+      setSetterNoShowLeads([])
+    } finally {
+      setLoadingSetterNoShows(false)
     }
   }
 
@@ -880,6 +917,12 @@ function Closing() {
       return
     }
 
+    // NEU: Wenn Status auf "Nicht erschienen" wechselt -> erst No-Show-Modal zeigen
+    if (editData.status === 'Nicht erschienen' && selectedLead.status !== 'Nicht erschienen') {
+      setShowNoShowModal(true)
+      return
+    }
+
     // Normale Speicherung (ohne Abschluss-Modal)
     await doSave(editData)
   }
@@ -895,6 +938,113 @@ function Closing() {
     setShowAbschlussForm(false)
     // Status zurücksetzen auf alten Wert
     setEditData(prev => ({ ...prev, status: selectedLead.status }))
+  }
+
+  // Handler für No-Show-Modal Bestätigung
+  const handleNoShowConfirm = async () => {
+    if (!selectedLead || !user) return
+
+    setNoShowProcessing(true)
+    try {
+      const currentNoShowCount = selectedLead.no_show_count || 0
+      const newNoShowCount = currentNoShowCount + 1
+
+      // Hot Lead mit No-Show-Daten updaten
+      const response = await fetch('/.netlify/functions/hot-leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hotLeadId: selectedLead.id,
+          updates: {
+            status: 'Nicht erschienen',
+            no_show_count: newNoShowCount,
+            no_show_marked_at: new Date().toISOString(),
+            no_show_marked_by: user.id
+          }
+        })
+      })
+
+      if (!response.ok) {
+        const data = await response.json()
+        throw new Error(data.error || 'Fehler beim Speichern')
+      }
+
+      // Notification an Setter senden
+      if (selectedLead.setterId) {
+        try {
+          await fetch('/.netlify/functions/notify-no-show', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              hotLeadId: selectedLead.id,
+              setterId: selectedLead.setterId,
+              closerId: user.id,
+              closerName: user.vor_nachname || user.name,
+              unternehmen: selectedLead.unternehmen,
+              ansprechpartner: `${selectedLead.ansprechpartnerVorname || ''} ${selectedLead.ansprechpartnerNachname || ''}`.trim(),
+              terminDatum: selectedLead.terminDatum,
+              noShowCount: newNoShowCount
+            })
+          })
+        } catch (notifyErr) {
+          console.warn('No-Show Notification fehlgeschlagen:', notifyErr)
+        }
+      }
+
+      // Kommentar in Original-Lead hinzufügen
+      if (selectedLead.originalLeadId) {
+        const userName = user?.vor_nachname || user?.name || 'Closer'
+        try {
+          await fetch('/.netlify/functions/leads', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              leadId: selectedLead.originalLeadId,
+              updates: {},
+              historyEntry: {
+                action: 'status',
+                details: `Status: Nicht erschienen (${newNoShowCount}. No-Show)`,
+                userName: userName
+              }
+            })
+          })
+        } catch (e) {
+          console.warn('Kommentar-Update fehlgeschlagen:', e)
+        }
+      }
+
+      // UI updaten
+      setShowNoShowModal(false)
+      setEditMode(false)
+
+      // Lead in lokaler Liste aktualisieren
+      setLeads(prev => prev.map(l =>
+        l.id === selectedLead.id
+          ? { ...l, status: 'Nicht erschienen', no_show_count: newNoShowCount, no_show_marked_at: new Date().toISOString() }
+          : l
+      ))
+      setSelectedLead(prev => prev ? { ...prev, status: 'Nicht erschienen', no_show_count: newNoShowCount, no_show_marked_at: new Date().toISOString() } : null)
+
+      showToast('success', `Lead als nicht erschienen markiert. ${selectedLead.setterName ? `${selectedLead.setterName} wurde benachrichtigt.` : ''}`)
+    } catch (err) {
+      console.error('No-Show Fehler:', err)
+      showToast('error', err.message)
+    } finally {
+      setNoShowProcessing(false)
+    }
+  }
+
+  // Handler für No-Show-Modal Abbrechen
+  const handleNoShowCancel = () => {
+    setShowNoShowModal(false)
+    setEditData(prev => ({ ...prev, status: selectedLead.status }))
+  }
+
+  // Handler für No-Show → direkt auf Verloren setzen
+  const handleNoShowToLost = async () => {
+    setShowNoShowModal(false)
+    setEditData(prev => ({ ...prev, status: 'Verloren' }))
+    await doSave({ ...editData, status: 'Verloren' })
   }
 
   // Interne Save-Funktion (früher handleSave)
@@ -913,6 +1063,37 @@ function Closing() {
       const hotLeadUpdates = {}
       if (hasStatusChange) hotLeadUpdates.status = data.status
       if (hasTerminChange) hotLeadUpdates.terminDatum = data.terminDatum
+
+      // AUTOMATIK: Setter setzt neuen Termin bei "Nicht erschienen" → Status zurück auf "Im Closing"
+      const isUserSetter = selectedLead.setterId === user?.id
+      const isNoShowStatus = selectedLead.status === 'Nicht erschienen'
+      if (isUserSetter && isNoShowStatus && hasTerminChange && !hasStatusChange) {
+        hotLeadUpdates.status = 'Im Closing'
+
+        // Notification an Closer über Re-Termin
+        if (selectedLead.closerId && selectedLead.closerId !== user?.id) {
+          try {
+            const terminFormatted = new Date(data.terminDatum).toLocaleString('de-DE', {
+              day: '2-digit', month: '2-digit', year: 'numeric',
+              hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
+            })
+
+            await fetch('/.netlify/functions/system-messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                empfaengerId: selectedLead.closerId,
+                typ: 'no_show_rescheduled',
+                titel: `📅 Re-Termin gebucht: ${selectedLead.unternehmen}`,
+                nachricht: `${user?.vor_nachname || user?.name} hat einen neuen Termin für ${selectedLead.unternehmen} am ${terminFormatted} vereinbart.`,
+                hotLeadId: selectedLead.id
+              })
+            })
+          } catch (notifyErr) {
+            console.warn('Re-Termin Notification fehlgeschlagen:', notifyErr)
+          }
+        }
+      }
 
       // Billing-Daten hinzufügen wenn vorhanden (bei Abschluss)
       if (hasBillingData) {
@@ -1252,6 +1433,87 @@ function Closing() {
       {error && (
         <div className="bg-error-container text-error px-4 py-3 rounded-xl">
           {error}
+        </div>
+      )}
+
+      {/* ==================== SETTER NO-SHOW WIDGET ==================== */}
+      {setterNoShowLeads.length > 0 && viewMode !== 'pool' && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-rose-800 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" />
+              Lead-Termine neu vereinbaren
+              <span className="ml-2 px-2 py-0.5 bg-rose-200 text-rose-800 rounded-full text-sm">
+                {setterNoShowLeads.length}
+              </span>
+            </h3>
+            <button
+              onClick={loadSetterNoShowLeads}
+              disabled={loadingSetterNoShows}
+              className="p-1.5 hover:bg-rose-100 rounded-lg transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 text-rose-600 ${loadingSetterNoShows ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+          <p className="text-sm text-rose-700 mb-3">
+            Diese Leads sind nicht zum Termin erschienen. Bitte neuen Termin vereinbaren.
+          </p>
+          <div className="space-y-2">
+            {setterNoShowLeads.slice(0, 5).map(lead => (
+              <div
+                key={lead.id}
+                className="flex items-center justify-between bg-white rounded-lg p-3 border border-rose-100 hover:border-rose-300 cursor-pointer transition-colors"
+                onClick={() => {
+                  setSelectedLead(lead)
+                  setEditMode(true)
+                  setEditData({
+                    status: lead.status,
+                    terminDatum: lead.terminDatum || '',
+                    neuerKommentar: ''
+                  })
+                }}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-on-surface truncate">{lead.unternehmen}</div>
+                  <div className="text-sm text-on-surface-variant flex items-center gap-2 mt-0.5">
+                    <span>{lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}</span>
+                    {(lead.no_show_count || 0) > 1 && (
+                      <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded text-xs font-medium">
+                        {lead.no_show_count}. No-Show
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {lead.no_show_marked_at && (
+                    <span className="text-xs text-rose-600">
+                      {new Date(lead.no_show_marked_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                    </span>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedLead(lead)
+                      setEditMode(true)
+                      setEditData({
+                        status: lead.status,
+                        terminDatum: lead.terminDatum || '',
+                        neuerKommentar: ''
+                      })
+                    }}
+                    className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 transition-colors"
+                  >
+                    Termin buchen
+                  </button>
+                </div>
+              </div>
+            ))}
+            {setterNoShowLeads.length > 5 && (
+              <p className="text-sm text-rose-600 text-center pt-2">
+                + {setterNoShowLeads.length - 5} weitere No-Shows
+              </p>
+            )}
+          </div>
         </div>
       )}
 
@@ -3024,6 +3286,125 @@ function Closing() {
                     Bewerbung senden
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* No-Show-Modal */}
+      {showNoShowModal && selectedLead && createPortal(
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-rose-500 to-rose-600 p-5">
+              <h3 className="text-xl font-semibold text-white">
+                Lead nicht erschienen
+              </h3>
+              <p className="text-white/80 text-sm mt-1">
+                {selectedLead.unternehmen}
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 space-y-4">
+              {/* Warnung bei wiederholtem No-Show */}
+              {(selectedLead.no_show_count || 0) >= 2 && (
+                <div className={`p-3 rounded-lg ${(selectedLead.no_show_count || 0) >= 3 ? 'bg-red-100 border border-red-300' : 'bg-amber-100 border border-amber-300'}`}>
+                  <p className={`font-medium ${(selectedLead.no_show_count || 0) >= 3 ? 'text-red-800' : 'text-amber-800'}`}>
+                    ⚠️ Dies wäre der {(selectedLead.no_show_count || 0) + 1}. No-Show
+                  </p>
+                  <p className={`text-sm mt-1 ${(selectedLead.no_show_count || 0) >= 3 ? 'text-red-700' : 'text-amber-700'}`}>
+                    {(selectedLead.no_show_count || 0) >= 3
+                      ? 'Empfehlung: Lead auf "Verloren" setzen.'
+                      : 'Bei wiederholtem No-Show sollte der Lead ggf. als verloren markiert werden.'
+                    }
+                  </p>
+                </div>
+              )}
+
+              <p className="text-on-surface-variant">
+                {selectedLead.setterName
+                  ? <>Der Lead wird als nicht erschienen markiert. <strong>{selectedLead.setterName}</strong> wird benachrichtigt und kann einen neuen Termin buchen.</>
+                  : 'Der Lead wird als nicht erschienen markiert. Es ist kein Setter zugeordnet.'
+                }
+              </p>
+
+              {/* Lead-Details */}
+              <div className="bg-surface-container rounded-lg p-3 text-sm space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-on-surface-variant">Geplanter Termin:</span>
+                  <span className="font-medium">
+                    {selectedLead.terminDatum
+                      ? new Date(selectedLead.terminDatum).toLocaleString('de-DE', {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: 'Europe/Berlin'
+                        })
+                      : 'Nicht festgelegt'}
+                  </span>
+                </div>
+                {selectedLead.setterName && (
+                  <div className="flex justify-between">
+                    <span className="text-on-surface-variant">Setter:</span>
+                    <span className="font-medium">{selectedLead.setterName}</span>
+                  </div>
+                )}
+                {(selectedLead.no_show_count || 0) > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-on-surface-variant">Bisherige No-Shows:</span>
+                    <span className="font-medium text-rose-600">{selectedLead.no_show_count}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex flex-col gap-2 p-5 pt-0">
+              {(selectedLead.no_show_count || 0) >= 3 ? (
+                <>
+                  <button
+                    onClick={handleNoShowToLost}
+                    disabled={noShowProcessing}
+                    className="w-full px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+                  >
+                    Auf "Verloren" setzen
+                  </button>
+                  <button
+                    onClick={handleNoShowConfirm}
+                    disabled={noShowProcessing}
+                    className="w-full px-4 py-2.5 border border-rose-300 text-rose-700 rounded-lg hover:bg-rose-50 transition-colors"
+                  >
+                    {noShowProcessing ? (
+                      <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                    ) : (
+                      'Trotzdem als nicht erschienen markieren'
+                    )}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={handleNoShowConfirm}
+                  disabled={noShowProcessing}
+                  className="w-full px-4 py-2.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors font-medium flex items-center justify-center"
+                >
+                  {noShowProcessing ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    'Als nicht erschienen markieren'
+                  )}
+                </button>
+              )}
+              <button
+                onClick={handleNoShowCancel}
+                disabled={noShowProcessing}
+                className="w-full px-4 py-2.5 border border-outline-variant rounded-lg hover:bg-surface-container transition-colors"
+              >
+                Abbrechen
               </button>
             </div>
           </div>

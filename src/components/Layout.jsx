@@ -181,6 +181,14 @@ function Layout({ children }) {
                 type = 'rejected'
                 link = '/dashboard'
                 break
+              case 'no_show':
+                type = 'warning'
+                link = '/closing'
+                break
+              case 'no_show_rescheduled':
+                type = 'success'
+                link = '/closing'
+                break
               case 'Pool Update':
                 type = 'info'
                 if (msg.titel?.includes('Hot-Lead-Bewerbung')) {
