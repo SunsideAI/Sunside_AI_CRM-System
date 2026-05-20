@@ -1363,7 +1363,41 @@ function Kaltakquise() {
                 // Termin-Picker anzeigen
                 <TerminPicker
                   lead={selectedLead}
-                  onTerminBooked={(termin) => {
+                  onTerminBooked={async (termin) => {
+                    // Bei No-Show Re-Terminierung: Hot Lead Status auf "Im Closing" setzen + Closer benachrichtigen
+                    if (hotLeadData?.id && hotLeadData?.status === 'Nicht erschienen') {
+                      try {
+                        // Hot Lead Status updaten
+                        await fetch('/.netlify/functions/hot-leads', {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            hotLeadId: hotLeadData.id,
+                            updates: {
+                              status: 'Im Closing',
+                              terminDatum: termin.datum
+                            }
+                          })
+                        })
+
+                        // Closer über neuen Termin benachrichtigen (wenn Closer zugewiesen)
+                        if (hotLeadData.closerId) {
+                          await fetch('/.netlify/functions/system-messages', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              empfaengerId: hotLeadData.closerId,
+                              typ: 'no_show_rescheduled',
+                              titel: `📅 Neuer Termin: ${selectedLead.unternehmensname}`,
+                              nachricht: `${user?.vor_nachname || 'Setter'} hat einen neuen Termin für ${selectedLead.unternehmensname} vereinbart. Der Lead war zuvor als "Nicht erschienen" markiert.`,
+                              hotLeadId: hotLeadData.id
+                            })
+                          })
+                        }
+                      } catch (err) {
+                        console.error('Hot Lead Update Fehler:', err)
+                      }
+                    }
                     setShowTerminPicker(false)
                     setSelectedLead(null)
                     setEditMode(false)
@@ -1437,15 +1471,34 @@ function Kaltakquise() {
                 />
               ) : (
                 <>
-              {/* Soft Lock Banner für Beratungsgespräch */}
+              {/* Soft Lock Banner für Beratungsgespräch - mit No-Show Ausnahme */}
               {selectedLead.ergebnis === 'Beratungsgespräch' && !kommentarOnlyMode && (
-                <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center gap-3">
-                  <Lock className="w-5 h-5 text-purple-600 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-purple-800">Dieser Lead ist im Closing-Prozess</p>
-                    <p className="text-xs text-purple-600">Änderungen nur noch über die Closing-Seite. Du kannst weiterhin Kommentare hinzufügen.</p>
+                loadingHotLead ? (
+                  <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center gap-3">
+                    <Loader2 className="w-5 h-5 text-gray-400 animate-spin flex-shrink-0" />
+                    <span className="text-sm text-gray-500">Status wird geladen...</span>
                   </div>
-                </div>
+                ) : hotLeadData?.status === 'Nicht erschienen' && hotLeadData?.setterId === user?.id ? (
+                  <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-rose-800">
+                        Termin nicht stattgefunden (No-Show #{hotLeadData.no_show_count || 1})
+                      </p>
+                      <p className="text-xs text-rose-600">
+                        Bitte neuen Termin vereinbaren oder Unterlagen erneut senden.
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-purple-800">Dieser Lead ist im Closing-Prozess</p>
+                      <p className="text-xs text-purple-600">Änderungen nur noch über die Closing-Seite. Du kannst weiterhin Kommentare hinzufügen.</p>
+                    </div>
+                  </div>
+                )
               )}
 
               {/* KONTAKTDATEN Section */}
@@ -1918,15 +1971,27 @@ function Kaltakquise() {
                       </>
                     ) : (
                       <>
-                        {/* Soft Lock: Bei Beratungsgespräch nur Kommentar-Button, sonst Bearbeiten */}
+                        {/* Soft Lock: Bei Beratungsgespräch nur Kommentar-Button, AUSSER bei No-Show */}
                         {selectedLead.ergebnis === 'Beratungsgespräch' ? (
-                          <button
-                            onClick={() => setKommentarOnlyMode(true)}
-                            className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                          >
-                            <MessageSquare className="w-4 h-4 mr-2" />
-                            Kommentar hinzufügen
-                          </button>
+                          // No-Show: Setter kann voll bearbeiten
+                          hotLeadData?.status === 'Nicht erschienen' && hotLeadData?.setterId === user?.id ? (
+                            <button
+                              onClick={() => setEditMode(true)}
+                              className="flex items-center px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors"
+                            >
+                              <Calendar className="w-4 h-4 mr-2" />
+                              Lead neu terminieren
+                            </button>
+                          ) : (
+                            // Normal Closing: nur Kommentar
+                            <button
+                              onClick={() => setKommentarOnlyMode(true)}
+                              className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                            >
+                              <MessageSquare className="w-4 h-4 mr-2" />
+                              Kommentar hinzufügen
+                            </button>
+                          )
                         ) : (
                           <button
                             onClick={() => setEditMode(true)}

@@ -187,6 +187,11 @@ export async function handler(event) {
           query = query.in('status', statusList)
         }
 
+        // Original Lead ID Filter (für No-Show Bearbeitung durch Setter)
+        if (originalLeadId) {
+          query = query.eq('lead_id', originalLeadId)
+        }
+
         // Sortierung und Pagination
         query = query.order('unternehmen', { ascending: true })
         query = query.range(page * pageSize, (page + 1) * pageSize - 1)
