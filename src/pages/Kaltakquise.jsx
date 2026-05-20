@@ -131,6 +131,10 @@ function Kaltakquise() {
   const [hotLeadData, setHotLeadData] = useState(null)
   const [loadingHotLead, setLoadingHotLead] = useState(false)
 
+  // No-Show Widget: Setter's leads die nicht erschienen sind
+  const [setterNoShowLeads, setSetterNoShowLeads] = useState([])
+  const [loadingSetterNoShows, setLoadingSetterNoShows] = useState(false)
+
   const [editForm, setEditForm] = useState({
     kontaktiert: false,
     ergebnis: '',
@@ -269,6 +273,38 @@ function Kaltakquise() {
       loadEbookLeads()
     }
   }, [viewMode, loadEbookLeads])
+
+  // Setter No-Show Leads laden (für Widget oben)
+  const loadSetterNoShowLeads = useCallback(async () => {
+    if (!user?.id) return
+
+    try {
+      setLoadingSetterNoShows(true)
+      const response = await fetch(`/.netlify/functions/hot-leads?setterId=${user.id}&status=Nicht%20erschienen`)
+      const data = await response.json()
+
+      if (response.ok && data.hotLeads) {
+        const sorted = data.hotLeads.sort((a, b) => {
+          const dateA = a.no_show_marked_at ? new Date(a.no_show_marked_at) : new Date(0)
+          const dateB = b.no_show_marked_at ? new Date(b.no_show_marked_at) : new Date(0)
+          return dateB - dateA // Neueste No-Shows zuerst
+        })
+        setSetterNoShowLeads(sorted)
+      } else {
+        setSetterNoShowLeads([])
+      }
+    } catch (err) {
+      console.warn('Setter No-Show Leads laden fehlgeschlagen:', err)
+      setSetterNoShowLeads([])
+    } finally {
+      setLoadingSetterNoShows(false)
+    }
+  }, [user?.id])
+
+  // No-Show Leads initial laden
+  useEffect(() => {
+    loadSetterNoShowLeads()
+  }, [loadSetterNoShowLeads])
 
   // E-Book Lead übernehmen
   const claimEbookLead = async (lead) => {
@@ -970,6 +1006,108 @@ function Kaltakquise() {
         </div>
       )}
 
+      {/* No-Show Widget: Setter's Leads die neu terminiert werden müssen */}
+      {setterNoShowLeads.length > 0 && viewMode !== 'ebook' && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-lg font-semibold text-rose-800 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5" />
+              Lead-Termine neu vereinbaren
+              <span className="ml-2 px-2 py-0.5 bg-rose-200 text-rose-800 rounded-full text-sm">
+                {setterNoShowLeads.length}
+              </span>
+            </h3>
+            <button
+              onClick={loadSetterNoShowLeads}
+              disabled={loadingSetterNoShows}
+              className="p-1.5 hover:bg-rose-100 rounded-lg transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 text-rose-600 ${loadingSetterNoShows ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+          <p className="text-sm text-rose-700 mb-3">
+            Diese Leads sind nicht zum Termin erschienen. Bitte neuen Termin vereinbaren.
+          </p>
+          <div className="space-y-2">
+            {setterNoShowLeads.slice(0, 5).map(lead => (
+              <div
+                key={lead.id}
+                className="flex items-center justify-between bg-white rounded-lg p-3 border border-rose-100 hover:border-rose-300 cursor-pointer transition-colors"
+                onClick={() => {
+                  // Lead in der Hauptliste finden und öffnen
+                  const matchingLead = leads.find(l => l.id === lead.originalLeadId)
+                  if (matchingLead) {
+                    openLead(matchingLead)
+                    setEditMode(true)
+                  } else {
+                    // Falls nicht in aktueller Liste, direkt Drawer öffnen mit Hot-Lead-Daten
+                    setSelectedLead({
+                      id: lead.originalLeadId,
+                      unternehmensname: lead.unternehmen,
+                      ansprechpartnerVorname: lead.ansprechpartnerVorname,
+                      ansprechpartnerNachname: lead.ansprechpartnerNachname,
+                      kategorie: lead.kategorie,
+                      email: lead.email,
+                      telefon: lead.telefon,
+                      website: lead.website,
+                      ergebnis: 'Beratungsgespräch'
+                    })
+                    setHotLeadData(lead)
+                    setEditMode(true)
+                  }
+                }}
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="font-medium text-on-surface truncate">{lead.unternehmen}</div>
+                  <div className="text-sm text-on-surface-variant flex items-center gap-2 mt-0.5">
+                    <span>{lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}</span>
+                    {(lead.no_show_count || 0) > 1 && (
+                      <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded text-xs font-medium">
+                        {lead.no_show_count}. No-Show
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {lead.no_show_marked_at && (
+                    <span className="text-xs text-rose-600">
+                      {new Date(lead.no_show_marked_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                    </span>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      // Direkt TerminPicker öffnen
+                      setSelectedLead({
+                        id: lead.originalLeadId,
+                        unternehmensname: lead.unternehmen,
+                        ansprechpartnerVorname: lead.ansprechpartnerVorname,
+                        ansprechpartnerNachname: lead.ansprechpartnerNachname,
+                        kategorie: lead.kategorie,
+                        email: lead.email,
+                        telefon: lead.telefon,
+                        website: lead.website,
+                        ergebnis: 'Beratungsgespräch'
+                      })
+                      setHotLeadData(lead)
+                      setShowTerminPicker(true)
+                    }}
+                    className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 transition-colors"
+                  >
+                    Termin buchen
+                  </button>
+                </div>
+              </div>
+            ))}
+            {setterNoShowLeads.length > 5 && (
+              <p className="text-sm text-rose-600 text-center pt-2">
+                + {setterNoShowLeads.length - 5} weitere No-Shows
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Normale Leads Tabelle - nur wenn nicht E-Book Pool */}
       {viewMode !== 'ebook' && (
       <div className="card-elevated overflow-hidden">
@@ -1402,6 +1540,7 @@ function Kaltakquise() {
                     setSelectedLead(null)
                     setEditMode(false)
                     loadLeads() // Leads neu laden
+                    loadSetterNoShowLeads() // No-Show Widget aktualisieren
                   }}
                   onCancel={() => setShowTerminPicker(false)}
                 />
