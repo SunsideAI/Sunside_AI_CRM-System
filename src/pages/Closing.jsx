@@ -6,8 +6,8 @@ import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
 import AbschlussForm from '../components/AbschlussForm'
 import BillingPanel from '../components/BillingPanel'
-import { 
-  Calendar, 
+import {
+  Calendar,
   Users,
   User as UserIcon,
   UserMinus,
@@ -39,7 +39,8 @@ import {
   Upload,
   Download,
   Trash2,
-  File
+  File,
+  Video
 } from 'lucide-react'
 
 // Paket-Optionen für Angebot
@@ -161,6 +162,7 @@ function Closing() {
   const [applyingLead, setApplyingLead] = useState(null)
   const [applyKommentar, setApplyKommentar] = useState('')
   const [submittingApplication, setSubmittingApplication] = useState(false)
+  const [selectedPoolLead, setSelectedPoolLead] = useState(null)
 
   const LEADS_PER_PAGE = 10
 
@@ -1281,108 +1283,192 @@ function Closing() {
               <p className="text-outline mt-1">Alle Beratungsgespräche wurden bereits übernommen</p>
             </div>
           ) : (
-            <div className="space-y-2 p-2">
-              {poolLeads.map((lead, index) => {
-                const terminDate = lead.terminDatum ? new Date(lead.terminDatum) : null
-                const isUpcoming = terminDate && terminDate > new Date()
-                const isPast = terminDate && terminDate < new Date()
-
-                return (
-                  <div
-                    key={lead.id}
-                    className={`table-row p-5 rounded-xl ${isPast ? 'bg-error-container/30' : index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      {/* Lead-Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-medium text-on-surface truncate">
-                            {lead.unternehmen || 'Unbekannt'}
-                          </h3>
-                          {lead.terminart && (
-                            <span className={`badge ${
-                              lead.terminart === 'Video'
-                                ? 'badge-secondary'
-                                : 'badge-primary'
-                            }`}>
-                              {lead.terminart === 'Video' ? 'Video' : 'Telefon'}
-                            </span>
-                          )}
+            <table className="w-full">
+              <thead>
+                <tr className="bg-surface-container">
+                  <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Unternehmen</th>
+                  <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Ansprechpartner</th>
+                  <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant hidden md:table-cell">Ort</th>
+                  <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant hidden lg:table-cell">Setter</th>
+                  <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Termin</th>
+                  <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant hidden sm:table-cell">Art</th>
+                </tr>
+              </thead>
+              <tbody>
+                {poolLeads.map((lead, index) => {
+                  const terminDate = lead.terminDatum ? new Date(lead.terminDatum) : null
+                  const isPast = terminDate && terminDate < new Date()
+                  return (
+                    <tr
+                      key={lead.id}
+                      onClick={() => setSelectedPoolLead(lead)}
+                      className={`cursor-pointer transition-colors hover:bg-primary-fixed/20 ${
+                        isPast ? 'bg-red-50/50' : index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'
+                      }`}
+                    >
+                      <td className="px-4 py-4">
+                        <div className="font-medium text-on-surface max-w-[200px] truncate">
+                          {lead.unternehmen || 'Unbekannt'}
                         </div>
-
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-body-sm text-on-surface-variant">
-                          {(lead.ansprechpartnerVorname || lead.ansprechpartnerNachname) && (
-                            <span className="flex items-center gap-1">
-                              <UserIcon className="w-3.5 h-3.5" />
-                              {lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}
-                            </span>
-                          )}
-                          {lead.ort && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5" />
-                              {lead.ort}
-                            </span>
-                          )}
-                          {lead.setterName && (
-                            <span className="flex items-center gap-1 text-outline">
-                              Gebucht von: {lead.setterName}
-                            </span>
-                          )}
+                      </td>
+                      <td className="px-4 py-4 text-body-md text-on-surface-variant">
+                        {lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}
+                      </td>
+                      <td className="px-4 py-4 text-body-md text-on-surface-variant hidden md:table-cell">
+                        {lead.ort || '-'}
+                      </td>
+                      <td className="px-4 py-4 text-body-md text-on-surface-variant hidden lg:table-cell">
+                        {lead.setterName || '-'}
+                      </td>
+                      <td className="px-4 py-4">
+                        <div className={isPast ? 'text-error font-medium' : ''}>
+                          {terminDate?.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Berlin' })}
                         </div>
-
-                        {/* Problemstellung / Infos aus Kommentar */}
-                        {lead.kommentar && (
-                          <p className="mt-2 text-body-sm text-on-surface-variant line-clamp-2">
-                            {lead.kommentar}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Termin & Action */}
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                        {/* Termin-Datum */}
-                        <div className={`text-center px-4 py-2 rounded-xl ${
-                          isPast
-                            ? 'bg-error-container text-error'
-                            : 'bg-secondary-container text-secondary'
-                        }`}>
-                          <div className="text-label-sm font-medium uppercase">
-                            {terminDate?.toLocaleDateString('de-DE', { weekday: 'short', timeZone: 'Europe/Berlin' })}
-                          </div>
-                          <div className="text-title-lg font-display">
-                            {terminDate?.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Berlin' })}
-                          </div>
-                          <div className="text-body-sm font-medium">
-                            {terminDate?.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr
-                          </div>
-                          {isPast && (
-                            <div className="text-label-sm mt-1">Verpasst</div>
-                          )}
+                        <div className="text-body-sm text-on-surface-variant">
+                          {terminDate?.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr
                         </div>
-
-                        {/* Bewerben Button (Admin-Genehmigung erforderlich) */}
-                        <button
-                          onClick={() => startApplyForLead(lead)}
-                          disabled={claimingLead === lead.id}
-                          className="btn-primary flex items-center justify-center whitespace-nowrap disabled:opacity-50"
-                        >
-                          {claimingLead === lead.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <>
-                              <Send className="w-4 h-4 mr-2" />
-                              Bewerben
-                            </>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                        {isPast && <div className="text-label-sm text-error">Verpasst</div>}
+                      </td>
+                      <td className="px-4 py-4 hidden sm:table-cell">
+                        <span className={`badge ${lead.terminart === 'Video' ? 'badge-secondary' : 'badge-primary'}`}>
+                          {lead.terminart === 'Video' ? 'Video' : 'Telefon'}
+                        </span>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           )}
         </div>
+
+        {/* Pool Lead Drawer */}
+        {selectedPoolLead && createPortal(
+          <div className="fixed inset-0 bg-scrim/50 z-50 flex justify-end" onClick={() => setSelectedPoolLead(null)}>
+            <div
+              className="w-full max-w-lg bg-surface h-full overflow-y-auto shadow-xl animate-slide-in-right"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between z-10">
+                <h2 className="text-title-lg font-semibold truncate">{selectedPoolLead.unternehmen || 'Lead Details'}</h2>
+                <button onClick={() => setSelectedPoolLead(null)} className="p-2 rounded-lg hover:bg-surface-container flex-shrink-0">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                {/* Termin-Badge */}
+                {(() => {
+                  const terminDate = selectedPoolLead.terminDatum ? new Date(selectedPoolLead.terminDatum) : null
+                  const isPast = terminDate && terminDate < new Date()
+                  return terminDate && (
+                    <div className={`text-center p-4 rounded-xl ${isPast ? 'bg-error-container' : 'bg-secondary-container'}`}>
+                      <div className={`text-label-sm font-medium uppercase ${isPast ? 'text-error' : 'text-secondary'}`}>
+                        {terminDate.toLocaleDateString('de-DE', { weekday: 'long', timeZone: 'Europe/Berlin' })}
+                      </div>
+                      <div className={`text-display-sm font-display ${isPast ? 'text-error' : 'text-secondary'}`}>
+                        {terminDate.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', timeZone: 'Europe/Berlin' })}
+                      </div>
+                      <div className={`text-title-md font-medium ${isPast ? 'text-error' : 'text-secondary'}`}>
+                        {terminDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr
+                      </div>
+                      {isPast && <div className="text-error font-medium mt-1">Termin verpasst</div>}
+                      {selectedPoolLead.terminart && (
+                        <div className={`inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-label-sm ${
+                          selectedPoolLead.terminart === 'Video' ? 'bg-white/50 text-secondary' : 'bg-white/50 text-primary'
+                        }`}>
+                          {selectedPoolLead.terminart === 'Video' ? <Video className="w-3 h-3" /> : <Phone className="w-3 h-3" />}
+                          {selectedPoolLead.terminart}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
+
+                {/* Kontaktdaten */}
+                <div className="space-y-3">
+                  <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">Kontaktdaten</h3>
+
+                  {(selectedPoolLead.ansprechpartnerVorname || selectedPoolLead.ansprechpartnerNachname) && (
+                    <div className="flex items-center gap-3">
+                      <UserIcon className="w-4 h-4 text-on-surface-variant" />
+                      <span>{selectedPoolLead.ansprechpartnerVorname} {selectedPoolLead.ansprechpartnerNachname}</span>
+                    </div>
+                  )}
+
+                  {selectedPoolLead.telefon && (
+                    <a href={`tel:${selectedPoolLead.telefon}`} className="flex items-center gap-3 text-primary hover:underline">
+                      <Phone className="w-4 h-4" />
+                      <span>{selectedPoolLead.telefon}</span>
+                    </a>
+                  )}
+
+                  {selectedPoolLead.email && (
+                    <a href={`mailto:${selectedPoolLead.email}`} className="flex items-center gap-3 text-primary hover:underline">
+                      <Mail className="w-4 h-4" />
+                      <span>{selectedPoolLead.email}</span>
+                    </a>
+                  )}
+
+                  {selectedPoolLead.ort && (
+                    <div className="flex items-center gap-3 text-on-surface-variant">
+                      <MapPin className="w-4 h-4" />
+                      <span>{selectedPoolLead.ort}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Setter Info */}
+                {selectedPoolLead.setterName && (
+                  <div className="space-y-3 border-t border-outline-variant pt-6">
+                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">Gebucht von</h3>
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-label-sm font-medium">
+                        {selectedPoolLead.setterName}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notizen / Kommentar */}
+                {selectedPoolLead.kommentar && (
+                  <div className="space-y-3 border-t border-outline-variant pt-6">
+                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">Notizen</h3>
+                    <div className="bg-surface-container rounded-lg p-4 max-h-[200px] overflow-y-auto">
+                      <p className="text-body-md text-on-surface whitespace-pre-wrap">{selectedPoolLead.kommentar}</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Bewerben Button */}
+                <div className="border-t border-outline-variant pt-6">
+                  <button
+                    onClick={() => {
+                      setSelectedPoolLead(null)
+                      startApplyForLead(selectedPoolLead)
+                    }}
+                    disabled={claimingLead === selectedPoolLead.id}
+                    className="btn-primary w-full flex items-center justify-center py-3 text-title-md"
+                  >
+                    {claimingLead === selectedPoolLead.id ? (
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="w-5 h-5 mr-2" />
+                        Auf diesen Lead bewerben
+                      </>
+                    )}
+                  </button>
+                  <p className="text-center text-body-sm text-on-surface-variant mt-3">
+                    Deine Bewerbung wird an einen Admin zur Genehmigung gesendet.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
         </>
       ) : (
         /* ==================== NORMALE CLOSING-ANSICHT ==================== */
