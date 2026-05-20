@@ -183,7 +183,13 @@ function Layout({ children }) {
                 break
               case 'Pool Update':
                 type = 'info'
-                link = msg.titel?.includes('Lead-Anfrage') ? '/einstellungen?tab=anfragen' : '/closing'
+                if (msg.titel?.includes('Hot-Lead-Bewerbung')) {
+                  link = '/einstellungen?tab=hot-lead-bewerbungen'
+                } else if (msg.titel?.includes('Lead-Anfrage')) {
+                  link = '/einstellungen?tab=anfragen'
+                } else {
+                  link = '/closing'
+                }
                 break
             }
 
