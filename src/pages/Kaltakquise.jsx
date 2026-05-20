@@ -1034,27 +1034,42 @@ function Kaltakquise() {
                 key={lead.id}
                 className="flex items-center justify-between bg-white rounded-lg p-3 border border-rose-100 hover:border-rose-300 cursor-pointer transition-colors"
                 onClick={() => {
-                  // Lead in der Hauptliste finden und öffnen
-                  const matchingLead = leads.find(l => l.id === lead.originalLeadId)
-                  if (matchingLead) {
-                    openLead(matchingLead)
-                    setEditMode(true)
-                  } else {
-                    // Falls nicht in aktueller Liste, direkt Drawer öffnen mit Hot-Lead-Daten
-                    setSelectedLead({
-                      id: lead.originalLeadId,
-                      unternehmensname: lead.unternehmen,
-                      ansprechpartnerVorname: lead.ansprechpartnerVorname,
-                      ansprechpartnerNachname: lead.ansprechpartnerNachname,
-                      kategorie: lead.kategorie,
-                      email: lead.email,
-                      telefon: lead.telefon,
-                      website: lead.website,
-                      ergebnis: 'Beratungsgespräch'
-                    })
-                    setHotLeadData(lead)
-                    setEditMode(true)
+                  // Hot-Lead-Daten auf Lead-Format mappen (vollständig)
+                  const mappedLead = {
+                    id: lead.originalLeadId,
+                    unternehmensname: lead.unternehmen,
+                    ansprechpartnerVorname: lead.ansprechpartnerVorname,
+                    ansprechpartnerNachname: lead.ansprechpartnerNachname,
+                    kategorie: lead.kategorie,
+                    email: lead.email,
+                    telefon: lead.telefon,
+                    website: lead.website,
+                    stadt: lead.ort,
+                    land: lead.bundesland,
+                    monatlicheBesuche: lead.monatlicheBesuche,
+                    mehrwert: lead.mehrwert,
+                    absprungrate: lead.absprungrate,
+                    anzahlLeads: lead.anzahlLeads,
+                    kommentar: lead.kommentar,
+                    ergebnis: 'Beratungsgespräch',
+                    kontaktiert: true
                   }
+                  setSelectedLead(mappedLead)
+                  setHotLeadData(lead)
+                  setEditForm({
+                    kontaktiert: true,
+                    ergebnis: 'Beratungsgespräch',
+                    kommentar: lead.kommentar || '',
+                    ansprechpartnerVorname: lead.ansprechpartnerVorname || '',
+                    ansprechpartnerNachname: lead.ansprechpartnerNachname || '',
+                    neuerKommentar: '',
+                    ansprechpartnerValidation: false,
+                    telefon: lead.telefon || '',
+                    email: lead.email || '',
+                    website: lead.website || '',
+                    wiedervorlageDatum: ''
+                  })
+                  setEditMode(true)
                 }}
               >
                 <div className="flex-1 min-w-0">
@@ -1077,8 +1092,8 @@ function Kaltakquise() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
-                      // Direkt TerminPicker öffnen
-                      setSelectedLead({
+                      // Hot-Lead-Daten auf Lead-Format mappen und direkt TerminPicker öffnen
+                      const mappedLead = {
                         id: lead.originalLeadId,
                         unternehmensname: lead.unternehmen,
                         ansprechpartnerVorname: lead.ansprechpartnerVorname,
@@ -1087,8 +1102,10 @@ function Kaltakquise() {
                         email: lead.email,
                         telefon: lead.telefon,
                         website: lead.website,
+                        stadt: lead.ort,
                         ergebnis: 'Beratungsgespräch'
-                      })
+                      }
+                      setSelectedLead(mappedLead)
                       setHotLeadData(lead)
                       setShowTerminPicker(true)
                     }}
