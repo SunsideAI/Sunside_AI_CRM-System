@@ -126,6 +126,11 @@ function Kaltakquise() {
   const [showTerminPicker, setShowTerminPicker] = useState(false)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
   const [showKontaktdaten, setShowKontaktdaten] = useState(false) // Kontaktdaten-Sektion ein/ausklappen
+
+  // Hot-Lead Data für No-Show Bearbeitung durch Setter
+  const [hotLeadData, setHotLeadData] = useState(null)
+  const [loadingHotLead, setLoadingHotLead] = useState(false)
+
   const [editForm, setEditForm] = useState({
     kontaktiert: false,
     ergebnis: '',
@@ -398,6 +403,7 @@ function Kaltakquise() {
   // Lead auswählen
   const openLead = (lead) => {
     setSelectedLead(lead)
+    setHotLeadData(null) // Reset hot lead data
     setEditForm({
       kontaktiert: lead.kontaktiert,
       ergebnis: lead.ergebnis,
@@ -418,6 +424,33 @@ function Kaltakquise() {
     setShowEmailComposer(false)
     setShowKontaktdaten(false) // Eingeklappt starten
   }
+
+  // Hot-Lead-Daten für Beratungsgespräch-Leads laden (für No-Show Setter-Bearbeitung)
+  useEffect(() => {
+    const loadHotLeadData = async () => {
+      if (!selectedLead || selectedLead.ergebnis !== 'Beratungsgespräch') {
+        setHotLeadData(null)
+        return
+      }
+
+      setLoadingHotLead(true)
+      try {
+        const response = await fetch(`/.netlify/functions/hot-leads?originalLeadId=${selectedLead.id}`)
+        if (response.ok) {
+          const data = await response.json()
+          if (data.hotLeads && data.hotLeads.length > 0) {
+            setHotLeadData(data.hotLeads[0])
+          }
+        }
+      } catch (err) {
+        console.warn('Hot-Lead-Daten laden fehlgeschlagen:', err)
+      } finally {
+        setLoadingHotLead(false)
+      }
+    }
+
+    loadHotLeadData()
+  }, [selectedLead?.id, selectedLead?.ergebnis])
 
   // Auto-Save für Ansprechpartner-Felder (mit Debounce)
   const autoSaveAnsprechpartner = useCallback(async (leadId, vorname, nachname) => {

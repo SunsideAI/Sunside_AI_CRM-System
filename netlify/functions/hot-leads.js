@@ -127,9 +127,9 @@ export async function handler(event) {
     // ==========================================
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
-      const { setterId, closerId, setterName, closerName, status, limit, pool } = params
+      const { setterId, closerId, setterName, closerName, status, limit, pool, originalLeadId } = params
 
-      console.log('Hot Leads GET - Params:', { setterId, closerId, setterName, closerName, status, limit, pool })
+      console.log('Hot Leads GET - Params:', { setterId, closerId, setterName, closerName, status, limit, pool, originalLeadId })
 
       // User-Map laden
       const userMap = await loadUserMap()
