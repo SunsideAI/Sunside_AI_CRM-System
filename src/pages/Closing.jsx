@@ -1436,7 +1436,59 @@ function Closing() {
                   <div className="space-y-3 border-t border-outline-variant pt-6">
                     <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">Notizen</h3>
                     <div className="bg-surface-container rounded-lg p-4 max-h-[200px] overflow-y-auto">
-                      <p className="text-body-md text-on-surface whitespace-pre-wrap">{selectedPoolLead.kommentar}</p>
+                      <div className="space-y-2">
+                        {(() => {
+                          const lines = selectedPoolLead.kommentar.split('\n').filter(line => line.trim())
+                          const groups = []
+                          let currentPlainGroup = []
+                          lines.forEach((line) => {
+                            const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
+                            if (historyMatch) {
+                              if (currentPlainGroup.length > 0) {
+                                groups.push({ type: 'plain', lines: currentPlainGroup })
+                                currentPlainGroup = []
+                              }
+                              groups.push({ type: 'history', match: historyMatch })
+                            } else {
+                              currentPlainGroup.push(line)
+                            }
+                          })
+                          if (currentPlainGroup.length > 0) {
+                            groups.push({ type: 'plain', lines: currentPlainGroup })
+                          }
+                          return groups.map((group, index) => {
+                            if (group.type === 'history') {
+                              const [, datum, zeit, rest] = group.match
+                              const emojiMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬|🎯|📞|❌|✉️|📄|⭐)\s*(.+)$/)
+                              const emoji = emojiMatch ? emojiMatch[1] : '📋'
+                              let text = emojiMatch ? emojiMatch[2] : rest
+                              const userMatch = text.match(/\(([^)]+)\)$/)
+                              const userName = userMatch ? userMatch[1] : null
+                              if (userMatch) text = text.replace(/\s*\([^)]+\)$/, '')
+                              return (
+                                <div key={index} className="flex items-start gap-2 text-sm">
+                                  <span className="flex-shrink-0">{emoji}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-on-surface">{text}</p>
+                                    <p className="text-xs text-outline mt-0.5">
+                                      {datum}, {zeit}{userName && ` • ${userName}`}
+                                    </p>
+                                  </div>
+                                </div>
+                              )
+                            } else {
+                              return (
+                                <div key={index} className="flex items-start gap-2 text-sm">
+                                  <span className="flex-shrink-0">💬</span>
+                                  <div className="text-on-surface">
+                                    {group.lines.map((line, i) => <p key={i}>{line}</p>)}
+                                  </div>
+                                </div>
+                              )
+                            }
+                          })
+                        })()}
+                      </div>
                     </div>
                   </div>
                 )}

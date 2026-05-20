@@ -110,7 +110,11 @@ function FollowUp() {
   const formatDate = (dateStr) => {
     if (!dateStr) return '-'
     try {
-      return new Date(dateStr).toLocaleDateString('de-DE')
+      return new Date(dateStr).toLocaleDateString('de-DE', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      })
     } catch {
       return '-'
     }
@@ -658,9 +662,25 @@ function FollowUp() {
                     )}
                     {isColumnVisible('kommentar') && (
                       <td className="px-4 py-4 max-w-[250px]">
-                        <span className="text-body-sm text-on-surface-variant line-clamp-2">
-                          {lead.kommentar?.split('\n')[0]?.substring(0, 60) || '-'}
-                        </span>
+                        {(() => {
+                          if (!lead.kommentar) return <span className="text-body-sm text-outline">-</span>
+                          const entries = parseKommentar(lead.kommentar)
+                          const lastEntry = entries[entries.length - 1]
+                          if (!lastEntry) return <span className="text-body-sm text-outline">-</span>
+                          return (
+                            <div className="flex items-start gap-1.5">
+                              <span className="flex-shrink-0 text-sm">{lastEntry.type === 'history' ? lastEntry.emoji : '💬'}</span>
+                              <div className="min-w-0">
+                                <p className="text-body-sm text-on-surface truncate max-w-[200px]">
+                                  {lastEntry.type === 'history' ? lastEntry.text : lastEntry.text}
+                                </p>
+                                {lastEntry.type === 'history' && (
+                                  <p className="text-label-sm text-outline">{lastEntry.datum}</p>
+                                )}
+                              </div>
+                            </div>
+                          )
+                        })()}
                       </td>
                     )}
                   </tr>
