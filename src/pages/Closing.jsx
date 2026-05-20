@@ -169,10 +169,6 @@ function Closing() {
   const [showNoShowModal, setShowNoShowModal] = useState(false)
   const [noShowProcessing, setNoShowProcessing] = useState(false)
 
-  // Setter No-Show Leads State (für Re-Termin Widget)
-  const [setterNoShowLeads, setSetterNoShowLeads] = useState([])
-  const [loadingSetterNoShows, setLoadingSetterNoShows] = useState(false)
-
   const LEADS_PER_PAGE = 10
 
   // Toast anzeigen (verschwindet nach 4 Sekunden)
@@ -511,7 +507,6 @@ function Closing() {
   useEffect(() => {
     if (user) {
       loadPoolCount()
-      loadSetterNoShowLeads() // Setter No-Show Leads laden
     }
   }, [user])
 
@@ -615,33 +610,6 @@ function Closing() {
       setPoolLeads([])
     } finally {
       setLoadingPool(false)
-    }
-  }
-
-  // Setter No-Show Leads laden (Leads wo aktueller User Setter ist und Status = "Nicht erschienen")
-  const loadSetterNoShowLeads = async () => {
-    if (!user?.id) return
-
-    try {
-      setLoadingSetterNoShows(true)
-      const response = await fetch(`/.netlify/functions/hot-leads?setterId=${user.id}&status=Nicht%20erschienen`)
-      const data = await response.json()
-
-      if (response.ok && data.hotLeads) {
-        const sorted = data.hotLeads.sort((a, b) => {
-          const dateA = a.no_show_marked_at ? new Date(a.no_show_marked_at) : new Date(0)
-          const dateB = b.no_show_marked_at ? new Date(b.no_show_marked_at) : new Date(0)
-          return dateB - dateA // Neueste No-Shows zuerst
-        })
-        setSetterNoShowLeads(sorted)
-      } else {
-        setSetterNoShowLeads([])
-      }
-    } catch (err) {
-      console.warn('Setter No-Show Leads laden fehlgeschlagen:', err)
-      setSetterNoShowLeads([])
-    } finally {
-      setLoadingSetterNoShows(false)
     }
   }
 
@@ -1433,87 +1401,6 @@ function Closing() {
       {error && (
         <div className="bg-error-container text-error px-4 py-3 rounded-xl">
           {error}
-        </div>
-      )}
-
-      {/* ==================== SETTER NO-SHOW WIDGET ==================== */}
-      {setterNoShowLeads.length > 0 && viewMode !== 'pool' && (
-        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold text-rose-800 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5" />
-              Lead-Termine neu vereinbaren
-              <span className="ml-2 px-2 py-0.5 bg-rose-200 text-rose-800 rounded-full text-sm">
-                {setterNoShowLeads.length}
-              </span>
-            </h3>
-            <button
-              onClick={loadSetterNoShowLeads}
-              disabled={loadingSetterNoShows}
-              className="p-1.5 hover:bg-rose-100 rounded-lg transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 text-rose-600 ${loadingSetterNoShows ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-          <p className="text-sm text-rose-700 mb-3">
-            Diese Leads sind nicht zum Termin erschienen. Bitte neuen Termin vereinbaren.
-          </p>
-          <div className="space-y-2">
-            {setterNoShowLeads.slice(0, 5).map(lead => (
-              <div
-                key={lead.id}
-                className="flex items-center justify-between bg-white rounded-lg p-3 border border-rose-100 hover:border-rose-300 cursor-pointer transition-colors"
-                onClick={() => {
-                  setSelectedLead(lead)
-                  setEditMode(true)
-                  setEditData({
-                    status: lead.status,
-                    terminDatum: lead.terminDatum || '',
-                    neuerKommentar: ''
-                  })
-                }}
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="font-medium text-on-surface truncate">{lead.unternehmen}</div>
-                  <div className="text-sm text-on-surface-variant flex items-center gap-2 mt-0.5">
-                    <span>{lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}</span>
-                    {(lead.no_show_count || 0) > 1 && (
-                      <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded text-xs font-medium">
-                        {lead.no_show_count}. No-Show
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {lead.no_show_marked_at && (
-                    <span className="text-xs text-rose-600">
-                      {new Date(lead.no_show_marked_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
-                    </span>
-                  )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSelectedLead(lead)
-                      setEditMode(true)
-                      setEditData({
-                        status: lead.status,
-                        terminDatum: lead.terminDatum || '',
-                        neuerKommentar: ''
-                      })
-                    }}
-                    className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 transition-colors"
-                  >
-                    Termin buchen
-                  </button>
-                </div>
-              </div>
-            ))}
-            {setterNoShowLeads.length > 5 && (
-              <p className="text-sm text-rose-600 text-center pt-2">
-                + {setterNoShowLeads.length - 5} weitere No-Shows
-              </p>
-            )}
-          </div>
         </div>
       )}
 
