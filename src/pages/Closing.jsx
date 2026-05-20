@@ -2596,13 +2596,9 @@ function Closing() {
                             className="w-full px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary text-body-md"
                           >
                             <option value="">Status beibehalten ({selectedLead.status})</option>
-                            <option value="Lead">Lead</option>
-                            <option value="Angebot">Angebot</option>
-                            <option value="Angebot versendet">Angebot versendet</option>
-                            <option value="Termin verschoben">Termin verschoben</option>
-                            <option value="Termin abgesagt">Termin abgesagt</option>
-                            <option value="Abgeschlossen">Abgeschlossen</option>
-                            <option value="Verloren">Verloren</option>
+                            {STATUS_OPTIONS.map(opt => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
                           </select>
                         ) : (
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-label-sm ${getStatusStyle(selectedLead.status)}`}>
