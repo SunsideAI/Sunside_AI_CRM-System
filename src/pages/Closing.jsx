@@ -45,6 +45,9 @@ import {
 
 // Paket-Optionen für Angebot
 const PRODUKT_OPTIONS = [
+  { value: 'fokus', label: 'Fokus' },
+  { value: 'wachstum', label: 'Wachstum' },
+  { value: 'wachstum & Website', label: 'Wachstum & Website' },
   { value: 'KI-Chatbot', label: 'KI-Chatbot' },
   { value: 'KI-Voicebot', label: 'KI-Voicebot' },
   { value: 'SEO & KI-Chatbot', label: 'SEO & KI-Chatbot' },
@@ -57,6 +60,9 @@ const PRODUKT_OPTIONS = [
 
 // Preise pro Produkt (leer = manuell eingeben)
 const PRODUKT_PREISE = {
+  'fokus':                                { setup: 3998, retainer: 399 },
+  'wachstum':                             { setup: 5997, retainer: 699 },
+  'wachstum & Website':                   { setup: 14999, retainer: 1499 },
   'KI-Chatbot':                         { setup: 1399, retainer: 360 },
   'KI-Voicebot':                        { setup: 1399, retainer: 360 },
   'SEO & KI-Chatbot':                   { setup: 2798, retainer: 360 },
@@ -69,6 +75,7 @@ const PRODUKT_PREISE = {
 
 // Produkte die Website-Setup-Feld benötigen
 const PRODUKTE_MIT_WEBSITE_SETUP = [
+  'wachstum & Website',
   'Website & KI-Chatbot',
   'Website & KI-Voicebot & KI-Chatbot',
 ]
