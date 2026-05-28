@@ -274,27 +274,29 @@ function Kaltakquise() {
     }
   }, [viewMode, loadEbookLeads])
 
-  // Setter No-Show Leads laden (für Widget oben)
+  // Setter Re-Engagement Leads laden (No-Show + Termin abgesagt)
   const loadSetterNoShowLeads = useCallback(async () => {
     if (!user?.id) return
 
     try {
       setLoadingSetterNoShows(true)
-      const response = await fetch(`/.netlify/functions/hot-leads?setterId=${user.id}&status=Nicht%20erschienen`)
+      // Beide Status laden: "Nicht erschienen" und "Termin abgesagt"
+      const response = await fetch(`/.netlify/functions/hot-leads?setterId=${user.id}&status=Nicht%20erschienen,Termin%20abgesagt`)
       const data = await response.json()
 
       if (response.ok && data.hotLeads) {
         const sorted = data.hotLeads.sort((a, b) => {
-          const dateA = a.no_show_marked_at ? new Date(a.no_show_marked_at) : new Date(0)
-          const dateB = b.no_show_marked_at ? new Date(b.no_show_marked_at) : new Date(0)
-          return dateB - dateA // Neueste No-Shows zuerst
+          // Nach Datum sortieren (neueste zuerst)
+          const dateA = a.no_show_marked_at || a.terminDatum || ''
+          const dateB = b.no_show_marked_at || b.terminDatum || ''
+          return new Date(dateB) - new Date(dateA)
         })
         setSetterNoShowLeads(sorted)
       } else {
         setSetterNoShowLeads([])
       }
     } catch (err) {
-      console.warn('Setter No-Show Leads laden fehlgeschlagen:', err)
+      console.warn('Setter Re-Engagement Leads laden fehlgeschlagen:', err)
       setSetterNoShowLeads([])
     } finally {
       setLoadingSetterNoShows(false)
@@ -1006,7 +1008,7 @@ function Kaltakquise() {
         </div>
       )}
 
-      {/* No-Show Widget: Setter's Leads die neu terminiert werden müssen */}
+      {/* Re-Engagement Widget: Leads die neu terminiert werden müssen */}
       {setterNoShowLeads.length > 0 && viewMode !== 'ebook' && (
         <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
           <div className="flex items-center justify-between mb-3">
@@ -1026,7 +1028,7 @@ function Kaltakquise() {
             </button>
           </div>
           <p className="text-sm text-rose-700 mb-3">
-            Diese Leads sind nicht zum Termin erschienen. Bitte neuen Termin vereinbaren.
+            Diese Leads brauchen einen neuen Termin (No-Show oder abgesagt).
           </p>
           <div className="space-y-2">
             {setterNoShowLeads.slice(0, 5).map(lead => (
@@ -1076,17 +1078,22 @@ function Kaltakquise() {
                   <div className="font-medium text-on-surface truncate">{lead.unternehmen}</div>
                   <div className="text-sm text-on-surface-variant flex items-center gap-2 mt-0.5">
                     <span>{lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}</span>
-                    {(lead.no_show_count || 0) > 1 && (
+                    {/* Status-Badge */}
+                    {lead.status === 'Nicht erschienen' ? (
                       <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded text-xs font-medium">
-                        {lead.no_show_count}. No-Show
+                        {(lead.no_show_count || 0) > 1 ? `${lead.no_show_count}. No-Show` : 'No-Show'}
                       </span>
-                    )}
+                    ) : lead.status === 'Termin abgesagt' ? (
+                      <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded text-xs font-medium">
+                        Abgesagt
+                      </span>
+                    ) : null}
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {lead.no_show_marked_at && (
+                  {(lead.no_show_marked_at || lead.terminDatum) && (
                     <span className="text-xs text-rose-600">
-                      {new Date(lead.no_show_marked_at).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
+                      {new Date(lead.no_show_marked_at || lead.terminDatum).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
                     </span>
                   )}
                   <button
@@ -1519,8 +1526,9 @@ function Kaltakquise() {
                 <TerminPicker
                   lead={selectedLead}
                   onTerminBooked={async (termin) => {
-                    // Bei No-Show Re-Terminierung: Hot Lead Status auf "Im Closing" setzen + Closer benachrichtigen
-                    if (hotLeadData?.id && hotLeadData?.status === 'Nicht erschienen') {
+                    // Bei Re-Terminierung (No-Show oder Abgesagt): Hot Lead Status auf "Im Closing" setzen + Closer benachrichtigen
+                    const isReEngagement = hotLeadData?.id && (hotLeadData?.status === 'Nicht erschienen' || hotLeadData?.status === 'Termin abgesagt')
+                    if (isReEngagement) {
                       try {
                         // Hot Lead Status updaten
                         await fetch('/.netlify/functions/hot-leads', {
@@ -1537,14 +1545,15 @@ function Kaltakquise() {
 
                         // Closer über neuen Termin benachrichtigen (wenn Closer zugewiesen)
                         if (hotLeadData.closerId) {
+                          const statusText = hotLeadData.status === 'Nicht erschienen' ? 'nicht erschienen' : 'abgesagt'
                           await fetch('/.netlify/functions/system-messages', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify({
                               empfaengerId: hotLeadData.closerId,
-                              typ: 'no_show_rescheduled',
+                              typ: 'termin_rescheduled',
                               titel: `📅 Neuer Termin: ${selectedLead.unternehmensname}`,
-                              nachricht: `${user?.vor_nachname || 'Setter'} hat einen neuen Termin für ${selectedLead.unternehmensname} vereinbart. Der Lead war zuvor als "Nicht erschienen" markiert.`,
+                              nachricht: `${user?.vor_nachname || 'Setter'} hat einen neuen Termin für ${selectedLead.unternehmensname} vereinbart. Der Lead war zuvor als "${statusText}" markiert.`,
                               hotLeadId: hotLeadData.id
                             })
                           })
@@ -1627,7 +1636,7 @@ function Kaltakquise() {
                 />
               ) : (
                 <>
-              {/* Soft Lock Banner für Beratungsgespräch - mit No-Show Ausnahme */}
+              {/* Soft Lock Banner für Beratungsgespräch - mit Re-Engagement Ausnahme */}
               {selectedLead.ergebnis === 'Beratungsgespräch' && !kommentarOnlyMode && (
                 loadingHotLead ? (
                   <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center gap-3">
@@ -1642,6 +1651,18 @@ function Kaltakquise() {
                         Termin nicht stattgefunden (No-Show #{hotLeadData.no_show_count || 1})
                       </p>
                       <p className="text-xs text-rose-600">
+                        Bitte neuen Termin vereinbaren oder Unterlagen erneut senden.
+                      </p>
+                    </div>
+                  </div>
+                ) : hotLeadData?.status === 'Termin abgesagt' && hotLeadData?.setterId === user?.id ? (
+                  <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-orange-800">
+                        Termin wurde abgesagt
+                      </p>
+                      <p className="text-xs text-orange-600">
                         Bitte neuen Termin vereinbaren oder Unterlagen erneut senden.
                       </p>
                     </div>
@@ -2127,13 +2148,17 @@ function Kaltakquise() {
                       </>
                     ) : (
                       <>
-                        {/* Soft Lock: Bei Beratungsgespräch nur Kommentar-Button, AUSSER bei No-Show */}
+                        {/* Soft Lock: Bei Beratungsgespräch nur Kommentar-Button, AUSSER bei Re-Engagement */}
                         {selectedLead.ergebnis === 'Beratungsgespräch' ? (
-                          // No-Show: Setter kann voll bearbeiten
-                          hotLeadData?.status === 'Nicht erschienen' && hotLeadData?.setterId === user?.id ? (
+                          // No-Show oder Abgesagt: Setter kann voll bearbeiten
+                          (hotLeadData?.status === 'Nicht erschienen' || hotLeadData?.status === 'Termin abgesagt') && hotLeadData?.setterId === user?.id ? (
                             <button
                               onClick={() => setEditMode(true)}
-                              className="flex items-center px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors"
+                              className={`flex items-center px-4 py-2 text-white rounded-lg transition-colors ${
+                                hotLeadData?.status === 'Termin abgesagt'
+                                  ? 'bg-orange-600 hover:bg-orange-700'
+                                  : 'bg-rose-600 hover:bg-rose-700'
+                              }`}
                             >
                               <Calendar className="w-4 h-4 mr-2" />
                               Lead neu terminieren
