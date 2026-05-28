@@ -134,6 +134,7 @@ function Kaltakquise() {
   // No-Show Widget: Setter's leads die nicht erschienen sind
   const [setterNoShowLeads, setSetterNoShowLeads] = useState([])
   const [loadingSetterNoShows, setLoadingSetterNoShows] = useState(false)
+  const [reEngagementCollapsed, setReEngagementCollapsed] = useState(false)
 
   const [editForm, setEditForm] = useState({
     kontaktiert: false,
@@ -1011,7 +1012,10 @@ function Kaltakquise() {
       {/* Re-Engagement Widget: Leads die neu terminiert werden müssen */}
       {setterNoShowLeads.length > 0 && viewMode !== 'ebook' && (
         <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
-          <div className="flex items-center justify-between mb-3">
+          <div
+            className="flex items-center justify-between cursor-pointer"
+            onClick={() => setReEngagementCollapsed(!reEngagementCollapsed)}
+          >
             <h3 className="text-lg font-semibold text-rose-800 flex items-center gap-2">
               <AlertCircle className="w-5 h-5" />
               Lead-Termine neu vereinbaren
@@ -1019,17 +1023,22 @@ function Kaltakquise() {
                 {setterNoShowLeads.length}
               </span>
             </h3>
-            <button
-              onClick={loadSetterNoShowLeads}
-              disabled={loadingSetterNoShows}
-              className="p-1.5 hover:bg-rose-100 rounded-lg transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 text-rose-600 ${loadingSetterNoShows ? 'animate-spin' : ''}`} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); loadSetterNoShowLeads(); }}
+                disabled={loadingSetterNoShows}
+                className="p-1.5 hover:bg-rose-100 rounded-lg transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 text-rose-600 ${loadingSetterNoShows ? 'animate-spin' : ''}`} />
+              </button>
+              <ChevronRight className={`w-5 h-5 text-rose-600 transition-transform duration-200 ${reEngagementCollapsed ? '' : 'rotate-90'}`} />
+            </div>
           </div>
-          <p className="text-sm text-rose-700 mb-3">
-            Diese Leads brauchen einen neuen Termin (No-Show oder abgesagt).
-          </p>
+          {!reEngagementCollapsed && (
+            <>
+              <p className="text-sm text-rose-700 mb-3 mt-3">
+                Diese Leads brauchen einen neuen Termin (No-Show oder abgesagt).
+              </p>
           <div className="space-y-2">
             {setterNoShowLeads.slice(0, 5).map(lead => (
               <div
@@ -1125,10 +1134,12 @@ function Kaltakquise() {
             ))}
             {setterNoShowLeads.length > 5 && (
               <p className="text-sm text-rose-600 text-center pt-2">
-                + {setterNoShowLeads.length - 5} weitere No-Shows
+                + {setterNoShowLeads.length - 5} weitere
               </p>
             )}
           </div>
+            </>
+          )}
         </div>
       )}
 
