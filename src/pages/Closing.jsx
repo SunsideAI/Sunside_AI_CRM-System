@@ -105,6 +105,9 @@ const STATUS_OPTIONS = [
   { value: 'Verloren', label: 'Verloren', color: 'bg-red-100 text-red-700' }
 ]
 
+// Status-Optionen die manuell gewählt werden können (ohne "Angebot" - wird automatisch gesetzt)
+const SELECTABLE_STATUS_OPTIONS = STATUS_OPTIONS.filter(opt => opt.value !== 'Angebot')
+
 function Closing() {
   const { user, isAdmin, isGeschaeftsfuehrer } = useAuth()
   const location = useLocation()
@@ -2490,7 +2493,7 @@ function Closing() {
                             className="w-full px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary text-body-md"
                           >
                             <option value="">Status beibehalten ({selectedLead.status})</option>
-                            {STATUS_OPTIONS.map(opt => (
+                            {SELECTABLE_STATUS_OPTIONS.map(opt => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
                           </select>
