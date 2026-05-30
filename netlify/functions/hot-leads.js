@@ -647,10 +647,15 @@ export async function handler(event) {
       for (const [key, value] of Object.entries(updates)) {
         const dbField = fieldMap[key]
         if (dbField) {
-          // Closer nach Name auflösen
-          if (key === 'closerName' && value) {
-            const cid = await getUserIdByName(value)
-            if (cid) fields.closer_id = cid
+          // Closer nach Name auflösen (leer = zurück in Pool)
+          if (key === 'closerName') {
+            if (value) {
+              const cid = await getUserIdByName(value)
+              if (cid) fields.closer_id = cid
+            } else {
+              // Leerer String = Closer entfernen (zurück in Pool)
+              fields.closer_id = null
+            }
             continue
           }
           // Spezialbehandlung für produkt_dienstleistung (TEXT[] in DB)

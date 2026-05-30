@@ -283,7 +283,13 @@ export async function handler(event) {
           setter_id,
           closer_id,
           created_at,
-          leads!lead_id (kommentar)
+          leads!lead_id (
+            kommentar,
+            ansprechpartner_vorname,
+            ansprechpartner_nachname,
+            telefonnummer,
+            mail
+          )
         `)
         .neq('status', 'Abgeschlossen')
 
@@ -402,18 +408,21 @@ export async function handler(event) {
             created_at: action.created_at
           }))
 
+          // Fallback zu Original-Lead-Daten für Kontaktfelder
+          const originalLead = lead.leads || {}
+
           return {
             id: lead.id,
             lead_id: lead.lead_id,
             unternehmen: lead.unternehmen || '',
-            ansprechpartner_vorname: lead.ansprechpartner_vorname || '',
-            ansprechpartner_nachname: lead.ansprechpartner_nachname || '',
-            telefonnummer: lead.telefonnummer || '',
-            mail: lead.mail || '',
+            ansprechpartner_vorname: lead.ansprechpartner_vorname || originalLead.ansprechpartner_vorname || '',
+            ansprechpartner_nachname: lead.ansprechpartner_nachname || originalLead.ansprechpartner_nachname || '',
+            telefonnummer: lead.telefonnummer || originalLead.telefonnummer || '',
+            mail: lead.mail || originalLead.mail || '',
             website: lead.website || '',
             status: lead.status,
             termin_beratungsgespraech: lead.termin_beratungsgespraech,
-            kommentar: lead.leads?.kommentar || '',
+            kommentar: originalLead.kommentar || '',
             follow_up_status: lead.follow_up_status || 'aktiv',
             follow_up_naechster_schritt: lead.follow_up_naechster_schritt || '',
             follow_up_datum: lead.follow_up_datum,
