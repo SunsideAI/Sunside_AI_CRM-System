@@ -31,18 +31,7 @@ export const handler = async (event) => {
       }
     }
 
-    // Update status to "Wird erstellt"
-    const { error: updateError } = await supabase
-      .from('hot_leads')
-      .update({ seo_analysis_status: 'Wird erstellt' })
-      .eq('id', hotLeadId)
-
-    if (updateError) {
-      console.error('Status Update Error:', updateError)
-      throw new Error('Konnte Status nicht aktualisieren')
-    }
-
-    // Call external SEO tool
+    // Call external SEO tool - it will callback with the PDF when done
     const callbackUrl = `${process.env.CRM_PUBLIC_URL}/.netlify/functions/seo-analysis-callback`
 
     const response = await fetch(process.env.SEO_TOOL_URL, {
@@ -60,12 +49,8 @@ export const handler = async (event) => {
     })
 
     if (!response.ok) {
-      // Reset status on error
-      await supabase
-        .from('hot_leads')
-        .update({ seo_analysis_status: 'Fehler' })
-        .eq('id', hotLeadId)
-
+      const errorText = await response.text()
+      console.error('SEO Tool Error:', response.status, errorText)
       throw new Error(`SEO Tool Error: ${response.status}`)
     }
 

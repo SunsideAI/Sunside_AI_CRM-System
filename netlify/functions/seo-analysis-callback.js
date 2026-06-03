@@ -12,24 +12,14 @@ export const handler = async (event) => {
   }
 
   try {
-    const { reference_id, pdf_url, pdf_base64, status, error: toolError, company_name } = JSON.parse(event.body)
+    const { reference_id, pdf_url, pdf_base64, company_name } = JSON.parse(event.body)
 
     if (!reference_id) {
       return { statusCode: 400, body: JSON.stringify({ error: 'reference_id required' }) }
     }
 
-    // Error case - just update status
-    if (status !== 'success' || (!pdf_url && !pdf_base64)) {
-      await supabase
-        .from('hot_leads')
-        .update({
-          seo_analysis_status: 'Fehler',
-          seo_analysis_generated_at: new Date().toISOString()
-        })
-        .eq('id', reference_id)
-
-      console.log(`SEO Analysis failed for ${reference_id}:`, toolError)
-      return { statusCode: 200, body: JSON.stringify({ success: true, note: 'Error status recorded' }) }
+    if (!pdf_url && !pdf_base64) {
+      return { statusCode: 400, body: JSON.stringify({ error: 'pdf_url or pdf_base64 required' }) }
     }
 
     // Download PDF from external URL or use base64
@@ -52,7 +42,7 @@ export const handler = async (event) => {
     const storagePath = `crm/${fileId}_${filename}`
 
     // Upload to Supabase Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from('attachments')
       .upload(storagePath, pdfBuffer, {
         contentType: 'application/pdf',
@@ -71,7 +61,7 @@ export const handler = async (event) => {
 
     const publicUrl = urlData.publicUrl
 
-    // Get current attachments
+    // Get current attachments from hot lead
     const { data: leadData, error: fetchError } = await supabase
       .from('hot_leads')
       .select('attachments')
@@ -96,22 +86,20 @@ export const handler = async (event) => {
       created_at: new Date().toISOString()
     }
 
-    // Update lead with new attachment and status
-    const { error: finalUpdateError } = await supabase
+    // Update lead with new attachment
+    const { error: updateError } = await supabase
       .from('hot_leads')
       .update({
-        attachments: [...currentAttachments, newAttachment],
-        seo_analysis_status: 'Fertig',
-        seo_analysis_generated_at: new Date().toISOString()
+        attachments: [...currentAttachments, newAttachment]
       })
       .eq('id', reference_id)
 
-    if (finalUpdateError) {
-      console.error('Final Update Error:', finalUpdateError)
+    if (updateError) {
+      console.error('Update Error:', updateError)
       throw new Error('Konnte Lead nicht aktualisieren')
     }
 
-    console.log(`SEO Analysis completed for ${reference_id}, PDF stored at ${publicUrl}`)
+    console.log(`SEO Analysis PDF stored for lead ${reference_id}: ${publicUrl}`)
 
     return {
       statusCode: 200,
