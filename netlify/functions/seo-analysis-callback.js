@@ -7,37 +7,68 @@ const supabase = createClient(
 )
 
 export const handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
+  // Allow both POST and GET for flexibility
+  if (event.httpMethod !== 'POST' && event.httpMethod !== 'GET') {
     return { statusCode: 405, body: 'Method not allowed' }
   }
 
   try {
-    const { reference_id, pdf_url, pdf_base64, company_name } = JSON.parse(event.body)
-
-    if (!reference_id) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'reference_id required' }) }
-    }
-
-    if (!pdf_url && !pdf_base64) {
-      return { statusCode: 400, body: JSON.stringify({ error: 'pdf_url or pdf_base64 required' }) }
-    }
-
-    // Download PDF from external URL or use base64
-    let pdfBuffer
-    if (pdf_base64) {
-      pdfBuffer = Buffer.from(pdf_base64, 'base64')
+    // Parse body from POST or query params from GET
+    let data
+    if (event.httpMethod === 'POST') {
+      data = JSON.parse(event.body)
     } else {
-      const pdfResponse = await fetch(pdf_url)
-      if (!pdfResponse.ok) {
-        throw new Error(`Failed to download PDF: ${pdfResponse.status}`)
-      }
-      pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer())
+      data = event.queryStringParameters || {}
+    }
+
+    const {
+      report_id,
+      status,
+      pdf_url,
+      custom_crm_deal_id,
+      error: toolError
+    } = data
+
+    console.log('SEO Callback received:', { report_id, status, custom_crm_deal_id, pdf_url: pdf_url ? 'present' : 'missing' })
+
+    // Use custom_crm_deal_id as the hot lead ID
+    const hotLeadId = custom_crm_deal_id
+
+    if (!hotLeadId) {
+      console.error('No custom_crm_deal_id in callback')
+      return { statusCode: 400, body: JSON.stringify({ error: 'custom_crm_deal_id required' }) }
+    }
+
+    // Check if report failed
+    if (status === 'failed' || !pdf_url) {
+      console.error('SEO Report failed:', toolError)
+      return { statusCode: 200, body: JSON.stringify({ success: true, note: 'Report failed, no PDF to store' }) }
+    }
+
+    // Download PDF from the provided URL
+    console.log('Downloading PDF from:', pdf_url)
+    const pdfResponse = await fetch(pdf_url)
+    if (!pdfResponse.ok) {
+      throw new Error(`Failed to download PDF: ${pdfResponse.status}`)
+    }
+    const pdfBuffer = Buffer.from(await pdfResponse.arrayBuffer())
+
+    // Get lead info for filename
+    const { data: leadData, error: fetchError } = await supabase
+      .from('hot_leads')
+      .select('attachments, unternehmen')
+      .eq('id', hotLeadId)
+      .single()
+
+    if (fetchError) {
+      console.error('Fetch Lead Error:', fetchError)
+      throw new Error('Konnte Lead-Daten nicht abrufen')
     }
 
     // Generate filename
     const fileId = uuidv4()
     const timestamp = new Date().toISOString().split('T')[0]
-    const safeName = (company_name || 'Lead').replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_').substring(0, 50)
+    const safeName = (leadData?.unternehmen || 'Lead').replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_').substring(0, 50)
     const filename = `SEO_Analyse_${safeName}_${timestamp}.pdf`
     const storagePath = `crm/${fileId}_${filename}`
 
@@ -61,18 +92,6 @@ export const handler = async (event) => {
 
     const publicUrl = urlData.publicUrl
 
-    // Get current attachments from hot lead
-    const { data: leadData, error: fetchError } = await supabase
-      .from('hot_leads')
-      .select('attachments')
-      .eq('id', reference_id)
-      .single()
-
-    if (fetchError) {
-      console.error('Fetch Lead Error:', fetchError)
-      throw new Error('Konnte Lead-Daten nicht abrufen')
-    }
-
     const currentAttachments = leadData?.attachments || []
 
     // Add new attachment with SEO category
@@ -83,6 +102,7 @@ export const handler = async (event) => {
       size: pdfBuffer.length,
       type: 'application/pdf',
       category: 'seo_analysis',
+      report_id: report_id,
       created_at: new Date().toISOString()
     }
 
@@ -92,14 +112,14 @@ export const handler = async (event) => {
       .update({
         attachments: [...currentAttachments, newAttachment]
       })
-      .eq('id', reference_id)
+      .eq('id', hotLeadId)
 
     if (updateError) {
       console.error('Update Error:', updateError)
       throw new Error('Konnte Lead nicht aktualisieren')
     }
 
-    console.log(`SEO Analysis PDF stored for lead ${reference_id}: ${publicUrl}`)
+    console.log(`SEO Analysis PDF stored for lead ${hotLeadId}: ${publicUrl}`)
 
     return {
       statusCode: 200,

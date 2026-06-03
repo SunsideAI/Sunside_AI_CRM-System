@@ -21,7 +21,7 @@ export const handler = async (event) => {
   }
 
   try {
-    const { hotLeadId, websiteUrl, firmenname } = JSON.parse(event.body)
+    const { hotLeadId, websiteUrl, firmenname, stadt } = JSON.parse(event.body)
 
     if (!hotLeadId || !websiteUrl) {
       return {
@@ -31,22 +31,26 @@ export const handler = async (event) => {
       }
     }
 
-    // Call external SEO tool - it will callback with the PDF when done
+    // Call SEO Tool API - correct endpoint: /api/v1/reports/generate
     const callbackUrl = `${process.env.CRM_PUBLIC_URL}/.netlify/functions/seo-analysis-callback`
+    const seoToolUrl = `${process.env.SEO_TOOL_URL}/api/v1/reports/generate`
 
-    const headers = { 'Content-Type': 'application/json' }
-    if (process.env.SEO_TOOL_API_KEY) {
-      headers['Authorization'] = `Bearer ${process.env.SEO_TOOL_API_KEY}`
-    }
+    console.log('Calling SEO Tool:', seoToolUrl, 'for lead:', hotLeadId)
 
-    const response = await fetch(process.env.SEO_TOOL_URL, {
+    const response = await fetch(seoToolUrl, {
       method: 'POST',
-      headers,
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': process.env.SEO_TOOL_API_KEY
+      },
       body: JSON.stringify({
-        url: websiteUrl,
-        callback_url: callbackUrl,
-        reference_id: hotLeadId,
-        company_name: firmenname || 'Unbekannt'
+        maklername: firmenname || 'Unbekannt',
+        website_url: websiteUrl,
+        stadt: stadt || '',
+        plz: '',
+        nur_fakten: true,
+        custom_crm_deal_id: hotLeadId,
+        callback_url: callbackUrl
       })
     })
 
@@ -56,10 +60,18 @@ export const handler = async (event) => {
       throw new Error(`SEO Tool Error: ${response.status}`)
     }
 
+    const result = await response.json()
+    console.log('SEO Tool Response:', result)
+
     return {
       statusCode: 200,
       headers: corsHeaders,
-      body: JSON.stringify({ success: true, message: 'SEO-Analyse gestartet' })
+      body: JSON.stringify({
+        success: true,
+        message: 'SEO-Analyse gestartet',
+        report_id: result.report_id,
+        status: result.status
+      })
     }
   } catch (error) {
     console.error('SEO Analysis Start Error:', error)

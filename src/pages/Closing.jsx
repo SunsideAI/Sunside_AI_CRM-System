@@ -373,7 +373,8 @@ function Closing() {
         body: JSON.stringify({
           hotLeadId: lead.id,
           websiteUrl: lead.website,
-          firmenname: lead.unternehmen || lead.firmenname
+          firmenname: lead.unternehmen || lead.firmenname,
+          stadt: lead.ort || ''
         })
       })
 
