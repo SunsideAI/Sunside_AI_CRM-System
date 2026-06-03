@@ -2,7 +2,7 @@
 
 Internes CRM-System für das Vertriebsteam von Sunside AI - ein vollständiges Lead-Management und Sales-Tracking System.
 
-## Tech Stack
+## Tech Stack 
 
 | Technologie | Verwendung |
 |-------------|------------|
