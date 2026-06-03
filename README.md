@@ -1,4 +1,4 @@
-# Sunside CRM
+# Sunside CRM 
 
 Internes CRM-System für das Vertriebsteam von Sunside AI - ein vollständiges Lead-Management und Sales-Tracking System.
 
