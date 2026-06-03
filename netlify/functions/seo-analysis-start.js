@@ -34,12 +34,14 @@ export const handler = async (event) => {
     // Call external SEO tool - it will callback with the PDF when done
     const callbackUrl = `${process.env.CRM_PUBLIC_URL}/.netlify/functions/seo-analysis-callback`
 
+    const headers = { 'Content-Type': 'application/json' }
+    if (process.env.SEO_TOOL_API_KEY) {
+      headers['Authorization'] = `Bearer ${process.env.SEO_TOOL_API_KEY}`
+    }
+
     const response = await fetch(process.env.SEO_TOOL_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.SEO_TOOL_API_KEY}`
-      },
+      headers,
       body: JSON.stringify({
         url: websiteUrl,
         callback_url: callbackUrl,
