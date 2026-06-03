@@ -56,7 +56,7 @@ export const handler = async (event) => {
     // Get lead info for filename
     const { data: leadData, error: fetchError } = await supabase
       .from('hot_leads')
-      .select('attachments, unternehmen')
+      .select('attachments, unternehmen, lead_id')
       .eq('id', hotLeadId)
       .single()
 
@@ -117,6 +117,37 @@ export const handler = async (event) => {
     if (updateError) {
       console.error('Update Error:', updateError)
       throw new Error('Konnte Lead nicht aktualisieren')
+    }
+
+    // Add automatic comment to the original lead
+    if (leadData?.lead_id) {
+      try {
+        // Get current comment from leads table
+        const { data: originalLead } = await supabase
+          .from('leads')
+          .select('kommentar')
+          .eq('id', leadData.lead_id)
+          .single()
+
+        const now = new Date()
+        const dateStr = now.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+        const timeStr = now.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
+        const newComment = `[${dateStr} ${timeStr}] SEO-Analyse wurde erstellt und als PDF angehängt.`
+
+        const existingComment = originalLead?.kommentar || ''
+        const updatedComment = existingComment
+          ? `${existingComment}\n\n${newComment}`
+          : newComment
+
+        await supabase
+          .from('leads')
+          .update({ kommentar: updatedComment })
+          .eq('id', leadData.lead_id)
+
+        console.log('Comment added to lead:', leadData.lead_id)
+      } catch (commentError) {
+        console.error('Comment Error (non-fatal):', commentError)
+      }
     }
 
     console.log(`SEO Analysis PDF stored for lead ${hotLeadId}: ${publicUrl}`)
