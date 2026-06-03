@@ -109,7 +109,7 @@ const STATUS_OPTIONS = [
 const SELECTABLE_STATUS_OPTIONS = STATUS_OPTIONS.filter(opt => opt.value !== 'Angebot')
 
 function Closing() {
-  const { user, isAdmin, isGeschaeftsfuehrer } = useAuth()
+  const { user, isAdmin, isCloser, isGeschaeftsfuehrer } = useAuth()
   const location = useLocation()
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
@@ -178,6 +178,9 @@ function Closing() {
   // No-Show Modal State
   const [showNoShowModal, setShowNoShowModal] = useState(false)
   const [noShowProcessing, setNoShowProcessing] = useState(false)
+
+  // SEO-Analyse State
+  const [seoAnalysisLoading, setSeoAnalysisLoading] = useState({})
 
   const LEADS_PER_PAGE = 10
 
@@ -352,6 +355,43 @@ function Closing() {
       )
       return { ...prev, laufzeit: newLaufzeit, vertragsbestandteile: updatedText }
     })
+  }
+
+  // SEO-Analyse starten (nur für Closer und Admins)
+  const handleStartSeoAnalysis = async (lead) => {
+    if (!lead.website) {
+      showToast('error', 'Keine Website-URL vorhanden')
+      return
+    }
+
+    setSeoAnalysisLoading(prev => ({ ...prev, [lead.id]: true }))
+
+    try {
+      const response = await fetch('/.netlify/functions/seo-analysis-start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hotLeadId: lead.id,
+          websiteUrl: lead.website,
+          firmenname: lead.unternehmen || lead.firmenname
+        })
+      })
+
+      if (!response.ok) throw new Error('Fehler beim Starten der SEO-Analyse')
+
+      showToast('success', 'SEO-Analyse gestartet')
+
+      // Lokalen State aktualisieren
+      setSelectedLead(prev => prev ? { ...prev, seo_analysis_status: 'Wird erstellt' } : prev)
+      setLeads(prev => prev.map(l =>
+        l.id === lead.id ? { ...l, seo_analysis_status: 'Wird erstellt' } : l
+      ))
+    } catch (error) {
+      console.error('SEO Analysis Error:', error)
+      showToast('error', 'SEO-Analyse konnte nicht gestartet werden')
+    } finally {
+      setSeoAnalysisLoading(prev => ({ ...prev, [lead.id]: false }))
+    }
   }
 
   // Angebot absenden
@@ -2803,10 +2843,61 @@ function Closing() {
                     </div>
                   )}
 
+                  {/* SEO-Analyse - nur für Closer und Admins */}
+                  {(isAdmin() || isCloser()) && selectedLead.website && (
+                    <div className="p-4 bg-gray-50 rounded-lg">
+                      <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                        <BarChart3 className="w-4 h-4" />
+                        SEO-Analyse
+                      </h4>
+
+                      {selectedLead.seo_analysis_status === 'Fertig' ? (
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-green-600 flex items-center gap-1">
+                            <CheckCircle className="w-4 h-4" />
+                            SEO-Analyse verfügbar
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            (siehe Anhänge unten)
+                          </span>
+                        </div>
+                      ) : selectedLead.seo_analysis_status === 'Wird erstellt' ? (
+                        <div className="flex items-center gap-2 text-amber-600">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span className="text-sm">SEO-Analyse wird erstellt...</span>
+                        </div>
+                      ) : selectedLead.seo_analysis_status === 'Fehler' ? (
+                        <div className="flex items-center gap-3">
+                          <span className="text-sm text-red-600">Fehler bei der Analyse</span>
+                          <button
+                            onClick={() => handleStartSeoAnalysis(selectedLead)}
+                            disabled={seoAnalysisLoading[selectedLead.id]}
+                            className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700 disabled:opacity-50"
+                          >
+                            Erneut versuchen
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => handleStartSeoAnalysis(selectedLead)}
+                          disabled={seoAnalysisLoading[selectedLead.id]}
+                          className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                          {seoAnalysisLoading[selectedLead.id] ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          ) : (
+                            <Search className="w-4 h-4 mr-2" />
+                          )}
+                          SEO-Analyse starten
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   {/* Dokumente / Attachments */}
                   <div>
                     <h4 className="text-sm font-medium text-gray-500 mb-3">Dokumente</h4>
-                    
+
                     {/* Hidden File Input */}
                     <input
                       ref={fileInputRef}

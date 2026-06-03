@@ -274,7 +274,10 @@ export async function handler(event) {
           // No-Show Felder
           no_show_count: record.no_show_count || 0,
           no_show_marked_at: record.no_show_marked_at || null,
-          no_show_marked_by: record.no_show_marked_by || null
+          no_show_marked_by: record.no_show_marked_by || null,
+          // SEO-Analyse Felder
+          seo_analysis_status: record.seo_analysis_status || null,
+          seo_analysis_generated_at: record.seo_analysis_generated_at || null
         }
       })
 
@@ -633,7 +636,10 @@ export async function handler(event) {
         // No-Show Felder
         'no_show_count': 'no_show_count',
         'no_show_marked_at': 'no_show_marked_at',
-        'no_show_marked_by': 'no_show_marked_by'
+        'no_show_marked_by': 'no_show_marked_by',
+        // SEO-Analyse Felder
+        'seo_analysis_status': 'seo_analysis_status',
+        'seo_analysis_generated_at': 'seo_analysis_generated_at'
       }
 
       // Kommentar separat behandeln (wird in leads-Tabelle geschrieben)
