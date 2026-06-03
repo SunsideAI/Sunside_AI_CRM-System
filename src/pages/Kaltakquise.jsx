@@ -144,6 +144,7 @@ function Kaltakquise() {
     ansprechpartnerNachname: '',
     neuerKommentar: '', // Für neuen manuellen Kommentar
     ansprechpartnerValidation: false, // Für Validierung beim Button-Klick
+    emailValidation: false, // Für Email-Pflichtfeld bei Termin-Buchung
     // Stammdaten (editierbar)
     telefon: '',
     email: '',
@@ -451,6 +452,7 @@ function Kaltakquise() {
       ansprechpartnerNachname: lead.ansprechpartnerNachname || '',
       neuerKommentar: '',
       ansprechpartnerValidation: false,
+      emailValidation: false,
       // Stammdaten
       telefon: lead.telefon || '',
       email: lead.email || '',
@@ -1075,6 +1077,7 @@ function Kaltakquise() {
                     ansprechpartnerNachname: lead.ansprechpartnerNachname || '',
                     neuerKommentar: '',
                     ansprechpartnerValidation: false,
+                    emailValidation: false,
                     telefon: lead.telefon || '',
                     email: lead.email || '',
                     website: lead.website || '',
@@ -1108,6 +1111,11 @@ function Kaltakquise() {
                   <button
                     onClick={(e) => {
                       e.stopPropagation()
+                      // Email-Validierung
+                      if (!lead.email || !lead.email.trim()) {
+                        alert('E-Mail fehlt! Bitte zuerst eine E-Mail-Adresse beim Lead hinterlegen.')
+                        return
+                      }
                       // Hot-Lead-Daten auf Lead-Format mappen und direkt TerminPicker öffnen
                       const mappedLead = {
                         id: lead.originalLeadId,
@@ -1723,16 +1731,25 @@ function Kaltakquise() {
                         className="flex-1 bg-transparent outline-none text-body-sm"
                       />
                     </div>
-                    <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg">
-                      <Mail className="h-4 w-4 text-primary flex-shrink-0" />
+                    <div className={`flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border rounded-lg ${
+                      editForm.emailValidation && !editForm.email?.trim()
+                        ? 'border-red-500 border-2'
+                        : 'border-outline-variant'
+                    }`}>
+                      <Mail className={`h-4 w-4 flex-shrink-0 ${
+                        editForm.emailValidation && !editForm.email?.trim() ? 'text-red-500' : 'text-primary'
+                      }`} />
                       <input
                         type="email"
                         value={editForm.email}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="E-Mail eingeben..."
+                        onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value, emailValidation: false }))}
+                        placeholder="E-Mail eingeben... *"
                         className="flex-1 bg-transparent outline-none text-body-sm"
                       />
                     </div>
+                    {editForm.emailValidation && !editForm.email?.trim() && (
+                      <p className="text-xs text-red-500 -mt-1">E-Mail ist Pflichtfeld für Terminbuchung</p>
+                    )}
                     <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg">
                       <Globe className="h-4 w-4 text-primary flex-shrink-0" />
                       <input
@@ -1934,11 +1951,16 @@ function Kaltakquise() {
                     {editForm.ergebnis === 'Beratungsgespräch' && (
                       <button
                         onClick={() => {
+                          let hasError = false
                           if (!editForm.ansprechpartnerVorname || !editForm.ansprechpartnerNachname) {
-                            // Felder rot markieren durch State-Update
                             setEditForm(prev => ({ ...prev, ansprechpartnerValidation: true }))
-                            return
+                            hasError = true
                           }
+                          if (!editForm.email || !editForm.email.trim()) {
+                            setEditForm(prev => ({ ...prev, emailValidation: true }))
+                            hasError = true
+                          }
+                          if (hasError) return
                           setShowTerminPicker(true)
                         }}
                         className="w-full flex items-center justify-center px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
