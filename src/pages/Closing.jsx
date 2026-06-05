@@ -1144,6 +1144,12 @@ function Closing() {
 
         const responseData = await response.json()
 
+        if (response.status === 422 && responseData.error === 'billing_validation_failed') {
+          const fieldList = (responseData.fields || []).join(', ')
+          showToast('error', `Rechnungsdaten unvollständig: ${fieldList}`)
+          return
+        }
+
         if (!response.ok) {
           showToast('error', 'Fehler beim Speichern: ' + (responseData.error || 'Unbekannt'))
           return

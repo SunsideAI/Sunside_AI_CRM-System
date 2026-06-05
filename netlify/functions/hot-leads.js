@@ -786,6 +786,42 @@ export async function handler(event) {
         }
       }
 
+      // Bridge-Trigger: Rechnung erstellen wenn Lead auf Abgeschlossen gesetzt wird
+      if (fields.status === 'Abgeschlossen' && data && process.env.BRIDGE_URL && process.env.BRIDGE_SECRET) {
+        try {
+          const bridgeResponse = await fetch(`${process.env.BRIDGE_URL}/webhooks/supabase/lead-closed`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${process.env.BRIDGE_SECRET}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ hot_lead_id: data.id }),
+          })
+          if (bridgeResponse.status === 422) {
+            const bridgeBody = await bridgeResponse.json()
+            console.warn('Bridge Validierung fehlgeschlagen:', bridgeBody)
+            return {
+              statusCode: 422,
+              headers: corsHeaders,
+              body: JSON.stringify({
+                error: 'billing_validation_failed',
+                message: 'Rechnungsdaten unvollständig',
+                fields: bridgeBody.fields || [],
+              })
+            }
+          }
+          if (!bridgeResponse.ok) {
+            console.error('Bridge Fehler:', bridgeResponse.status, await bridgeResponse.text())
+            // Kein Hard-Fail — Lead ist gespeichert, Bridge kann manuell nachgetriggert werden
+          } else {
+            console.log('Bridge erfolgreich getriggert für Lead:', data.id)
+          }
+        } catch (bridgeErr) {
+          console.error('Bridge-Aufruf fehlgeschlagen:', bridgeErr.message)
+          // Kein Hard-Fail
+        }
+      }
+
       return {
         statusCode: 200,
         headers: corsHeaders,
