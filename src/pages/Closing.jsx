@@ -877,7 +877,14 @@ function Closing() {
       laufzeit: lead.laufzeit || 6,
       kommentar: lead.kommentar || '',
       neuerKommentar: '',  // Für neuen manuellen Kommentar
-      terminDatum: lead.terminDatum || ''  // Für manuelles Verschieben im CRM
+      terminDatum: lead.terminDatum || '',  // Für manuelles Verschieben im CRM
+      // Kontaktdaten (editierbar)
+      ansprechpartnerVorname: lead.ansprechpartnerVorname || '',
+      ansprechpartnerNachname: lead.ansprechpartnerNachname || '',
+      email: lead.email || '',
+      telefon: lead.telefon || '',
+      website: lead.website || '',
+      ort: lead.ort || ''
     })
     setEditMode(false)
   }
@@ -1076,6 +1083,26 @@ function Closing() {
       const hotLeadUpdates = {}
       if (hasStatusChange) hotLeadUpdates.status = data.status
       if (hasTerminChange) hotLeadUpdates.terminDatum = data.terminDatum
+
+      // Kontaktdaten-Updates (nur wenn geändert)
+      if (data.ansprechpartnerVorname !== undefined && data.ansprechpartnerVorname !== selectedLead.ansprechpartnerVorname) {
+        hotLeadUpdates.ansprechpartner_vorname = data.ansprechpartnerVorname
+      }
+      if (data.ansprechpartnerNachname !== undefined && data.ansprechpartnerNachname !== selectedLead.ansprechpartnerNachname) {
+        hotLeadUpdates.ansprechpartner_nachname = data.ansprechpartnerNachname
+      }
+      if (data.email !== undefined && data.email !== selectedLead.email) {
+        hotLeadUpdates.mail = data.email
+      }
+      if (data.telefon !== undefined && data.telefon !== selectedLead.telefon) {
+        hotLeadUpdates.telefonnummer = data.telefon
+      }
+      if (data.website !== undefined && data.website !== selectedLead.website) {
+        hotLeadUpdates.website = data.website
+      }
+      if (data.ort !== undefined && data.ort !== selectedLead.ort) {
+        hotLeadUpdates.ort = data.ort
+      }
 
       // AUTOMATIK: Setter setzt neuen Termin bei "Nicht erschienen" → Status zurück auf "Im Closing"
       const isUserSetter = selectedLead.setterId === user?.id
@@ -2515,77 +2542,160 @@ function Closing() {
                       Kontaktdaten
                     </h3>
 
-                    {/* Info Grid */}
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-body-sm text-on-surface-variant">Ansprechpartner</p>
-                        <p className="text-body-md text-on-surface">
-                          {safeString(selectedLead.ansprechpartnerVorname) || safeString(selectedLead.ansprechpartnerNachname)
-                            ? `${safeString(selectedLead.ansprechpartnerVorname)} ${safeString(selectedLead.ansprechpartnerNachname)}`.trim()
-                            : '-'}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-body-sm text-on-surface-variant">Status</p>
-                        {editMode ? (
+                    {editMode ? (
+                      /* Edit Mode: Kontaktdaten bearbeiten */
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-body-sm text-on-surface-variant mb-1">Vorname</label>
+                            <input
+                              type="text"
+                              value={editData.ansprechpartnerVorname}
+                              onChange={(e) => handleEditChange('ansprechpartnerVorname', e.target.value)}
+                              placeholder="Vorname..."
+                              className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none text-body-md"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-body-sm text-on-surface-variant mb-1">Nachname</label>
+                            <input
+                              type="text"
+                              value={editData.ansprechpartnerNachname}
+                              onChange={(e) => handleEditChange('ansprechpartnerNachname', e.target.value)}
+                              placeholder="Nachname..."
+                              className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none text-body-md"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-body-sm text-on-surface-variant mb-1">E-Mail</label>
+                          <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                            <Mail className="h-4 w-4 text-primary flex-shrink-0" />
+                            <input
+                              type="email"
+                              value={editData.email}
+                              onChange={(e) => handleEditChange('email', e.target.value)}
+                              placeholder="E-Mail eingeben..."
+                              className="flex-1 bg-transparent outline-none text-body-md"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-body-sm text-on-surface-variant mb-1">Telefon</label>
+                          <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                            <Phone className="h-4 w-4 text-primary flex-shrink-0" />
+                            <input
+                              type="tel"
+                              value={editData.telefon}
+                              onChange={(e) => handleEditChange('telefon', e.target.value)}
+                              placeholder="Telefon eingeben..."
+                              className="flex-1 bg-transparent outline-none text-body-md"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-body-sm text-on-surface-variant mb-1">Website</label>
+                          <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                            <Globe className="h-4 w-4 text-primary flex-shrink-0" />
+                            <input
+                              type="url"
+                              value={editData.website}
+                              onChange={(e) => handleEditChange('website', e.target.value)}
+                              placeholder="Website eingeben..."
+                              className="flex-1 bg-transparent outline-none text-body-md"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-body-sm text-on-surface-variant mb-1">Ort</label>
+                          <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                            <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
+                            <input
+                              type="text"
+                              value={editData.ort}
+                              onChange={(e) => handleEditChange('ort', e.target.value)}
+                              placeholder="Ort eingeben..."
+                              className="flex-1 bg-transparent outline-none text-body-md"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-body-sm text-on-surface-variant mb-1">Status</label>
                           <select
                             value={editData.status}
                             onChange={(e) => handleEditChange('status', e.target.value)}
-                            className="w-full px-3 py-1.5 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary text-body-md"
+                            className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary text-body-md"
                           >
                             <option value="">Status beibehalten ({selectedLead.status})</option>
                             {SELECTABLE_STATUS_OPTIONS.map(opt => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
                           </select>
-                        ) : (
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-label-sm ${getStatusStyle(selectedLead.status)}`}>
-                            {selectedLead.status || 'Unbekannt'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Contact Buttons (Pill Style) */}
-                    <div className="flex flex-wrap gap-2">
-                      {safeString(selectedLead.telefon) && (
-                        <a
-                          href={`tel:${safeString(selectedLead.telefon)}`}
-                          className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
-                        >
-                          <Phone className="h-4 w-4 text-primary" />
-                          <span className="text-body-sm">{safeString(selectedLead.telefon)}</span>
-                        </a>
-                      )}
-                      {safeString(selectedLead.email) && (
-                        <a
-                          href={`mailto:${safeString(selectedLead.email)}`}
-                          className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
-                        >
-                          <Mail className="h-4 w-4 text-primary" />
-                          <span className="text-body-sm truncate max-w-[180px]">{safeString(selectedLead.email)}</span>
-                        </a>
-                      )}
-                      {safeString(selectedLead.website) && (
-                        <a
-                          href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
-                        >
-                          <Globe className="h-4 w-4 text-primary" />
-                          <span className="text-body-sm">Website</span>
-                        </a>
-                      )}
-                      {(safeString(selectedLead.ort) || safeString(selectedLead.bundesland)) && (
-                        <div className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg">
-                          <MapPin className="h-4 w-4 text-primary" />
-                          <span className="text-body-sm">
-                            {[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ')}
-                          </span>
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    ) : (
+                      /* View Mode */
+                      <>
+                        {/* Info Grid */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <p className="text-body-sm text-on-surface-variant">Ansprechpartner</p>
+                            <p className="text-body-md text-on-surface">
+                              {safeString(selectedLead.ansprechpartnerVorname) || safeString(selectedLead.ansprechpartnerNachname)
+                                ? `${safeString(selectedLead.ansprechpartnerVorname)} ${safeString(selectedLead.ansprechpartnerNachname)}`.trim()
+                                : '-'}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-body-sm text-on-surface-variant">Status</p>
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-label-sm ${getStatusStyle(selectedLead.status)}`}>
+                              {selectedLead.status || 'Unbekannt'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Contact Buttons (Pill Style) */}
+                        <div className="flex flex-wrap gap-2">
+                          {safeString(selectedLead.telefon) && (
+                            <a
+                              href={`tel:${safeString(selectedLead.telefon)}`}
+                              className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                            >
+                              <Phone className="h-4 w-4 text-primary" />
+                              <span className="text-body-sm">{safeString(selectedLead.telefon)}</span>
+                            </a>
+                          )}
+                          {safeString(selectedLead.email) && (
+                            <a
+                              href={`mailto:${safeString(selectedLead.email)}`}
+                              className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                            >
+                              <Mail className="h-4 w-4 text-primary" />
+                              <span className="text-body-sm truncate max-w-[180px]">{safeString(selectedLead.email)}</span>
+                            </a>
+                          )}
+                          {safeString(selectedLead.website) && (
+                            <a
+                              href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
+                            >
+                              <Globe className="h-4 w-4 text-primary" />
+                              <span className="text-body-sm">Website</span>
+                            </a>
+                          )}
+                          {(safeString(selectedLead.ort) || safeString(selectedLead.bundesland)) && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg">
+                              <MapPin className="h-4 w-4 text-primary" />
+                              <span className="text-body-sm">
+                                {[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ')}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
 
                     {/* Setter/Closer Tags */}
                     <div className="flex flex-wrap gap-2">

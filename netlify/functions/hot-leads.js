@@ -630,6 +630,9 @@ export async function handler(event) {
         'ansprechpartner_vorname': 'ansprechpartner_vorname',
         'ansprechpartner_nachname': 'ansprechpartner_nachname',
         'telefonnummer': 'telefonnummer',
+        'mail': 'mail',
+        'website': 'website',
+        'ort': 'ort',
         // No-Show Felder
         'no_show_count': 'no_show_count',
         'no_show_marked_at': 'no_show_marked_at',
