@@ -1084,23 +1084,23 @@ function Closing() {
       if (hasStatusChange) hotLeadUpdates.status = data.status
       if (hasTerminChange) hotLeadUpdates.terminDatum = data.terminDatum
 
-      // Kontaktdaten-Updates (nur wenn geändert)
-      if (data.ansprechpartnerVorname !== undefined && data.ansprechpartnerVorname !== selectedLead.ansprechpartnerVorname) {
+      // Kontaktdaten-Updates - immer mitsenden wenn im Edit-Mode
+      if (data.ansprechpartnerVorname !== undefined) {
         hotLeadUpdates.ansprechpartner_vorname = data.ansprechpartnerVorname
       }
-      if (data.ansprechpartnerNachname !== undefined && data.ansprechpartnerNachname !== selectedLead.ansprechpartnerNachname) {
+      if (data.ansprechpartnerNachname !== undefined) {
         hotLeadUpdates.ansprechpartner_nachname = data.ansprechpartnerNachname
       }
-      if (data.email !== undefined && data.email !== selectedLead.email) {
+      if (data.email !== undefined) {
         hotLeadUpdates.mail = data.email
       }
-      if (data.telefon !== undefined && data.telefon !== selectedLead.telefon) {
+      if (data.telefon !== undefined) {
         hotLeadUpdates.telefonnummer = data.telefon
       }
-      if (data.website !== undefined && data.website !== selectedLead.website) {
+      if (data.website !== undefined) {
         hotLeadUpdates.website = data.website
       }
-      if (data.ort !== undefined && data.ort !== selectedLead.ort) {
+      if (data.ort !== undefined) {
         hotLeadUpdates.ort = data.ort
       }
 
