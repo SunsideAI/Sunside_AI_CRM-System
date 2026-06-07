@@ -1353,7 +1353,14 @@ function Closing() {
               ...l,
               status: hasStatusChange ? data.status : l.status,
               kommentar: updatedKommentar,
-              terminDatum: hasTerminChange ? data.terminDatum : l.terminDatum
+              terminDatum: hasTerminChange ? data.terminDatum : l.terminDatum,
+              // Kontaktdaten
+              ansprechpartnerVorname: data.ansprechpartnerVorname ?? l.ansprechpartnerVorname,
+              ansprechpartnerNachname: data.ansprechpartnerNachname ?? l.ansprechpartnerNachname,
+              email: data.email ?? l.email,
+              telefon: data.telefon ?? l.telefon,
+              website: data.website ?? l.website,
+              ort: data.ort ?? l.ort
             }
           : l
       ))
@@ -1361,7 +1368,14 @@ function Closing() {
         ...prev,
         status: hasStatusChange ? data.status : prev.status,
         kommentar: updatedKommentar,
-        terminDatum: hasTerminChange ? data.terminDatum : prev.terminDatum
+        terminDatum: hasTerminChange ? data.terminDatum : prev.terminDatum,
+        // Kontaktdaten
+        ansprechpartnerVorname: data.ansprechpartnerVorname ?? prev.ansprechpartnerVorname,
+        ansprechpartnerNachname: data.ansprechpartnerNachname ?? prev.ansprechpartnerNachname,
+        email: data.email ?? prev.email,
+        telefon: data.telefon ?? prev.telefon,
+        website: data.website ?? prev.website,
+        ort: data.ort ?? prev.ort
       }))
       setEditData(prev => ({ ...prev, neuerKommentar: '', kommentar: updatedKommentar }))
       setEditMode(false)
