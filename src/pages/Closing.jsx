@@ -926,7 +926,16 @@ function Closing() {
     const hasNeuerKommentar = editData.neuerKommentar && editData.neuerKommentar.trim()
     const hasTerminChange = editData.terminDatum && editData.terminDatum !== selectedLead.terminDatum
 
-    if (!hasStatusChange && !hasNeuerKommentar && !hasTerminChange) {
+    // Kontaktdaten-Änderungen prüfen
+    const hasContactChange =
+      editData.ansprechpartnerVorname !== selectedLead.ansprechpartnerVorname ||
+      editData.ansprechpartnerNachname !== selectedLead.ansprechpartnerNachname ||
+      editData.email !== selectedLead.email ||
+      editData.telefon !== selectedLead.telefon ||
+      editData.website !== selectedLead.website ||
+      editData.ort !== selectedLead.ort
+
+    if (!hasStatusChange && !hasNeuerKommentar && !hasTerminChange && !hasContactChange) {
       setEditMode(false)
       return // Nichts zu speichern
     }
