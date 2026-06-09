@@ -80,9 +80,9 @@ const PRODUKTE_MIT_WEBSITE_SETUP = [
   'Website & KI-Voicebot & KI-Chatbot',
 ]
 
-// Standard-Vertragsbestandteile (dynamisch mit Laufzeit)
-const DEFAULT_VERTRAGSBESTANDTEILE = (laufzeit = 12) =>
-  `* Alle Preise verstehen sich zzgl. 19 % Umsatzsteuer und basieren auf einer Vertragslaufzeit von ${laufzeit} Monaten. Die Abrechnung der einmaligen Leistungen erfolgt bei Auftragserteilung. Die Abrechnung der regelmäßigen Leistungen erfolgt monatlich im Voraus. Der Vertrag verlängert sich automatisch um jeweils 3 Monate, wenn er nicht mit einer Frist von 3 Monaten zum Laufzeitende in Textform gekündigt wird. Das Recht zur außerordentlichen Kündigung bleibt unberührt.`
+// Standard-Vertragsbestandteile (dynamisch mit Laufzeit und Kündigungsfrist)
+const DEFAULT_VERTRAGSBESTANDTEILE = (laufzeit = 12, kuendigungsfrist = 3) =>
+  `* Alle Preise verstehen sich zzgl. 19 % Umsatzsteuer und basieren auf einer Vertragslaufzeit von ${laufzeit} Monaten. Die Abrechnung der einmaligen Leistungen erfolgt bei Auftragserteilung. Die Abrechnung der regelmäßigen Leistungen erfolgt monatlich im Voraus. Der Vertrag verlängert sich automatisch um jeweils 3 Monate, wenn er nicht mit einer Frist von ${kuendigungsfrist} ${kuendigungsfrist === 1 ? 'Monat' : 'Monaten'} zum Laufzeitende in Textform gekündigt wird. Das Recht zur außerordentlichen Kündigung bleibt unberührt.`
 
 // Textbausteine zum Kopieren
 const TEXTBAUSTEINE = [
@@ -141,7 +141,8 @@ function Closing() {
     retainer: '',
     websiteSetup: '',        // Separater Setup-Betrag für Website-Komponente
     laufzeit: 12,            // Default 12 Monate
-    vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12),
+    kuendigungsfrist: 3,     // Default 3 Monate
+    vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12, 3),
     paketname: '',           // Nur bei Individuell
     kurzbeschreibung: '',    // Nur bei Individuell
     leistungsbeschreibung: '' // Nur bei Individuell
@@ -354,6 +355,17 @@ function Closing() {
         `Vertragslaufzeit von ${newLaufzeit} Monaten`
       )
       return { ...prev, laufzeit: newLaufzeit, vertragsbestandteile: updatedText }
+    })
+  }
+
+  // Kündigungsfrist-Handler – aktualisiert auch den Vertragstext automatisch
+  const handleKuendigungsfristChange = (newKuendigungsfrist) => {
+    setAngebotData(prev => {
+      const updatedText = prev.vertragsbestandteile.replace(
+        /mit einer Frist von \d+ Monat(en)?/,
+        `mit einer Frist von ${newKuendigungsfrist} ${newKuendigungsfrist === 1 ? 'Monat' : 'Monaten'}`
+      )
+      return { ...prev, kuendigungsfrist: newKuendigungsfrist, vertragsbestandteile: updatedText }
     })
   }
 
@@ -900,7 +912,8 @@ function Closing() {
       retainer: '',
       websiteSetup: '',
       laufzeit: 12,
-      vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12),
+      kuendigungsfrist: 3,
+      vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12, 3),
       paketname: '',
       kurzbeschreibung: '',
       leistungsbeschreibung: ''
@@ -2167,7 +2180,8 @@ function Closing() {
                         retainer: '',
                         websiteSetup: '',
                         laufzeit: 12,
-                        vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12),
+                        kuendigungsfrist: 3,
+                        vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12, 3),
                         paketname: '',
                         kurzbeschreibung: '',
                         leistungsbeschreibung: ''
@@ -2303,6 +2317,29 @@ function Closing() {
                             }`}
                           >
                             {months} Mon
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Kündigungsfrist */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Kündigungsfrist
+                      </label>
+                      <div className="flex gap-2">
+                        {[1, 2, 3].map(months => (
+                          <button
+                            key={months}
+                            type="button"
+                            onClick={() => handleKuendigungsfristChange(months)}
+                            className={`flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              angebotData.kuendigungsfrist === months
+                                ? 'bg-green-100 text-green-700 ring-2 ring-green-400'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                          >
+                            {months} {months === 1 ? 'Monat' : 'Monate'}
                           </button>
                         ))}
                       </div>
@@ -3148,7 +3185,8 @@ function Closing() {
                           retainer: '',
                           websiteSetup: '',
                           laufzeit: 12,
-                          vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12),
+                          kuendigungsfrist: 3,
+                          vertragsbestandteile: DEFAULT_VERTRAGSBESTANDTEILE(12, 3),
                           paketname: '',
                           kurzbeschreibung: '',
                           leistungsbeschreibung: ''
