@@ -318,6 +318,14 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
               setBooking(false)
               return
             }
+            // 400 mit setter_not_found / closer_not_found:
+            // Calendly-Termin ist schon gebucht, aber Hot Lead konnte nicht erstellt werden.
+            // User muss den Fehler sehen, sonst "verschwindet" der Termin aus seinem CRM-Kalender.
+            if (hotLeadResponse.status === 400 && (hotLeadData.error === 'setter_not_found' || hotLeadData.error === 'closer_not_found')) {
+              setError(hotLeadData.message || 'Setter oder Closer konnte nicht zugewiesen werden. Termin nicht gespeichert.')
+              setBooking(false)
+              return
+            }
             console.error('Hot Lead Erstellung fehlgeschlagen:', hotLeadData)
           } else {
             console.log('Hot Lead erstellt:', hotLeadData.hotLeadId)

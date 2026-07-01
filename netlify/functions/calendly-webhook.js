@@ -258,41 +258,81 @@ async function findHotLeadByUnternehmen(unternehmen) {
 }
 
 // Hot Lead anhand Termin-Zeit finden
+// WICHTIG: Bei mehreren Kandidaten im 10-Min-Fenster bevorzugen wir Email-Match,
+// sonst kleinsten Zeit-Abstand. Sonst konnte bei parallelen Terminen (z.B. 2 Termine
+// gleichzeitig für morgen) der falsche Hot Lead auf die neue Zeit verschoben werden
+// → einer der Termine "verschwand" aus dem Kalender.
 async function findHotLeadByTermin(terminDatum, email) {
   if (!terminDatum) return null
 
-  console.log('Suche Hot Lead nach Termin:', terminDatum)
+  console.log('Suche Hot Lead nach Termin:', terminDatum, 'Email:', email || '(keine)')
 
   const { data: hotLeads, error } = await supabase
     .from('hot_leads')
-    .select('id, unternehmen, termin_beratungsgespraech, setter_id, closer_id, lead_id')
+    .select(`
+      id, unternehmen, termin_beratungsgespraech, setter_id, closer_id, lead_id, mail,
+      original_lead:leads!hot_leads_lead_id_fkey(mail)
+    `)
     .neq('status', 'Abgesagt')
+    .not('termin_beratungsgespraech', 'is', null)
 
-  if (error || !hotLeads) return null
+  if (error) {
+    console.error('findHotLeadByTermin DB-Fehler:', error)
+    return null
+  }
+  if (!hotLeads) return null
 
-  const searchDate = new Date(terminDatum)
-  const targetTime = searchDate.getTime()
+  const targetTime = new Date(terminDatum).getTime()
+  const WINDOW_MS = 10 * 60 * 1000
 
-  for (const record of hotLeads) {
-    if (!record.termin_beratungsgespraech) continue
+  const candidates = hotLeads
+    .map(record => ({
+      record,
+      timeDiff: Math.abs(new Date(record.termin_beratungsgespraech).getTime() - targetTime)
+    }))
+    .filter(c => c.timeDiff < WINDOW_MS)
 
-    const recordTime = new Date(record.termin_beratungsgespraech).getTime()
-    const timeDiff = Math.abs(recordTime - targetTime)
+  if (candidates.length === 0) return null
 
-    if (timeDiff < 10 * 60 * 1000) {
-      console.log('Zeit-Match gefunden:', record.unternehmen)
-      return {
-        id: record.id,
-        unternehmen: record.unternehmen,
-        termin: record.termin_beratungsgespraech,
-        setterId: record.setter_id,
-        closerId: record.closer_id,
-        originalLeadId: record.lead_id
-      }
+  let winner = null
+
+  // 1. Bevorzuge Email-Match (verhindert falschen Match bei parallelen Terminen)
+  if (email) {
+    const emailLower = String(email).toLowerCase().trim()
+    const emailMatches = candidates.filter(c =>
+      (c.record.mail || '').toLowerCase() === emailLower ||
+      (c.record.original_lead?.mail || '').toLowerCase() === emailLower
+    )
+    if (emailMatches.length > 0) {
+      // Bei mehreren Email-Matches: kleinster Zeit-Abstand
+      winner = emailMatches.reduce((best, curr) => curr.timeDiff < best.timeDiff ? curr : best)
+      console.log('Match via Email + Termin:', winner.record.unternehmen)
     }
   }
 
-  return null
+  // 2. Fallback: kleinster Zeit-Abstand
+  if (!winner) {
+    winner = candidates.reduce((best, curr) => curr.timeDiff < best.timeDiff ? curr : best)
+    if (candidates.length > 1) {
+      console.warn(
+        `[findHotLeadByTermin] WARNUNG: ${candidates.length} Kandidaten im 10-Min-Fenster ohne Email-Match.`,
+        'Wähle kürzeste Zeit-Diff:', winner.record.unternehmen,
+        '(', winner.timeDiff, 'ms)',
+        'Alle Kandidaten:', candidates.map(c => ({ id: c.record.id, unternehmen: c.record.unternehmen, diff: c.timeDiff }))
+      )
+    } else {
+      console.log('Match via Termin:', winner.record.unternehmen)
+    }
+  }
+
+  return {
+    id: winner.record.id,
+    unternehmen: winner.record.unternehmen,
+    termin: winner.record.termin_beratungsgespraech,
+    setterId: winner.record.setter_id,
+    closerId: winner.record.closer_id,
+    originalLeadId: winner.record.lead_id
+  }
 }
 
 // Hot Lead anhand E-Mail finden (Fallback wenn Termin/Unternehmen nicht matchen)

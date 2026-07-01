@@ -95,17 +95,50 @@ function arrayToNumber(value, defaultValue = 0) {
 }
 
 // User ID nach Name finden
+// Robust gegen: Whitespace-Varianten, non-breaking-space, Umlaut/Latin-Schreibweise
+// (Schuetze ↔ Schütze, Müller ↔ Mueller etc.)
 async function getUserIdByName(userName) {
   if (!userName) return null
 
-  const { data, error } = await supabase
-    .from('users')
-    .select('id')
-    .ilike('vor_nachname', userName)
-    .limit(1)
+  // Whitespace normalisieren (inkl. non-breaking-space  )
+  const normalized = String(userName).replace(/ /g, ' ').trim().replace(/\s+/g, ' ')
+  if (!normalized) return null
 
-  if (error || !data || data.length === 0) return null
-  return data[0].id
+  // Kandidaten-Schreibweisen aufbauen
+  const candidates = [normalized]
+
+  // Latin → Umlaut (Schuetze → Schütze, ae → ä, oe → ö, ue → ü, ss → ß)
+  const toUmlaut = normalized
+    .replace(/ae/gi, 'ä')
+    .replace(/oe/gi, 'ö')
+    .replace(/ue/gi, 'ü')
+    .replace(/ss/gi, 'ß')
+  if (toUmlaut !== normalized) candidates.push(toUmlaut)
+
+  // Umlaut → Latin (Schütze → Schuetze)
+  const toLatin = normalized
+    .replace(/ä/gi, 'ae')
+    .replace(/ö/gi, 'oe')
+    .replace(/ü/gi, 'ue')
+    .replace(/ß/g, 'ss')
+  if (toLatin !== normalized) candidates.push(toLatin)
+
+  for (const candidate of candidates) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .ilike('vor_nachname', candidate)
+      .limit(1)
+
+    if (error) {
+      console.error('[getUserIdByName] DB-Fehler für', candidate, error)
+      continue
+    }
+    if (data && data.length > 0) return data[0].id
+  }
+
+  console.warn('[getUserIdByName] Kein User gefunden für Name:', JSON.stringify(userName), '(kandidaten:', JSON.stringify(candidates) + ')')
+  return null
 }
 
 export async function handler(event) {
@@ -524,15 +557,40 @@ export async function handler(event) {
       }
 
       // Setter-ID ermitteln
+      // WICHTIG: Wenn Name gegeben aber nicht auflösbar → 400 statt silent null.
+      // Sonst würde der Hot Lead mit setter_id: null gespeichert und im Kalender
+      // des Setters nicht mehr auftauchen (Bug: "Termine sind weg").
       let setterRecordId = setterId
       if (!setterRecordId && setterName) {
         setterRecordId = await getUserIdByName(setterName)
+        if (!setterRecordId) {
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              error: 'setter_not_found',
+              message: `Setter "${setterName}" konnte nicht in der User-Datenbank gefunden werden. Termin wurde NICHT gespeichert. Bitte Name prüfen (Umlaute, Schreibweise) und Support kontaktieren.`
+            })
+          }
+        }
       }
 
       // Closer-ID ermitteln (optional - für Pool-Termine)
+      // Analog: closerName leer = Pool erlaubt. Aber wenn Name gegeben und nicht
+      // auflösbar → 400, damit der Termin nicht orphan in den Pool fällt.
       let closerRecordId = closerId
       if (!closerRecordId && closerName) {
         closerRecordId = await getUserIdByName(closerName)
+        if (!closerRecordId) {
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              error: 'closer_not_found',
+              message: `Closer "${closerName}" konnte nicht in der User-Datenbank gefunden werden. Termin wurde NICHT gespeichert. Bitte Name prüfen oder in den Pool zuweisen.`
+            })
+          }
+        }
       }
 
       // Hot Lead erstellen
