@@ -210,15 +210,49 @@ export async function handler(event) {
       const existingHotLead = inviteeEmail ? await findHotLeadByEmail(inviteeEmail) : null
 
       if (existingHotLead) {
-        console.log('Hot Lead existiert bereits (CRM-Buchung):', existingHotLead.id, existingHotLead.unternehmen)
+        // Zwei Fälle unterscheiden:
+        // (a) Termin des bestehenden Hot Leads matcht ~ new time → CRM hat diesen
+        //     Hot Lead grade für diese Buchung angelegt. Nichts zu tun.
+        // (b) Termin unterscheidet sich → Kunde hat direkt gebucht, wir haben aber
+        //     schon einen Hot Lead (z.B. aus einer früheren Absage). Behandeln
+        //     wie eine Verschiebung: Hot Lead auf den neuen Slot patchen und
+        //     Setter/Closer benachrichtigen.
+        const existingMs = existingHotLead.termin ? new Date(existingHotLead.termin).getTime() : 0
+        const newMs = new Date(newScheduledTime).getTime()
+        const sameSlot = existingMs > 0 && Math.abs(newMs - existingMs) < 10 * 60 * 1000
+
+        if (sameSlot) {
+          console.log('Hot Lead existiert für denselben Slot (CRM-Buchung):', existingHotLead.id, existingHotLead.unternehmen)
+          return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({ success: true, message: 'Neue Buchung - Hot Lead vom CRM angelegt', hotLeadId: existingHotLead.id })
+          }
+        }
+
+        console.log('Neuer Termin für bestehenden Hot Lead – Termin wird aktualisiert:', {
+          hotLeadId: existingHotLead.id,
+          alterTermin: existingHotLead.termin,
+          neuerTermin: newScheduledTime
+        })
+        await updateHotLeadTermin(existingHotLead.id, newScheduledTime, existingHotLead.originalLeadId, existingHotLead.termin)
+        await sendNotifications(existingHotLead, 'verschiebung', {
+          neuerTermin: newScheduledTime,
+          alterTermin: existingHotLead.termin
+        })
+
         return {
           statusCode: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ success: true, message: 'Neue Buchung - Hot Lead vom CRM angelegt', hotLeadId: existingHotLead.id })
+          body: JSON.stringify({
+            success: true,
+            message: 'Neuer Termin für bestehenden Hot Lead übernommen',
+            hotLeadId: existingHotLead.id
+          })
         }
       }
 
-      // Kein Hot Lead → wahrscheinlich Direktbuchung (Kunde hat Calendly-Link direkt genutzt)
+      // Kein Hot Lead → Direktbuchung (Kunde hat Calendly-Link direkt genutzt, kein CRM-Kontakt)
       console.warn('[Calendly] DIREKTBUCHUNG erkannt (kein Hot Lead im CRM):', {
         email: inviteeEmail,
         time: newScheduledTime,
