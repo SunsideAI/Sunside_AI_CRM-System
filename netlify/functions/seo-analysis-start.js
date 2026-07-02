@@ -31,6 +31,19 @@ export const handler = async (event) => {
       }
     }
 
+    // Stadt ist Pflicht - SEO-Tool validiert min_length: 1
+    const stadtNormalized = (stadt || '').trim()
+    if (!stadtNormalized) {
+      return {
+        statusCode: 400,
+        headers: corsHeaders,
+        body: JSON.stringify({
+          error: 'stadt_required',
+          message: 'Stadt ist Pflicht für die SEO-Analyse. Bitte beim Lead ergänzen.'
+        })
+      }
+    }
+
     // Env-Var-Check: bricht früh mit klarer Message ab wenn eine Variable fehlt
     const missing = ['SEO_TOOL_URL', 'SEO_TOOL_API_KEY', 'CRM_PUBLIC_URL']
       .filter(name => !process.env[name])
@@ -64,7 +77,7 @@ export const handler = async (event) => {
         body: JSON.stringify({
           maklername: firmenname || 'Unbekannt',
           website_url: websiteUrl,
-          stadt: stadt || '',
+          stadt: stadtNormalized,
           plz: '',
           nur_fakten: true,
           custom_crm_deal_id: hotLeadId,

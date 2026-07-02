@@ -364,6 +364,19 @@ function Closing() {
       return
     }
 
+    // Stadt ist Pflicht - SEO-Tool validiert min_length: 1
+    const stadt = (lead.ort || '').trim()
+    if (!stadt) {
+      // Wenn User die Stadt im edit-Feld eingetragen aber noch nicht gespeichert hat:
+      const unsavedOrt = (editData.ort || '').trim()
+      if (editMode && unsavedOrt) {
+        showToast('error', 'Bitte zuerst "Speichern" klicken - die eingetragene Stadt ist noch nicht in der Datenbank.')
+      } else {
+        showToast('error', 'Bitte zuerst die Stadt beim Lead ergänzen - die SEO-Analyse braucht sie für lokale Rankings.')
+      }
+      return
+    }
+
     setSeoAnalysisLoading(prev => ({ ...prev, [lead.id]: true }))
 
     try {
@@ -374,7 +387,7 @@ function Closing() {
           hotLeadId: lead.id,
           websiteUrl: lead.website,
           firmenname: lead.unternehmen || lead.firmenname,
-          stadt: lead.ort || ''
+          stadt: stadt
         })
       })
 
