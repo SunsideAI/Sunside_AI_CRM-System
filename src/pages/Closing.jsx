@@ -378,12 +378,20 @@ function Closing() {
         })
       })
 
-      if (!response.ok) throw new Error('Fehler beim Starten der SEO-Analyse')
+      if (!response.ok) {
+        // Echten Fehler-Body auslesen und im Toast anzeigen
+        let detail = `HTTP ${response.status}`
+        try {
+          const errBody = await response.json()
+          detail = errBody.message || errBody.error || detail
+        } catch (_) { /* Body war kein JSON */ }
+        throw new Error(detail)
+      }
 
       showToast('success', 'SEO-Analyse gestartet - Bericht wird in Kürze bei den Dokumenten angezeigt')
     } catch (error) {
       console.error('SEO Analysis Error:', error)
-      showToast('error', 'SEO-Analyse konnte nicht gestartet werden')
+      showToast('error', `SEO-Analyse fehlgeschlagen: ${error.message}`)
     } finally {
       setSeoAnalysisLoading(prev => ({ ...prev, [lead.id]: false }))
     }
