@@ -312,21 +312,62 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
 
           const hotLeadData = await hotLeadResponse.json()
           if (!hotLeadResponse.ok) {
-            // Duplikat-Prüfung: 409 = Hot Lead existiert bereits
+            // 409 = Für diesen Lead existiert bereits ein Hot Lead.
+            // Bisher: Fehler → Calendly-Termin blieb orphan zurück.
+            // Jetzt: User fragen, ob bestehender Hot Lead auf neuen Slot umgebucht werden soll.
             if (hotLeadResponse.status === 409) {
-              setError('Für diesen Lead wurde bereits ein Beratungsgespräch gebucht. Bitte wähle einen anderen Lead.')
-              setBooking(false)
-              return
-            }
-            // 400 mit setter_not_found / closer_not_found:
-            // Calendly-Termin ist schon gebucht, aber Hot Lead konnte nicht erstellt werden.
-            // User muss den Fehler sehen, sonst "verschwindet" der Termin aus seinem CRM-Kalender.
-            if (hotLeadResponse.status === 400 && (hotLeadData.error === 'setter_not_found' || hotLeadData.error === 'closer_not_found')) {
+              const existingId = hotLeadData.existingHotLeadId
+              if (!existingId) {
+                setError('Für diesen Lead existiert bereits ein Beratungsgespräch, aber der bestehende Eintrag konnte nicht ermittelt werden. Bitte einen anderen Lead wählen.')
+                setBooking(false)
+                return
+              }
+              const shouldReschedule = window.confirm(
+                'Für diesen Lead existiert bereits ein Beratungsgespräch im CRM.\n\n' +
+                'Soll der bestehende Termin auf den neu gewählten Slot verschoben werden?\n\n' +
+                'ACHTUNG: Der alte Calendly-Termin wird NICHT automatisch abgesagt - bitte manuell prüfen.'
+              )
+              if (!shouldReschedule) {
+                setError('Abgebrochen. Der Calendly-Termin wurde gebucht, aber nicht ins CRM übernommen. Bitte den Calendly-Termin manuell absagen, falls nicht mehr benötigt.')
+                setBooking(false)
+                return
+              }
+              // Bestehenden Hot Lead auf neuen Slot patchen
+              try {
+                const patchResponse = await fetch('/.netlify/functions/hot-leads', {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    hotLeadId: existingId,
+                    updates: {
+                      terminDatum: selectedSlot.start,
+                      terminart: selectedType === 'video' ? 'Video' : 'Telefonisch',
+                      meetingLink: meetingLink,
+                      status: 'Lead'
+                    }
+                  })
+                })
+                if (!patchResponse.ok) {
+                  const patchErr = await patchResponse.json().catch(() => ({}))
+                  throw new Error(patchErr.message || patchErr.error || `HTTP ${patchResponse.status}`)
+                }
+                console.log('Bestehender Hot Lead auf neuen Slot verschoben:', existingId)
+                createdHotLeadId = existingId
+              } catch (patchErr) {
+                setError('Update des bestehenden Hot Leads fehlgeschlagen: ' + patchErr.message)
+                setBooking(false)
+                return
+              }
+            } else if (hotLeadResponse.status === 400 && (hotLeadData.error === 'setter_not_found' || hotLeadData.error === 'closer_not_found')) {
+              // 400 mit setter_not_found / closer_not_found:
+              // Calendly-Termin ist schon gebucht, aber Hot Lead konnte nicht erstellt werden.
+              // User muss den Fehler sehen, sonst "verschwindet" der Termin aus seinem CRM-Kalender.
               setError(hotLeadData.message || 'Setter oder Closer konnte nicht zugewiesen werden. Termin nicht gespeichert.')
               setBooking(false)
               return
+            } else {
+              console.error('Hot Lead Erstellung fehlgeschlagen:', hotLeadData)
             }
-            console.error('Hot Lead Erstellung fehlgeschlagen:', hotLeadData)
           } else {
             console.log('Hot Lead erstellt:', hotLeadData.hotLeadId)
             createdHotLeadId = hotLeadData.hotLeadId

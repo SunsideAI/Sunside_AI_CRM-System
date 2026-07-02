@@ -200,11 +200,40 @@ export async function handler(event) {
         }
       }
 
-      console.log('Neue Buchung (wird von CRM/TerminPicker behandelt)')
+      console.log('Neue Buchung (invitee.created ohne old_invitee)')
+
+      // Race-Condition-Puffer: CRM-Frontend legt Hot Lead in einem separaten POST an.
+      // Der Calendly-Webhook kann davor bei uns eintreffen. Wir warten kurz, damit
+      // ein CRM-erstellter Hot Lead in der DB sichtbar wird, bevor wir Direktbuchung annehmen.
+      await new Promise(r => setTimeout(r, 3000))
+
+      const existingHotLead = inviteeEmail ? await findHotLeadByEmail(inviteeEmail) : null
+
+      if (existingHotLead) {
+        console.log('Hot Lead existiert bereits (CRM-Buchung):', existingHotLead.id, existingHotLead.unternehmen)
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ success: true, message: 'Neue Buchung - Hot Lead vom CRM angelegt', hotLeadId: existingHotLead.id })
+        }
+      }
+
+      // Kein Hot Lead → wahrscheinlich Direktbuchung (Kunde hat Calendly-Link direkt genutzt)
+      console.warn('[Calendly] DIREKTBUCHUNG erkannt (kein Hot Lead im CRM):', {
+        email: inviteeEmail,
+        time: newScheduledTime,
+        unternehmen: unternehmen || '(nicht angegeben)'
+      })
+      await notifyAdminsOfDirectBooking({
+        email: inviteeEmail,
+        time: newScheduledTime,
+        unternehmen
+      })
+
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ success: true, message: 'Neue Buchung - wird vom CRM behandelt' })
+        body: JSON.stringify({ success: true, message: 'Direktbuchung erkannt - Admins benachrichtigt' })
       }
     }
 
@@ -657,4 +686,45 @@ async function createSystemMessage(empfaengerId, titel, nachricht, typ, hotLeadI
       hot_lead_id: hotLeadId || null,
       gelesen: false
     })
+}
+
+// Admins alarmieren, wenn ein Kunde direkt über Calendly gebucht hat und kein
+// zugeordneter Hot Lead im CRM existiert. Damit fällt so ein Termin nicht
+// stillschweigend durchs Raster.
+async function notifyAdminsOfDirectBooking({ email, time, unternehmen }) {
+  try {
+    const { data: users, error } = await supabase
+      .from('users')
+      .select('id, rollen')
+      .eq('status', true)
+
+    if (error) {
+      console.error('notifyAdminsOfDirectBooking: users load failed', error)
+      return
+    }
+
+    const admins = (users || []).filter(u =>
+      (u.rollen || []).some(r => String(r).toLowerCase() === 'admin')
+    )
+
+    if (admins.length === 0) {
+      console.warn('notifyAdminsOfDirectBooking: keine aktiven Admins gefunden')
+      return
+    }
+
+    const titel = 'Direktbuchung ohne Lead-Zuordnung'
+    const nachricht =
+      `Kunde hat direkt über Calendly gebucht (nicht via CRM). Es existiert noch kein Hot Lead im System.\n\n` +
+      `E-Mail: ${email || '(keine)'}\n` +
+      `Unternehmen: ${unternehmen || '(nicht angegeben)'}\n` +
+      `Termin: ${formatDate(time)}\n\n` +
+      `Bitte prüfen, ob ein Lead angelegt oder ein bestehender verknüpft werden muss.`
+
+    for (const admin of admins) {
+      await createSystemMessage(admin.id, titel, nachricht, 'Direktbuchung', null)
+    }
+    console.log('Direktbuchungs-Notifikation an', admins.length, 'Admin(s) gesendet')
+  } catch (err) {
+    console.error('notifyAdminsOfDirectBooking Fehler:', err)
+  }
 }
