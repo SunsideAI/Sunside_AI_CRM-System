@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
+import { deriveBillingMode, BILLING_MODE_LABELS } from '../utils/billingMode'
 
 const LAENDER = [
   { code: 'DE', name: 'Deutschland' },
@@ -43,7 +44,7 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
     vertragsbeginn: new Date().toISOString().slice(0, 10),
     zahlungsziel_tage: 14,
     retainer_start_offset_months: 0,
-    billing_mode: 'standard',
+    billing_mode: 'auto',
     // Sektion 5 - Notiz
     billing_notes: '',
   })
@@ -71,7 +72,7 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
         vertragsbeginn: lead.vertragsbeginn || new Date().toISOString().slice(0, 10),
         zahlungsziel_tage: lead.zahlungsziel_tage || 14,
         retainer_start_offset_months: lead.retainer_start_offset_months || 0,
-        billing_mode: lead.billing_mode || 'standard',
+        billing_mode: lead.billing_mode || 'auto',
         billing_notes: lead.billing_notes || '',
       })
       setErrors({})
@@ -413,12 +414,33 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
             onChange={(e) => setField('billing_mode', e.target.value)}
             className={inputClass}
           >
-            <option value="standard">Standard – Monatliche Retainer-Abrechnung</option>
-            <option value="provision_partner">Provisions-Vermittler – Keine monatliche Abrechnung, nur Provision bei vermittelten Leads</option>
+            <option value="auto">{BILLING_MODE_LABELS.auto}</option>
+            <option value="provision_partner">{BILLING_MODE_LABELS.provision_partner}</option>
+            <option value="manual_external">{BILLING_MODE_LABELS.manual_external}</option>
+            <option value="reference">{BILLING_MODE_LABELS.reference}</option>
           </select>
+          {form.billing_mode === 'auto' && (() => {
+            const derived = deriveBillingMode(lead?.setup, lead?.retainer)
+            return (
+              <p className="text-xs text-gray-500 mt-1">
+                Wird als <span className="font-medium text-gray-700">{BILLING_MODE_LABELS[derived]}</span> abgerechnet
+                {derived === 'none' && ' – bitte Setup und/oder Retainer im Angebot setzen'}.
+              </p>
+            )
+          })()}
           {form.billing_mode === 'provision_partner' && (
             <p className="text-xs text-purple-600 mt-1">
-              🤝 Bei diesem Modell wird keine monatliche Rechnung erstellt. Provisionen werden separat abgerechnet.
+              🤝 Keine monatliche Rechnung. Provisionen werden separat abgerechnet.
+            </p>
+          )}
+          {form.billing_mode === 'manual_external' && (
+            <p className="text-xs text-blue-600 mt-1">
+              📄 Rechnung wird außerhalb des CRM erstellt (z.B. per Steuerberater-Tool).
+            </p>
+          )}
+          {form.billing_mode === 'reference' && (
+            <p className="text-xs text-gray-600 mt-1">
+              🎁 Referenzkunde – keine Rechnungsstellung.
             </p>
           )}
         </div>

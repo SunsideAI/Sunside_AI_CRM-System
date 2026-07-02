@@ -303,6 +303,7 @@ export async function handler(event) {
           vertragsbeginn: record.vertragsbeginn || null,
           zahlungsziel_tage: record.zahlungsziel_tage || 14,
           retainer_start_offset_months: record.retainer_start_offset_months || 0,
+          billing_mode: record.billing_mode || 'none',
           billing_notes: record.billing_notes || '',
           // No-Show Felder
           no_show_count: record.no_show_count || 0,
@@ -684,6 +685,7 @@ export async function handler(event) {
         'vertragsbeginn': 'vertragsbeginn',
         'zahlungsziel_tage': 'zahlungsziel_tage',
         'retainer_start_offset_months': 'retainer_start_offset_months',
+        'billing_mode': 'billing_mode',
         'billing_notes': 'billing_notes',
         'ansprechpartner_vorname': 'ansprechpartner_vorname',
         'ansprechpartner_nachname': 'ansprechpartner_nachname',

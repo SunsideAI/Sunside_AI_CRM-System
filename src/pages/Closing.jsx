@@ -6,6 +6,7 @@ import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
 import AbschlussForm from '../components/AbschlussForm'
 import BillingPanel from '../components/BillingPanel'
+import { deriveBillingMode } from '../utils/billingMode'
 import {
   Calendar,
   Users,
@@ -1167,6 +1168,15 @@ function Closing() {
 
       // Billing-Daten hinzufügen wenn vorhanden (bei Abschluss)
       if (hasBillingData) {
+        // billing_mode: 'auto' oder leer → aus Setup/Retainer ableiten.
+        // Explizite Wahl (provision_partner, manual_external, reference) hat Vorrang.
+        // MUSS im selben PATCH wie status='Abgeschlossen' sein, damit der DB-Trigger
+        // die Bridge mit dem korrekten Modus anstößt.
+        const chosenMode = data.billing_mode
+        const finalBillingMode = (chosenMode && chosenMode !== 'auto')
+          ? chosenMode
+          : deriveBillingMode(selectedLead?.setup, selectedLead?.retainer)
+
         Object.assign(hotLeadUpdates, {
           rechnung_anrede: data.rechnung_anrede,
           rechnung_firma: data.rechnung_firma,
@@ -1184,6 +1194,7 @@ function Closing() {
           vertragsbeginn: data.vertragsbeginn,
           zahlungsziel_tage: data.zahlungsziel_tage,
           retainer_start_offset_months: data.retainer_start_offset_months,
+          billing_mode: finalBillingMode,
           billing_notes: data.billing_notes,
         })
       }
