@@ -141,6 +141,8 @@ async function getUserIdByName(userName) {
   return null
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' }
@@ -192,6 +194,7 @@ export async function handler(event) {
             *,
             setter:users!hot_leads_setter_id_fkey(id, vor_nachname),
             closer:users!hot_leads_closer_id_fkey(id, vor_nachname),
+            reaktivierer:users!hot_leads_reaktivierung_bearbeiter_id_fkey(id, vor_nachname),
             original_lead:leads!hot_leads_lead_id_fkey(
               id, unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname,
               kategorie, mail, telefonnummer, stadt, website, kommentar,
@@ -209,9 +212,15 @@ export async function handler(event) {
           query = query.eq('setter_id', setterIdFilter)
         }
 
-        // Closer-Filter
-        if (closerIdFilter) {
-          query = query.eq('closer_id', closerIdFilter)
+        // Closer-Filter: User sieht Leads, die ihm als Closer ODER als
+        // Reaktivierungs-Bearbeiter zugewiesen sind. Damit taucht ein
+        // reaktivierter Lead in dessen Closing-Ansicht auf, ohne dass
+        // er dem User als Closer attribuiert wird (Statistik bleibt sauber).
+        // UUID-Validierung verhindert PostgREST-Filter-Injection via ID-Param.
+        if (closerIdFilter && UUID_REGEX.test(closerIdFilter)) {
+          query = query.or(`closer_id.eq.${closerIdFilter},reaktivierung_bearbeiter_id.eq.${closerIdFilter}`)
+        } else if (closerIdFilter) {
+          console.warn('[hot-leads GET] closerIdFilter ist keine gültige UUID, ignoriert:', closerIdFilter)
         }
 
         // Status-Filter
@@ -287,8 +296,10 @@ export async function handler(event) {
           originalLeadId: record.lead_id || null,
           setterId: record.setter_id || null,
           closerId: record.closer_id || null,
+          reaktivierungBearbeiterId: record.reaktivierung_bearbeiter_id || null,
           setterName: record.setter?.vor_nachname || '',
           closerName: record.closer?.vor_nachname || '',
+          reaktivierungBearbeiterName: record.reaktivierer?.vor_nachname || '',
           // Billing-Felder für Abschluss-Modal
           rechnung_anrede: record.rechnung_anrede || '',
           rechnung_firma: record.rechnung_firma || '',
@@ -660,6 +671,8 @@ export async function handler(event) {
         'prioritaet': 'prioritaet',
         'closerId': 'closer_id',
         'closerName': 'closer_id',  // Wird im Spezialcode zu closer_id aufgelöst
+        'reaktivierungBearbeiterId': 'reaktivierung_bearbeiter_id',
+        'reaktivierungBearbeiterName': 'reaktivierung_bearbeiter_id',  // im Spezialcode aufgelöst
         'terminDatum': 'termin_beratungsgespraech',
         'terminart': 'terminart',
         'meetingLink': 'meeting_link',
@@ -718,6 +731,16 @@ export async function handler(event) {
             } else {
               // Leerer String = Closer entfernen (zurück in Pool)
               fields.closer_id = null
+            }
+            continue
+          }
+          // Reaktivierungs-Bearbeiter nach Name auflösen (leer = entfernen)
+          if (key === 'reaktivierungBearbeiterName') {
+            if (value) {
+              const rid = await getUserIdByName(value)
+              if (rid) fields.reaktivierung_bearbeiter_id = rid
+            } else {
+              fields.reaktivierung_bearbeiter_id = null
             }
             continue
           }
