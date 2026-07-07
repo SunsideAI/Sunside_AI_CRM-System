@@ -375,8 +375,8 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
         Schiefer Berg 3 | 38124 Braunschweig | Deutschland<br />
         E-Mail: ${senderEmail || 'contact@sunsideai.de'} | Tel: ${senderTelefon || '+49 176 56039050'}<br />
         <a href="https://www.sunsideai.de" style="color: #7c3aed;">www.sunsideai.de</a> |
-        <a href="https://calendly.com/sunsideai/30min" style="color: #7c3aed; margin-left: 4px;">Jetzt Termin buchen</a> |
-        <a href="https://open.spotify.com/show/5OUFEuTHVKpGqPNWQOqUIp" style="color: #7c3aed; margin-left: 4px;">Zur Podcast-Folge</a>
+        <a href="https://sunsideai.de/#kontakt" style="color: #7c3aed; margin-left: 4px;">Jetzt Termin buchen</a> |
+        <a href="https://sachverstand-mit-herz.podigee.io/12-new-episode" style="color: #7c3aed; margin-left: 4px;">Zur Podcast-Folge</a>
       </div>
       <div style="font-size: 9pt; color: #888; margin-top: 5px;">Geschäftsführung: Paul Probodziak und Niklas Schwerin</div>
 
