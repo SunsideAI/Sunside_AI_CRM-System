@@ -80,9 +80,14 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
   }, [lead])
 
   // Pre-Check: Ist das Angebot komplett?
+  // Setup und Retainer dürfen explizit 0 sein (z.B. reiner Retainer-Deal ohne
+  // Setup oder umgekehrt Einmalzahlung ohne Retainer). Nur null, undefined oder
+  // ein leerer String gelten als "noch nicht ausgefüllt".
+  const isFilled = (v) => v !== null && v !== undefined && v !== ''
   const angebotComplete =
     lead?.produktDienstleistung?.length > 0 &&
-    (Number(lead?.setup) > 0 || Number(lead?.retainer) > 0) &&
+    isFilled(lead?.setup) &&
+    isFilled(lead?.retainer) &&
     Number(lead?.laufzeit) > 0
 
   // Dynamisches Label für Firma/Name
