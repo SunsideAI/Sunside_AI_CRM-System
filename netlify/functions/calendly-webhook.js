@@ -284,8 +284,18 @@ export async function handler(event) {
           ? eventLocation.location
           : null)
 
-      // Optional: Match auf Cold-Lead (leads-Tabelle) via Email → verknüpfen
-      let matchedLeadId = null
+      // Schritt 1: Cold Lead in `leads` sicherstellen
+      // Match auf leads.mail via Email. Wenn gefunden → als kontaktiert markieren.
+      // Sonst → neuen Cold Lead anlegen. Beide Wege liefern `leadId` für den
+      // Hot-Lead-Insert im nächsten Schritt.
+      //
+      // Ohne leads-Eintrag ist der Kommentar-Verlauf (single source of truth in
+      // leads.kommentar), die Follow-Up-Kette und diverse Ansichten nicht
+      // funktional. Deshalb ist der Cold Lead Pflicht.
+      const heuteISO = newScheduledTime.slice(0, 10) // YYYY-MM-DD
+      let leadId = null
+      let leadWasCreated = false
+
       if (inviteeEmail) {
         const { data: matchedLead, error: matchErr } = await supabase
           .from('leads')
@@ -293,24 +303,68 @@ export async function handler(event) {
           .ilike('mail', inviteeEmail)
           .limit(1)
           .maybeSingle()
+
         if (matchErr) {
           console.warn('Direktbuchung: Email-Match auf leads fehlgeschlagen:', matchErr.message)
         } else if (matchedLead) {
-          matchedLeadId = matchedLead.id
-          console.log('Direktbuchung matcht bestehenden Cold-Lead:', matchedLeadId)
-          // Cold-Lead als kontaktiert / mit Beratungsgespräch markieren
+          leadId = matchedLead.id
+          console.log('Direktbuchung matcht bestehenden Cold-Lead:', leadId)
           await supabase
             .from('leads')
             .update({ bereits_kontaktiert: true, ergebnis: 'Beratungsgespräch' })
-            .eq('id', matchedLeadId)
+            .eq('id', leadId)
         }
       }
 
-      // Hot Lead anlegen (Pool: setter_id = closer_id = null)
+      if (!leadId) {
+        // Neuen Cold Lead anlegen. Kategorie defaultet auf Immobilienmakler
+        // (Kernmarkt), lässt sich vom Setter im CRM ändern.
+        const { data: newLead, error: leadErr } = await supabase
+          .from('leads')
+          .insert({
+            unternehmensname: unternehmen || inviteeFullName || '(Direktbuchung)',
+            mail: inviteeEmail || null,
+            telefonnummer: inviteeTelefon || null,
+            ansprechpartner_vorname: vorname || null,
+            ansprechpartner_nachname: nachname || null,
+            kategorie: 'Immobilienmakler',
+            bereits_kontaktiert: true,
+            ergebnis: 'Beratungsgespräch',
+            datum: heuteISO,
+            quelle: 'Calendly Direkt'
+          })
+          .select('id')
+          .single()
+
+        if (leadErr) {
+          console.error('[Calendly] Direktbuchung – Cold-Lead-Anlage fehlgeschlagen:', leadErr)
+          await notifyAdminsOfDirectBooking({
+            email: inviteeEmail,
+            time: newScheduledTime,
+            unternehmen,
+            hotLeadId: null,
+            error: `Cold-Lead-Anlage: ${leadErr.message}`
+          })
+          return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              success: false,
+              message: 'Direktbuchung erkannt, Cold-Lead-Anlage fehlgeschlagen – Admins alarmiert'
+            })
+          }
+        }
+
+        leadId = newLead.id
+        leadWasCreated = true
+        console.log('[Calendly] Cold Lead für Direktbuchung angelegt:', leadId)
+      }
+
+      // Schritt 2: Hot Lead im Pool anlegen, verknüpft mit lead_id.
       const { data: newHotLead, error: insertErr } = await supabase
         .from('hot_leads')
         .insert({
-          lead_id: matchedLeadId,
+          lead_id: leadId,
           unternehmen: unternehmen || inviteeFullName || '(Direktbuchung)',
           ansprechpartner_vorname: vorname || null,
           ansprechpartner_nachname: nachname || null,
@@ -329,30 +383,38 @@ export async function handler(event) {
 
       if (insertErr) {
         console.error('[Calendly] Direktbuchung – Hot-Lead-Anlage fehlgeschlagen:', insertErr)
-        // Fallback wie bisher: Admins informieren, damit sie manuell nacharbeiten
+        // Cold Lead existiert bereits (evtl. gerade angelegt) - hinweisen, damit
+        // Admins Waise nicht übersehen.
         await notifyAdminsOfDirectBooking({
           email: inviteeEmail,
           time: newScheduledTime,
           unternehmen,
           hotLeadId: null,
-          error: insertErr.message
+          matchedLeadId: leadWasCreated ? null : leadId,
+          leadId,
+          error: `Hot-Lead-Anlage: ${insertErr.message}`
         })
         return {
           statusCode: 200,
           headers: corsHeaders,
-          body: JSON.stringify({ success: false, message: 'Direktbuchung erkannt, Anlage fehlgeschlagen – Admins alarmiert' })
+          body: JSON.stringify({
+            success: false,
+            message: 'Direktbuchung erkannt, Hot-Lead-Anlage fehlgeschlagen – Admins alarmiert',
+            leadId
+          })
         }
       }
 
-      console.log('[Calendly] Direktbuchung als Pool-Hot-Lead angelegt:', newHotLead.id)
+      console.log('[Calendly] Direktbuchung als Pool-Hot-Lead angelegt:', newHotLead.id, 'lead_id:', leadId)
 
-      // Admin-Info (jetzt informativ, nicht mehr "bitte prüfen ob Lead angelegt werden muss")
       await notifyAdminsOfDirectBooking({
         email: inviteeEmail,
         time: newScheduledTime,
         unternehmen,
         hotLeadId: newHotLead.id,
-        matchedLeadId
+        matchedLeadId: leadWasCreated ? null : leadId,
+        leadId,
+        leadWasCreated
       })
 
       return {
@@ -360,9 +422,12 @@ export async function handler(event) {
         headers: corsHeaders,
         body: JSON.stringify({
           success: true,
-          message: 'Direktbuchung – Hot Lead im Pool angelegt',
+          message: leadWasCreated
+            ? 'Direktbuchung – Cold Lead und Hot Lead im Pool angelegt'
+            : 'Direktbuchung – Hot Lead im Pool angelegt (Cold Lead existierte bereits)',
           hotLeadId: newHotLead.id,
-          matchedLeadId
+          leadId,
+          leadWasCreated
         })
       }
     }
@@ -818,10 +883,15 @@ async function createSystemMessage(empfaengerId, titel, nachricht, typ, hotLeadI
     })
 }
 
-// Admin-Info bei Direktbuchung. Je nachdem was passiert ist:
-// - hotLeadId gesetzt → automatisch Pool-Hot-Lead angelegt (Info, kein Handlungsbedarf)
-// - error gesetzt      → Anlage fehlgeschlagen, manuell nacharbeiten (Warnung)
-async function notifyAdminsOfDirectBooking({ email, time, unternehmen, hotLeadId, matchedLeadId, error }) {
+// Admin-Info bei Direktbuchung. Fälle:
+// - hotLeadId gesetzt + leadWasCreated=true  → beides frisch angelegt (Info)
+// - hotLeadId gesetzt + leadWasCreated=false → existierender Cold Lead + neuer Hot Lead (Info)
+// - hotLeadId=null                            → Anlage fehlgeschlagen (Warnung)
+async function notifyAdminsOfDirectBooking({
+  email, time, unternehmen,
+  hotLeadId, leadId, leadWasCreated, matchedLeadId,
+  error
+}) {
   try {
     const { data: users, error: usersErr } = await supabase
       .from('users')
@@ -845,22 +915,24 @@ async function notifyAdminsOfDirectBooking({ email, time, unternehmen, hotLeadId
     let titel, nachricht
     if (hotLeadId) {
       titel = 'Direktbuchung – Hot Lead im Pool angelegt'
+      const leadHinweis = leadWasCreated
+        ? `Neuer Cold Lead angelegt (id: ${leadId}) und mit dem Hot Lead verknüpft.\n`
+        : `Verknüpft mit bestehendem Cold Lead (id: ${matchedLeadId || leadId}) via Email-Match.\n`
       nachricht =
         `Kunde hat direkt über Calendly gebucht. Ein Hot Lead wurde automatisch angelegt und liegt im Closer-Pool.\n\n` +
         `E-Mail: ${email || '(keine)'}\n` +
         `Unternehmen: ${unternehmen || '(nicht angegeben)'}\n` +
         `Termin: ${formatDate(time)}\n` +
-        (matchedLeadId
-          ? `Verknüpft mit bestehendem Cold-Lead (${matchedLeadId}) via Email-Match.\n\n`
-          : `Kein bestehender Cold-Lead gefunden – Hot Lead steht standalone im Pool.\n\n`) +
-        `Kein Handlungsbedarf – Closer können sich den Termin aus dem Pool ziehen.`
+        leadHinweis +
+        `\nKein Handlungsbedarf – Closer können sich den Termin aus dem Pool ziehen.`
     } else {
-      titel = 'Direktbuchung – Hot-Lead-Anlage fehlgeschlagen'
+      titel = 'Direktbuchung – automatische Anlage fehlgeschlagen'
       nachricht =
-        `Kunde hat direkt über Calendly gebucht, aber die automatische Hot-Lead-Anlage ist fehlgeschlagen.\n\n` +
+        `Kunde hat direkt über Calendly gebucht, aber die automatische Anlage ist fehlgeschlagen.\n\n` +
         `E-Mail: ${email || '(keine)'}\n` +
         `Unternehmen: ${unternehmen || '(nicht angegeben)'}\n` +
         `Termin: ${formatDate(time)}\n` +
+        (leadId ? `Cold Lead angelegt: ${leadId} (Hot-Lead-Anlage schlug fehl - Waise!)\n` : '') +
         (error ? `Fehler: ${error}\n\n` : '\n') +
         `Bitte manuell nacharbeiten.`
     }
@@ -868,7 +940,7 @@ async function notifyAdminsOfDirectBooking({ email, time, unternehmen, hotLeadId
     for (const admin of admins) {
       await createSystemMessage(admin.id, titel, nachricht, 'Direktbuchung', hotLeadId || null)
     }
-    console.log('Direktbuchungs-Info an', admins.length, 'Admin(s) gesendet (hotLeadId:', hotLeadId, ')')
+    console.log('Direktbuchungs-Info an', admins.length, 'Admin(s) gesendet (hotLeadId:', hotLeadId, ', leadId:', leadId, ')')
   } catch (err) {
     console.error('notifyAdminsOfDirectBooking Fehler:', err)
   }
