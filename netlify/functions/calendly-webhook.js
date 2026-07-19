@@ -252,22 +252,118 @@ export async function handler(event) {
         }
       }
 
-      // Kein Hot Lead → Direktbuchung (Kunde hat Calendly-Link direkt genutzt, kein CRM-Kontakt)
-      console.warn('[Calendly] DIREKTBUCHUNG erkannt (kein Hot Lead im CRM):', {
+      // Kein Hot Lead → Direktbuchung (Kunde hat Calendly-Link direkt genutzt,
+      // vorher kein CRM-Kontakt). Wir legen automatisch einen Pool-Hot-Lead an,
+      // damit der Termin im CRM sichtbar ist und ein Closer sich ziehen kann.
+      console.log('[Calendly] Direktbuchung erkannt - lege Pool-Hot-Lead an:', {
         email: inviteeEmail,
         time: newScheduledTime,
         unternehmen: unternehmen || '(nicht angegeben)'
       })
+
+      // Namen aus Calendly-Payload extrahieren
+      const inviteeFullName = data.name || `${data.first_name || ''} ${data.last_name || ''}`.trim()
+      const nameParts = inviteeFullName.split(/\s+/).filter(Boolean)
+      const vorname = data.first_name || nameParts[0] || ''
+      const nachname = data.last_name || (nameParts.length > 1 ? nameParts.slice(1).join(' ') : '')
+
+      // Telefonnummer (Calendly liefert bei SMS-Reminder text_reminder_number)
+      const inviteeTelefon = data.text_reminder_number || ''
+
+      // Terminart aus Event-Location ableiten
+      const eventLocation = data.scheduled_event?.location || {}
+      const isVideoLocation =
+        eventLocation.type === 'google_conference' ||
+        eventLocation.type === 'zoom' ||
+        eventLocation.type === 'microsoft_teams_conference' ||
+        (typeof eventLocation.location === 'string' && eventLocation.location.includes('meet.google.com'))
+      const terminart = isVideoLocation ? 'Video' : 'Telefonisch'
+      const meetingLink =
+        eventLocation.join_url ||
+        (typeof eventLocation.location === 'string' && eventLocation.location.includes('http')
+          ? eventLocation.location
+          : null)
+
+      // Optional: Match auf Cold-Lead (leads-Tabelle) via Email → verknüpfen
+      let matchedLeadId = null
+      if (inviteeEmail) {
+        const { data: matchedLead, error: matchErr } = await supabase
+          .from('leads')
+          .select('id, mail')
+          .ilike('mail', inviteeEmail)
+          .limit(1)
+          .maybeSingle()
+        if (matchErr) {
+          console.warn('Direktbuchung: Email-Match auf leads fehlgeschlagen:', matchErr.message)
+        } else if (matchedLead) {
+          matchedLeadId = matchedLead.id
+          console.log('Direktbuchung matcht bestehenden Cold-Lead:', matchedLeadId)
+          // Cold-Lead als kontaktiert / mit Beratungsgespräch markieren
+          await supabase
+            .from('leads')
+            .update({ bereits_kontaktiert: true, ergebnis: 'Beratungsgespräch' })
+            .eq('id', matchedLeadId)
+        }
+      }
+
+      // Hot Lead anlegen (Pool: setter_id = closer_id = null)
+      const { data: newHotLead, error: insertErr } = await supabase
+        .from('hot_leads')
+        .insert({
+          lead_id: matchedLeadId,
+          unternehmen: unternehmen || inviteeFullName || '(Direktbuchung)',
+          ansprechpartner_vorname: vorname || null,
+          ansprechpartner_nachname: nachname || null,
+          mail: inviteeEmail || null,
+          telefonnummer: inviteeTelefon || null,
+          termin_beratungsgespraech: newScheduledTime,
+          terminart,
+          meeting_link: meetingLink,
+          status: 'Lead',
+          quelle: 'Calendly Direkt',
+          setter_id: null,
+          closer_id: null
+        })
+        .select('id')
+        .single()
+
+      if (insertErr) {
+        console.error('[Calendly] Direktbuchung – Hot-Lead-Anlage fehlgeschlagen:', insertErr)
+        // Fallback wie bisher: Admins informieren, damit sie manuell nacharbeiten
+        await notifyAdminsOfDirectBooking({
+          email: inviteeEmail,
+          time: newScheduledTime,
+          unternehmen,
+          hotLeadId: null,
+          error: insertErr.message
+        })
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ success: false, message: 'Direktbuchung erkannt, Anlage fehlgeschlagen – Admins alarmiert' })
+        }
+      }
+
+      console.log('[Calendly] Direktbuchung als Pool-Hot-Lead angelegt:', newHotLead.id)
+
+      // Admin-Info (jetzt informativ, nicht mehr "bitte prüfen ob Lead angelegt werden muss")
       await notifyAdminsOfDirectBooking({
         email: inviteeEmail,
         time: newScheduledTime,
-        unternehmen
+        unternehmen,
+        hotLeadId: newHotLead.id,
+        matchedLeadId
       })
 
       return {
         statusCode: 200,
         headers: corsHeaders,
-        body: JSON.stringify({ success: true, message: 'Direktbuchung erkannt - Admins benachrichtigt' })
+        body: JSON.stringify({
+          success: true,
+          message: 'Direktbuchung – Hot Lead im Pool angelegt',
+          hotLeadId: newHotLead.id,
+          matchedLeadId
+        })
       }
     }
 
@@ -722,18 +818,18 @@ async function createSystemMessage(empfaengerId, titel, nachricht, typ, hotLeadI
     })
 }
 
-// Admins alarmieren, wenn ein Kunde direkt über Calendly gebucht hat und kein
-// zugeordneter Hot Lead im CRM existiert. Damit fällt so ein Termin nicht
-// stillschweigend durchs Raster.
-async function notifyAdminsOfDirectBooking({ email, time, unternehmen }) {
+// Admin-Info bei Direktbuchung. Je nachdem was passiert ist:
+// - hotLeadId gesetzt → automatisch Pool-Hot-Lead angelegt (Info, kein Handlungsbedarf)
+// - error gesetzt      → Anlage fehlgeschlagen, manuell nacharbeiten (Warnung)
+async function notifyAdminsOfDirectBooking({ email, time, unternehmen, hotLeadId, matchedLeadId, error }) {
   try {
-    const { data: users, error } = await supabase
+    const { data: users, error: usersErr } = await supabase
       .from('users')
       .select('id, rollen')
       .eq('status', true)
 
-    if (error) {
-      console.error('notifyAdminsOfDirectBooking: users load failed', error)
+    if (usersErr) {
+      console.error('notifyAdminsOfDirectBooking: users load failed', usersErr)
       return
     }
 
@@ -746,18 +842,33 @@ async function notifyAdminsOfDirectBooking({ email, time, unternehmen }) {
       return
     }
 
-    const titel = 'Direktbuchung ohne Lead-Zuordnung'
-    const nachricht =
-      `Kunde hat direkt über Calendly gebucht (nicht via CRM). Es existiert noch kein Hot Lead im System.\n\n` +
-      `E-Mail: ${email || '(keine)'}\n` +
-      `Unternehmen: ${unternehmen || '(nicht angegeben)'}\n` +
-      `Termin: ${formatDate(time)}\n\n` +
-      `Bitte prüfen, ob ein Lead angelegt oder ein bestehender verknüpft werden muss.`
+    let titel, nachricht
+    if (hotLeadId) {
+      titel = 'Direktbuchung – Hot Lead im Pool angelegt'
+      nachricht =
+        `Kunde hat direkt über Calendly gebucht. Ein Hot Lead wurde automatisch angelegt und liegt im Closer-Pool.\n\n` +
+        `E-Mail: ${email || '(keine)'}\n` +
+        `Unternehmen: ${unternehmen || '(nicht angegeben)'}\n` +
+        `Termin: ${formatDate(time)}\n` +
+        (matchedLeadId
+          ? `Verknüpft mit bestehendem Cold-Lead (${matchedLeadId}) via Email-Match.\n\n`
+          : `Kein bestehender Cold-Lead gefunden – Hot Lead steht standalone im Pool.\n\n`) +
+        `Kein Handlungsbedarf – Closer können sich den Termin aus dem Pool ziehen.`
+    } else {
+      titel = 'Direktbuchung – Hot-Lead-Anlage fehlgeschlagen'
+      nachricht =
+        `Kunde hat direkt über Calendly gebucht, aber die automatische Hot-Lead-Anlage ist fehlgeschlagen.\n\n` +
+        `E-Mail: ${email || '(keine)'}\n` +
+        `Unternehmen: ${unternehmen || '(nicht angegeben)'}\n` +
+        `Termin: ${formatDate(time)}\n` +
+        (error ? `Fehler: ${error}\n\n` : '\n') +
+        `Bitte manuell nacharbeiten.`
+    }
 
     for (const admin of admins) {
-      await createSystemMessage(admin.id, titel, nachricht, 'Direktbuchung', null)
+      await createSystemMessage(admin.id, titel, nachricht, 'Direktbuchung', hotLeadId || null)
     }
-    console.log('Direktbuchungs-Notifikation an', admins.length, 'Admin(s) gesendet')
+    console.log('Direktbuchungs-Info an', admins.length, 'Admin(s) gesendet (hotLeadId:', hotLeadId, ')')
   } catch (err) {
     console.error('notifyAdminsOfDirectBooking Fehler:', err)
   }
