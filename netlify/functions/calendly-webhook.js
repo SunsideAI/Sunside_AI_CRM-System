@@ -152,10 +152,29 @@ export async function handler(event) {
       )
       const unternehmen = unternehmensAnswer?.answer || ''
 
+      // Custom Questions: "Problemstellung & Ziele" und "Makler oder Sachverständiger"
+      // aus dem Calendly-Payload extrahieren, damit sie beim Direktbuchungs-Backfill
+      // in leads.kommentar bzw. leads.kategorie landen.
+      const problemAnswer = questionsAndAnswers.find(q => {
+        const qLower = q.question?.toLowerCase() || ''
+        return qLower.includes('problem') || qLower.includes('ziel')
+      })
+      const problemstellung = problemAnswer?.answer || ''
+
+      const kategorieAnswer = questionsAndAnswers.find(q => {
+        const qLower = q.question?.toLowerCase() || ''
+        return qLower.includes('makler') || qLower.includes('sachverst') || qLower.includes('tätig')
+      })
+      const kategorieRaw = (kategorieAnswer?.answer || '').toLowerCase()
+      const kategorieAusCalendly =
+        kategorieRaw.includes('sachverst') ? 'Sachverständiger'
+        : kategorieRaw.includes('makler') ? 'Immobilienmakler'
+        : null
+
       const oldInvitee = data.old_invitee
       const isReschedule = !!oldInvitee
 
-      console.log('Created Event:', { email: inviteeEmail, unternehmen, isReschedule, newTime: newScheduledTime })
+      console.log('Created Event:', { email: inviteeEmail, unternehmen, isReschedule, newTime: newScheduledTime, kategorie: kategorieAusCalendly, hatProblemstellung: !!problemstellung })
 
       if (isReschedule) {
         const oldScheduledTime = oldInvitee.scheduled_event?.start_time || oldInvitee.start_time
@@ -285,7 +304,8 @@ export async function handler(event) {
           : null)
 
       // Schritt 1: Cold Lead in `leads` sicherstellen
-      // Match auf leads.mail via Email. Wenn gefunden → als kontaktiert markieren.
+      // Match auf leads.mail via Email. Wenn gefunden → als kontaktiert markieren
+      // und Calendly-Notizen an den bestehenden Kommentar anhängen.
       // Sonst → neuen Cold Lead anlegen. Beide Wege liefern `leadId` für den
       // Hot-Lead-Insert im nächsten Schritt.
       //
@@ -296,10 +316,25 @@ export async function handler(event) {
       let leadId = null
       let leadWasCreated = false
 
+      // Calendly-Notiz bauen: Zeitstempel + Problemstellung/Ziele aus Custom Questions
+      const calendlyKommentarZeilen = [
+        `[Calendly Direktbuchung ${formatDate(newScheduledTime)}]`
+      ]
+      if (problemstellung) {
+        calendlyKommentarZeilen.push(`Problemstellung & Ziele: ${problemstellung}`)
+      }
+      if (kategorieAusCalendly) {
+        calendlyKommentarZeilen.push(`Tätigkeit laut Calendly: ${kategorieAusCalendly}`)
+      }
+      // Nur schreiben, wenn wir mindestens einen Zusatz-Inhalt haben - Header allein ist wertlos
+      const calendlyKommentar = calendlyKommentarZeilen.length > 1
+        ? calendlyKommentarZeilen.join('\n')
+        : ''
+
       if (inviteeEmail) {
         const { data: matchedLead, error: matchErr } = await supabase
           .from('leads')
-          .select('id, mail')
+          .select('id, mail, kommentar')
           .ilike('mail', inviteeEmail)
           .limit(1)
           .maybeSingle()
@@ -309,16 +344,29 @@ export async function handler(event) {
         } else if (matchedLead) {
           leadId = matchedLead.id
           console.log('Direktbuchung matcht bestehenden Cold-Lead:', leadId)
+          // Kommentar-Verlauf erhalten: neuen Calendly-Block oben anhängen
+          const kommentarUpdate = calendlyKommentar
+            ? {
+                kommentar: matchedLead.kommentar
+                  ? `${calendlyKommentar}\n\n${matchedLead.kommentar}`
+                  : calendlyKommentar
+              }
+            : {}
           await supabase
             .from('leads')
-            .update({ bereits_kontaktiert: true, ergebnis: 'Beratungsgespräch' })
+            .update({
+              bereits_kontaktiert: true,
+              ergebnis: 'Beratungsgespräch',
+              ...kommentarUpdate
+            })
             .eq('id', leadId)
         }
       }
 
       if (!leadId) {
-        // Neuen Cold Lead anlegen. Kategorie defaultet auf Immobilienmakler
-        // (Kernmarkt), lässt sich vom Setter im CRM ändern.
+        // Neuen Cold Lead anlegen. Kategorie aus Calendly wenn vorhanden,
+        // sonst Default Immobilienmakler (Kernmarkt) - lässt sich vom Setter
+        // im CRM ändern.
         const { data: newLead, error: leadErr } = await supabase
           .from('leads')
           .insert({
@@ -327,11 +375,12 @@ export async function handler(event) {
             telefonnummer: inviteeTelefon || null,
             ansprechpartner_vorname: vorname || null,
             ansprechpartner_nachname: nachname || null,
-            kategorie: 'Immobilienmakler',
+            kategorie: kategorieAusCalendly || 'Immobilienmakler',
             bereits_kontaktiert: true,
             ergebnis: 'Beratungsgespräch',
             datum: heuteISO,
-            quelle: 'Calendly Direkt'
+            quelle: 'Calendly Direkt',
+            kommentar: calendlyKommentar || null
           })
           .select('id')
           .single()
