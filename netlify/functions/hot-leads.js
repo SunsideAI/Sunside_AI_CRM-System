@@ -516,7 +516,16 @@ export async function handler(event) {
         terminart,
         quelle,
         meetingLink,
-        infosErstgespraech
+        infosErstgespraech,
+        // Kontaktdaten aus dem Buchungsformular - werden für den Match durch
+        // den Calendly-Webhook gebraucht (verhindert Duplikate durch die
+        // spätere Direktbuchungs-Auto-Anlage) und sind auch für die spätere
+        // Kommunikation nötig.
+        mail: mailInput,
+        telefonnummer: telefonnummerInput,
+        ansprechpartnerVorname: ansprechpartnerVornameInput,
+        ansprechpartnerNachname: ansprechpartnerNachnameInput,
+        ort: ortInput
       } = body
 
       console.log('Hot Lead POST - Input:', {
@@ -615,6 +624,15 @@ export async function handler(event) {
         setter_id: setterRecordId || null,
         closer_id: closerRecordId || null
       }
+
+      // Kontaktdaten aus dem Buchungsformular übernehmen. Vor allem `mail` ist
+      // wichtig, damit der Calendly-Webhook den Hot Lead 3 Sekunden später per
+      // findHotLeadByEmail identifiziert und keinen Duplikat-Eintrag anlegt.
+      if (mailInput) hotLeadData.mail = mailInput
+      if (telefonnummerInput) hotLeadData.telefonnummer = telefonnummerInput
+      if (ansprechpartnerVornameInput) hotLeadData.ansprechpartner_vorname = ansprechpartnerVornameInput
+      if (ansprechpartnerNachnameInput) hotLeadData.ansprechpartner_nachname = ansprechpartnerNachnameInput
+      if (ortInput) hotLeadData.ort = ortInput
 
       if (terminart) hotLeadData.terminart = terminart
       if (meetingLink) hotLeadData.meeting_link = meetingLink

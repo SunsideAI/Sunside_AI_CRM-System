@@ -306,7 +306,14 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
               terminart: selectedType === 'video' ? 'Video' : 'Telefonisch',
               quelle: 'Cold Calling',
               infosErstgespraech: problemstellung,
-              meetingLink: meetingLink  // Video-Link speichern
+              meetingLink: meetingLink,
+              // Kontaktdaten mit übergeben - damit der Calendly-Webhook den
+              // Hot Lead per Email matchen kann und keinen Duplikat-Eintrag anlegt.
+              mail: contactEmail || null,
+              telefonnummer: contactPhone || null,
+              ansprechpartnerVorname: ansprechpartnerVorname || null,
+              ansprechpartnerNachname: ansprechpartnerNachname || null,
+              ort: lead?.stadt || lead?.ort || null
             })
           })
 

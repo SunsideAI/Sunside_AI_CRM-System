@@ -226,7 +226,19 @@ export async function handler(event) {
       // ein CRM-erstellter Hot Lead in der DB sichtbar wird, bevor wir Direktbuchung annehmen.
       await new Promise(r => setTimeout(r, 3000))
 
-      const existingHotLead = inviteeEmail ? await findHotLeadByEmail(inviteeEmail) : null
+      // Match-Strategie:
+      // 1. Email-Match (direktester Weg)
+      // 2. Fallback: Unternehmen + Termin-Zeit-Fenster - deckt den Fall ab,
+      //    dass der Kunde in Calendly eine andere Email nutzt als die im CRM
+      //    hinterlegte. Ohne diesen Fallback würde ein zweiter Hot Lead als
+      //    Direktbuchung angelegt (Duplikat).
+      let existingHotLead = inviteeEmail ? await findHotLeadByEmail(inviteeEmail) : null
+      if (!existingHotLead && unternehmen) {
+        existingHotLead = await findHotLeadByUnternehmenAndTermin(unternehmen, newScheduledTime)
+        if (existingHotLead) {
+          console.log('Hot Lead per Unternehmen+Termin-Fallback gefunden (Email wich ab):', existingHotLead.id, existingHotLead.unternehmen)
+        }
+      }
 
       if (existingHotLead) {
         // Zwei Fälle unterscheiden:
@@ -491,6 +503,59 @@ export async function handler(event) {
   } catch (err) {
     console.error('Calendly Webhook Error:', err)
     return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: err.message }) }
+  }
+}
+
+// Hot Lead anhand Unternehmen + Termin-Zeit im 10-Min-Fenster finden.
+// Fallback für Direktbuchungen, bei denen der Kunde in Calendly eine andere
+// Email nutzt als die im CRM hinterlegte - ohne diesen Match käme es zu
+// Duplikaten (ein Hot Lead vom TerminPicker, einer vom Webhook-Auto-Create).
+async function findHotLeadByUnternehmenAndTermin(unternehmen, terminDatum) {
+  if (!unternehmen || !terminDatum) return null
+
+  const searchTerm = unternehmen.toLowerCase().trim()
+  const targetTime = new Date(terminDatum).getTime()
+  const WINDOW_MS = 10 * 60 * 1000
+
+  console.log('Suche Hot Lead nach Unternehmen+Termin:', unternehmen, terminDatum)
+
+  const { data: hotLeads, error } = await supabase
+    .from('hot_leads')
+    .select('id, unternehmen, mail, termin_beratungsgespraech, setter_id, closer_id, lead_id, status')
+    .not('status', 'in', '(Abgeschlossen,Verloren,Abgesagt)')
+    .not('termin_beratungsgespraech', 'is', null)
+
+  if (error) {
+    console.error('findHotLeadByUnternehmenAndTermin DB-Fehler:', error)
+    return null
+  }
+  if (!hotLeads) return null
+
+  // Kandidaten: Termin im 10-Min-Fenster UND Unternehmen matched (fuzzy substring)
+  const candidates = hotLeads
+    .filter(hl => {
+      const time = new Date(hl.termin_beratungsgespraech).getTime()
+      if (Math.abs(time - targetTime) >= WINDOW_MS) return false
+      const hlName = (hl.unternehmen || '').toLowerCase().trim()
+      return hlName === searchTerm || hlName.includes(searchTerm) || searchTerm.includes(hlName)
+    })
+
+  if (candidates.length === 0) return null
+
+  // Bei mehreren: kleinster Zeit-Abstand gewinnt
+  const winner = candidates.reduce((best, curr) => {
+    const bestDiff = Math.abs(new Date(best.termin_beratungsgespraech).getTime() - targetTime)
+    const currDiff = Math.abs(new Date(curr.termin_beratungsgespraech).getTime() - targetTime)
+    return currDiff < bestDiff ? curr : best
+  })
+
+  return {
+    id: winner.id,
+    unternehmen: winner.unternehmen,
+    termin: winner.termin_beratungsgespraech,
+    setterId: winner.setter_id,
+    closerId: winner.closer_id,
+    originalLeadId: winner.lead_id
   }
 }
 
