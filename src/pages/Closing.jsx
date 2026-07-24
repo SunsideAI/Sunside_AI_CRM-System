@@ -419,7 +419,17 @@ function Closing() {
 
   // Angebot absenden
   const handleSendAngebot = async () => {
-    if (!selectedLead || !angebotData.setup || !angebotData.retainer) return
+    if (!selectedLead) return
+
+    // Setup und Retainer dürfen explizit 0 sein (z.B. reine Einmalzahlung
+    // oder reiner Retainer-Deal ohne Setup). Nur null/undefined/leerer
+    // String zählt als "nicht ausgefüllt". Mindestens EIN Wert muss
+    // ausgefüllt sein, damit ein Angebot Sinn hat.
+    const isFilled = (v) => v !== null && v !== undefined && v !== ''
+    if (!isFilled(angebotData.setup) && !isFilled(angebotData.retainer)) {
+      showToast('error', 'Bitte Setup oder Retainer angeben (0 ist erlaubt)')
+      return
+    }
 
     // Bei Individuell: Pflichtfelder prüfen
     if (angebotData.produkt === 'Individuell') {
@@ -434,8 +444,8 @@ function Closing() {
 
       // Updates zusammenstellen
       const updates = {
-        setup: parseFloat(angebotData.setup),
-        retainer: parseFloat(angebotData.retainer),
+        setup: parseFloat(angebotData.setup) || 0,
+        retainer: parseFloat(angebotData.retainer) || 0,
         laufzeit: parseInt(angebotData.laufzeit) || 12,
         produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
         vertragsbestandteile: angebotData.vertragsbestandteile,
@@ -473,7 +483,9 @@ function Closing() {
       if (selectedLead.originalLeadId) {
         const produktInfo = angebotData.produkt || 'Individuell'
         const websiteSetupInfo = angebotData.websiteSetup ? `, Website-Setup ${angebotData.websiteSetup}€` : ''
-        const kommentarText = `Angebot versendet - ${produktInfo}: Setup ${angebotData.setup}€${websiteSetupInfo}, Retainer ${angebotData.retainer}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
+        const setupText = parseFloat(angebotData.setup) || 0
+        const retainerText = parseFloat(angebotData.retainer) || 0
+        const kommentarText = `Angebot versendet - ${produktInfo}: Setup ${setupText}€${websiteSetupInfo}, Retainer ${retainerText}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
         const userName = user?.vor_nachname || user?.name || 'Closer'
         
         try {
@@ -522,8 +534,8 @@ function Closing() {
       // Selected Lead auch aktualisieren
       setSelectedLead(prev => ({
         ...prev,
-        setup: parseFloat(angebotData.setup),
-        retainer: parseFloat(angebotData.retainer),
+        setup: parseFloat(angebotData.setup) || 0,
+        retainer: parseFloat(angebotData.retainer) || 0,
         websiteSetup: angebotData.websiteSetup ? parseFloat(angebotData.websiteSetup) : 0,
         laufzeit: parseInt(angebotData.laufzeit) || 12,
         produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
@@ -2447,8 +2459,9 @@ function Closing() {
                     </div>
                   )}
 
-                  {/* Zusammenfassung */}
-                  {angebotData.setup && angebotData.retainer && (
+                  {/* Zusammenfassung - zeigen sobald mindestens Setup oder Retainer gesetzt ist (0 zählt als gesetzt) */}
+                  {(((angebotData.setup !== '' && angebotData.setup !== null && angebotData.setup !== undefined) ||
+                     (angebotData.retainer !== '' && angebotData.retainer !== null && angebotData.retainer !== undefined))) && (
                     <div className="bg-green-50 border border-green-200 rounded-xl p-5">
                       <h4 className="font-medium text-green-900 mb-4">Angebot Zusammenfassung</h4>
                       {angebotData.produkt && (
@@ -2462,19 +2475,19 @@ function Closing() {
                       <div className={`grid grid-cols-2 ${angebotData.websiteSetup ? 'sm:grid-cols-4' : 'sm:grid-cols-3'} gap-3 sm:gap-4 mb-4`}>
                         <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
                           <p className="text-xs sm:text-sm text-gray-500 mb-1">Setup-Gebühr</p>
-                          <p className="text-lg sm:text-2xl font-bold text-gray-900">{parseFloat(angebotData.setup).toLocaleString('de-DE')} €</p>
+                          <p className="text-lg sm:text-2xl font-bold text-gray-900">{(parseFloat(angebotData.setup) || 0).toLocaleString('de-DE')} €</p>
                           <p className="text-xs text-gray-400">einmalig, netto</p>
                         </div>
                         {angebotData.websiteSetup && (
                           <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
                             <p className="text-xs sm:text-sm text-gray-500 mb-1">Website-Setup</p>
-                            <p className="text-lg sm:text-2xl font-bold text-purple-600">{parseFloat(angebotData.websiteSetup).toLocaleString('de-DE')} €</p>
+                            <p className="text-lg sm:text-2xl font-bold text-purple-600">{(parseFloat(angebotData.websiteSetup) || 0).toLocaleString('de-DE')} €</p>
                             <p className="text-xs text-gray-400">einmalig, netto</p>
                           </div>
                         )}
                         <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
                           <p className="text-xs sm:text-sm text-gray-500 mb-1">Monatl. Retainer</p>
-                          <p className="text-lg sm:text-2xl font-bold text-gray-900">{parseFloat(angebotData.retainer).toLocaleString('de-DE')} €</p>
+                          <p className="text-lg sm:text-2xl font-bold text-gray-900">{(parseFloat(angebotData.retainer) || 0).toLocaleString('de-DE')} €</p>
                           <p className="text-xs text-gray-400">pro Monat, netto</p>
                         </div>
                         <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
@@ -2487,9 +2500,9 @@ function Closing() {
                         <p className="text-sm text-gray-500 mb-1">Gesamtwert ({angebotData.laufzeit} Monate)</p>
                         <p className="text-3xl font-bold text-green-600">
                           {(
-                            parseFloat(angebotData.setup) +
+                            (parseFloat(angebotData.setup) || 0) +
                             (parseFloat(angebotData.websiteSetup) || 0) +
-                            parseFloat(angebotData.retainer) * angebotData.laufzeit
+                            (parseFloat(angebotData.retainer) || 0) * (parseInt(angebotData.laufzeit) || 0)
                           ).toLocaleString('de-DE')} €
                         </p>
                       </div>
@@ -3205,7 +3218,12 @@ function Closing() {
                     <button
                       type="button"
                       onClick={handleSendAngebot}
-                      disabled={!angebotData.setup || !angebotData.retainer || sendingAngebot}
+                      disabled={
+                        // Setup und Retainer dürfen 0 sein; mindestens einer muss ausgefüllt sein
+                        !((angebotData.setup !== '' && angebotData.setup !== null && angebotData.setup !== undefined) ||
+                          (angebotData.retainer !== '' && angebotData.retainer !== null && angebotData.retainer !== undefined))
+                        || sendingAngebot
+                      }
                       className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
                       {sendingAngebot ? (
