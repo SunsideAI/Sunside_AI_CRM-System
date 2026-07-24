@@ -86,8 +86,15 @@ const PRODUKTE_MIT_WEBSITE_SETUP = [
 ]
 
 // Standard-Vertragsbestandteile (dynamisch mit Laufzeit)
-const DEFAULT_VERTRAGSBESTANDTEILE = (laufzeit = 12) =>
-  `* Alle Preise verstehen sich zzgl. 19 % Umsatzsteuer und basieren auf einer Vertragslaufzeit von ${laufzeit} ${laufzeit === 1 ? 'Monat' : 'Monaten'}. Die Abrechnung der einmaligen Leistungen erfolgt bei Auftragserteilung. Die Abrechnung der regelmäßigen Leistungen erfolgt monatlich im Voraus. Der Vertrag verlängert sich automatisch um jeweils 3 Monate, wenn er nicht mit einer Frist von 3 Monaten zum Laufzeitende in Textform gekündigt wird. Das Recht zur außerordentlichen Kündigung bleibt unberührt.`
+// Bei laufzeit=0: reine Einmalzahlung, keine Vertragslaufzeit-Klausel und
+// keine Auto-Verlängerung.
+const DEFAULT_VERTRAGSBESTANDTEILE = (laufzeit = 12) => {
+  const l = parseInt(laufzeit) || 0
+  if (l <= 0) {
+    return `* Alle Preise verstehen sich zzgl. 19 % Umsatzsteuer. Die Abrechnung der einmaligen Leistungen erfolgt bei Auftragserteilung.`
+  }
+  return `* Alle Preise verstehen sich zzgl. 19 % Umsatzsteuer und basieren auf einer Vertragslaufzeit von ${l} ${l === 1 ? 'Monat' : 'Monaten'}. Die Abrechnung der einmaligen Leistungen erfolgt bei Auftragserteilung. Die Abrechnung der regelmäßigen Leistungen erfolgt monatlich im Voraus. Der Vertrag verlängert sich automatisch um jeweils 3 Monate, wenn er nicht mit einer Frist von 3 Monaten zum Laufzeitende in Textform gekündigt wird. Das Recht zur außerordentlichen Kündigung bleibt unberührt.`
+}
 
 // Textbausteine zum Kopieren
 const TEXTBAUSTEINE = [
@@ -354,13 +361,31 @@ function Closing() {
   }
 
   // Laufzeit-Handler – aktualisiert auch den Vertragstext automatisch
+  //
+  // Wechsel zwischen "mit Laufzeit" ↔ "Einmalzahlung" verändert die Text-
+  // Struktur (Vertragslaufzeit-Klausel und Auto-Verlängerung fallen weg).
+  // In diesen Fällen wird der Vertragstext auf den passenden Default
+  // zurückgesetzt. Bei reinem Wechsel innerhalb "mit Laufzeit" (z.B. 12→24)
+  // wird nur die Zahl im bestehenden Text ersetzt, damit ggf. individuelle
+  // Änderungen erhalten bleiben.
   const handleLaufzeitChange = (newLaufzeit) => {
     setAngebotData(prev => {
-      const updatedText = prev.vertragsbestandteile.replace(
-        /Vertragslaufzeit von \d+ Monat(en)?/,
-        `Vertragslaufzeit von ${newLaufzeit} ${newLaufzeit === 1 ? 'Monat' : 'Monaten'}`
-      )
-      return { ...prev, laufzeit: newLaufzeit, vertragsbestandteile: updatedText }
+      const prevL = parseInt(prev.laufzeit) || 0
+      const nextL = parseInt(newLaufzeit) || 0
+      const wechselStruktur = (prevL === 0) !== (nextL === 0)
+
+      let updatedText
+      if (wechselStruktur) {
+        updatedText = DEFAULT_VERTRAGSBESTANDTEILE(nextL)
+      } else if (nextL === 0) {
+        updatedText = prev.vertragsbestandteile
+      } else {
+        updatedText = prev.vertragsbestandteile.replace(
+          /Vertragslaufzeit von \d+ Monat(en)?/,
+          `Vertragslaufzeit von ${nextL} ${nextL === 1 ? 'Monat' : 'Monaten'}`
+        )
+      }
+      return { ...prev, laufzeit: nextL, vertragsbestandteile: updatedText }
     })
   }
 
@@ -446,7 +471,7 @@ function Closing() {
       const updates = {
         setup: parseFloat(angebotData.setup) || 0,
         retainer: parseFloat(angebotData.retainer) || 0,
-        laufzeit: parseInt(angebotData.laufzeit) || 12,
+        laufzeit: (() => { const n = parseInt(angebotData.laufzeit); return isNaN(n) ? 12 : n })(),
         produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
         vertragsbestandteile: angebotData.vertragsbestandteile,
         status: 'Angebot'  // Zapier sendet dann das Angebot und setzt auf "Angebot versendet"
@@ -485,7 +510,9 @@ function Closing() {
         const websiteSetupInfo = angebotData.websiteSetup ? `, Website-Setup ${angebotData.websiteSetup}€` : ''
         const setupText = parseFloat(angebotData.setup) || 0
         const retainerText = parseFloat(angebotData.retainer) || 0
-        const kommentarText = `Angebot versendet - ${produktInfo}: Setup ${setupText}€${websiteSetupInfo}, Retainer ${retainerText}€/Mon, Laufzeit ${angebotData.laufzeit} Monate`
+        const laufzeitNum = parseInt(angebotData.laufzeit) || 0
+        const laufzeitInfo = laufzeitNum === 0 ? 'Einmalzahlung' : `Laufzeit ${laufzeitNum} Monate`
+        const kommentarText = `Angebot versendet - ${produktInfo}: Setup ${setupText}€${websiteSetupInfo}, Retainer ${retainerText}€/Mon, ${laufzeitInfo}`
         const userName = user?.vor_nachname || user?.name || 'Closer'
         
         try {
@@ -523,7 +550,7 @@ function Closing() {
               setup: parseFloat(angebotData.setup),
               retainer: parseFloat(angebotData.retainer),
               websiteSetup: angebotData.websiteSetup ? parseFloat(angebotData.websiteSetup) : 0,
-              laufzeit: parseInt(angebotData.laufzeit) || 12,
+              laufzeit: (() => { const n = parseInt(angebotData.laufzeit); return isNaN(n) ? 12 : n })(),
               produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
               vertragsbestandteile: angebotData.vertragsbestandteile,
               status: 'Angebot'
@@ -537,7 +564,7 @@ function Closing() {
         setup: parseFloat(angebotData.setup) || 0,
         retainer: parseFloat(angebotData.retainer) || 0,
         websiteSetup: angebotData.websiteSetup ? parseFloat(angebotData.websiteSetup) : 0,
-        laufzeit: parseInt(angebotData.laufzeit) || 12,
+        laufzeit: (() => { const n = parseInt(angebotData.laufzeit); return isNaN(n) ? 12 : n })(),
         produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
         vertragsbestandteile: angebotData.vertragsbestandteile,
         status: 'Angebot'
@@ -2338,26 +2365,32 @@ function Closing() {
                         <input
                           type="number"
                           value={angebotData.laufzeit}
-                          onChange={(e) => handleLaufzeitChange(Math.min(32, Math.max(1, parseInt(e.target.value) || 12)))}
-                          min="1"
+                          onChange={(e) => {
+                            const raw = e.target.value
+                            const num = raw === '' ? 0 : Math.min(32, Math.max(0, parseInt(raw) || 0))
+                            handleLaufzeitChange(num)
+                          }}
+                          min="0"
                           max="32"
                           className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
                         />
-                        <span className="text-gray-500 whitespace-nowrap">Monate</span>
+                        <span className="text-gray-500 whitespace-nowrap">
+                          {parseInt(angebotData.laufzeit) === 0 ? 'Einmalzahlung' : 'Monate'}
+                        </span>
                       </div>
-                      <div className="flex gap-2 mt-2">
-                        {[1, 6, 12, 24].map(months => (
+                      <div className="flex gap-2 mt-2 flex-wrap">
+                        {[0, 1, 6, 12, 24].map(months => (
                           <button
                             key={months}
                             type="button"
                             onClick={() => handleLaufzeitChange(months)}
                             className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                              angebotData.laufzeit === months
+                              parseInt(angebotData.laufzeit) === months
                                 ? 'bg-green-100 text-green-700 ring-2 ring-green-400'
                                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                           >
-                            {months} Mon
+                            {months === 0 ? 'Einmalzahlung' : `${months} Mon`}
                           </button>
                         ))}
                       </div>
@@ -2492,12 +2525,25 @@ function Closing() {
                         </div>
                         <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
                           <p className="text-xs sm:text-sm text-gray-500 mb-1">Laufzeit</p>
-                          <p className="text-lg sm:text-2xl font-bold text-gray-900">{angebotData.laufzeit}</p>
-                          <p className="text-xs text-gray-400">Monate</p>
+                          {parseInt(angebotData.laufzeit) === 0 ? (
+                            <>
+                              <p className="text-lg sm:text-2xl font-bold text-gray-900">–</p>
+                              <p className="text-xs text-gray-400">Einmalzahlung</p>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-lg sm:text-2xl font-bold text-gray-900">{angebotData.laufzeit}</p>
+                              <p className="text-xs text-gray-400">Monate</p>
+                            </>
+                          )}
                         </div>
                       </div>
                       <div className="bg-white rounded-lg p-4 text-center">
-                        <p className="text-sm text-gray-500 mb-1">Gesamtwert ({angebotData.laufzeit} Monate)</p>
+                        <p className="text-sm text-gray-500 mb-1">
+                          {parseInt(angebotData.laufzeit) === 0
+                            ? 'Gesamtwert (Einmalzahlung)'
+                            : `Gesamtwert (${angebotData.laufzeit} Monate)`}
+                        </p>
                         <p className="text-3xl font-bold text-green-600">
                           {(
                             (parseFloat(angebotData.setup) || 0) +
