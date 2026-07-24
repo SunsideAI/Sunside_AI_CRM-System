@@ -183,6 +183,8 @@ function Closing() {
   // No-Show Modal State
   const [showNoShowModal, setShowNoShowModal] = useState(false)
   const [noShowProcessing, setNoShowProcessing] = useState(false)
+  // Closer will den Lead selbst weiter betreuen, kein automatisches Setter-Re-Engagement
+  const [noShowKeepInClosing, setNoShowKeepInClosing] = useState(false)
 
   // SEO-Analyse State
   const [seoAnalysisLoading, setSeoAnalysisLoading] = useState({})
@@ -974,6 +976,7 @@ function Closing() {
 
     // NEU: Wenn Status auf "Nicht erschienen" wechselt -> erst No-Show-Modal zeigen
     if (editData.status === 'Nicht erschienen' && selectedLead.status !== 'Nicht erschienen') {
+      setNoShowKeepInClosing(false)  // Default: Setter wird benachrichtigt (wie bisher)
       setShowNoShowModal(true)
       return
     }
@@ -1014,7 +1017,8 @@ function Closing() {
             status: 'Nicht erschienen',
             no_show_count: newNoShowCount,
             no_show_marked_at: new Date().toISOString(),
-            no_show_marked_by: user.id
+            no_show_marked_by: user.id,
+            no_show_keep_in_closing: noShowKeepInClosing
           }
         })
       })
@@ -1024,8 +1028,8 @@ function Closing() {
         throw new Error(data.error || 'Fehler beim Speichern')
       }
 
-      // Notification an Setter senden
-      if (selectedLead.setterId) {
+      // Notification an Setter nur senden wenn der Closer NICHT selbst weiter macht
+      if (selectedLead.setterId && !noShowKeepInClosing) {
         try {
           await fetch('/.netlify/functions/notify-no-show', {
             method: 'POST',
@@ -1075,12 +1079,15 @@ function Closing() {
       // Lead in lokaler Liste aktualisieren
       setLeads(prev => prev.map(l =>
         l.id === selectedLead.id
-          ? { ...l, status: 'Nicht erschienen', no_show_count: newNoShowCount, no_show_marked_at: new Date().toISOString() }
+          ? { ...l, status: 'Nicht erschienen', no_show_count: newNoShowCount, no_show_marked_at: new Date().toISOString(), no_show_keep_in_closing: noShowKeepInClosing }
           : l
       ))
-      setSelectedLead(prev => prev ? { ...prev, status: 'Nicht erschienen', no_show_count: newNoShowCount, no_show_marked_at: new Date().toISOString() } : null)
+      setSelectedLead(prev => prev ? { ...prev, status: 'Nicht erschienen', no_show_count: newNoShowCount, no_show_marked_at: new Date().toISOString(), no_show_keep_in_closing: noShowKeepInClosing } : null)
 
-      showToast('success', `Lead als nicht erschienen markiert. ${selectedLead.setterName ? `${selectedLead.setterName} wurde benachrichtigt.` : ''}`)
+      const toastMsg = noShowKeepInClosing
+        ? 'Lead als nicht erschienen markiert. Du betreust ihn selbst weiter.'
+        : `Lead als nicht erschienen markiert. ${selectedLead.setterName ? `${selectedLead.setterName} wurde benachrichtigt.` : 'Kein Setter zugeordnet.'}`
+      showToast('success', toastMsg)
     } catch (err) {
       console.error('No-Show Fehler:', err)
       showToast('error', err.message)
@@ -3453,11 +3460,26 @@ function Closing() {
               )}
 
               <p className="text-on-surface-variant">
-                {selectedLead.setterName
-                  ? <>Der Lead wird als nicht erschienen markiert. <strong>{selectedLead.setterName}</strong> wird benachrichtigt und kann einen neuen Termin buchen.</>
-                  : 'Der Lead wird als nicht erschienen markiert. Es ist kein Setter zugeordnet.'
+                {noShowKeepInClosing
+                  ? <>Der Lead wird als nicht erschienen markiert und bleibt in <strong>deinem</strong> Closing. Der Setter wird nicht benachrichtigt.</>
+                  : selectedLead.setterName
+                    ? <>Der Lead wird als nicht erschienen markiert. <strong>{selectedLead.setterName}</strong> wird benachrichtigt und kann einen neuen Termin buchen.</>
+                    : 'Der Lead wird als nicht erschienen markiert. Es ist kein Setter zugeordnet.'
                 }
               </p>
+
+              {/* Option: Closer betreut den Lead selbst weiter */}
+              <label className="flex items-start gap-2 cursor-pointer p-3 rounded-lg border border-outline-variant hover:bg-surface-container">
+                <input
+                  type="checkbox"
+                  checked={noShowKeepInClosing}
+                  onChange={(e) => setNoShowKeepInClosing(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 accent-rose-600 cursor-pointer"
+                />
+                <span className="text-sm text-on-surface">
+                  <strong>Im Closing behalten</strong> – ich buche selbst neu, Setter wird nicht benachrichtigt.
+                </span>
+              </label>
 
               {/* Lead-Details */}
               <div className="bg-surface-container rounded-lg p-3 text-sm space-y-1">

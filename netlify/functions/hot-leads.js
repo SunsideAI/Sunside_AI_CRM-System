@@ -319,7 +319,8 @@ export async function handler(event) {
           // No-Show Felder
           no_show_count: record.no_show_count || 0,
           no_show_marked_at: record.no_show_marked_at || null,
-          no_show_marked_by: record.no_show_marked_by || null
+          no_show_marked_by: record.no_show_marked_by || null,
+          no_show_keep_in_closing: record.no_show_keep_in_closing || false
         }
       })
 
@@ -727,7 +728,8 @@ export async function handler(event) {
         // No-Show Felder
         'no_show_count': 'no_show_count',
         'no_show_marked_at': 'no_show_marked_at',
-        'no_show_marked_by': 'no_show_marked_by'
+        'no_show_marked_by': 'no_show_marked_by',
+        'no_show_keep_in_closing': 'no_show_keep_in_closing'
       }
 
       // Kommentar separat behandeln (wird in leads-Tabelle geschrieben)

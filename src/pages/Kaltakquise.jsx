@@ -287,7 +287,10 @@ function Kaltakquise() {
       const data = await response.json()
 
       if (response.ok && data.hotLeads) {
-        const sorted = data.hotLeads.sort((a, b) => {
+        // "Im Closing behalten"-Leads gehören nicht ins Setter-Widget - der
+        // Closer bearbeitet sie selbst weiter.
+        const relevant = data.hotLeads.filter(hl => !hl.no_show_keep_in_closing)
+        const sorted = relevant.sort((a, b) => {
           // Nach Datum sortieren (neueste zuerst)
           const dateA = a.no_show_marked_at || a.terminDatum || ''
           const dateB = b.no_show_marked_at || b.terminDatum || ''
