@@ -84,11 +84,16 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
   // Setup oder Einmalzahlung ohne Retainer). Nur null, undefined oder leerer
   // String zählen als "noch nicht ausgefüllt". Mindestens eines der beiden
   // Felder muss ausgefüllt sein, damit ein Angebot vorliegt.
+  //
+  // Laufzeit wird nur geprüft, wenn tatsächlich ein Retainer > 0 vorliegt -
+  // bei Einmalzahlungs-Deals (retainer=0/leer) ist die Laufzeit irrelevant
+  // und die Bridge ignoriert sie im billing_mode='one_time_paid'-Pfad.
   const isFilled = (v) => v !== null && v !== undefined && v !== ''
+  const hasRetainer = isFilled(lead?.retainer) && Number(lead?.retainer) > 0
   const angebotComplete =
     lead?.produktDienstleistung?.length > 0 &&
     (isFilled(lead?.setup) || isFilled(lead?.retainer)) &&
-    Number(lead?.laufzeit) > 0
+    (hasRetainer ? Number(lead?.laufzeit) > 0 : true)
 
   // Dynamisches Label für Firma/Name
   const firmaLabel =
