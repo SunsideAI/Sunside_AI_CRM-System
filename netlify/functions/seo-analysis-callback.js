@@ -68,9 +68,22 @@ export const handler = async (event) => {
     // Generate filename
     const fileId = uuidv4()
     const timestamp = new Date().toISOString().split('T')[0]
-    const safeName = (leadData?.unternehmen || 'Lead').replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_').substring(0, 50)
-    const filename = `SEO_Analyse_${safeName}_${timestamp}.pdf`
-    const storagePath = `crm/${fileId}_${filename}`
+    // Anzeigename fuer das CRM: Umlaute duerfen bleiben.
+    const displayName = (leadData?.unternehmen || 'Lead')
+      .replace(/[^a-zA-Z0-9äöüÄÖÜß_-]/g, '_')
+      .substring(0, 50)
+    const filename = `SEO_Analyse_${displayName}_${timestamp}.pdf`
+
+    // Storage-Key dagegen muss reines ASCII sein - Supabase Storage lehnt
+    // Umlaute im Objektnamen ab und der Upload scheitert mit "Invalid key".
+    // Betrifft vor allem Sachverstaendigen- und Ingenieurbueros, deren
+    // Firmenname fast immer einen Umlaut enthaelt.
+    const storageName = displayName
+      .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue')
+      .replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe').replace(/Ü/g, 'Ue')
+      .replace(/ß/g, 'ss')
+      .replace(/[^a-zA-Z0-9_-]/g, '_')
+    const storagePath = `crm/${fileId}_SEO_Analyse_${storageName}_${timestamp}.pdf`
 
     // Upload to Supabase Storage
     const { error: uploadError } = await supabase.storage
