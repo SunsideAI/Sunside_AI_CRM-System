@@ -417,7 +417,11 @@ function Closing() {
           hotLeadId: lead.id,
           websiteUrl: lead.website,
           firmenname: lead.unternehmen || lead.firmenname,
-          stadt: stadt
+          stadt: stadt,
+          // Steuert das Keyword-Set im SEO-Tool: Makler-Kategorien liefern
+          // Eigentuemer-Keywords, Sachverstaendigen-Kategorien die
+          // Gutachten-Keywords.
+          kategorie: lead.kategorie
         })
       })
 

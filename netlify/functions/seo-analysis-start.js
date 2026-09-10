@@ -21,7 +21,7 @@ export const handler = async (event) => {
   }
 
   try {
-    const { hotLeadId, websiteUrl, firmenname, stadt } = JSON.parse(event.body)
+    const { hotLeadId, websiteUrl, firmenname, stadt, kategorie } = JSON.parse(event.body)
 
     if (!hotLeadId || !websiteUrl) {
       return {
@@ -30,6 +30,42 @@ export const handler = async (event) => {
         body: JSON.stringify({ error: 'hotLeadId and websiteUrl required' })
       }
     }
+
+    // Die Kategorie bestimmt das Keyword-Set im SEO-Tool (Eigentuemer- vs.
+    // Gutachten-Keywords). Das Frontend schickt sie mit; fehlt sie, wird
+    // sie nachgeladen - erst am Hot Lead, dann am verknuepften Lead.
+    // Der zweite Schritt ist nicht optional: ueber die Haelfte der Hot
+    // Leads hat kein eigenes kategorie-Feld, ist aber ueber lead_id
+    // aufloesbar, darunter mehrere Sachverstaendige. Ohne den Lead-Fallback
+    // bekaemen die still einen Makler-Report.
+    let kategorieNormalized = (kategorie || '').trim()
+    if (!kategorieNormalized) {
+      const { data: hotLead, error: hotLeadError } = await supabase
+        .from('hot_leads')
+        .select('kategorie, lead_id')
+        .eq('id', hotLeadId)
+        .single()
+      if (hotLeadError) {
+        console.warn('Kategorie-Lookup (hot_lead) fehlgeschlagen:', hotLeadError.message)
+      }
+      kategorieNormalized = (hotLead?.kategorie || '').trim()
+
+      if (!kategorieNormalized && hotLead?.lead_id) {
+        const { data: originalLead, error: leadError } = await supabase
+          .from('leads')
+          .select('kategorie')
+          .eq('id', hotLead.lead_id)
+          .single()
+        if (leadError) {
+          console.warn('Kategorie-Lookup (lead) fehlgeschlagen:', leadError.message)
+        }
+        kategorieNormalized = (originalLead?.kategorie || '').trim()
+      }
+    }
+    // Das SEO-Tool nimmt den CRM-Wert direkt entgegen ('Immobilienmakler',
+    // 'Immobiliensachverstaendiger', ...) und normalisiert ihn selbst;
+    // Unbekanntes oder Fehlendes faellt dort auf Makler zurueck.
+    const branche = kategorieNormalized || 'Immobilienmakler'
 
     // Stadt ist Pflicht - SEO-Tool validiert min_length: 1
     const stadtNormalized = (stadt || '').trim()
@@ -64,7 +100,7 @@ export const handler = async (event) => {
     const callbackUrl = `${process.env.CRM_PUBLIC_URL}/.netlify/functions/seo-analysis-callback`
     const seoToolUrl = `${process.env.SEO_TOOL_URL}/api/v1/reports/generate`
 
-    console.log('Calling SEO Tool:', seoToolUrl, 'for lead:', hotLeadId)
+    console.log('Calling SEO Tool:', seoToolUrl, 'for lead:', hotLeadId, 'branche:', branche)
 
     let response
     try {
@@ -79,6 +115,7 @@ export const handler = async (event) => {
           website_url: websiteUrl,
           stadt: stadtNormalized,
           plz: '',
+          branche,
           nur_fakten: true,
           custom_crm_deal_id: hotLeadId,
           callback_url: callbackUrl
