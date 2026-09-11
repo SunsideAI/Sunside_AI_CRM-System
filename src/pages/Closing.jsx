@@ -759,7 +759,9 @@ function Closing() {
       const data = await response.json()
 
       if (response.ok && data.success) {
-        showToast('success', `Bewerbung für ${applyingLead.unternehmen} eingereicht! Ein Admin wird diese prüfen.`)
+        showToast('success', data.direkt
+          ? `${applyingLead.unternehmen} übernommen.`
+          : `Bewerbung für ${applyingLead.unternehmen} eingereicht! Ein Admin wird diese prüfen.`)
         setShowApplyModal(false)
         setApplyingLead(null)
         setApplyKommentar('')

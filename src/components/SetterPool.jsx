@@ -47,7 +47,10 @@ export default function SetterPool({ onGeaendert }) {
       })
       const daten = await antwort.json()
       if (!antwort.ok) { setFehler(daten.error || 'Bewerbung fehlgeschlagen'); return }
-      setBeworben(b => ({ ...b, [lead.id]: true }))
+      // Die Function sagt, was passiert ist: direkt übernommen oder beworben.
+      // Das hängt am Schalter in den Einstellungen, den das Frontend nicht
+      // kennen muss.
+      setBeworben(b => ({ ...b, [lead.id]: daten.direkt ? 'uebernommen' : 'beworben' }))
       onGeaendert?.()
     } catch (e) {
       setFehler('Netzwerkfehler: ' + e.message)
@@ -75,8 +78,9 @@ export default function SetterPool({ onGeaendert }) {
         </h3>
       </div>
       <p className="text-xs text-gray-500 mb-3">
-        Ein Admin teilt zu. Wer den Kontakt selbst am Telefon hatte, wird dabei
-        sichtbar markiert — das ist kein Hindernis, nur Transparenz.
+        Wer den Kontakt selbst am Telefon hatte, wird dabei sichtbar markiert —
+        das ist kein Hindernis, nur Transparenz. Ob ein Admin zuteilt oder direkt
+        übernommen wird, stellen Admins in den Einstellungen ein.
       </p>
 
       {fehler && <p className="mb-3 text-sm text-red-600">{fehler}</p>}
@@ -107,7 +111,8 @@ export default function SetterPool({ onGeaendert }) {
 
               {beworben[lead.id] ? (
                 <span className="flex items-center gap-1 text-sm text-green-700 shrink-0">
-                  <Check className="w-4 h-4" /> beworben
+                  <Check className="w-4 h-4" />
+                  {beworben[lead.id] === 'uebernommen' ? 'übernommen' : 'beworben'}
                 </span>
               ) : (
                 <button

@@ -229,6 +229,67 @@ export async function handler(event) {
       const closerName = closerData?.vor_nachname || 'Ein Closer'
       const bewerbungId = generateBewerbungId()
 
+      // Schalter aus den Einstellungen: Muss auf dieser Stufe ueberhaupt
+      // beworben werden? Ist er aus, wird direkt uebernommen - aber weiterhin
+      // als genehmigte Bewerbung protokolliert, damit nachvollziehbar bleibt,
+      // wer wann zugegriffen hat. Fehlt der Eintrag, gilt "an": ein fehlender
+      // Schalter darf keine Tuer oeffnen.
+      const schalter = stufe === STUFE.SETTER
+        ? 'bewerbung_pflicht_setter' : 'bewerbung_pflicht_closer'
+      const { data: einstellung } = await supabase
+        .from('einstellungen').select('wert').eq('schluessel', schalter).maybeSingle()
+      const bewerbungNoetig = (einstellung?.wert ?? 'an') !== 'aus'
+
+      if (!bewerbungNoetig) {
+        const feld = stufe === STUFE.SETTER ? 'setter_id' : 'closer_id'
+
+        const { error: direktError } = await supabase
+          .from('hot_leads')
+          .update({ [feld]: closerId, zuletzt_geaendert_von: closerId })
+          .eq('id', hotLeadId)
+          .is(feld, null)          // nur wenn noch frei - schuetzt vor Gleichzeitigkeit
+
+        if (direktError) throw new Error(direktError.message)
+
+        const { data: danach } = await supabase
+          .from('hot_leads').select(feld).eq('id', hotLeadId).maybeSingle()
+
+        if (danach?.[feld] !== closerId) {
+          return {
+            statusCode: 409,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Jemand anderes war schneller. Bitte Ansicht neu laden.' })
+          }
+        }
+
+        await supabase.from('hot_lead_applications').insert({
+          bewerbung_id: bewerbungId,
+          hot_lead_id: hotLeadId,
+          closer_id: closerId,
+          stufe,
+          kommentar: kommentar || null,
+          status: 'Genehmigt',
+          admin_kommentar: konflikt
+            ? 'Direkt uebernommen (Bewerbung fuer diese Stufe nicht erforderlich). Hinweis: hat diesen Kontakt selbst qualifiziert.'
+            : 'Direkt uebernommen (Bewerbung fuer diese Stufe nicht erforderlich).',
+          bearbeitet_am: new Date().toISOString()
+        })
+
+        console.log(`[Hot-Lead-Applications POST] Direkt uebernommen: ${hotLeadId} von ${closerName} (${stufe})`)
+
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            success: true,
+            direkt: true,
+            message: stufe === STUFE.SETTER
+              ? 'Beratungsgespräch übernommen.'
+              : 'Lead übernommen.'
+          })
+        }
+      }
+
       // Bewerbung erstellen
       const { data: newApplication, error: insertError } = await supabase
         .from('hot_lead_applications')

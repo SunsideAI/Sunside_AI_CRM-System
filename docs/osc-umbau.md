@@ -311,3 +311,29 @@ Zwei Dinge sind dabei aufgefallen:
 
 Der Pool zeigt nur, was noch bevorsteht. Ein vergangener Termin ohne Setter ist
 kein Fall für eine Bewerbung, sondern für den Alarm aus Ticket 6.
+
+## Bewerbungspflicht als Schalter
+
+Admins stellen in den Einstellungen je Stufe ein, ob beworben werden muss oder
+direkt übernommen werden darf. Getrennt, weil die Lage unterschiedlich sein
+kann: Beim Setting kann Tempo wichtiger sein als Auswahl, beim Closing
+umgekehrt.
+
+- **Voreinstellung „an" auf beiden Stufen.** Das ist das heutige Verhalten beim
+  Closing. Ein neuer Schalter darf nichts still ändern.
+- **Fehlt der Eintrag, gilt „an".** Ein fehlender Schalter darf keine Tür öffnen.
+- **Auch bei „aus" wird protokolliert**, wer wann übernommen hat — als
+  genehmigte Bewerbung mit Vermerk. Die Zuteilung bleibt nachvollziehbar, sie
+  braucht nur keine Freigabe mehr.
+- **Gleichzeitigkeit ist abgesichert:** Die Übernahme schreibt nur, solange das
+  Feld leer ist (`.is(feld, null)`), und liest danach zurück. Wer zu spät kommt,
+  bekommt 409 statt einer stillen Überschreibung.
+
+Das Frontend kennt den Schalter nicht — die Function antwortet mit `direkt:
+true/false`, und die Oberfläche sagt entsprechend „übernommen" oder „beworben".
+So gibt es keine zweite Stelle, die mit der Einstellung auseinanderlaufen kann.
+
+Gelesen werden die Einstellungen von allen Angemeldeten, geändert nur von der
+Leitung. Die Function gibt bewusst **nur die CRM-Schlüssel** heraus: Dieselbe
+Tabelle trägt Absenderadressen und Signaturen des Berichtsversands aus dem
+Operations-System, die im CRM-Frontend nichts zu suchen haben.

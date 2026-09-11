@@ -11,6 +11,7 @@ import {
   Inbox
 } from 'lucide-react'
 import PasswordManager from '../components/PasswordManager'
+import VertriebsEinstellungen from '../components/VertriebsEinstellungen'
 import EmailTemplateManager from '../components/EmailTemplateManager'
 import MitarbeiterVerwaltung from '../components/MitarbeiterVerwaltung'
 import LeadAnfragenVerwaltung from '../components/LeadAnfragenVerwaltung'
@@ -134,6 +135,9 @@ function SystemeinstellungenContent({ user }) {
           </div>
         </div>
       </div>
+
+      {/* Zuteilung von Terminen */}
+      <VertriebsEinstellungen />
 
       {/* Password Manager */}
       <PasswordManager />
