@@ -1,4 +1,5 @@
 import { STATUS } from '../../shared/status.js'
+import SetterUebergabe from '../components/SetterUebergabe'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -118,7 +119,10 @@ function Termine() {
             ort: lead.ort,
             kommentar: lead.kommentar,
             setterName: lead.setterName,
-            closerName: lead.closerName
+            closerName: lead.closerName,
+            // Der vollstaendige Datensatz, damit die Setter-Ansicht die
+            // Uebergabe-Felder vorbefuellen kann.
+            lead
           }
         })
       
@@ -809,6 +813,15 @@ function Termine() {
                         )}
                       </div>
                     </div>
+
+                    {/* Was der Setter nach dem Gespräch tut. Nur für den, der
+                        den Termin hält - und für Admins. */}
+                    {(selectedEvent.isMyBooking || isAdmin()) && selectedEvent.lead && (
+                      <SetterUebergabe
+                        lead={selectedEvent.lead}
+                        onGespeichert={() => { setSelectedEvent(null); loadTermine() }}
+                      />
+                    )}
                   </>
                 )}
 

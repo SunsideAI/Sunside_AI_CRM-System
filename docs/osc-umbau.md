@@ -16,7 +16,7 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | 2 | Neue Felder laut Schema-Delta | **eingespielt** (`20260912_osc_felder.sql`) |
 | 3 | Ereignis-Verlauf | **eingespielt** (Protokoll-Trigger aktiv) |
 | 1 | Statuskette — Code | **fertig** (`shared/status.js`, 15 Dateien) |
-| 8 | Buchen-Gates | **halb** — Übergabe 1 fertig, Setter-Ansicht für Übergabe 2 fehlt |
+| 8 | Buchen-Gates | **fertig** — beide Übergaben mit Formular und Riegel |
 | 1 | Statuskette — Datenbank | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
 
 ## Warum die Statuskette noch wartet
@@ -177,14 +177,23 @@ Das Gate für Übergabe 1 greift **nicht** bei Calendly-Direktbuchungen und nich
 beim Neubuchen nach einem geplatzten Termin — dort war kein Opener beteiligt,
 und ein Gate würde nur den Termin verhindern.
 
-### Was an Ticket 8 noch fehlt
+### Die Setter-Ansicht
 
-Gebaut ist „Beratungsgespräch buchen" samt Formular im TerminPicker. Der
-Backend-Riegel für „Abschlussgespräch buchen" steht ebenfalls — die
-**Setter-Ansicht, in der die zwölf Felder der Übergabe 2 eingegeben werden,
-fehlt noch**. Bis dahin lässt sich der Wechsel auf „Abschlussgespräch
-vereinbart" nicht durchführen, weil die Felder nirgends gefüllt werden können.
-Das ist der nächste Schritt, nicht ein Nebenaspekt.
+Sie hängt am Termin (`Termine`), nicht in der Closing-Ansicht: `/closing` ist
+auf Closer und Admin beschränkt, der Setter kommt dort nicht hin. Am eigenen
+Termin sieht er zwei Stufen:
+
+1. **„Termin fand statt"** — ein Klick, setzt den Status auf „Beratungsgespräch
+   geführt" und schreibt das Ereignis. Ohne diesen Klick zählen Erscheinungsquote
+   und Termin-Vergütung nicht; bisher gab es nur No-Show, keinen positiven
+   Nachweis.
+2. **Übergabe an den Closer** — die zwölf Felder, die berechnete Anzeige
+   „Nötige Anfragen pro Monat" und die Schaltfläche „Abschlussgespräch buchen".
+
+Datum und Uhrzeit des Abschlussgesprächs werden vorerst von Hand eingetragen.
+Die Buchung über den Sammel-Kalender kommt mit Ticket 7 — ein Status
+„Abschlussgespräch vereinbart" ohne echten Termin wäre eine Falschangabe, also
+ist das Feld Pflicht.
 
 ### Eine Korrektur an den berechneten Zahlen
 

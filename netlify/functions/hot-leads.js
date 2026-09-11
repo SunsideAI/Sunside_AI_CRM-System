@@ -332,7 +332,18 @@ export async function handler(event) {
           no_show_count: record.no_show_count || 0,
           no_show_marked_at: record.no_show_marked_at || null,
           no_show_marked_by: record.no_show_marked_by || null,
-          no_show_keep_in_closing: record.no_show_keep_in_closing || false
+          no_show_keep_in_closing: record.no_show_keep_in_closing || false,
+
+          // Felder der beiden Uebergaben. Ohne sie kann die Setter-Ansicht
+          // nicht vorbefuellen und das Gate ist im Frontend unsichtbar.
+          ...Object.fromEntries(
+            Object.keys(FELDER).map(k => [k, record[k] ?? null])
+          ),
+          // Berechnet, nicht eingegeben.
+          noetige_anfragen: record.noetige_anfragen ?? null,
+          anfragen_bereich: record.anfragen_bereich ?? null,
+          termin_abschlussgespraech: record.termin_abschlussgespraech || null,
+          meeting_link_abschluss: record.meeting_link_abschluss || null
         }
       })
 
@@ -718,6 +729,18 @@ export async function handler(event) {
 
       // Felder mappen
       const fieldMap = {
+        // Die Felder beider Uebergaben heissen im CRM wie in der Datenbank -
+        // eine Umbenennung waere nur eine weitere Stelle, die auseinanderlaufen
+        // kann.
+        ...Object.fromEntries(Object.keys(FELDER).map(k => [k, k])),
+        'schmerzpunkt_vertieft': 'schmerzpunkt_vertieft',
+        'termin_abschlussgespraech': 'termin_abschlussgespraech',
+        'meeting_link_abschluss': 'meeting_link_abschluss',
+        'gespraechsausgang': 'gespraechsausgang',
+        'zugesagter_schritt': 'zugesagter_schritt',
+        'zugesagt_bis': 'zugesagt_bis',
+        'nachfass_grund': 'nachfass_grund',
+        'wiedervorlage_am': 'wiedervorlage_am',
         'status': 'status',
         'setup': 'setup',
         'retainer': 'retainer',
