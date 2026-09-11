@@ -557,6 +557,7 @@ export async function handler(event) {
         originalLeadId,
         setterName,
         closerName,
+        openerName,
         setterId,
         closerId,
         unternehmen,
@@ -577,7 +578,7 @@ export async function handler(event) {
       } = body
 
       console.log('Hot Lead POST - Input:', {
-        originalLeadId, setterName, closerName, setterId, closerId,
+        originalLeadId, setterName, closerName, setterId, closerId, openerName,
         terminDatum, terminart, meetingLink
       })
 
@@ -590,13 +591,9 @@ export async function handler(event) {
         }
       }
 
-      if (!setterName && !setterId) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'setterName oder setterId ist erforderlich' })
-        }
-      }
+      // Ein Setter ist NICHT mehr Pflicht: Der Opener legt den Termin, die
+      // Besetzung laeuft ueber den Setter-Pool. Frueher war das Feld
+      // erforderlich, weil derselbe Mensch beides war.
 
       if (!terminDatum) {
         return {
@@ -689,7 +686,12 @@ export async function handler(event) {
         status: STATUS.BERATUNG_VEREINBART,
         quelle: quelle || 'Kaltakquise',
         setter_id: setterRecordId || null,
-        closer_id: closerRecordId || null
+        closer_id: closerRecordId || null,
+        // Wer bucht, ist der Opener. Ausdruecklich setzen statt dem Trigger zu
+        // ueberlassen: der fuellt nur, wenn genau ein Kandidat in
+        // lead_assignments steht - hier wissen wir es sicher.
+        opener_id: angemeldet.id,
+        zuletzt_geaendert_von: angemeldet.id
       }
 
       // Kontaktdaten aus dem Buchungsformular übernehmen. Vor allem `mail` ist

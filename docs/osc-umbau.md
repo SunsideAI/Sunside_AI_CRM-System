@@ -337,3 +337,24 @@ Gelesen werden die Einstellungen von allen Angemeldeten, geändert nur von der
 Leitung. Die Function gibt bewusst **nur die CRM-Schlüssel** heraus: Dieselbe
 Tabelle trägt Absenderadressen und Signaturen des Berichtsversands aus dem
 Operations-System, die im CRM-Frontend nichts zu suchen haben.
+
+## Der Opener wird nicht mehr automatisch Setter
+
+Beim Durchgehen des Prozesses aufgefallen: Der TerminPicker schickte
+`setterName: user.vor_nachname` — wer buchte, wurde also selbst als Setter
+eingetragen. Damit hätte sich **der Setter-Pool nie gefüllt** und die ganze
+Zwei-Pool-Mechanik wäre tot geboren gewesen. Zusätzlich hätte der Opener die
+Übergabe-2-Maske an seinem eigenen Termin gesehen.
+
+Jetzt gilt: **Wer bucht, ist der Opener.** `setter_id` bleibt leer und der
+Termin geht in den Pool. Wer selbst die Setter-Rolle trägt, kann ankreuzen
+„Ich halte das Beratungsgespräch selbst" — ohne Haken geht es in den Pool.
+
+Zwei Folgeänderungen waren nötig:
+
+- `hot-leads.js` verlangte zwingend einen Setter beim Anlegen. Das war richtig,
+  solange derselbe Mensch beides war, und verhindert jetzt den Pool. Das Feld
+  ist optional.
+- `opener_id` wird beim Buchen ausdrücklich gesetzt statt dem Trigger
+  überlassen. Der füllt nur, wenn genau ein Kandidat in `lead_assignments`
+  steht — beim Buchen wissen wir es sicher.

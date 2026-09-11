@@ -1,5 +1,6 @@
 import { STATUS } from '../../shared/status.js'
 import { UEBERGABE_1 } from '../../shared/felder.js'
+import { istSetter, istCloser, istLeitung } from '../../shared/rollen.js'
 import UebergabeFelder from './UebergabeFelder'
 import { useState, useEffect } from 'react'
 import { Calendar, Clock, Loader2, Check, ChevronLeft, ChevronRight, Mail, Phone, Video, Users, User } from 'lucide-react'
@@ -57,11 +58,13 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
 
   // Prüfen ob User selbst Closer sein kann
   const userRoles = user?.rolle || []
-  const canSelfClose = userRoles.some(r => 
-    r.toLowerCase() === 'closer' || 
-    r.toLowerCase() === 'admin' ||
-    r.toLowerCase() === 'coldcaller + closer'
-  )
+  const canSelfClose = istCloser(userRoles) || istLeitung(userRoles)
+
+  // Wer den Termin legt, ist im neuen Prozess der Opener - nicht automatisch
+  // auch der Setter. Nur wer die Setter-Rolle trägt, kann das Gespräch selbst
+  // übernehmen; sonst geht es in den Setter-Pool.
+  const kannSelbstSetten = istSetter(userRoles) || istLeitung(userRoles)
+  const [setzeSelbst, setSetzeSelbst] = useState(false)
 
   // Calendly Event Types laden
   useEffect(() => {
@@ -224,7 +227,8 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
             assignToPool: assignToPool,
             closerName: assignToPool ? null : user?.vor_nachname,
             closerEmail: assignToPool ? null : (user?.email_geschaeftlich || user?.email),
-            setterName: user?.vor_nachname,
+            setterName: (kannSelbstSetten && setzeSelbst) ? user?.vor_nachname : null,
+            openerName: user?.vor_nachname,
             setterEmail: user?.email_geschaeftlich || user?.email
           }
         })
@@ -308,7 +312,11 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               originalLeadId: lead.id,
-              setterName: user?.vor_nachname,
+              // Leer = geht in den Setter-Pool. Wer bucht, ist der Opener;
+              // Setter wird man nur, wenn man die Rolle hat und es ausdrücklich
+              // will - sonst füllte sich der Pool nie.
+              setterName: (kannSelbstSetten && setzeSelbst) ? user?.vor_nachname : null,
+              openerName: user?.vor_nachname,
               closerName: assignToPool ? null : user?.vor_nachname, // Leer = Pool
               unternehmen: unternehmensname,
               terminDatum: selectedSlot.start,
@@ -935,6 +943,23 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
             {selectedType === 'video' ? ' (Video)' : ' (Telefon)'}
           </p>
           
+          {!isReschedule && kannSelbstSetten && (
+            <label className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={setzeSelbst}
+                onChange={e => setSetzeSelbst(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+              />
+              <span className="text-gray-700">
+                Ich halte das Beratungsgespräch selbst
+                <span className="block text-xs text-gray-500">
+                  Ohne Haken geht der Termin in den Setter-Pool und wird dort besetzt.
+                </span>
+              </span>
+            </label>
+          )}
+
           {isReschedule ? (
             /* Bei Neu-Terminierung: Nur ein Button */
             <button
