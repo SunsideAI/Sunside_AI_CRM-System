@@ -19,6 +19,8 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | 8 | Buchen-Gates | **fertig** — beide Übergaben mit Formular und Riegel |
 | 4 | Bekannte Kleinfixe | **fertig** bis auf die zurückgestellte Calendly-Signatur |
 | 5 | Besetzung über zwei Pools | **fertig** |
+| 6 | Fristen und Alarme | **fertig** |
+| 13 | Wiedervorlage-Wecker | **fertig** |
 | 1 | Statuskette — Datenbank | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
 
 ## Warum die Statuskette noch wartet
@@ -437,3 +439,33 @@ Die übrigen sechs:
   System füllt — es füllte es aber niemand. Statt das Gate zu entschärfen,
   schreibt `send-email.js` die versendete Unterlage jetzt am Kontakt fort. Der
   Hilfetext stimmt damit.
+
+## Fristen, Alarme und Wecker (Tickets 6 und 13)
+
+Ein Lauf, vier Regeln — in der Datenbank, nicht im Frontend. Ein Termin, für
+den niemand eingeteilt ist, muss auch dann auffallen, wenn gerade niemand das
+CRM offen hat.
+
+| Regel | Auslöser |
+|---|---|
+| Termin ohne Setter | Beratungsgespräch binnen 24 Stunden, `setter_id` leer |
+| Bewerbung überfällig | offen seit mehr als zwei Stunden |
+| Wiedervorlage fällig | `wiedervorlage_am` erreicht, Status „wiedervorlagefähig" |
+| Vereinbarung endet | `vertrag_laeuft_bis` binnen 30 Tagen, keine Kündigung erfasst |
+
+Die Meldungen gehen als Systemnachricht an alle aktiven Admins und
+Geschäftsführer und erscheinen damit in der Glocke — kein neuer Kanal.
+
+**Stündlich während der Arbeitszeit, nicht täglich.** Die Frist „unbesetzt nach
+zwei Stunden" ließe sich mit einem Tageslauf nicht einhalten. Die übrigen
+Regeln vertragen das, weil ein Merkzettel (`crm_erinnerungen`) Wiederholungen
+verhindert: Ohne ihn ginge dieselbe Erinnerung jeden Tag erneut raus, bis
+jemand handelt — und niemand läse sie mehr.
+
+Der Lauf meldet sich über `lauf_starten`/`lauf_beenden` bei derselben
+Überwachung an wie die Operations-Läufe, die Stillstandswache sieht ihn also
+mit.
+
+Die erste Regel greift genau den Zustand auf, den die Setter-Rückmigration
+erzeugt: **29 Kontakte ohne Closer werden dort leer gesetzt.** Wer davon einen
+Termin in der Zukunft hat, landet ab dem Deploy in dieser Meldung.
