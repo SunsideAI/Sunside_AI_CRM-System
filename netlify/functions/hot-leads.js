@@ -367,7 +367,18 @@ export async function handler(event) {
           noetige_anfragen: record.noetige_anfragen ?? null,
           anfragen_bereich: record.anfragen_bereich ?? null,
           termin_abschlussgespraech: record.termin_abschlussgespraech || null,
-          meeting_link_abschluss: record.meeting_link_abschluss || null
+          meeting_link_abschluss: record.meeting_link_abschluss || null,
+
+          // Der Angebots-Zweig. Der Stand beim Versand bleibt erhalten, auch
+          // wenn sich die Vertragsfelder bis zum Abschluss noch aendern.
+          angebot_paket: record.angebot_paket ?? null,
+          angebot_setup: record.angebot_setup ?? null,
+          angebot_gebuehr: record.angebot_gebuehr ?? null,
+          angebot_angefordert_am: record.angebot_angefordert_am || null,
+          angebot_verschickt_am: record.angebot_verschickt_am || null,
+          wiedervorlage_am: record.wiedervorlage_am || null,
+          vertrag_laeuft_bis: record.vertrag_laeuft_bis || null,
+          kuendigung_zum: record.kuendigung_zum || null
         }
       })
 

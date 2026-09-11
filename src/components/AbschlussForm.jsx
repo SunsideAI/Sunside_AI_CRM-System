@@ -176,6 +176,20 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
             <div><span className="text-green-600">Produkt:</span> {lead.produktDienstleistung?.join(', ') || '-'}</div>
             <div><span className="text-green-600">Setup:</span> {Number(lead.setup || 0).toLocaleString('de-DE')} €</div>
             <div><span className="text-green-600">Retainer:</span> {Number(lead.retainer || 0).toLocaleString('de-DE')} € / Monat</div>
+
+            {/* Was tatsächlich angeboten wurde. Weicht es vom Vertrag ab, ist
+                das kein Fehler - aber der Closer soll es sehen, bevor er
+                abschliesst. Vorher war das Angebot nach der ersten Änderung
+                der Vertragsfelder nicht mehr nachvollziehbar. */}
+            {(lead.angebot_setup != null || lead.angebot_gebuehr != null) &&
+             (Number(lead.angebot_setup || 0) !== Number(lead.setup || 0) ||
+              Number(lead.angebot_gebuehr || 0) !== Number(lead.retainer || 0)) && (
+              <div className="mt-2 pt-2 border-t border-green-200 text-xs text-gray-600">
+                Angeboten war: {Number(lead.angebot_setup || 0).toLocaleString('de-DE')} € Setup
+                und {Number(lead.angebot_gebuehr || 0).toLocaleString('de-DE')} € / Monat
+                {lead.angebot_paket && <> ({lead.angebot_paket})</>}
+              </div>
+            )}
             <div><span className="text-green-600">Laufzeit:</span> {lead.laufzeit} Monate</div>
           </div>
         </div>

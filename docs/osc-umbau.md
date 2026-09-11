@@ -22,6 +22,7 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | 6 | Fristen und Alarme | **fertig** |
 | 13 | Wiedervorlage-Wecker | **fertig** |
 | 14 | Termin-fand-statt und Anrufzähler | **fertig** |
+| 10 | Angebots-Zweig absichern | **fertig** |
 | 1 | Statuskette — Datenbank | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
 
 ## Warum die Statuskette noch wartet
@@ -488,3 +489,33 @@ des Wochen-Benchmarks (600 Anwahlen), die es vorher schlicht nicht gab.
 
 Der zweite Teil des Tickets, der Klick „Termin fand statt", steckt seit der
 Setter-Ansicht in Ticket 8.
+
+## Der Angebots-Zweig (Ticket 10)
+
+Bisher wurde `'Angebot'` als Signal an die externe Automatisierung gesetzt, die
+mit `'Angebot versendet'` zurückmeldet — **ob sie das je tut, sah niemand.** Es
+gab keinen Zeitpunkt, an dem etwas hätte auffallen können.
+
+Die Zeitstempel setzt jetzt ein Trigger und nicht die Anwendung: So greifen sie
+auch für den Rückweg der Automatisierung, den wir nicht in der Hand haben.
+
+Beim Anfordern wird zusätzlich der **Stand des Angebots festgehalten** —
+Paket, Einrichtung, monatliche Gebühr. `setup` und `retainer` sind die
+Vertragsfelder und können sich bis zum Abschluss noch ändern; das Angebot
+nicht. Weicht der Vertrag später ab, zeigt das Abschlussformular beides. Vorher
+war das ursprüngliche Angebot nach der ersten Änderung nicht mehr
+nachvollziehbar.
+
+Zwei neue Regeln im stündlichen Lauf:
+
+- **Angebot ohne Versandbestätigung** — angefordert, aber nach 30 Minuten keine
+  Rückmeldung. Ein stummer Versanddienst fiel bisher niemandem auf.
+- **Seit einer Woche keine Unterschrift** — wöchentlich erinnert, nicht täglich.
+
+### Ein Zählfehler, den der Test gefunden hat
+
+`crm_erinnern()` gab die Zahl der verschickten **Nachrichten** zurück, nicht der
+**Vorgänge**. Bei drei Admins meldete der Lauf drei Vorgänge, wo es einer war —
+die Zähler im Lauf-Protokoll waren um den Faktor „Anzahl Admins" zu hoch. Das
+wäre nie aufgefallen, weil die Zahl plausibel aussieht. Rückgabe ist jetzt
+1 = erinnert, 0 = war schon erinnert.
