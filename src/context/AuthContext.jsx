@@ -1,3 +1,4 @@
+import { istOpener, istSetter, istCloser, istLeitung, ROLLE } from '../../shared/rollen.js'
 import { createContext, useContext, useState, useEffect } from 'react'
 
 const AuthContext = createContext(null)
@@ -46,10 +47,16 @@ export function AuthProvider({ children }) {
   }
 
   // Convenience-Funktionen
-  const isAdmin = () => hasRole('Admin')
-  const isColdcaller = () => hasRole('Coldcaller')
-  const isCloser = () => hasRole('Closer')
-  const isGeschaeftsfuehrer = () => hasRole('Geschäftsführer')
+  const isAdmin = () => hasRole(ROLLE.ADMIN)
+  const isGeschaeftsfuehrer = () => hasRole(ROLLE.GESCHAEFTSFUEHRER)
+  const isCloser = () => istCloser(user?.rolle)
+  const isSetter = () => istSetter(user?.rolle)
+  // Opener und Coldcaller sind dieselbe Aufgabe unter zwei Namen. Solange
+  // Nutzer den alten Wert tragen, gelten sie als Opener - sonst wäre am Tag
+  // der Umstellung die Kaltakquise für alle zu.
+  const isOpener = () => istOpener(user?.rolle)
+  const isColdcaller = isOpener
+  const isLeitung = () => istLeitung(user?.rolle)
 
   const value = {
     user,
@@ -60,8 +67,11 @@ export function AuthProvider({ children }) {
     hasRole,
     isAdmin,
     isColdcaller,
+    isOpener,
+    isSetter,
     isCloser,
-    isGeschaeftsfuehrer
+    isGeschaeftsfuehrer,
+    isLeitung
   }
 
   return (

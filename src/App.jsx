@@ -1,3 +1,4 @@
+import { SEITEN_ZUGANG } from '../shared/rollen.js'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './context/AuthContext'
 
@@ -71,7 +72,7 @@ function App() {
         <Route 
           path="kaltakquise" 
           element={
-            <ProtectedRoute allowedRoles={['Coldcaller', 'Admin']}>
+            <ProtectedRoute allowedRoles={SEITEN_ZUGANG.kaltakquise}>
               <Kaltakquise />
             </ProtectedRoute>
           } 
@@ -80,7 +81,7 @@ function App() {
         <Route
           path="closing"
           element={
-            <ProtectedRoute allowedRoles={['Closer', 'Admin']}>
+            <ProtectedRoute allowedRoles={SEITEN_ZUGANG.closing}>
               <Closing />
             </ProtectedRoute>
           }
@@ -89,7 +90,7 @@ function App() {
         <Route
           path="follow-up"
           element={
-            <ProtectedRoute allowedRoles={['Admin', 'Closer']}>
+            <ProtectedRoute allowedRoles={SEITEN_ZUGANG['follow-up']}>
               <FollowUp />
             </ProtectedRoute>
           }
@@ -98,7 +99,7 @@ function App() {
         <Route
           path="finanzen"
           element={
-            <ProtectedRoute allowedRoles={['Geschäftsführer']}>
+            <ProtectedRoute allowedRoles={SEITEN_ZUGANG.finanzen}>
               <Finanzen />
             </ProtectedRoute>
           }
@@ -109,7 +110,7 @@ function App() {
         <Route 
           path="einstellungen" 
           element={
-            <ProtectedRoute allowedRoles={['Admin']}>
+            <ProtectedRoute allowedRoles={SEITEN_ZUGANG.einstellungen}>
               <Einstellungen />
             </ProtectedRoute>
           } 

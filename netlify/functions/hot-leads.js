@@ -171,7 +171,7 @@ export async function handler(event) {
     // ==========================================
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
-      const { setterId, closerId, setterName, closerName, status, limit, pool, originalLeadId } = params
+      const { setterId, closerId, setterName, closerName, openerId, openerName, status, limit, pool, originalLeadId } = params
 
       console.log('Hot Leads GET - Params:', { setterId, closerId, setterName, closerName, status, limit, pool, originalLeadId })
 
@@ -196,6 +196,15 @@ export async function handler(event) {
         closerIdFilter = await getUserIdByName(closerName)
       }
 
+      // Der Opener braucht einen eigenen Filter: Nach dem Umbau zeigt setter_id
+      // auf den, der das Beratungsgespraech haelt - nicht mehr auf den, der
+      // gebucht hat. Ohne diesen Filter verloere der Opener die von ihm
+      // gelegten Termine aus den Augen.
+      let openerIdFilter = openerId
+      if (!openerIdFilter && openerName) {
+        openerIdFilter = await getUserIdByName(openerName)
+      }
+
       while (hotLeadsData.length < maxLimit) {
         let query = supabase
           .from('hot_leads')
@@ -203,6 +212,7 @@ export async function handler(event) {
             *,
             setter:users!hot_leads_setter_id_fkey(id, vor_nachname),
             closer:users!hot_leads_closer_id_fkey(id, vor_nachname),
+            opener:users!hot_leads_opener_id_fkey(id, vor_nachname),
             reaktivierer:users!hot_leads_reaktivierung_bearbeiter_id_fkey(id, vor_nachname),
             original_lead:leads!hot_leads_lead_id_fkey(
               id, unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname,
@@ -219,6 +229,13 @@ export async function handler(event) {
         // Setter-Filter
         if (setterIdFilter) {
           query = query.eq('setter_id', setterIdFilter)
+        }
+
+        // Opener-Filter
+        if (openerIdFilter && UUID_REGEX.test(openerIdFilter)) {
+          query = query.eq('opener_id', openerIdFilter)
+        } else if (openerIdFilter) {
+          console.warn('[hot-leads GET] openerIdFilter ist keine gueltige UUID, ignoriert:', openerIdFilter)
         }
 
         // Closer-Filter: User sieht Leads, die ihm als Closer ODER als
@@ -311,6 +328,8 @@ export async function handler(event) {
           reaktivierungBearbeiterId: record.reaktivierung_bearbeiter_id || null,
           setterName: record.setter?.vor_nachname || '',
           closerName: record.closer?.vor_nachname || '',
+          openerId: record.opener_id || null,
+          openerName: record.opener?.vor_nachname || '',
           reaktivierungBearbeiterName: record.reaktivierer?.vor_nachname || '',
           // Billing-Felder für Abschluss-Modal
           rechnung_anrede: record.rechnung_anrede || '',

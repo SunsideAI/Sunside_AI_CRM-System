@@ -43,18 +43,25 @@ function Termine() {
         const data = await response.json()
         allLeads = data.hotLeads || []
       } else {
-        // Normale User: Nur eigene Termine
-        const [closerResponse, setterResponse] = await Promise.all([
-          fetch(`/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`)
-            .then(r => r.json())
-            .catch(() => ({ hotLeads: [] })),
-          fetch(`/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`)
+        // Normale User: eigene Termine aus allen drei Rollen. Der Opener kommt
+        // dazu, weil setter_id nach dem Umbau auf den zeigt, der das
+        // Beratungsgespräch hält - nicht mehr auf den, der gebucht hat. Ohne
+        // den dritten Abruf verlöre der Opener seine gelegten Termine.
+        const hole = (feld) =>
+          fetch(`/.netlify/functions/hot-leads?${feld}=${encodeURIComponent(userName)}`)
             .then(r => r.json())
             .catch(() => ({ hotLeads: [] }))
+
+        const [closerResponse, setterResponse, openerResponse] = await Promise.all([
+          hole('closerName'), hole('setterName'), hole('openerName')
         ])
-        
+
         // Kombinieren und Duplikate entfernen
-        const combined = [...(closerResponse.hotLeads || []), ...(setterResponse.hotLeads || [])]
+        const combined = [
+          ...(closerResponse.hotLeads || []),
+          ...(setterResponse.hotLeads || []),
+          ...(openerResponse.hotLeads || [])
+        ]
         allLeads = combined.reduce((acc, lead) => {
           if (!acc.find(l => l.id === lead.id)) {
             acc.push(lead)
@@ -99,7 +106,11 @@ function Termine() {
         .filter(lead => lead.terminDatum) // Nur mit Termin
         .map(lead => {
           const isMyClosing = lead.closerName === userName
-          const isMyBooking = lead.setterName === userName
+          // Wer das Beratungsgespräch hält ...
+          const isMySetting = lead.setterName === userName
+          // ... und wer den Termin gelegt hat. Bis zum Umbau derselbe Mensch,
+          // danach zwei verschiedene.
+          const isMyBooking = lead.openerName === userName || lead.setterName === userName
           
           return {
             id: `hotlead-${lead.id}`,
@@ -112,6 +123,7 @@ function Termine() {
             status: lead.status,
             isMyClosing,
             isMyBooking,
+            isMySetting,
             unternehmen: lead.unternehmen,
             ansprechpartner: `${lead.ansprechpartnerVorname || ''} ${lead.ansprechpartnerNachname || ''}`.trim(),
             email: lead.email,
@@ -816,7 +828,7 @@ function Termine() {
 
                     {/* Was der Setter nach dem Gespräch tut. Nur für den, der
                         den Termin hält - und für Admins. */}
-                    {(selectedEvent.isMyBooking || isAdmin()) && selectedEvent.lead && (
+                    {(selectedEvent.isMySetting || isAdmin()) && selectedEvent.lead && (
                       <SetterUebergabe
                         lead={selectedEvent.lead}
                         onGespeichert={() => { setSelectedEvent(null); loadTermine() }}

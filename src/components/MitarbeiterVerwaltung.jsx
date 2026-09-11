@@ -1,3 +1,4 @@
+import { ROLLEN_VERGEBBAR, ROLLE_BESCHREIBUNG, ROLLE } from '../../shared/rollen.js'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -40,8 +41,11 @@ const BUNDESLAENDER = [
   'Thüringen'
 ]
 
-// Rollen Optionen
-const ROLLEN = ['Admin', 'Closer', 'Coldcaller']
+// Rollen Optionen. Setter und Geschäftsführer waren hier bisher nicht
+// vergebbar - die Rollen gab es in der Datenbank, aber niemand konnte sie
+// zuteilen. Coldcaller steht nicht mehr zur Auswahl: neue Mitarbeiter bekommen
+// Opener. Wer den alten Wert trägt, behält ihn, bis er umgetragen wird.
+const ROLLEN = ROLLEN_VERGEBBAR
 
 // Drawer Component mit Portal - Slide-in von rechts
 function Modal({ isOpen, onClose, children }) {

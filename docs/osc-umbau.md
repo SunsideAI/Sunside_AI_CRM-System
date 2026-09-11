@@ -202,3 +202,49 @@ fehlte. Bei 12 Wunsch-Aufträgen im Jahr und einer Quote von 3 von 10 hätte dor
 40 statt 3,3 gestanden, und laut F24 wird genau diese Zahl ins Strategiepapier
 übernommen. Korrigiert, dazu `anfragen_bereich` (unter 2 · 2 bis 4 · über 4)
 als berechnete Spalte.
+
+## Die Rollen
+
+Die Rolle **Setter gab es in der Datenbank, aber niemand konnte sie vergeben**:
+Die Mitarbeiterverwaltung bot nur `['Admin', 'Closer', 'Coldcaller']` an.
+Geschäftsführer fehlte ebenfalls. Entsprechend trug sie **null Nutzer**.
+
+`shared/rollen.js` ist jetzt die eine Quelle. Vergebbar sind Opener, Setter,
+Closer, Admin, Geschäftsführer. **Coldcaller steht nicht mehr zur Auswahl**,
+gilt aber weiterhin als Opener — 18 aktive Nutzer tragen den alten Wert, und
+am Tag der Umstellung wäre sonst die Kaltakquise für alle zu.
+
+| Seite | wer darf |
+|---|---|
+| Kaltakquise | Opener (und Coldcaller), Admin |
+| **Termine** | **alle Angemeldeten — hier arbeitet der Setter** |
+| Closing, Follow-Up | Closer, Admin |
+| Finanzen | Geschäftsführer |
+| Einstellungen | Admin |
+
+Der Setter bekommt bewusst **nur die Termine**. Dort liegt alles, was er
+braucht: sein Gespräch, „Termin fand statt" und die Übergabe an den Closer.
+
+### setter_id bedeutet etwas Neues
+
+Heute steht dort, **wer gebucht hat** — in 488 von 545 Fällen derselbe Mensch
+wie in `opener_id`. Im neuen Prozess legt der Opener den Termin und ein Setter
+hält ihn.
+
+Rückwirkend war dieser Setter immer **der Closer**: Eine eigene Setter-Rolle
+gab es nie, der Closer führte beide Gespräche selbst. Die Migration
+`20260913_osc_setter_rueckwirkend.sql` setzt das um und gibt allen Closern
+zusätzlich die Setter-Rolle — sonst zeigte `setter_id` auf jemanden, der die
+Setter-Ansicht nicht öffnen darf.
+
+- 562 Kontakte bekommen ihren Closer als Setter
+- 29 ohne Closer werden leer. Dort hat niemand ein Gespräch gehalten (22 davon
+  noch im Pool). Leer ist die ehrliche Antwort und genau der Zustand, den der
+  24-Stunden-Alarm aus Ticket 6 aufgreifen soll
+- `setter_id_alt` sichert den alten Wert. Er ist zwar meist auch in `opener_id`
+  erhalten, aber nicht immer: 15 Datensätze haben einen Setter ohne Opener
+
+**Diese Migration läuft nicht vor dem Deploy.** Der alte Code filtert die
+Termin-Ansicht allein über `setter_id`; würde man sie vorher einspielen,
+verlören alle Opener die von ihnen gelegten Termine aus den Augen. Der Code
+dieses Branches holt sie zusätzlich über `opener_id` — der alte nicht.
