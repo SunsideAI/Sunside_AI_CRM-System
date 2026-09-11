@@ -1,5 +1,6 @@
 // Send Email API via Resend - Supabase Version
 import { createClient } from '@supabase/supabase-js'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -10,7 +11,7 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json'
 }
@@ -19,6 +20,12 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' }
   }
+
+  // Identitaet kommt aus dem Sitzungs-Token, nicht aus der Anfrage.
+  const zugang = anmeldungVerlangen(event)
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
 
   if (event.httpMethod !== 'POST') {
     return {

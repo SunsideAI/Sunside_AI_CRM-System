@@ -1,6 +1,7 @@
 // Auth Function - Prüft User + Passwort gegen Supabase
 import bcrypt from 'bcryptjs'
 import { createClient } from '@supabase/supabase-js'
+import { tokenErzeugen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -10,7 +11,7 @@ const supabase = createClient(
 export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'
   }
@@ -38,33 +39,16 @@ export async function handler(event) {
       }
     }
 
-    // Prüfen ob Supabase konfiguriert ist
+    // Ohne Datenbank wird nicht angemeldet. Frueher gab es hier einen
+    // Demo-Modus, der jeder @sunsideai.de-Adresse mit dem Passwort "demo"
+    // Admin-Rechte gab - ein Ausfall der Umgebungsvariablen haette damit das
+    // ganze CRM geoeffnet.
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
-      // Demo-Modus
-      console.log('Supabase nicht konfiguriert - Demo-Modus')
-
-      if (email.includes('@sunsideai.de') && password === 'demo') {
-        return {
-          statusCode: 200,
-          headers,
-          body: JSON.stringify({
-            user: {
-              id: 'demo-1',
-              vorname: 'Demo',
-              name: 'User',
-              vor_nachname: 'Demo User',
-              email: email,
-              rolle: ['Setter', 'Closer', 'Admin'],
-              google_calendar_id: ''
-            }
-          })
-        }
-      }
-
+      console.error('Anmeldung nicht moeglich: Datenbank nicht konfiguriert')
       return {
-        statusCode: 401,
+        statusCode: 503,
         headers,
-        body: JSON.stringify({ error: 'Ungültige Anmeldedaten' })
+        body: JSON.stringify({ error: 'Anmeldung derzeit nicht moeglich' })
       }
     }
 
@@ -118,8 +102,18 @@ export async function handler(event) {
       // Gehashtes Passwort - mit bcrypt vergleichen
       isValid = await bcrypt.compare(password, storedPassword)
     } else {
-      // Klartext-Passwort (Legacy) - direkter Vergleich
+      // Klartext-Passwort aus der Airtable-Zeit. Wird akzeptiert, damit sich
+      // niemand aussperrt - aber sofort durch einen Hash ersetzt.
       isValid = (storedPassword === password)
+      if (isValid) {
+        try {
+          const hash = await bcrypt.hash(password, 10)
+          await supabase.from('users').update({ password_hash: hash }).eq('id', dbUser.id)
+          console.log('Klartext-Passwort in Hash ueberfuehrt:', dbUser.id)
+        } catch (e) {
+          console.error('Hash-Umstellung fehlgeschlagen:', e)
+        }
+      }
     }
 
     if (!isValid) {
@@ -155,10 +149,14 @@ export async function handler(event) {
       }
     }
 
+    // Ab hier stammt die Identitaet des Nutzers aus diesem Token und nicht
+    // mehr aus einer user_id in der Query.
+    const token = tokenErzeugen(user)
+
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({ user })
+      body: JSON.stringify({ user, token })
     }
 
   } catch (error) {

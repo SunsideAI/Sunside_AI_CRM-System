@@ -1,6 +1,7 @@
 // E-Book Leads API - Supabase Version
 // Empfängt Leads vom E-Book Funnel und verwaltet den E-Book Pool
 import { createClient } from '@supabase/supabase-js'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -136,6 +137,14 @@ async function notifyVertrieblers(vertriebler, leadData) {
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' }
+  }
+
+  // POST ist das oeffentliche E-Book-Formular auf der Website und bleibt ohne
+  // Anmeldung erreichbar. Lesen und Aendern nicht - dort haengen Kontaktdaten
+  // aller Interessenten dran.
+  if (event.httpMethod !== 'POST') {
+    const zugang = anmeldungVerlangen(event)
+    if (zugang.antwort) return zugang.antwort
   }
 
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {

@@ -1,7 +1,8 @@
 // No-Show Benachrichtigungen
 // Sendet In-App-Notification und E-Mail an Setter bei No-Show
 
-const { createClient } = require('@supabase/supabase-js')
+import { createClient } from '@supabase/supabase-js'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -10,15 +11,21 @@ const supabase = createClient(
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
   'Content-Type': 'application/json'
 }
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' }
   }
+
+  // Identitaet kommt aus dem Sitzungs-Token, nicht aus der Anfrage.
+  const zugang = anmeldungVerlangen(event)
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
 
   if (event.httpMethod !== 'POST') {
     return {

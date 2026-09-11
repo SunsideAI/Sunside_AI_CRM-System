@@ -2,6 +2,7 @@
 // GET: Liest billing_recurring, billing_contacts, billing_invoices für einen Lead
 
 import { createClient } from '@supabase/supabase-js'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -11,7 +12,7 @@ const supabase = createClient(
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json'
 }
 
@@ -19,6 +20,12 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' }
   }
+
+  // Identitaet kommt aus dem Sitzungs-Token, nicht aus der Anfrage.
+  const zugang = anmeldungVerlangen(event)
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
 
   if (event.httpMethod !== 'GET') {
     return {
@@ -29,14 +36,11 @@ export async function handler(event) {
   }
 
   // Auth-Check: nur Geschäftsführer dürfen Billing-Daten lesen
-  const userId = event.queryStringParameters?.user_id
-  if (!userId) {
-    return {
-      statusCode: 401,
-      headers: corsHeaders,
-      body: JSON.stringify({ error: 'User ID required' })
-    }
-  }
+  // Frueher stand hier eine user_id aus der Query - jeder Aufrufer konnte die
+  // eines Geschaeftsfuehrers einsetzen und die Zahlen lesen. Die Identitaet
+  // kommt jetzt aus dem Token; die Rollen werden darunter frisch aus der
+  // Datenbank geprueft, damit ein Rollenentzug sofort wirkt.
+  const userId = angemeldet.id
 
   const { data: authUser } = await supabase
     .from('users')

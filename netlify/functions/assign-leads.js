@@ -1,5 +1,6 @@
 // Admin-Funktion: Leads einem User zuweisen
 import { createClient } from '@supabase/supabase-js'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,7 +10,7 @@ const supabase = createClient(
 export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Content-Type': 'application/json'
   }
@@ -17,6 +18,12 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers, body: '' }
   }
+
+  // Nur die Leitung.
+  const zugang = anmeldungVerlangen(event, ['Admin', 'Geschäftsführer'])
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
 
   try {
     // GET: Zeige aktuelle Zuordnungen

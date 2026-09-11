@@ -1,6 +1,7 @@
-const fetch = require('node-fetch');
+import { anmeldungVerlangen } from './utils/session.js'
+// Node 18+ bringt fetch mit - kein Paket noetig.
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
@@ -11,6 +12,12 @@ exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' };
   }
+
+  // Identitaet kommt aus dem Sitzungs-Token, nicht aus der Anfrage.
+  const zugang = anmeldungVerlangen(event)
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
 
   if (event.httpMethod !== 'POST') {
     return {

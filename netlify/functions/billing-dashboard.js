@@ -2,6 +2,7 @@
 // GET: Liest KPIs, aktive Verträge, Rechnungen und Analytics-Daten
 
 import { createClient } from '@supabase/supabase-js'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -11,7 +12,7 @@ const supabase = createClient(
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json'
 }
 
@@ -28,6 +29,12 @@ export async function handler(event) {
     return { statusCode: 204, headers: corsHeaders, body: '' }
   }
 
+  // Nur die Leitung.
+  const zugang = anmeldungVerlangen(event, ['Geschäftsführer', 'Admin'])
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
+
   if (event.httpMethod !== 'GET') {
     return {
       statusCode: 405,
@@ -37,14 +44,11 @@ export async function handler(event) {
   }
 
   // Auth-Check: nur Geschäftsführer
-  const userId = event.queryStringParameters?.user_id
-  if (!userId) {
-    return {
-      statusCode: 401,
-      headers: corsHeaders,
-      body: JSON.stringify({ error: 'User ID required' })
-    }
-  }
+  // Frueher stand hier eine user_id aus der Query - jeder Aufrufer konnte die
+  // eines Geschaeftsfuehrers einsetzen und die Zahlen lesen. Die Identitaet
+  // kommt jetzt aus dem Token; die Rollen werden darunter frisch aus der
+  // Datenbank geprueft, damit ein Rollenentzug sofort wirkt.
+  const userId = angemeldet.id
 
   const { data: authUser } = await supabase
     .from('users')

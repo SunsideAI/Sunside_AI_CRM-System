@@ -1,5 +1,6 @@
 // Leads API - Laden und Aktualisieren von Leads - Supabase Version
 import { createClient } from '@supabase/supabase-js'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -45,7 +46,7 @@ function arrayToNumber(value, defaultValue = null) {
 export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, PATCH, OPTIONS',
     'Content-Type': 'application/json'
   }
@@ -53,6 +54,12 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' }
   }
+
+  // Identitaet kommt aus dem Sitzungs-Token, nicht aus der Anfrage.
+  const zugang = anmeldungVerlangen(event)
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
 
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
     return {

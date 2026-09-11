@@ -1,6 +1,7 @@
 // Vertrag erneut senden - Holt User-Daten aus Supabase und sendet an Zapier
 // READ-ONLY: Modifiziert keine Daten, nur Lesen + Forward an Zapier
 import { createClient } from '@supabase/supabase-js'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -10,7 +11,7 @@ const supabase = createClient(
 export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'
   }
@@ -18,6 +19,12 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers }
   }
+
+  // Nur die Leitung.
+  const zugang = anmeldungVerlangen(event, ['Admin', 'Geschäftsführer'])
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
 
   if (event.httpMethod !== 'POST') {
     return {

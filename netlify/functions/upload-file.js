@@ -1,6 +1,7 @@
 // File Upload zu Supabase Storage (ersetzt Cloudinary)
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'crypto'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -9,16 +10,22 @@ const supabase = createClient(
 
 const BUCKET_NAME = 'attachments'
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS'
   }
 
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders }
   }
+
+  // Identitaet kommt aus dem Sitzungs-Token, nicht aus der Anfrage.
+  const zugang = anmeldungVerlangen(event)
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
 
   // Prüfen ob Supabase konfiguriert ist
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {

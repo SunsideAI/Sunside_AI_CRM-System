@@ -5,6 +5,7 @@
 // PATCH: Action oder Lead updaten
 
 import { createClient } from '@supabase/supabase-js'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -74,6 +75,12 @@ export async function handler(event) {
     return { statusCode: 204, headers: corsHeaders, body: '' }
   }
 
+  // Identitaet kommt aus dem Sitzungs-Token, nicht aus der Anfrage.
+  const zugang = anmeldungVerlangen(event)
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
+
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
     return {
       statusCode: 500,
@@ -82,16 +89,9 @@ export async function handler(event) {
     }
   }
 
-  // User-ID aus Query-Params oder Body extrahieren
-  let userId = null
-  if (event.httpMethod === 'GET') {
-    userId = (event.queryStringParameters || {}).userId
-  } else if (event.body) {
-    try {
-      const body = JSON.parse(event.body)
-      userId = body.userId
-    } catch (e) {}
-  }
+  // Identitaet aus dem Token. Frueher kam sie aus Query oder Body und liess
+  // sich auf einen beliebigen Closer richten.
+  const userId = angemeldet.id
 
   // User-Zugang prüfen (Admin oder Closer)
   const { isAdmin, isCloser, closerId } = await checkUserAccess(userId)

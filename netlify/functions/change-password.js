@@ -1,6 +1,7 @@
 // Change Password Function - Ändert Passwort für eingeloggten User - Supabase Version
 import bcrypt from 'bcryptjs'
 import { createClient } from '@supabase/supabase-js'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -10,7 +11,7 @@ const supabase = createClient(
 export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'
   }
@@ -18,6 +19,12 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' }
   }
+
+  // Identitaet kommt aus dem Sitzungs-Token, nicht aus der Anfrage.
+  const zugang = anmeldungVerlangen(event)
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
 
   if (event.httpMethod !== 'POST') {
     return {
@@ -28,7 +35,10 @@ export async function handler(event) {
   }
 
   try {
-    const { userId, currentPassword, newPassword } = JSON.parse(event.body)
+    const { currentPassword, newPassword } = JSON.parse(event.body)
+    // Man aendert nur das eigene Passwort. Frueher kam die userId aus dem
+    // Body und liess sich auf einen fremden Account richten.
+    const userId = angemeldet.id
 
     if (!userId || !currentPassword || !newPassword) {
       return {

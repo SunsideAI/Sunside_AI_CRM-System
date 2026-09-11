@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { v4 as uuidv4 } from 'uuid'
+import { rueckrufEcht } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -10,6 +11,12 @@ export const handler = async (event) => {
   // Allow both POST and GET for flexibility
   if (event.httpMethod !== 'POST' && event.httpMethod !== 'GET') {
     return { statusCode: 405, body: 'Method not allowed' }
+  }
+
+  // Der Rueckruf schreibt Analyse-Ergebnisse in die Datenbank und war bis
+  // hierher fuer jeden offen.
+  if (!rueckrufEcht(event, 'SEO_CALLBACK_SECRET')) {
+    return { statusCode: 401, body: JSON.stringify({ error: 'Nicht berechtigt' }) }
   }
 
   try {

@@ -33,7 +33,7 @@ function Login() {
         throw new Error(data.error || 'Login fehlgeschlagen')
       }
 
-      login(data.user)
+      login(data.user, data.token)
       navigate('/dashboard')
     } catch (err) {
       setError(err.message)

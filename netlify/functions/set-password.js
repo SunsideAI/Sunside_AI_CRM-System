@@ -1,6 +1,7 @@
 // Set Password Function - Hasht Passwort und speichert in Supabase
 import bcrypt from 'bcryptjs'
 import { createClient } from '@supabase/supabase-js'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -10,7 +11,7 @@ const supabase = createClient(
 export async function handler(event) {
   const headers = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Content-Type': 'application/json'
   }
@@ -18,6 +19,12 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers, body: '' }
   }
+
+  // Nur die Leitung.
+  const zugang = anmeldungVerlangen(event, ['Admin', 'Geschäftsführer'])
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
 
   if (event.httpMethod !== 'POST') {
     return {
@@ -28,7 +35,11 @@ export async function handler(event) {
   }
 
   try {
-    const { userId, password, adminId } = JSON.parse(event.body)
+    // userId ist das Ziel - das Setzen fremder Passwoerter ist gewollt, aber
+    // nur fuer die Leitung (siehe Wache oben). Wer es tut, sagt nicht mehr die
+    // Anfrage, sondern das Token.
+    const { userId, password } = JSON.parse(event.body)
+    const adminId = angemeldet.id
 
     if (!userId || !password) {
       return {

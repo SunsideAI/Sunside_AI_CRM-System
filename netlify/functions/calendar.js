@@ -1,17 +1,24 @@
+import { anmeldungVerlangen } from './utils/session.js'
 // Calendly API Integration (Google Calendar entfernt)
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Content-Type': 'application/json'
 }
 
-exports.handler = async (event) => {
+export const handler = async (event) => {
   // CORS Preflight
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: corsHeaders, body: '' }
   }
+
+  // Identitaet kommt aus dem Sitzungs-Token, nicht aus der Anfrage.
+  const zugang = anmeldungVerlangen(event)
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
 
   // Calendly API Key prüfen
   if (!process.env.CALENDLY_API_KEY) {

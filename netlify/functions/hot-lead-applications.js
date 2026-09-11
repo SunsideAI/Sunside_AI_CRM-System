@@ -4,6 +4,7 @@
 // PATCH: Bewerbung bearbeiten (Admin genehmigt/ablehnt)
 
 import { createClient } from '@supabase/supabase-js'
+import { anmeldungVerlangen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -12,7 +13,7 @@ const supabase = createClient(
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
   'Content-Type': 'application/json'
 }
@@ -32,6 +33,12 @@ export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' }
   }
+
+  // Identitaet kommt aus dem Sitzungs-Token, nicht aus der Anfrage.
+  const zugang = anmeldungVerlangen(event)
+  if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
+
 
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
     return {
@@ -245,7 +252,16 @@ export async function handler(event) {
 
     // PATCH - Bewerbung bearbeiten (Admin genehmigt/ablehnt)
     if (event.httpMethod === 'PATCH') {
-      const { bewerbungId, status, adminKommentar, adminId } = JSON.parse(event.body)
+      const { bewerbungId, status, adminKommentar } = JSON.parse(event.body)
+      // Wer genehmigt, steht im Token - nicht in der Anfrage.
+      const adminId = angemeldet.id
+      if (!angemeldet.istAdmin) {
+        return {
+          statusCode: 403,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'Nur die Leitung darf Bewerbungen entscheiden' })
+        }
+      }
 
       if (!bewerbungId || !status) {
         return {
