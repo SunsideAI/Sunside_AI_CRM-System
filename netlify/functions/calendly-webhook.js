@@ -3,6 +3,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { calendlyEcht } from './utils/session.js'
+import { STATUS } from '../../shared/status.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -446,7 +447,8 @@ export async function handler(event) {
           termin_beratungsgespraech: newScheduledTime,
           terminart,
           meeting_link: meetingLink,
-          status: 'Lead',
+          status: STATUS.BERATUNG_VEREINBART,
+          zuletzt_geaendert_durch: 'calendly-webhook',
           quelle: 'Calendly Direkt',
           setter_id: null,
           closer_id: null
@@ -760,7 +762,7 @@ async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
   // Nur Status ändern - termin_beratungsgespraech bleibt erhalten für Referenz
   const { error } = await supabase
     .from('hot_leads')
-    .update({ status: 'Termin abgesagt' })
+    .update({ status: STATUS.TERMIN_ABGESAGT, zuletzt_geaendert_durch: 'calendly-webhook' })
     .eq('id', hotLeadId)
 
   if (error) {
@@ -781,7 +783,11 @@ async function updateHotLeadTermin(hotLeadId, neuerTermin, originalLeadId, alter
 
   const { error } = await supabase
     .from('hot_leads')
-    .update({ termin_beratungsgespraech: neuerTermin, status: 'Termin verschoben' })
+    .update({
+      termin_beratungsgespraech: neuerTermin,
+      status: STATUS.BERATUNG_VEREINBART,
+      zuletzt_geaendert_durch: 'calendly-webhook'
+    })
     .eq('id', hotLeadId)
 
   if (error) {

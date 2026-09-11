@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { normalisiere } from '../../shared/status.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -110,7 +111,7 @@ export async function handler(event) {
         ansprechpartner: [record.hot_lead?.original_lead?.ansprechpartner_vorname, record.hot_lead?.original_lead?.ansprechpartner_nachname].filter(Boolean).join(' ') || '',
         stadt: record.hot_lead?.original_lead?.stadt || '',
         terminDatum: record.hot_lead?.termin_beratungsgespraech || null,
-        hotLeadStatus: record.hot_lead?.status || '',
+        hotLeadStatus: normalisiere(record.hot_lead?.status) || '',
         setterName: record.hot_lead?.setter?.vor_nachname || ''
       }))
 

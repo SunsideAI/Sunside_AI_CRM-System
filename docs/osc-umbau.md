@@ -15,7 +15,8 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | 0.4 | opener_id + Zuordnungs-Verlauf | fertig, im Live-Branch |
 | 2 | Neue Felder laut Schema-Delta | **eingespielt** (`20260912_osc_felder.sql`) |
 | 3 | Ereignis-Verlauf | **eingespielt** (Protokoll-Trigger aktiv) |
-| 1 | Statuskette | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
+| 1 | Statuskette — Code | **fertig** (`shared/status.js`, 15 Dateien) |
+| 1 | Statuskette — Datenbank | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
 
 ## Warum die Statuskette noch wartet
 
@@ -103,3 +104,42 @@ Pflicht-Grund, damit die Rückgabequote zählbar bleibt.
   angelegt, die Umstellung ist eine eigene Entscheidung.
 - Strecke B: Vertriebshandbuch sagt Tag 0/3/7/14/**21**, Miro sagt **28**.
 - Die Mail-Wortlaute („ressourcen-crm-mailstrecken") liegen nicht im Repo.
+
+## Die Status im Code
+
+Eine Quelle für beide Seiten: `shared/status.js`. Vorher standen die Werte rund
+140-mal verstreut in 15 Dateien. Zwei Fallen steckten darin:
+
+- **`'Termin abgesagt'` und `'Termin verschoben'` sind gleichzeitig Werte des
+  `message_type`-Enums** für Systemnachrichten. Ein pauschales Ersetzen hätte
+  die Benachrichtigungen zerschossen. Die Nachrichten-Typen sind unverändert
+  geblieben; nur die Lead-Status wurden umgestellt.
+- **`analytics.js` verglich auf Teilzeichenketten in Kleinbuchstaben**
+  (`includes('abgeschlossen')`, `includes('closing')`). `Gewonnen` wäre dort
+  ohne Fehlermeldung aus jeder Statistik gefallen. Ersetzt durch benannte Werte.
+
+`'Termin verschoben'` ist kein Status mehr, sondern eine Terminänderung: Der
+Lead bleibt auf „Beratungsgespräch vereinbart", nur das Datum wechselt.
+Erkannt wird das über `hasTerminChange` statt über den Status.
+
+### Lesen ist tolerant, Schreiben nicht
+
+Die Functions bringen jeden gelesenen Status über `normalisiere()` auf die neue
+Liste, bevor ihn irgendwer sieht. Geschrieben werden nur noch die neuen Werte.
+Damit läuft der Code gegen beide Datenstände — und es gibt kein Fenster, in dem
+Listen leer aussehen, weil Migration und Deploy nicht dieselbe Sekunde treffen.
+
+Zwei Stellen mussten beide Schreibweisen annehmen, bis die Migration läuft:
+
+- der Bridge-Auslöser in `hot-leads.js` — sonst bliebe die Rechnungsstellung
+  beim ersten neu gesetzten Wert aus
+- die Follow-Up-Abfragen, die gewonnene Leads ausschliessen
+
+### Wer geschrieben hat
+
+`set_config()` taugt nicht: Jeder PostgREST-Aufruf ist eine eigene Transaktion.
+Der Akteur reist deshalb in derselben Zeile mit (`zuletzt_geaendert_von`), der
+Protokoll-Trigger liest ihn dort ab. Schreiber ohne angemeldeten Nutzer — der
+Calendly-Webhook — kennzeichnen sich über `zuletzt_geaendert_durch`. Damit ist
+im Verlauf unterscheidbar: Person, bekanntes System, oder unbekannt. Nur die
+dritte Gruppe ist die Frage, wegen der das Protokoll existiert.

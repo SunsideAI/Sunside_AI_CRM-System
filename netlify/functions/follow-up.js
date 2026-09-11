@@ -1,5 +1,5 @@
 // Follow-Up API - Admin + Closer
-// GET: Follow-Up Leads laden (Hot Leads außer Abgeschlossen)
+// GET: Follow-Up Leads laden (Hot Leads ausser den gewonnenen)
 // GET ?kanban=true: Alle Actions für Kanban Board
 // POST: Neue Action anlegen
 // PATCH: Action oder Lead updaten
@@ -161,7 +161,7 @@ export async function handler(event) {
           .from('hot_leads')
           .select('id, unternehmen, closer_id')
           .in('id', leadIds)
-          .neq('status', 'Abgeschlossen')
+          .not('status', 'in', '("Abgeschlossen","Gewonnen")')
 
         // Closer sieht nur eigene Leads
         if (isCloser && !isAdmin) {
@@ -291,7 +291,7 @@ export async function handler(event) {
             mail
           )
         `)
-        .neq('status', 'Abgeschlossen')
+        .not('status', 'in', '("Abgeschlossen","Gewonnen")')
 
       // Closer sieht nur eigene Leads
       if (isCloser && !isAdmin) {
@@ -350,7 +350,7 @@ export async function handler(event) {
       let countQuery = supabase
         .from('hot_leads')
         .select('*', { count: 'exact', head: true })
-        .neq('status', 'Abgeschlossen')
+        .not('status', 'in', '("Abgeschlossen","Gewonnen")')
 
       if (isCloser && !isAdmin) {
         countQuery = countQuery.eq('closer_id', closerId)

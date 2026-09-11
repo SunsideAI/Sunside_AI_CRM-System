@@ -1,3 +1,4 @@
+import { STATUS } from '../../shared/status.js'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
@@ -1094,11 +1095,11 @@ function Kaltakquise() {
                   <div className="text-sm text-on-surface-variant flex items-center gap-2 mt-0.5">
                     <span>{lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}</span>
                     {/* Status-Badge */}
-                    {lead.status === 'Nicht erschienen' ? (
+                    {lead.status === STATUS.NICHT_ERSCHIENEN ? (
                       <span className="px-1.5 py-0.5 bg-rose-100 text-rose-700 rounded text-xs font-medium">
                         {(lead.no_show_count || 0) > 1 ? `${lead.no_show_count}. No-Show` : 'No-Show'}
                       </span>
-                    ) : lead.status === 'Termin abgesagt' ? (
+                    ) : lead.status === STATUS.TERMIN_ABGESAGT ? (
                       <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 rounded text-xs font-medium">
                         Abgesagt
                       </span>
@@ -1549,7 +1550,7 @@ function Kaltakquise() {
                   lead={selectedLead}
                   onTerminBooked={async (termin) => {
                     // Bei Re-Terminierung (No-Show oder Abgesagt): Hot Lead Status auf "Im Closing" setzen + Closer benachrichtigen
-                    const isReEngagement = hotLeadData?.id && (hotLeadData?.status === 'Nicht erschienen' || hotLeadData?.status === 'Termin abgesagt')
+                    const isReEngagement = hotLeadData?.id && (hotLeadData?.status === STATUS.NICHT_ERSCHIENEN || hotLeadData?.status === STATUS.TERMIN_ABGESAGT)
                     if (isReEngagement) {
                       try {
                         // Hot Lead Status updaten
@@ -1559,7 +1560,7 @@ function Kaltakquise() {
                           body: JSON.stringify({
                             hotLeadId: hotLeadData.id,
                             updates: {
-                              status: 'Im Closing',
+                              status: STATUS.IM_ABSCHLUSS,
                               terminDatum: termin.datum
                             }
                           })
@@ -1567,7 +1568,7 @@ function Kaltakquise() {
 
                         // Closer über neuen Termin benachrichtigen (wenn Closer zugewiesen)
                         if (hotLeadData.closerId) {
-                          const statusText = hotLeadData.status === 'Nicht erschienen' ? 'nicht erschienen' : 'abgesagt'
+                          const statusText = hotLeadData.status === STATUS.NICHT_ERSCHIENEN ? 'nicht erschienen' : 'abgesagt'
                           await fetch('/.netlify/functions/system-messages', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -1665,7 +1666,7 @@ function Kaltakquise() {
                     <Loader2 className="w-5 h-5 text-gray-400 animate-spin flex-shrink-0" />
                     <span className="text-sm text-gray-500">Status wird geladen...</span>
                   </div>
-                ) : hotLeadData?.status === 'Nicht erschienen' && hotLeadData?.setterId === user?.id ? (
+                ) : hotLeadData?.status === STATUS.NICHT_ERSCHIENEN && hotLeadData?.setterId === user?.id ? (
                   <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-3">
                     <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
                     <div>
@@ -1677,7 +1678,7 @@ function Kaltakquise() {
                       </p>
                     </div>
                   </div>
-                ) : hotLeadData?.status === 'Termin abgesagt' && hotLeadData?.setterId === user?.id ? (
+                ) : hotLeadData?.status === STATUS.TERMIN_ABGESAGT && hotLeadData?.setterId === user?.id ? (
                   <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-3">
                     <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0" />
                     <div>
@@ -2187,11 +2188,11 @@ function Kaltakquise() {
                         {/* Soft Lock: Bei Beratungsgespräch nur Kommentar-Button, AUSSER bei Re-Engagement */}
                         {selectedLead.ergebnis === 'Beratungsgespräch' ? (
                           // No-Show oder Abgesagt: Setter kann voll bearbeiten
-                          (hotLeadData?.status === 'Nicht erschienen' || hotLeadData?.status === 'Termin abgesagt') && hotLeadData?.setterId === user?.id ? (
+                          (hotLeadData?.status === STATUS.NICHT_ERSCHIENEN || hotLeadData?.status === STATUS.TERMIN_ABGESAGT) && hotLeadData?.setterId === user?.id ? (
                             <button
                               onClick={() => setEditMode(true)}
                               className={`flex items-center px-4 py-2 text-white rounded-lg transition-colors ${
-                                hotLeadData?.status === 'Termin abgesagt'
+                                hotLeadData?.status === STATUS.TERMIN_ABGESAGT
                                   ? 'bg-orange-600 hover:bg-orange-700'
                                   : 'bg-rose-600 hover:bg-rose-700'
                               }`}

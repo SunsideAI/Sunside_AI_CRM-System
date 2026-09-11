@@ -1,3 +1,4 @@
+import { STATUS, IST_VERLOREN, anzeigeName } from '../../shared/status.js'
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
@@ -101,20 +102,22 @@ const TEXTBAUSTEINE = [
 
 // Status-Optionen für Dropdown (alle DB-Enum-Werte: hot_lead_status_type)
 const STATUS_OPTIONS = [
-  { value: 'Lead', label: 'Lead', color: 'bg-blue-100 text-blue-700' },
-  { value: 'Geplant', label: 'Geplant', color: 'bg-cyan-100 text-cyan-700' },
-  { value: 'Im Closing', label: 'Im Closing', color: 'bg-indigo-100 text-indigo-700' },
-  { value: 'Nicht erschienen', label: 'Nicht erschienen', color: 'bg-rose-100 text-rose-700' },
-  { value: 'Angebot', label: 'Angebot', color: 'bg-yellow-100 text-yellow-700' },
-  { value: 'Angebot versendet', label: 'Angebot versendet', color: 'bg-purple-100 text-purple-700' },
-  { value: 'Abgeschlossen', label: 'Abgeschlossen', color: 'bg-green-100 text-green-700' },
-  { value: 'Termin abgesagt', label: 'Termin abgesagt', color: 'bg-orange-100 text-orange-700' },
-  { value: 'Termin verschoben', label: 'Termin verschoben', color: 'bg-amber-100 text-amber-700' },
-  { value: 'Verloren', label: 'Verloren', color: 'bg-red-100 text-red-700' }
+  { value: STATUS.BERATUNG_VEREINBART,  label: 'Beratungsgespräch vereinbart', color: 'bg-blue-100 text-blue-700' },
+  { value: STATUS.BERATUNG_GEFUEHRT,    label: 'Beratungsgespräch geführt',    color: 'bg-sky-100 text-sky-700' },
+  { value: STATUS.ABSCHLUSS_VEREINBART, label: 'Abschlussgespräch vereinbart', color: 'bg-cyan-100 text-cyan-700' },
+  { value: STATUS.IM_ABSCHLUSS,         label: 'Im Abschluss',                 color: 'bg-indigo-100 text-indigo-700' },
+  { value: STATUS.NICHT_ERSCHIENEN,     label: 'Nicht erschienen',             color: 'bg-rose-100 text-rose-700' },
+  { value: STATUS.ANGEBOT_ANGEFORDERT,  label: anzeigeName(STATUS.ANGEBOT_ANGEFORDERT), color: 'bg-yellow-100 text-yellow-700' },
+  { value: STATUS.ANGEBOT_VERSCHICKT,   label: anzeigeName(STATUS.ANGEBOT_VERSCHICKT),  color: 'bg-purple-100 text-purple-700' },
+  { value: STATUS.WIRD_NACHGEFASST,     label: 'Wird nachgefasst',             color: 'bg-amber-100 text-amber-700' },
+  { value: STATUS.GEWONNEN,             label: 'Gewonnen',                     color: 'bg-green-100 text-green-700' },
+  { value: STATUS.TERMIN_ABGESAGT,      label: 'Termin abgesagt',              color: 'bg-orange-100 text-orange-700' },
+  { value: STATUS.VERLOREN_WIEDERVORLAGE, label: 'Verloren, wiedervorlagefähig', color: 'bg-teal-100 text-teal-700' },
+  { value: STATUS.VERLOREN_ENDGUELTIG,  label: 'Verloren, endgültig',          color: 'bg-red-100 text-red-700' }
 ]
 
 // Status-Optionen die manuell gewählt werden können (ohne "Angebot" - wird automatisch gesetzt)
-const SELECTABLE_STATUS_OPTIONS = STATUS_OPTIONS.filter(opt => opt.value !== 'Angebot')
+const SELECTABLE_STATUS_OPTIONS = STATUS_OPTIONS.filter(opt => opt.value !== STATUS.ANGEBOT_ANGEFORDERT)
 
 function Closing() {
   const { user, isAdmin, isCloser, isGeschaeftsfuehrer } = useAuth()
@@ -474,7 +477,9 @@ function Closing() {
         laufzeit: (() => { const n = parseInt(angebotData.laufzeit); return isNaN(n) ? 12 : n })(),
         produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
         vertragsbestandteile: angebotData.vertragsbestandteile,
-        status: 'Angebot'  // Zapier sendet dann das Angebot und setzt auf "Angebot versendet"
+        // Signal an die externe Angebots-Automatisierung; sie meldet mit
+        // "Angebot versendet" zurueck. Wert bleibt woertlich.
+        status: STATUS.ANGEBOT_ANGEFORDERT
       }
 
       // Website-Setup nur bei Website-Produkten
@@ -553,7 +558,7 @@ function Closing() {
               laufzeit: (() => { const n = parseInt(angebotData.laufzeit); return isNaN(n) ? 12 : n })(),
               produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
               vertragsbestandteile: angebotData.vertragsbestandteile,
-              status: 'Angebot'
+              status: STATUS.ANGEBOT_ANGEFORDERT
             }
           : lead
       ))
@@ -567,7 +572,7 @@ function Closing() {
         laufzeit: (() => { const n = parseInt(angebotData.laufzeit); return isNaN(n) ? 12 : n })(),
         produktDienstleistung: angebotData.produkt ? [angebotData.produkt] : [],
         vertragsbestandteile: angebotData.vertragsbestandteile,
-        status: 'Angebot'
+        status: STATUS.ANGEBOT_ANGEFORDERT
       }))
 
       // Zapier-Webhook wird jetzt serverseitig in hot-leads.js gesendet (CORS-frei)
@@ -1008,13 +1013,13 @@ function Closing() {
     }
 
     // NEU: Wenn Status auf "Abgeschlossen" wechselt -> erst Abschluss-Modal zeigen
-    if (editData.status === 'Abgeschlossen' && selectedLead.status !== 'Abgeschlossen') {
+    if (editData.status === STATUS.GEWONNEN && selectedLead.status !== STATUS.GEWONNEN) {
       setShowAbschlussForm(true)
       return
     }
 
     // NEU: Wenn Status auf "Nicht erschienen" wechselt -> erst No-Show-Modal zeigen
-    if (editData.status === 'Nicht erschienen' && selectedLead.status !== 'Nicht erschienen') {
+    if (editData.status === STATUS.NICHT_ERSCHIENEN && selectedLead.status !== STATUS.NICHT_ERSCHIENEN) {
       setNoShowKeepInClosing(false)  // Default: Setter wird benachrichtigt (wie bisher)
       setShowNoShowModal(true)
       return
@@ -1053,7 +1058,7 @@ function Closing() {
         body: JSON.stringify({
           hotLeadId: selectedLead.id,
           updates: {
-            status: 'Nicht erschienen',
+            status: STATUS.NICHT_ERSCHIENEN,
             no_show_count: newNoShowCount,
             no_show_marked_at: new Date().toISOString(),
             no_show_marked_by: user.id,
@@ -1118,10 +1123,10 @@ function Closing() {
       // Lead in lokaler Liste aktualisieren
       setLeads(prev => prev.map(l =>
         l.id === selectedLead.id
-          ? { ...l, status: 'Nicht erschienen', no_show_count: newNoShowCount, no_show_marked_at: new Date().toISOString(), no_show_keep_in_closing: noShowKeepInClosing }
+          ? { ...l, status: STATUS.NICHT_ERSCHIENEN, no_show_count: newNoShowCount, no_show_marked_at: new Date().toISOString(), no_show_keep_in_closing: noShowKeepInClosing }
           : l
       ))
-      setSelectedLead(prev => prev ? { ...prev, status: 'Nicht erschienen', no_show_count: newNoShowCount, no_show_marked_at: new Date().toISOString(), no_show_keep_in_closing: noShowKeepInClosing } : null)
+      setSelectedLead(prev => prev ? { ...prev, status: STATUS.NICHT_ERSCHIENEN, no_show_count: newNoShowCount, no_show_marked_at: new Date().toISOString(), no_show_keep_in_closing: noShowKeepInClosing } : null)
 
       const toastMsg = noShowKeepInClosing
         ? 'Lead als nicht erschienen markiert. Du betreust ihn selbst weiter.'
@@ -1144,8 +1149,10 @@ function Closing() {
   // Handler für No-Show → direkt auf Verloren setzen
   const handleNoShowToLost = async () => {
     setShowNoShowModal(false)
-    setEditData(prev => ({ ...prev, status: 'Verloren' }))
-    await doSave({ ...editData, status: 'Verloren' })
+    // Endgueltig verloren. Die Wiedervorlage-Variante braucht ein Datum und
+    // einen Anlass - die kommt mit dem Wiedervorlage-Wecker (Ticket 13).
+    setEditData(prev => ({ ...prev, status: STATUS.VERLOREN_ENDGUELTIG }))
+    await doSave({ ...editData, status: STATUS.VERLOREN_ENDGUELTIG })
   }
 
   // Interne Save-Funktion (früher handleSave)
@@ -1187,9 +1194,9 @@ function Closing() {
 
       // AUTOMATIK: Setter setzt neuen Termin bei "Nicht erschienen" → Status zurück auf "Im Closing"
       const isUserSetter = selectedLead.setterId === user?.id
-      const isNoShowStatus = selectedLead.status === 'Nicht erschienen'
+      const isNoShowStatus = selectedLead.status === STATUS.NICHT_ERSCHIENEN
       if (isUserSetter && isNoShowStatus && hasTerminChange && !hasStatusChange) {
-        hotLeadUpdates.status = 'Im Closing'
+        hotLeadUpdates.status = STATUS.IM_ABSCHLUSS
 
         // Notification an Closer über Re-Termin
         if (selectedLead.closerId && selectedLead.closerId !== user?.id) {
@@ -1220,7 +1227,7 @@ function Closing() {
       if (hasBillingData) {
         // billing_mode: 'auto' oder leer → aus Setup/Retainer ableiten.
         // Explizite Wahl (provision_partner, manual_external, reference) hat Vorrang.
-        // MUSS im selben PATCH wie status='Abgeschlossen' sein, damit der DB-Trigger
+        // MUSS im selben PATCH wie status='Gewonnen' sein, damit der DB-Trigger
         // die Bridge mit dem korrekten Modus anstößt.
         const chosenMode = data.billing_mode
         const finalBillingMode = (chosenMode && chosenMode !== 'auto')
@@ -1305,15 +1312,15 @@ function Closing() {
 
           // History-Eintrag für Status-Änderung
           if (hasStatusChange) {
-            const statusText = data.status === 'Abgeschlossen'
-              ? 'Deal abgeschlossen ✅'
-              : data.status === 'Verloren'
+            const statusText = data.status === STATUS.GEWONNEN
+              ? 'Deal gewonnen ✅'
+              : IST_VERLOREN.includes(data.status)
                 ? 'Lead verloren ❌'
-                : data.status === 'Termin abgesagt'
+                : data.status === STATUS.TERMIN_ABGESAGT
                   ? 'Termin abgesagt ❌'
-                  : data.status === 'Termin verschoben'
+                  : hasTerminChange
                     ? 'Termin verschoben 🔄'
-                    : `Status: ${data.status}`
+                    : `Status: ${anzeigeName(data.status)}`
 
             const statusResponse = await fetch('/.netlify/functions/leads', {
               method: 'PATCH',
@@ -1322,10 +1329,10 @@ function Closing() {
                 leadId: selectedLead.originalLeadId,
                 updates: {},
                 historyEntry: {
-                  action: data.status === 'Abgeschlossen' ? 'abgeschlossen' :
-                          data.status === 'Verloren' ? 'verloren' :
-                          data.status === 'Termin abgesagt' ? 'termin_abgesagt' :
-                          data.status === 'Termin verschoben' ? 'termin_verschoben' : 'status_update',
+                  action: data.status === STATUS.GEWONNEN ? 'abgeschlossen' :
+                          IST_VERLOREN.includes(data.status) ? 'verloren' :
+                          data.status === STATUS.TERMIN_ABGESAGT ? 'termin_abgesagt' :
+                          hasTerminChange ? 'termin_verschoben' : 'status_update',
                   details: statusText,
                   userName: userName
                 }
@@ -1355,7 +1362,7 @@ function Closing() {
           try {
             let messageData = null
 
-            if (data.status === 'Termin abgesagt') {
+            if (data.status === STATUS.TERMIN_ABGESAGT) {
               messageData = {
                 empfaengerId: setterId,
                 typ: 'Termin abgesagt',
@@ -1363,7 +1370,7 @@ function Closing() {
                 nachricht: `Der Termin mit ${unternehmen}${terminDatum ? ` am ${terminDatum}` : ''} wurde abgesagt.`,
                 hotLeadId: selectedLead.id
               }
-            } else if (data.status === 'Termin verschoben') {
+            } else if (hasTerminChange && !hasStatusChange) {
               messageData = {
                 empfaengerId: setterId,
                 typ: 'Termin verschoben',
@@ -1371,7 +1378,7 @@ function Closing() {
                 nachricht: `Der Termin mit ${unternehmen}${terminDatum ? ` (ursprünglich ${terminDatum})` : ''} wurde verschoben. Ein neuer Termin wird vereinbart.`,
                 hotLeadId: selectedLead.id
               }
-            } else if (data.status === 'Abgeschlossen') {
+            } else if (data.status === STATUS.GEWONNEN) {
               messageData = {
                 empfaengerId: setterId,
                 typ: 'Lead gewonnen',
@@ -1379,7 +1386,7 @@ function Closing() {
                 nachricht: `Herzlichen Glückwunsch! Dein Lead "${unternehmen}" wurde erfolgreich abgeschlossen!`,
                 hotLeadId: selectedLead.id
               }
-            } else if (data.status === 'Verloren') {
+            } else if (IST_VERLOREN.includes(data.status)) {
               messageData = {
                 empfaengerId: setterId,
                 typ: 'Lead verloren',
@@ -1470,7 +1477,7 @@ function Closing() {
       }))
       setEditData(prev => ({ ...prev, neuerKommentar: '', kommentar: updatedKommentar }))
       setEditMode(false)
-      showToast('success', data.status === 'Abgeschlossen' ? 'Lead erfolgreich abgeschlossen!' : hasTerminChange ? 'Termin verschoben' : 'Änderungen gespeichert')
+      showToast('success', data.status === STATUS.GEWONNEN ? 'Deal gewonnen!' : hasTerminChange ? 'Termin verschoben' : 'Änderungen gespeichert')
       
       // Bei Status-Änderung Modal schließen (wie vorher)
       if (hasStatusChange) {
@@ -2019,20 +2026,20 @@ function Closing() {
                       <td className="px-4 py-4">
                         <div
                           className={`p-1.5 rounded-lg inline-flex ${
-                            lead.status === 'Abgeschlossen'
+                            lead.status === STATUS.GEWONNEN
                               ? 'bg-success-container text-success'
-                              : lead.status === 'Verloren'
+                              : IST_VERLOREN.includes(lead.status)
                               ? 'bg-error-container text-error'
-                              : lead.status === 'Angebot' || lead.status === 'Angebot versendet'
+                              : lead.status === STATUS.ANGEBOT_ANGEFORDERT || lead.status === STATUS.ANGEBOT_VERSCHICKT
                               ? 'bg-warning-container text-warning'
                               : 'bg-surface-container text-outline'
                           }`}
                         >
-                          {lead.status === 'Abgeschlossen' ? (
+                          {lead.status === STATUS.GEWONNEN ? (
                             <CheckCircle className="w-5 h-5" />
-                          ) : lead.status === 'Verloren' ? (
+                          ) : IST_VERLOREN.includes(lead.status) ? (
                             <AlertCircle className="w-5 h-5" />
-                          ) : lead.status === 'Angebot' || lead.status === 'Angebot versendet' ? (
+                          ) : lead.status === STATUS.ANGEBOT_ANGEFORDERT || lead.status === STATUS.ANGEBOT_VERSCHICKT ? (
                             <FileText className="w-5 h-5" />
                           ) : (
                             <Calendar className="w-5 h-5" />
@@ -2574,7 +2581,7 @@ function Closing() {
                   {(() => {
                     const terminDate = new Date(selectedLead.terminDatum)
                     const isInPast = terminDate < new Date()
-                    const isAbgesagt = selectedLead.status === 'Termin abgesagt'
+                    const isAbgesagt = selectedLead.status === STATUS.TERMIN_ABGESAGT
                     const headerText = isInPast || isAbgesagt ? 'Neuen Termin buchen' : 'Termin verschieben'
                     
                     return (
@@ -2622,11 +2629,11 @@ function Closing() {
                   {!editMode && (
                     <div className="space-y-3">
                       {/* Termin verschieben/neu buchen Button - für alle Leads mit Termin */}
-                      {selectedLead.terminDatum && selectedLead.status !== 'Abgeschlossen' && selectedLead.status !== 'Verloren' && (() => {
+                      {selectedLead.terminDatum && selectedLead.status !== STATUS.GEWONNEN && !IST_VERLOREN.includes(selectedLead.status) && (() => {
                         const terminDate = new Date(selectedLead.terminDatum)
                         const now = new Date()
                         const isInPast = terminDate < now
-                        const isAbgesagt = selectedLead.status === 'Termin abgesagt'
+                        const isAbgesagt = selectedLead.status === STATUS.TERMIN_ABGESAGT
                         
                         return (
                           <button
@@ -2647,7 +2654,7 @@ function Closing() {
                           className="btn-primary flex items-center justify-center"
                         >
                           <Send className="w-4 h-4 mr-2" />
-                          {selectedLead.status === 'Lead' ? 'Angebot versenden' : 'Neues Angebot'}
+                          {selectedLead.status === STATUS.BERATUNG_VEREINBART ? 'Angebot versenden' : 'Neues Angebot'}
                         </button>
                         <button
                           type="button"
@@ -2888,7 +2895,7 @@ function Closing() {
                   </div>
 
                   {/* DEAL-DETAILS Section (wenn nicht Lead-Status) */}
-                  {selectedLead.status !== 'Lead' && (
+                  {selectedLead.status !== STATUS.BERATUNG_VEREINBART && (
                     <div className="space-y-3 border-t border-outline-variant pt-6">
                       <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide flex items-center gap-2">
                         <Euro className="w-4 h-4" />
@@ -2922,7 +2929,7 @@ function Closing() {
                   )}
 
                   {/* BILLING Section (nur bei Abgeschlossen UND nur für Geschäftsführer) */}
-                  {selectedLead.status === 'Abgeschlossen' && isGeschaeftsfuehrer() && (
+                  {selectedLead.status === STATUS.GEWONNEN && isGeschaeftsfuehrer() && (
                     <BillingPanel
                       leadId={selectedLead.id}
                       leadStatus={selectedLead.status}

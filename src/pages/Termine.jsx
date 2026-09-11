@@ -1,3 +1,4 @@
+import { STATUS } from '../../shared/status.js'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -795,7 +796,7 @@ function Termine() {
                             Im Pool
                           </span>
                         )}
-                        {selectedEvent.status && selectedEvent.status !== 'Lead' && (
+                        {selectedEvent.status && selectedEvent.status !== STATUS.BERATUNG_VEREINBART && (
                           <span className={`px-2 py-1 rounded-full text-label-sm ${
                             selectedEvent.status.toLowerCase().includes('abgesagt')
                               ? 'bg-red-100 text-red-700'

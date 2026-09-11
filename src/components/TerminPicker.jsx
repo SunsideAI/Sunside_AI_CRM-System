@@ -1,3 +1,4 @@
+import { STATUS } from '../../shared/status.js'
 import { useState, useEffect } from 'react'
 import { Calendar, Clock, Loader2, Check, ChevronLeft, ChevronRight, Mail, Phone, Video, Users, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -242,7 +243,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
               hotLeadId: hotLeadId,
               updates: {
                 terminDatum: selectedSlot.start,
-                status: 'Lead', // Status zurücksetzen
+                status: STATUS.BERATUNG_VEREINBART, // Termin neu gelegt
                 terminart: selectedType === 'video' ? 'Video' : 'Telefonisch',
                 meetingLink: meetingLink  // Video-Link speichern
               }
@@ -350,7 +351,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                       terminDatum: selectedSlot.start,
                       terminart: selectedType === 'video' ? 'Video' : 'Telefonisch',
                       meetingLink: meetingLink,
-                      status: 'Lead'
+                      status: STATUS.BERATUNG_VEREINBART
                     }
                   })
                 })

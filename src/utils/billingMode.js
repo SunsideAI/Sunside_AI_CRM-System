@@ -1,5 +1,5 @@
 // Automatischer billing_mode für Hot Leads beim Closing.
-// Wird beim PATCH auf status='Abgeschlossen' im selben Payload mitgeschickt,
+// Wird beim PATCH auf status='Gewonnen' im selben Payload mitgeschickt,
 // damit der DB-Trigger, der die Bridge anstößt, sofort den korrekten Modus liest.
 //
 // Manuelle Overrides (provision_partner, manual_external, reference) haben

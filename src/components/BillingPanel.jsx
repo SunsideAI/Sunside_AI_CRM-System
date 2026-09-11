@@ -1,3 +1,4 @@
+import { STATUS, normalisiere } from '../../shared/status.js'
 import { useState, useEffect } from 'react'
 import { ExternalLink, RefreshCw, FileText, AlertCircle, CheckCircle2, Clock } from 'lucide-react'
 
@@ -65,7 +66,7 @@ export default function BillingPanel({ leadId, leadStatus, userId }) {
     load()
   }, [leadId, userId])
 
-  if (leadStatus !== 'Abgeschlossen') return null
+  if (normalisiere(leadStatus) !== STATUS.GEWONNEN) return null
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-6 my-4">

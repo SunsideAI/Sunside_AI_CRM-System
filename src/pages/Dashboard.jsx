@@ -1,3 +1,4 @@
+import { STATUS, IST_VERLOREN } from '../../shared/status.js'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -661,22 +662,33 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
   const getStatusStyle = (status) => {
     switch (status) {
-      case 'Lead': return 'badge-primary'
-      case 'Angebot': return 'badge-warning'
-      case 'Angebot versendet': return 'badge-secondary'
-      case 'Abgeschlossen': return 'badge-success'
-      case 'Termin abgesagt': return 'bg-warning-container text-warning'
-      case 'Termin verschoben': return 'bg-warning-container text-warning'
-      case 'Verloren': return 'badge-error'
+      case STATUS.BERATUNG_VEREINBART:  return 'badge-primary'
+      case STATUS.BERATUNG_GEFUEHRT:    return 'badge-primary'
+      case STATUS.ABSCHLUSS_VEREINBART: return 'badge-primary'
+      case STATUS.IM_ABSCHLUSS:         return 'badge-secondary'
+      case STATUS.ANGEBOT_ANGEFORDERT:  return 'badge-warning'
+      case STATUS.ANGEBOT_VERSCHICKT:   return 'badge-secondary'
+      case STATUS.WIRD_NACHGEFASST:     return 'bg-warning-container text-warning'
+      case STATUS.GEWONNEN:             return 'badge-success'
+      case STATUS.NICHT_ERSCHIENEN:     return 'bg-warning-container text-warning'
+      case STATUS.TERMIN_ABGESAGT:      return 'bg-warning-container text-warning'
+      case STATUS.VERLOREN_WIEDERVORLAGE: return 'badge-error'
+      case STATUS.VERLOREN_ENDGUELTIG:  return 'badge-error'
       default: return 'bg-surface-container text-on-surface-variant'
     }
   }
 
-  // Statistiken - Termin abgesagt/verschoben zählen als "offen" (müssen neu terminiert werden)
+  // Statistiken - alles vor dem Angebot zaehlt als laufend; abgesagte und
+  // geplatzte Termine gehoeren dazu, weil sie neu terminiert werden muessen.
+  const LAUFEND = [
+    STATUS.BERATUNG_VEREINBART, STATUS.BERATUNG_GEFUEHRT,
+    STATUS.ABSCHLUSS_VEREINBART, STATUS.IM_ABSCHLUSS,
+    STATUS.WIRD_NACHGEFASST, STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN
+  ]
   const stats = {
-    lead: hotLeads.filter(l => l.status === 'Lead' || l.status === 'Termin abgesagt' || l.status === 'Termin verschoben').length,
-    angebot: hotLeads.filter(l => l.status === 'Angebot versendet' || l.status === 'Angebot').length,
-    gewonnen: hotLeads.filter(l => l.status === 'Abgeschlossen').length
+    lead: hotLeads.filter(l => LAUFEND.includes(l.status)).length,
+    angebot: hotLeads.filter(l => l.status === STATUS.ANGEBOT_VERSCHICKT || l.status === STATUS.ANGEBOT_ANGEFORDERT).length,
+    gewonnen: hotLeads.filter(l => l.status === STATUS.GEWONNEN).length
   }
 
   return (
@@ -838,20 +850,20 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                     <td className="px-4 py-4">
                       <div
                         className={`p-1.5 rounded-lg inline-flex ${
-                          lead.status === 'Abgeschlossen'
+                          lead.status === STATUS.GEWONNEN
                             ? 'bg-success-container text-success'
-                            : lead.status === 'Verloren'
+                            : IST_VERLOREN.includes(lead.status)
                             ? 'bg-error-container text-error'
-                            : lead.status === 'Angebot' || lead.status === 'Angebot versendet'
+                            : lead.status === STATUS.ANGEBOT_ANGEFORDERT || lead.status === STATUS.ANGEBOT_VERSCHICKT
                             ? 'bg-warning-container text-warning'
                             : 'bg-surface-container text-outline'
                         }`}
                       >
-                        {lead.status === 'Abgeschlossen' ? (
+                        {lead.status === STATUS.GEWONNEN ? (
                           <CheckCircle className="w-5 h-5" />
-                        ) : lead.status === 'Verloren' ? (
+                        ) : IST_VERLOREN.includes(lead.status) ? (
                           <AlertCircle className="w-5 h-5" />
-                        ) : lead.status === 'Angebot' || lead.status === 'Angebot versendet' ? (
+                        ) : lead.status === STATUS.ANGEBOT_ANGEFORDERT || lead.status === STATUS.ANGEBOT_VERSCHICKT ? (
                           <FileText className="w-5 h-5" />
                         ) : (
                           <Calendar className="w-5 h-5" />

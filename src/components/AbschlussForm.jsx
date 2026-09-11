@@ -1,3 +1,4 @@
+import { STATUS } from '../../shared/status.js'
 import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { deriveBillingMode, BILLING_MODE_LABELS } from '../utils/billingMode'
@@ -140,7 +141,7 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
     if (!angebotComplete) return
     if (!validate()) return
     onSubmit({
-      status: 'Abgeschlossen',
+      status: STATUS.GEWONNEN,
       ...form,
     })
   }

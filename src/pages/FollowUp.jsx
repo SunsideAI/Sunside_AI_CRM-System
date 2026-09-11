@@ -1,3 +1,4 @@
+import { STATUS, anzeigeName } from '../../shared/status.js'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
@@ -35,13 +36,16 @@ const FOLLOW_UP_STATUS_OPTIONS = [
 
 // Hot-Lead Status Optionen
 const HOT_LEAD_STATUS_OPTIONS = [
-  { value: 'Lead', label: 'Lead', color: 'bg-blue-100 text-blue-700' },
-  { value: 'Verloren', label: 'Verloren', color: 'bg-red-100 text-red-700' },
-  { value: 'Angebot versendet', label: 'Angebot versendet', color: 'bg-purple-100 text-purple-700' },
-  { value: 'Termin abgesagt', label: 'Termin abgesagt', color: 'bg-orange-100 text-orange-700' },
-  { value: 'Termin verschoben', label: 'Termin verschoben', color: 'bg-amber-100 text-amber-700' },
-  { value: 'Wiedervorlage', label: 'Wiedervorlage', color: 'bg-cyan-100 text-cyan-700' },
-  { value: 'Im Closing', label: 'Im Closing', color: 'bg-indigo-100 text-indigo-700' }
+  { value: STATUS.BERATUNG_VEREINBART,  label: 'Beratungsgespräch vereinbart', color: 'bg-blue-100 text-blue-700' },
+  { value: STATUS.BERATUNG_GEFUEHRT,    label: 'Beratungsgespräch geführt',    color: 'bg-sky-100 text-sky-700' },
+  { value: STATUS.ABSCHLUSS_VEREINBART, label: 'Abschlussgespräch vereinbart', color: 'bg-indigo-100 text-indigo-700' },
+  { value: STATUS.IM_ABSCHLUSS,         label: 'Im Abschluss',                 color: 'bg-violet-100 text-violet-700' },
+  { value: STATUS.ANGEBOT_VERSCHICKT,   label: anzeigeName(STATUS.ANGEBOT_VERSCHICKT), color: 'bg-purple-100 text-purple-700' },
+  { value: STATUS.WIRD_NACHGEFASST,     label: 'Wird nachgefasst',             color: 'bg-amber-100 text-amber-700' },
+  { value: STATUS.NICHT_ERSCHIENEN,     label: 'Nicht erschienen',             color: 'bg-rose-100 text-rose-700' },
+  { value: STATUS.TERMIN_ABGESAGT,      label: 'Termin abgesagt',              color: 'bg-orange-100 text-orange-700' },
+  { value: STATUS.VERLOREN_WIEDERVORLAGE, label: 'Verloren, wiedervorlagefähig', color: 'bg-cyan-100 text-cyan-700' },
+  { value: STATUS.VERLOREN_ENDGUELTIG,  label: 'Verloren, endgültig',          color: 'bg-red-100 text-red-700' }
 ]
 
 // Tabellen-Spalten Konfiguration

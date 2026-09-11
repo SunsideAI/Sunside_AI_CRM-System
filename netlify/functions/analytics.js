@@ -1,6 +1,7 @@
 // Analytics API für Setting und Closing Performance - Supabase Version
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { STATUS, normalisiere, IST_VERLOREN } from '../../shared/status.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -160,7 +161,10 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
     for (const record of allRecords) {
       // Closer-Name oder "Pool" für nicht zugewiesene Leads
       const closerName = record.closer?.vor_nachname || 'Pool (nicht zugewiesen)'
-      const statusRaw = (record.status || '').toLowerCase().trim()
+      // Frueher wurde hier auf Teilzeichenketten in Kleinbuchstaben geprueft
+      // ('abgeschlossen', 'closing'). Das ging bei jedem neuen Wert still
+      // daneben - 'Gewonnen' waere aus der Statistik gefallen, ohne Fehler.
+      const st = normalisiere(record.status)
 
       totalLeadsCount++
 
@@ -177,15 +181,15 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
 
       leadsProCloserMap[closerName].gesamt++
 
-      if (statusRaw.includes('abgeschlossen')) {
+      if (st === STATUS.GEWONNEN) {
         leadsProCloserMap[closerName].abgeschlossen++
-      } else if (statusRaw === 'verloren') {
+      } else if (IST_VERLOREN.includes(st)) {
         leadsProCloserMap[closerName].verloren++
       } else {
         leadsProCloserMap[closerName].aktiv++
-        if (statusRaw.includes('closing') || statusRaw === 'im closing') {
+        if (st === STATUS.IM_ABSCHLUSS) {
           leadsProCloserMap[closerName].imClosing++
-        } else if (statusRaw.includes('angebot')) {
+        } else if (st === STATUS.ANGEBOT_VERSCHICKT || st === STATUS.ANGEBOT_ANGEFORDERT) {
           leadsProCloserMap[closerName].angebotVersendet++
         }
       }
@@ -204,8 +208,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
 
   for (const record of allRecords) {
     // Status auslesen und normalisieren
-    const statusRaw = record.status || ''
-    const status = statusRaw.toLowerCase().trim()
+    const status = normalisiere(record.status)
 
     // Umsatz-Felder
     const setup = parseCurrency(record.setup)
@@ -221,7 +224,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
     const closerId = record.closer_id
 
     // Prüfen ob es ein gewonnener Deal ist
-    const istGewonnen = status.includes('abgeschlossen')
+    const istGewonnen = status === STATUS.GEWONNEN
 
     // Datum-Filter basierend auf relevantem Datum
     const relevantDateStr = istGewonnen ? (kundeSeit || terminDatum) : terminDatum
@@ -275,7 +278,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
         perUserMap[closerName].gewonnen++
         perUserMap[closerName].umsatz += dealWert
       }
-    } else if (status === 'verloren') {
+    } else if (IST_VERLOREN.includes(status)) {
       verloren++
       if (closerName && isAdmin) {
         if (!perUserMap[closerName]) {
@@ -283,7 +286,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
         }
         perUserMap[closerName].verloren++
       }
-    } else if (status === 'termin abgesagt') {
+    } else if (status === STATUS.TERMIN_ABGESAGT) {
       noShow++
       if (closerName && isAdmin) {
         if (!perUserMap[closerName]) {
@@ -291,7 +294,7 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
         }
         perUserMap[closerName].noShow = (perUserMap[closerName].noShow || 0) + 1
       }
-    } else if (status.includes('angebot')) {
+    } else if (status === STATUS.ANGEBOT_VERSCHICKT || status === STATUS.ANGEBOT_ANGEFORDERT) {
       angebotVersendet++
       if (closerName && isAdmin) {
         if (!perUserMap[closerName]) {

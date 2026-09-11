@@ -1,6 +1,7 @@
 // Dashboard Analytics API - Statistiken für das Dashboard - Supabase Version
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { STATUS, normalisiere } from '../../shared/status.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -251,7 +252,7 @@ export async function handler(event) {
       if (hotLeadsData.length > 0) {
         // Abschlüsse diesen Monat (global oder für User)
         const abschlussLeads = hotLeadsData.filter(hl => {
-          if (hl.status !== 'Abgeschlossen') return false
+          if (normalisiere(hl.status) !== STATUS.GEWONNEN) return false
           if (!hl.kunde_seit) return false
           const kundeSeit = new Date(hl.kunde_seit)
           if (kundeSeit < startOfMonth) return false

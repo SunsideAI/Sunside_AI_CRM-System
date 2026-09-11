@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { STATUS, normalisiere, uebergangErlaubt, anzeigeName } from '../../shared/status.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -279,7 +280,10 @@ export async function handler(event) {
           terminDatum: record.termin_beratungsgespraech || '',
           terminart: record.terminart || '',
           meetingLink: record.meeting_link || '',
-          status: record.status || 'Lead',
+          // Altbestand wird beim Lesen auf die neue Liste gebracht - die
+          // Datenbank-Migration laeuft spaeter, das Frontend sieht trotzdem
+          // ueberall dieselben Werte.
+          status: normalisiere(record.status) || STATUS.BERATUNG_VEREINBART,
           quelle: record.quelle || '',
           prioritaet: record.prioritaet || '',
           setup: record.setup || 0,
@@ -627,7 +631,7 @@ export async function handler(event) {
         lead_id: originalLeadId,
         unternehmen: unternehmen || '',
         termin_beratungsgespraech: terminDatum,
-        status: 'Lead',
+        status: STATUS.BERATUNG_VEREINBART,
         quelle: quelle || 'Kaltakquise',
         setter_id: setterRecordId || null,
         closer_id: closerRecordId || null
@@ -789,6 +793,35 @@ export async function handler(event) {
         }
       }
 
+      // Statuswechsel: gegen die Übergangsmatrix prüfen, bevor geschrieben wird.
+      // Die Datenbank prüft dasselbe noch einmal - hier geht es um eine
+      // verständliche Meldung statt einer Constraint-Verletzung.
+      if (fields.status) {
+        fields.status = normalisiere(fields.status)
+
+        const { data: vorher } = await supabase
+          .from('hot_leads').select('status').eq('id', hotLeadId).maybeSingle()
+
+        if (vorher && !uebergangErlaubt(vorher.status, fields.status)) {
+          return {
+            statusCode: 409,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              error: `Von "${anzeigeName(vorher.status)}" kann nicht direkt auf `
+                   + `"${anzeigeName(fields.status)}" gewechselt werden.`,
+              von: normalisiere(vorher.status),
+              nach: fields.status
+            })
+          }
+        }
+      }
+
+      // Wer geschrieben hat, reist in der Zeile mit - der Protokoll-Trigger
+      // liest es dort ab und schreibt es in den Ereignis-Verlauf.
+      if (Object.keys(fields).length > 0) {
+        fields.zuletzt_geaendert_von = angemeldet.id
+      }
+
       console.log('Updating Hot Lead:', hotLeadId, fields, 'Kommentar:', kommentarToUpdate !== null)
 
       // Hot Lead laden (auch wenn keine fields zu updaten)
@@ -846,7 +879,7 @@ export async function handler(event) {
       }
 
       // Zapier-Webhook für Angebotsversand (wenn Status auf 'Angebot' gesetzt wird)
-      if (fields.status === 'Angebot' && data) {
+      if (fields.status === STATUS.ANGEBOT_ANGEFORDERT && data) {
         try {
           // Kontaktdaten aus hot_leads ODER aus verknüpftem original_lead
           const lead = data.original_lead || {}
@@ -900,7 +933,7 @@ export async function handler(event) {
       }
 
       // Bridge-Trigger: Rechnung erstellen wenn Lead auf Abgeschlossen gesetzt wird
-      if (fields.status === 'Abgeschlossen' && data && process.env.BRIDGE_URL && process.env.BRIDGE_SECRET) {
+      if (normalisiere(fields.status) === STATUS.GEWONNEN && data && process.env.BRIDGE_URL && process.env.BRIDGE_SECRET) {
         try {
           const bridgeResponse = await fetch(`${process.env.BRIDGE_URL}/webhooks/supabase/lead-closed`, {
             method: 'POST',
