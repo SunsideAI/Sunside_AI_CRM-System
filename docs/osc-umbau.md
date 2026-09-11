@@ -358,3 +358,44 @@ Zwei Folgeänderungen waren nötig:
 - `opener_id` wird beim Buchen ausdrücklich gesetzt statt dem Trigger
   überlassen. Der füllt nur, wenn genau ein Kandidat in `lead_assignments`
   steht — beim Buchen wissen wir es sicher.
+
+## Regel: der Produktivlauf darf nie betroffen sein
+
+Alle Datenbank-Änderungen dieses Umbaus sind rein additiv — der laufende
+CRM-Stand kennt die neuen Spalten nicht und fasst sie nicht an. Das ist keine
+Behauptung, sondern nachgemessen:
+
+    python3 scripts/pruefe-produktiv.py
+
+Das Skript spielt den **alten** Produktivcode gegen die **aktuelle** Datenbank:
+Hot Lead mit altem Statuswert anlegen, durch die alten Status wechseln,
+Zuweisung anlegen und löschen, Bewerbung ohne das neue Feld `stufe`. Alles über
+PostgREST mit dem Service-Key — genau der Weg der Netlify-Functions. Direktes
+SQL würde Trigger, RLS und PostgREST umgehen und wäre kein Beleg.
+
+**Vor und nach jeder Migration gegen die Live-Datenbank ausführen.**
+
+### Aus Schaden gelernt
+
+Beim ersten Lauf hat der Testdatensatz den Trigger `trg_lead_closed_to_bridge`
+ausgelöst und zwei echte HTTP-Aufrufe an die Abrechnung geschickt. Sie liefen
+ins Leere, aber das war Glück und nicht Absicht. Das Skript setzt
+`billing_mode` deshalb auf `manual_external` — der Trigger verlangt `none`.
+
+**Wer Testdaten durch die Live-Datenbank schickt, muss wissen, welche Trigger
+daran hängen.** Der Ereignis-Verlauf macht sie sichtbar:
+
+    select tgname, tgrelid::regclass from pg_trigger where not tgisinternal;
+
+### Zwei Wege zur Abrechnung, einer davon tot
+
+`hot-leads.js` ruft die Bridge über `process.env.BRIDGE_URL` — also
+konfigurierbar. Der Datenbank-Trigger `notify_bridge_lead_closed()` hat die
+Adresse dagegen **fest einkodiert**, und genau dieser Hostname antwortet mit
+404 „Application not found": Auf ihm liegt kein Dienst. Das Railway-Projekt
+existiert; die fest einkodierte Adresse zeigt nur nicht mehr darauf.
+
+Zu prüfen: Steht in `BRIDGE_URL` bei Netlify dieselbe Adresse? Dann fiele auch
+der Weg über die Anwendung aus. Die Adresse gehört ohnehin in die
+Konfiguration, nicht in den Funktionsrumpf — zusammen mit dem Token, das dort
+ebenfalls fest steht.
