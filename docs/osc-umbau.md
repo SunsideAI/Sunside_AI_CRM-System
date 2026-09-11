@@ -16,6 +16,7 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | 2 | Neue Felder laut Schema-Delta | **eingespielt** (`20260912_osc_felder.sql`) |
 | 3 | Ereignis-Verlauf | **eingespielt** (Protokoll-Trigger aktiv) |
 | 1 | Statuskette — Code | **fertig** (`shared/status.js`, 15 Dateien) |
+| 8 | Buchen-Gates | **halb** — Übergabe 1 fertig, Setter-Ansicht für Übergabe 2 fehlt |
 | 1 | Statuskette — Datenbank | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
 
 ## Warum die Statuskette noch wartet
@@ -143,3 +144,52 @@ Protokoll-Trigger liest ihn dort ab. Schreiber ohne angemeldeten Nutzer — der
 Calendly-Webhook — kennzeichnen sich über `zuletzt_geaendert_durch`. Damit ist
 im Verlauf unterscheidbar: Person, bekanntes System, oder unbekannt. Nur die
 dritte Gruppe ist die Frage, wegen der das Protokoll existiert.
+
+## Die Übergabe-Gates (Ticket 8)
+
+Feldnamen und Hilfetexte stehen wortgleich in `shared/felder.js`, Quelle ist die
+Feldtabelle neben F24. Dieselben Definitionen beschriften im Frontend die
+Eingabe und prüfen im Backend das Gate — zwei Quellen wären zwei Wahrheiten,
+und die Tooltips sind mit Bedacht formuliert („Bitte nicht raten, ein leeres
+Feld ist besser als ein falsches").
+
+**Gate hart, Pflichtfelder als Warnung**, nach der Empfehlung aus F23. Gate ist,
+was ohne den Wert nicht funktioniert: die Segment-Mail braucht die Berufsgruppe,
+die SMS die Mobilnummer, das Empfehlungs-Paket die Zahlen.
+
+| Übergabe | Felder | davon Gate | Wo geprüft |
+|---|---|---|---|
+| 1 · Erstanruf (Opener) | 9 | 5 | beim Anlegen des Hot Leads (POST) |
+| 2 · Beratungsgespräch (Setter) | 12 | 6 | beim Wechsel auf „Abschlussgespräch vereinbart" |
+
+Drei Regeln, die beim Bauen nicht offensichtlich waren:
+
+- **Eine nicht angehakte Checkbox ist eine Antwort, keine Lücke.** Sonst nörgelt
+  das System über Felder, die korrekt leer sind, und die Warnungen sind nach
+  einer Woche Rauschen.
+- **Bei Ja/Nein ist „gar nicht beantwortet" sehr wohl eine Lücke.** „Kunde hat
+  ein konkretes eigenes Vorhaben" steuert, welche Mail rausgeht — unbeantwortet
+  ist kein Nein.
+- **„Kunde wollte keine Zahlen nennen" hebt die Zahlen-Gates auf.** Genau dafür
+  ist die Checkbox da; leer ist dann die richtige Antwort.
+
+Das Gate für Übergabe 1 greift **nicht** bei Calendly-Direktbuchungen und nicht
+beim Neubuchen nach einem geplatzten Termin — dort war kein Opener beteiligt,
+und ein Gate würde nur den Termin verhindern.
+
+### Was an Ticket 8 noch fehlt
+
+Gebaut ist „Beratungsgespräch buchen" samt Formular im TerminPicker. Der
+Backend-Riegel für „Abschlussgespräch buchen" steht ebenfalls — die
+**Setter-Ansicht, in der die zwölf Felder der Übergabe 2 eingegeben werden,
+fehlt noch**. Bis dahin lässt sich der Wechsel auf „Abschlussgespräch
+vereinbart" nicht durchführen, weil die Felder nirgends gefüllt werden können.
+Das ist der nächste Schritt, nicht ein Nebenaspekt.
+
+### Eine Korrektur an den berechneten Zahlen
+
+`noetige_anfragen` hiess „pro Monat", rechnete aber Jahreswerte — der Teiler 12
+fehlte. Bei 12 Wunsch-Aufträgen im Jahr und einer Quote von 3 von 10 hätte dort
+40 statt 3,3 gestanden, und laut F24 wird genau diese Zahl ins Strategiepapier
+übernommen. Korrigiert, dazu `anfragen_bereich` (unter 2 · 2 bis 4 · über 4)
+als berechnete Spalte.

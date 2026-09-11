@@ -1,4 +1,6 @@
 import { STATUS } from '../../shared/status.js'
+import { UEBERGABE_1 } from '../../shared/felder.js'
+import UebergabeFelder from './UebergabeFelder'
 import { useState, useEffect } from 'react'
 import { Calendar, Clock, Loader2, Check, ChevronLeft, ChevronRight, Mail, Phone, Video, Users, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -46,6 +48,12 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
   const [unternehmensname, setUnternehmensname] = useState(lead?.unternehmensname || lead?.unternehmen || '')
   const [taetigkeit, setTaetigkeit] = useState('Immobilienmakler')
   const [problemstellung, setProblemstellung] = useState('')
+  // Übergabe 1: was der Opener im Erstanruf aufnimmt. Ohne diese Angaben
+  // nimmt das Backend die Buchung nicht an - sie steuern Mail, Video und SMS.
+  const [uebergabe1, setUebergabe1] = useState({
+    mobilnummer: lead?.telefon || ''
+  })
+  const [uebergabeOffen, setUebergabeOffen] = useState([])
 
   // Prüfen ob User selbst Closer sein kann
   const userRoles = user?.rolle || []
@@ -314,12 +322,23 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
               telefonnummer: contactPhone || null,
               ansprechpartnerVorname: ansprechpartnerVorname || null,
               ansprechpartnerNachname: ansprechpartnerNachname || null,
-              ort: lead?.stadt || lead?.ort || null
+              ort: lead?.stadt || lead?.ort || null,
+              ...uebergabe1
             })
           })
 
           const hotLeadData = await hotLeadResponse.json()
           if (!hotLeadResponse.ok) {
+            // 422 = Übergabe unvollständig. Die fehlenden Felder werden im
+            // Formular markiert, statt nur eine Fehlermeldung zu zeigen.
+            if (hotLeadResponse.status === 422 && hotLeadData.error === 'uebergabe_unvollstaendig') {
+              setUebergabeOffen(hotLeadData.offen || [])
+              setError(`${hotLeadData.message} Fehlend: `
+                + (hotLeadData.offen || []).map(o => o.name).join(', '))
+              setBooking(false)
+              return
+            }
+
             // 409 = Für diesen Lead existiert bereits ein Hot Lead.
             // Bisher: Fehler → Calendly-Termin blieb orphan zurück.
             // Jetzt: User fragen, ob bestehender Hot Lead auf neuen Slot umgebucht werden soll.
@@ -888,6 +907,21 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 validationErrors.problemstellung ? 'border-red-500 bg-red-50' : ''
               }`}
               placeholder="Was sind die Herausforderungen und Ziele des Maklers?"
+            />
+          </div>
+
+          {/* Übergabe an den Setter */}
+          <div className="border-t pt-4">
+            <h4 className="font-medium text-gray-900 mb-1">5. Übergabe an den Setter</h4>
+            <p className="text-xs text-gray-500 mb-4">
+              Diese Angaben steuern, welche Mail und welches Video der Kunde bekommt
+              und ob die Erinnerung vor dem Termin zugestellt werden kann.
+            </p>
+            <UebergabeFelder
+              bereich={UEBERGABE_1}
+              werte={uebergabe1}
+              onChange={(w) => { setUebergabe1(w); setUebergabeOffen([]) }}
+              offen={uebergabeOffen}
             />
           </div>
         </div>

@@ -6,6 +6,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { STATUS, normalisiere, uebergangErlaubt, anzeigeName } from '../../shared/status.js'
+import { FELDER, uebergabePruefen, UEBERGABE_1, UEBERGABE_2 } from '../../shared/felder.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -626,6 +627,25 @@ export async function handler(event) {
         }
       }
 
+      // Übergabe 1: ohne die Felder aus dem Erstanruf wird nicht gebucht.
+      // Sie steuern, welche Mail und welches Video rausgehen und ob die SMS
+      // vor dem Termin zugestellt werden kann - fehlen sie, laufen die
+      // nachgelagerten Schritte ins Leere.
+      const uebergabe1 = uebergabePruefen(body, UEBERGABE_1)
+      if (!uebergabe1.vollstaendig) {
+        return {
+          statusCode: 422,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            error: 'uebergabe_unvollstaendig',
+            stufe: UEBERGABE_1,
+            message: 'Zum Buchen fehlen noch Angaben aus dem Erstanruf.',
+            offen: uebergabe1.offen,
+            warnungen: uebergabe1.warnungen
+          })
+        }
+      }
+
       // Hot Lead erstellen
       const hotLeadData = {
         lead_id: originalLeadId,
@@ -645,6 +665,13 @@ export async function handler(event) {
       if (ansprechpartnerVornameInput) hotLeadData.ansprechpartner_vorname = ansprechpartnerVornameInput
       if (ansprechpartnerNachnameInput) hotLeadData.ansprechpartner_nachname = ansprechpartnerNachnameInput
       if (ortInput) hotLeadData.ort = ortInput
+
+      // Die Felder der Übergabe 1 wandern mit in den Datensatz.
+      for (const schluessel of Object.keys(FELDER)) {
+        if (FELDER[schluessel].bereich === UEBERGABE_1 && body[schluessel] !== undefined) {
+          hotLeadData[schluessel] = body[schluessel]
+        }
+      }
 
       if (terminart) hotLeadData.terminart = terminart
       if (meetingLink) hotLeadData.meeting_link = meetingLink
@@ -811,6 +838,29 @@ export async function handler(event) {
                    + `"${anzeigeName(fields.status)}" gewechselt werden.`,
               von: normalisiere(vorher.status),
               nach: fields.status
+            })
+          }
+        }
+      }
+
+      // Übergabe 2: das Abschlussgespräch wird erst gebucht, wenn der Setter
+      // dokumentiert hat. Der Closer bereitet sein Strategiepapier daraus vor -
+      // ohne die Felder hat er nichts in der Hand.
+      if (fields.status === STATUS.ABSCHLUSS_VEREINBART) {
+        const { data: stand } = await supabase
+          .from('hot_leads').select('*').eq('id', hotLeadId).maybeSingle()
+
+        const uebergabe2 = uebergabePruefen({ ...stand, ...fields }, UEBERGABE_2)
+        if (!uebergabe2.vollstaendig) {
+          return {
+            statusCode: 422,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              error: 'uebergabe_unvollstaendig',
+              stufe: UEBERGABE_2,
+              message: 'Zum Buchen des Abschlussgesprächs fehlen noch Angaben aus dem Beratungsgespräch.',
+              offen: uebergabe2.offen,
+              warnungen: uebergabe2.warnungen
             })
           }
         }
