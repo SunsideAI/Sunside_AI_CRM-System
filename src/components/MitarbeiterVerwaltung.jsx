@@ -1,4 +1,4 @@
-import { ROLLEN_VERGEBBAR, ROLLE_BESCHREIBUNG, ROLLE } from '../../shared/rollen.js'
+import { ROLLEN_VERGEBBAR, ROLLE_BESCHREIBUNG, ROLLE, istOpener } from '../../shared/rollen.js'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import {
@@ -134,7 +134,7 @@ function MitarbeiterVerwaltung() {
 
     try {
       // Bei Coldcaller automatisch Akquise-Pfad bereitstellen
-      const initialOnboarding = formData.rolle.includes('Coldcaller')
+      const initialOnboarding = istOpener(formData.rolle)
         ? 'Akquise-Pfad bereitstellen'
         : ''
 
@@ -243,8 +243,11 @@ function MitarbeiterVerwaltung() {
       console.log('Deaktiviere User:', selectedUser?.vor_nachname)
       console.log('User Rollen:', selectedUser?.rolle)
       
-      // Prüfen ob User ein Coldcaller ist (dann Leads archivieren)
-      const isColdcaller = selectedUser?.rolle?.includes('Coldcaller')
+      // Prüfen ob User Kaltakquise macht (dann Leads archivieren). Die
+      // woertliche Pruefung auf 'Coldcaller' haette nach der Umbenennung
+      // stillschweigend aufgehoert zu greifen - und die Leads eines
+      // ausscheidenden Openers waeren nirgends gelandet.
+      const isColdcaller = istOpener(selectedUser?.rolle)
       // Prüfen ob User ein Closer ist (dann Hot Leads in Pool freigeben)
       const isCloser = selectedUser?.rolle?.some(r => {
         const lowerRole = (r || '').toLowerCase()
@@ -1102,7 +1105,7 @@ function MitarbeiterVerwaltung() {
           </p>
 
           {/* Hinweis für Coldcaller */}
-          {selectedUser?.rolle?.includes('Coldcaller') && (
+          {istOpener(selectedUser?.rolle) && (
             <div className="bg-amber-50 rounded-lg p-3 text-sm mb-3">
               <p className="text-amber-800">
                 <strong>Lead-Archivierung:</strong> Alle bearbeiteten Leads dieses Vertrieblers werden ins Archiv verschoben.

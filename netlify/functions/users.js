@@ -1,6 +1,7 @@
 // Netlify Function: User-Verwaltung (CRUD) - Supabase
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { istOpener } from '../../shared/rollen.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -148,7 +149,9 @@ async function createUser(data) {
 
   // Zapier-Webhook für Coldcaller Onboarding (Akquisepfad bereitstellen)
   const rollen = rolle || []
-  if (rollen.includes('Coldcaller') || rollen.includes('Setter')) {
+  // Opener und Coldcaller sind dieselbe Aufgabe unter zwei Namen - ohne
+  // istOpener() bekaeme ein neu angelegter Opener keinen Akquisepfad.
+  if (istOpener(rollen) || rollen.includes('Setter')) {
     try {
       const zapierPayload = {
         // User ID für Supabase-Update

@@ -50,6 +50,30 @@ update public.users
  where 'Closer' = any(rollen::text[])
    and not ('Setter' = any(rollen::text[]));
 
+-- ---------------------------------------------------------------------
+-- Coldcaller wird Opener - EINHEITLICH, ABER ERST NACH DEM DEPLOY
+-- ---------------------------------------------------------------------
+-- Vorher waere das ein Ausfall fuer 18 aktive Mitarbeiter. Im
+-- ausgelieferten Stand steht woertlich:
+--   allowedRoles:["Coldcaller","Admin"]        (Zugang zur Kaltakquise)
+--   isColdcaller: () => hasRole("Coldcaller")  (Menue und Dashboard)
+-- Beides prueft exakt auf den alten Wert, ohne Ausweichpfad. Wer nur noch
+-- "Opener" traegt, wird beim Oeffnen der Kaltakquise aufs Dashboard
+-- umgeleitet und verliert den Menuepunkt - also seine Tagesarbeit.
+--
+-- Nach dem Deploy ist die Umbenennung gefahrlos: shared/rollen.js laesst
+-- beide Werte als Opener gelten, und users.js erkennt den Akquisepfad
+-- ueber istOpener() statt ueber die Zeichenkette.
+update public.users
+   set rollen = array_replace(rollen, 'Coldcaller'::rolle_type, 'Opener'::rolle_type)
+ where 'Coldcaller' = any(rollen::text[])
+   and not ('Opener' = any(rollen::text[]));
+
+-- Wer beide Werte traegt, verliert nur den alten.
+update public.users
+   set rollen = array_remove(rollen, 'Coldcaller'::rolle_type)
+ where 'Coldcaller' = any(rollen::text[]);
+
 commit;
 
 -- Gegenprobe nach dem Einspielen:

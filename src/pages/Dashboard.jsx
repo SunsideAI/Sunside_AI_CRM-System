@@ -1,4 +1,5 @@
 import { STATUS, IST_VERLOREN } from '../../shared/status.js'
+import { istOpener, ROLLE } from '../../shared/rollen.js'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -194,7 +195,9 @@ function Dashboard() {
   const { user, hasRole } = useAuth()
   const [activeView, setActiveView] = useState('uebersicht')
   
-  const isColdcaller = () => hasRole('Coldcaller')
+  // Opener und Coldcaller sind dieselbe Aufgabe. Ohne istOpener() waere ein
+  // Opener in den Kennzahlen als Closer gezaehlt worden - stillschweigend.
+  const isColdcaller = () => istOpener(user?.rolle)
   const isCloser = () => hasRole('Closer')
   const isAdmin = () => hasRole('Admin')
 
@@ -312,7 +315,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     try {
       const params = new URLSearchParams()
       params.append('userName', user?.vor_nachname || '')
-      params.append('userRole', isAdmin() ? 'Admin' : isColdcaller() ? 'Coldcaller' : 'Closer')
+      params.append('userRole', isAdmin() ? 'Admin' : isColdcaller() ? ROLLE.COLDCALLER : ROLLE.CLOSER)
 
       const response = await fetch(`/.netlify/functions/dashboard?${params.toString()}`)
       const result = await response.json()

@@ -248,3 +248,38 @@ Setter-Ansicht nicht öffnen darf.
 Termin-Ansicht allein über `setter_id`; würde man sie vorher einspielen,
 verlören alle Opener die von ihnen gelegten Termine aus den Augen. Der Code
 dieses Branches holt sie zusätzlich über `opener_id` — der alte nicht.
+
+### Coldcaller wird Opener — aber erst nach dem Deploy
+
+Geprüft am ausgelieferten Bundle (`crmsunsideai.netlify.app`, Stand 11.09.):
+Es enthält **nichts** vom Umbau — kein Sitzungs-Token, keinen der neuen Status.
+Dafür wörtlich:
+
+```
+allowedRoles:["Coldcaller","Admin"]          // Zugang zur Kaltakquise
+isColdcaller: () => hasRole("Coldcaller")    // Menü und Dashboard
+```
+
+Beides prüft exakt auf den alten Wert, ohne Ausweichpfad. Würde man die 18
+aktiven Coldcaller **jetzt** umbenennen, verlören sie den Menüpunkt und würden
+beim Öffnen der Kaltakquise aufs Dashboard umgeleitet — ihre Tagesarbeit.
+Dazu käme: `users.js` löst den Akquisepfad über `rollen.includes('Coldcaller')`
+aus, ein neuer Opener bekäme keinen.
+
+Nach dem Deploy ist die Umbenennung gefahrlos, weil beide Werte als Opener
+gelten. Sechs Stellen im Branch prüften vorher noch wörtlich und hätten nach
+der Umbenennung still aufgehört zu greifen:
+
+| Stelle | Was still ausgefallen wäre |
+|---|---|
+| `MitarbeiterVerwaltung` Offboarding | Leads eines ausscheidenden Openers wären nirgends gelandet |
+| `Dashboard` Rollenkennung | Ein Opener wäre in den Kennzahlen als **Closer** gezählt worden |
+| `MitarbeiterVerwaltung` Onboarding | kein Akquisepfad für neue Opener |
+| `users.js` Zapier-Webhook | dito, serverseitig |
+| `auth.js` | bildete die Einzelrolle `Coldcaller` auf **`Setter`** ab — schon vor dem Umbau falsch, danach grob irreführend |
+
+Alle fünf laufen jetzt über `istOpener()`.
+
+Was die Migration bewirkt: 12 Closer bekommen die Setter-Rolle dazu, 49 Nutzer
+(18 davon aktiv) werden von Coldcaller auf Opener umgetragen, keine
+Doppelbelegung.

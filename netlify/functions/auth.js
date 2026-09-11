@@ -2,6 +2,7 @@
 import bcrypt from 'bcryptjs'
 import { createClient } from '@supabase/supabase-js'
 import { tokenErzeugen } from './utils/session.js'
+import { ROLLE } from '../../shared/rollen.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -140,13 +141,14 @@ export async function handler(event) {
       google_calendar_id: dbUser.google_calendar_id || ''
     }
 
-    // Rolle zu Array falls nötig
+    // Rolle zu Array falls nötig. Die alte Einzelrolle 'Coldcaller' wurde
+    // hier bisher auf 'Setter' abgebildet - das war schon vor dem Umbau falsch
+    // und wäre danach grob irreführend: Ein Coldcaller ist ein Opener, kein
+    // Setter. Beide Werte bleiben stehen, damit niemand Zugang verliert.
     if (typeof user.rolle === 'string') {
-      if (user.rolle === 'Coldcaller') {
-        user.rolle = ['Setter']
-      } else {
-        user.rolle = [user.rolle]
-      }
+      user.rolle = user.rolle === ROLLE.COLDCALLER
+        ? [ROLLE.COLDCALLER, ROLLE.OPENER]
+        : [user.rolle]
     }
 
     // Ab hier stammt die Identitaet des Nutzers aus diesem Token und nicht
