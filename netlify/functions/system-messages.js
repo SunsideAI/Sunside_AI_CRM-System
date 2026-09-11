@@ -7,6 +7,18 @@ import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
 
+// Die Typen aus dem message_type-Enum der Datenbank. Ein freier String liesse
+// sich als Ueberschrift in die Mail schreiben.
+const ERLAUBTE_TYPEN = [
+  'Termin abgesagt', 'Termin verschoben', 'Lead gewonnen', 'Lead verloren',
+  'Pool Update', 'Direktbuchung', 'termin_rescheduled', 'Info'
+]
+
+/** Maskiert Text, der in HTML landet. */
+const maskieren = (t) => String(t ?? '')
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
@@ -44,15 +56,10 @@ export async function handler(event) {
     // GET: Nachrichten für User laden
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
-      const { userId, unreadOnly } = params
-
-      if (!userId) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'userId ist erforderlich' })
-        }
-      }
+      // Man liest das eigene Postfach. Vorher genuegte ?userId=<fremde ID>,
+      // um die Nachrichten eines Kollegen zu lesen.
+      const { unreadOnly } = params
+      const userId = angemeldet.id
 
       console.log('Loading System Messages for userId:', userId)
 
@@ -101,6 +108,19 @@ export async function handler(event) {
         hotLeadId,
         sendEmail = true
       } = body
+
+      // Diese Nachrichten verschicken Closer und Opener im normalen Ablauf
+      // (Lead verloren, Termin abgesagt). Eine Admin-Sperre wuerde die
+      // Benachrichtigungen abwuergen. Die Gefahr liegt woanders: Titel und Text
+      // gingen ungeprueft in eine Mail vom System-Absender. Deshalb eine feste
+      // Werteliste fuer den Typ und Maskierung statt einer Rollensperre.
+      if (!ERLAUBTE_TYPEN.includes(typ)) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: `Unbekannter Nachrichtentyp: ${typ}` })
+        }
+      }
 
       if (!empfaengerId || !typ || !titel) {
         return {
@@ -174,7 +194,7 @@ export async function handler(event) {
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
   <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="background: ${color.gradient}; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-      <h1 style="color: white; margin: 0; font-size: 24px;">${icon} ${titel}</h1>
+      <h1 style="color: white; margin: 0; font-size: 24px;">${icon} ${maskieren(titel)}</h1>
     </div>
     <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
       <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
@@ -183,7 +203,7 @@ export async function handler(event) {
       ${nachricht ? `
       <div style="background: ${color.bg}; border-radius: 12px; padding: 20px; margin: 20px 0;">
         <p style="color: ${color.text}; margin: 0; font-size: 15px; line-height: 1.6;">
-          ${nachricht}
+          ${maskieren(nachricht)}
         </p>
       </div>
       ` : ''}
@@ -237,7 +257,9 @@ export async function handler(event) {
     // PATCH: Nachricht als gelesen markieren
     if (event.httpMethod === 'PATCH') {
       const body = JSON.parse(event.body)
-      const { messageId, markAllRead, userId } = body
+      // Als gelesen markiert man nur die eigenen Nachrichten.
+      const { messageId, markAllRead } = body
+      const userId = angemeldet.id
 
       if (markAllRead && userId) {
         const { data: updated, error } = await supabase
@@ -266,10 +288,13 @@ export async function handler(event) {
         }
       }
 
+      // Nur eigene Nachrichten. Ohne diese Bedingung liesse sich jede fremde
+      // Nachricht als gelesen markieren, wenn man ihre ID kennt.
       const { error } = await supabase
         .from('system_messages')
         .update({ gelesen: true })
         .eq('id', messageId)
+        .eq('empfaenger_id', userId)
 
       if (error) {
         throw new Error(error.message)

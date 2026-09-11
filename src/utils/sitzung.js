@@ -8,7 +8,11 @@
 const FUNKTIONS_PFAD = '/.netlify/functions/'
 
 // Ohne Anmeldung erreichbar - hier gibt es noch kein Token.
-const OFFEN = ['auth', 'forgot-password', 'set-password', 'calendly-webhook']
+// set-password steht bewusst NICHT hier: Die Function verlangt eine
+// Admin-Sitzung. Stuende sie in dieser Liste, ginge der Aufruf ohne Token raus
+// und jedes Passwort-Setzen endete in einem 401 - ohne dass die
+// Abmelde-Behandlung greift, weil die auch uebersprungen wird.
+const OFFEN = ['auth', 'forgot-password', 'calendly-webhook']
 
 function istFunktionsAufruf(url) {
   if (typeof url !== 'string') return false

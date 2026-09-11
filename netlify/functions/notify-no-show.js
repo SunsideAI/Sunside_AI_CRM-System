@@ -46,7 +46,10 @@ export const handler = async (event) => {
       hotLeadId,
       setterId,
       closerId,
-      closerName,
+      // closerName kommt nicht mehr aus der Anfrage: Die Meldung "X hat als
+      // nicht erschienen markiert" ist eine Urheberschaftsbehauptung und stand
+      // jedem frei. Sie kommt jetzt aus dem Token.
+      closerName: _ignoriert,
       unternehmen,
       ansprechpartner,
       terminDatum,
@@ -80,6 +83,8 @@ export const handler = async (event) => {
     // 1. In-App-Benachrichtigung erstellen
     const messageId = `NOSHOW-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
     const titel = `🔴 Lead nicht erschienen: ${unternehmen}`
+    const closerName = angemeldet.name || 'Ein Closer'
+
     const nachricht = `${closerName || 'Closer'} hat ${ansprechpartner || 'den Ansprechpartner'} (${unternehmen}) als nicht erschienen markiert. Bitte neuen Termin vereinbaren.`
 
     const { error: msgError } = await supabase

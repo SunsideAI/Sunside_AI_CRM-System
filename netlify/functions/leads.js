@@ -179,7 +179,9 @@ export async function handler(event) {
         .select('*', { count: 'exact' })
 
       // User-Filter: Nur wenn NICHT Admin mit "all" view ODER bei Wiedervorlagen-Abfrage
-      const needsUserFilter = userRole !== 'Admin' || view === 'own' || wiedervorlage === 'true'
+      // Die Rolle kam aus der Query: ?userRole=Admin&view=all lieferte jedem
+      // Angemeldeten saemtliche Leads der Firma. Jetzt entscheidet das Token.
+      const needsUserFilter = !angemeldet.istAdmin || view === 'own' || wiedervorlage === 'true'
 
       // === RPC-basierter Pfad: skaliert auf beliebig viele Assignments ===
       // Löst das URL-Limit-Problem bei .in('id', [...1200 UUIDs])
