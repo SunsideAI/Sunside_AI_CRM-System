@@ -21,6 +21,7 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | 5 | Besetzung über zwei Pools | **fertig** |
 | 6 | Fristen und Alarme | **fertig** |
 | 13 | Wiedervorlage-Wecker | **fertig** |
+| 14 | Termin-fand-statt und Anrufzähler | **fertig** |
 | 1 | Statuskette — Datenbank | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
 
 ## Warum die Statuskette noch wartet
@@ -469,3 +470,21 @@ mit.
 Die erste Regel greift genau den Zustand auf, den die Setter-Rückmigration
 erzeugt: **29 Kontakte ohne Closer werden dort leer gesetzt.** Wer davon einen
 Termin in der Zukunft hat, landet ab dem Deploy in dieser Meldung.
+
+## Der Anrufzähler (Ticket 14)
+
+Der Hilfetext in F24 verspricht: „Zählt jeden Anrufversuch automatisch. Niemand
+muss Striche machen, und die Wochenzahl stimmt trotzdem." Dafür muss ihn jemand
+schreiben — und zwar in der Function, nicht in der Maske: So zählt es
+unabhängig davon, welche Ansicht speichert, und der Anrufer kommt aus dem
+Token statt aus der Anfrage.
+
+`leads.js` legt einen Eintrag an, sobald ein Ergebnis dokumentiert oder der
+Lead als kontaktiert markiert wird. Der Zähler darf das Speichern des Leads
+**nie** verhindern — ein Fehler dort wird protokolliert, nicht durchgereicht.
+
+`v_anrufe_je_woche` liefert daraus Anwahlen je Opener und Woche: die erste Zahl
+des Wochen-Benchmarks (600 Anwahlen), die es vorher schlicht nicht gab.
+
+Der zweite Teil des Tickets, der Klick „Termin fand statt", steckt seit der
+Setter-Ansicht in Ticket 8.

@@ -421,6 +421,27 @@ export async function handler(event) {
         }
       }
 
+      // Anrufversuch mitzaehlen: Wer ein Ergebnis dokumentiert oder den Lead
+      // als kontaktiert markiert, hat angewaehlt. Der Hilfetext im CRM sagt
+      // "Zaehlt jeden Anrufversuch automatisch. Niemand muss Striche machen" -
+      // dafuer muss es jemand schreiben, und zwar hier und nicht in der Maske:
+      // so zaehlt es unabhaengig davon, welche Ansicht speichert.
+      const istAnrufversuch =
+        updates.kontaktiert === true || typeof updates.ergebnis === 'string'
+
+      if (istAnrufversuch) {
+        try {
+          await supabase.from('anrufversuche').insert({
+            lead_id: leadId,
+            anrufer_id: angemeldet.id,
+            ergebnis: updates.ergebnis || null
+          })
+        } catch (e) {
+          // Der Zaehler darf das Speichern des Leads nie verhindern.
+          console.error('Anrufversuch konnte nicht erfasst werden:', e)
+        }
+      }
+
       // Aktuellen Lead laden (für History)
       let currentKommentar = ''
       if (historyEntry) {
