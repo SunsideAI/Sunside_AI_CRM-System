@@ -1,5 +1,6 @@
 import { STATUS } from '../../shared/status.js'
 import SetterUebergabe from '../components/SetterUebergabe'
+import SetterPool from '../components/SetterPool'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
@@ -453,6 +454,9 @@ function Termine() {
           {error}
         </div>
       )}
+
+      {/* Beratungsgespräche, für die noch kein Setter eingeteilt ist */}
+      <SetterPool onGeaendert={loadTermine} />
 
       {/* Kalender */}
       <div className="card-elevated overflow-hidden">

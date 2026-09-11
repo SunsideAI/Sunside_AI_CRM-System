@@ -222,8 +222,12 @@ export async function handler(event) {
             )
           `)
 
-        // Pool-Filter: Termine ohne Closer (offene Termine für Closer-Pool)
-        if (pool === 'true') {
+        // Pool-Filter. Zwei Poole seit dem OSC-Umbau:
+        //   pool=true | pool=closer -> Termine ohne Closer
+        //   pool=setter             -> Beratungsgespräche ohne Setter
+        if (pool === 'setter') {
+          query = query.is('setter_id', null)
+        } else if (pool === 'true' || pool === 'closer') {
           query = query.is('closer_id', null)
         }
 

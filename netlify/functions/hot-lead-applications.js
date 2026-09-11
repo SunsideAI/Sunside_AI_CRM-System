@@ -8,6 +8,9 @@ import { anmeldungVerlangen } from './utils/session.js'
 import { normalisiere } from '../../shared/status.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
 
+// Die beiden Stufen, auf die man sich bewerben kann.
+const STUFE = { SETTER: 'Setter', CLOSER: 'Closer' }
+
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_SERVICE_KEY
@@ -96,6 +99,7 @@ export async function handler(event) {
       const bewerbungen = (bewerbungenData || []).map(record => ({
         id: record.id,
         bewerbungId: record.bewerbung_id || '',
+        stufe: record.stufe || STUFE.CLOSER,
         hotLeadId: record.hot_lead_id,
         closerId: record.closer_id,
         closerName: record.closer?.vor_nachname || 'Unbekannt',
@@ -125,24 +129,34 @@ export async function handler(event) {
 
     // POST - Neue Bewerbung erstellen
     if (event.httpMethod === 'POST') {
-      const { closerId, hotLeadId, kommentar } = JSON.parse(event.body)
+      const { hotLeadId, kommentar, stufe: stufeRoh } = JSON.parse(event.body)
 
-      if (!closerId || !hotLeadId) {
+      // Die Stufe entscheidet, worauf man sich bewirbt: auf das
+      // Beratungsgespräch (Setter) oder das Abschlussgespräch (Closer).
+      const stufe = stufeRoh === STUFE.SETTER ? STUFE.SETTER : STUFE.CLOSER
+
+      // Wer sich bewirbt, steht im Token. Vorher kam die closerId aus dem
+      // Anfrage-Körper - man konnte sich also für jemand anderen bewerben.
+      const closerId = angemeldet.id
+
+      if (!hotLeadId) {
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'closerId und hotLeadId sind erforderlich' })
+          body: JSON.stringify({ error: 'hotLeadId ist erforderlich' })
         }
       }
 
-      console.log('[Hot-Lead-Applications POST] closerId:', closerId, 'hotLeadId:', hotLeadId)
+      console.log('[Hot-Lead-Applications POST] Bewerber:', closerId, 'Lead:', hotLeadId, 'Stufe:', stufe)
 
-      // Prüfen ob Hot Lead noch verfügbar (closer_id = null)
+      // Prüfen ob Hot Lead auf dieser Stufe noch frei ist
       const { data: hotLead, error: hotLeadError } = await supabase
         .from('hot_leads')
         .select(`
           id,
           closer_id,
+          setter_id,
+          opener_id,
           termin_beratungsgespraech,
           original_lead:leads!hot_leads_lead_id_fkey(unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname)
         `)
@@ -167,13 +181,25 @@ export async function handler(event) {
         }
       }
 
-      if (hotLead.closer_id) {
+      const bereitsBesetzt = stufe === STUFE.SETTER ? hotLead.setter_id : hotLead.closer_id
+      if (bereitsBesetzt) {
         return {
           statusCode: 400,
           headers: corsHeaders,
-          body: JSON.stringify({ error: 'Dieser Lead wurde bereits einem Closer zugewiesen' })
+          body: JSON.stringify({
+            error: stufe === STUFE.SETTER
+              ? 'Für dieses Beratungsgespräch ist bereits ein Setter eingeteilt'
+              : 'Dieser Lead wurde bereits einem Closer zugewiesen'
+          })
         }
       }
+
+      // Interessenkonflikt: Wer den Kontakt selbst qualifiziert hat, bewirbt
+      // sich auf seine eigene Vorarbeit. Das ist nicht verboten - der
+      // genehmigende Admin soll es nur sehen, statt es zu übersehen.
+      const konflikt = stufe === STUFE.SETTER
+        ? (hotLead.opener_id === closerId)
+        : (hotLead.setter_id === closerId || hotLead.opener_id === closerId)
 
       // Prüfen ob bereits eine offene Bewerbung existiert
       const { data: existing } = await supabase
@@ -181,6 +207,7 @@ export async function handler(event) {
         .select('id')
         .eq('hot_lead_id', hotLeadId)
         .eq('closer_id', closerId)
+        .eq('stufe', stufe)
         .eq('status', 'Offen')
         .limit(1)
 
@@ -209,7 +236,11 @@ export async function handler(event) {
           bewerbung_id: bewerbungId,
           hot_lead_id: hotLeadId,
           closer_id: closerId,
-          kommentar: kommentar || null,
+          stufe,
+          kommentar: konflikt
+            ? [kommentar, 'Hinweis: Bewerber hat diesen Kontakt selbst qualifiziert.']
+                .filter(Boolean).join(' — ')
+            : (kommentar || null),
           status: 'Offen'
         })
         .select()
@@ -290,6 +321,7 @@ export async function handler(event) {
           hot_lead:hot_leads!hot_lead_applications_hot_lead_id_fkey(
             id,
             closer_id,
+            setter_id,
             original_lead:leads!hot_leads_lead_id_fkey(unternehmensname)
           )
         `)
@@ -325,21 +357,28 @@ export async function handler(event) {
 
       if (updateError) throw new Error(updateError.message)
 
-      // Bei Genehmigung: Hot Lead dem Closer zuweisen
+      // Bei Genehmigung: Hot Lead auf der beworbenen Stufe zuweisen
       if (status === 'Genehmigt') {
-        // Prüfen ob Lead noch verfügbar
-        if (application.hot_lead?.closer_id) {
+        const stufe = application.stufe === STUFE.SETTER ? STUFE.SETTER : STUFE.CLOSER
+        const feld = stufe === STUFE.SETTER ? 'setter_id' : 'closer_id'
+
+        // Prüfen ob die Stufe noch frei ist
+        if (application.hot_lead?.[feld]) {
           return {
             statusCode: 400,
             headers: corsHeaders,
-            body: JSON.stringify({ error: 'Lead wurde zwischenzeitlich einem anderen Closer zugewiesen' })
+            body: JSON.stringify({
+              error: stufe === STUFE.SETTER
+                ? 'Es wurde zwischenzeitlich ein anderer Setter eingeteilt'
+                : 'Lead wurde zwischenzeitlich einem anderen Closer zugewiesen'
+            })
           }
         }
 
         // Lead zuweisen
         const { error: assignError } = await supabase
           .from('hot_leads')
-          .update({ closer_id: application.closer_id })
+          .update({ [feld]: application.closer_id, zuletzt_geaendert_von: angemeldet.id })
           .eq('id', application.hot_lead_id)
 
         if (assignError) throw new Error(assignError.message)
@@ -351,11 +390,14 @@ export async function handler(event) {
           .from('hot_lead_applications')
           .update({
             status: 'Abgelehnt',
-            admin_kommentar: 'Lead wurde einem anderen Closer zugewiesen',
+            admin_kommentar: stufe === STUFE.SETTER
+              ? 'Beratungsgespräch wurde einem anderen Setter zugeteilt'
+              : 'Lead wurde einem anderen Closer zugewiesen',
             bearbeitet_von: adminId || null,
             bearbeitet_am: new Date().toISOString()
           })
           .eq('hot_lead_id', application.hot_lead_id)
+          .eq('stufe', stufe)
           .eq('status', 'Offen')
           .neq('id', bewerbungId)
 

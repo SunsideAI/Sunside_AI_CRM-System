@@ -17,6 +17,8 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | 3 | Ereignis-Verlauf | **eingespielt** (Protokoll-Trigger aktiv) |
 | 1 | Statuskette — Code | **fertig** (`shared/status.js`, 15 Dateien) |
 | 8 | Buchen-Gates | **fertig** — beide Übergaben mit Formular und Riegel |
+| 4 | Bekannte Kleinfixe | **fertig** bis auf die zurückgestellte Calendly-Signatur |
+| 5 | Besetzung über zwei Pools | **fertig** |
 | 1 | Statuskette — Datenbank | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
 
 ## Warum die Statuskette noch wartet
@@ -283,3 +285,29 @@ Alle fünf laufen jetzt über `istOpener()`.
 Was die Migration bewirkt: 12 Closer bekommen die Setter-Rolle dazu, 49 Nutzer
 (18 davon aktiv) werden von Coldcaller auf Opener umgetragen, keine
 Doppelbelegung.
+
+## Die zwei Pools (Ticket 5)
+
+Gleiche Mechanik wie beim Closer-Pool, nur eine Stufe früher: Der Setter
+bewirbt sich auf ein Beratungsgespräch, ein Admin teilt zu. Die Spalte `stufe`
+an der Bewerbung entscheidet, welches Feld bei der Genehmigung gefüllt wird —
+`setter_id` oder `closer_id` — und welche Mitbewerber abgelehnt werden. Eine
+Setter-Zuteilung lässt offene Closer-Bewerbungen unberührt.
+
+**Der Interessenkonflikt wird markiert, nicht verboten.** Wer den Kontakt selbst
+qualifiziert hat und sich auf die nächste Stufe bewirbt, erscheint dem
+genehmigenden Admin mit einem Hinweis am Kommentar. Im Pool sieht der Bewerber
+denselben Hinweis an seinem eigenen Eintrag.
+
+Zwei Dinge sind dabei aufgefallen:
+
+- **Der eindeutige Index kannte die Stufe nicht.** `(hot_lead_id, closer_id)`
+  war für offene Bewerbungen eindeutig — wer sich auf das Beratungsgespräch
+  bewarb, hätte sich nicht mehr auf das Abschlussgespräch desselben Kontakts
+  bewerben können, und zwar mit einer Datenbankfehlermeldung statt einer
+  verständlichen Antwort. Die Stufe gehört in den Schlüssel.
+- **`closerId` kam aus dem Anfrage-Körper.** Man konnte sich für jemand anderen
+  bewerben. Der Bewerber kommt jetzt aus dem Token.
+
+Der Pool zeigt nur, was noch bevorsteht. Ein vergangener Termin ohne Setter ist
+kein Fall für eine Bewerbung, sondern für den Alarm aus Ticket 6.

@@ -748,7 +748,9 @@ function Closing() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          closerId: user.id,
+          // Wer sich bewirbt, kommt serverseitig aus dem Token. Die Stufe
+          // sagt, worauf: hier das Abschlussgespräch.
+          stufe: 'Closer',
           hotLeadId: applyingLead.id,
           kommentar: applyKommentar.trim() || null
         })
