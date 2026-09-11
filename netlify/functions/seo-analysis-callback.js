@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { v4 as uuidv4 } from 'uuid'
-import { rueckrufEcht } from './utils/session.js'
+import { nachweisPruefen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -13,11 +13,6 @@ export const handler = async (event) => {
     return { statusCode: 405, body: 'Method not allowed' }
   }
 
-  // Der Rueckruf schreibt Analyse-Ergebnisse in die Datenbank und war bis
-  // hierher fuer jeden offen.
-  if (!rueckrufEcht(event, 'SEO_CALLBACK_SECRET')) {
-    return { statusCode: 401, body: JSON.stringify({ error: 'Nicht berechtigt' }) }
-  }
 
   try {
     // Parse body from POST or query params from GET
@@ -44,6 +39,14 @@ export const handler = async (event) => {
     if (!hotLeadId) {
       console.error('No custom_crm_deal_id in callback')
       return { statusCode: 400, body: JSON.stringify({ error: 'custom_crm_deal_id required' }) }
+    }
+
+    // Der Rueckruf schreibt Analyse-Ergebnisse in die Datenbank und war bis
+    // hierher fuer jeden offen. Geprueft wird der Nachweis aus der Adresse,
+    // die wir dem Dienst beim Start mitgegeben haben.
+    const nachweis = (event.queryStringParameters || {}).nachweis
+    if (!nachweisPruefen(hotLeadId, nachweis)) {
+      return { statusCode: 401, body: JSON.stringify({ error: 'Nicht berechtigt' }) }
     }
 
     // Check if report failed

@@ -27,24 +27,45 @@ ist sie ein Parameter — aber *wer* handelt, kommt aus `angemeldet.id`.
 | `auth` | hier entsteht die Sitzung | Passwort |
 | `forgot-password` | Nutzer ist ausgesperrt | Versand nur an die hinterlegte Adresse |
 | `ebook-leads` (nur POST) | oeffentliches Formular auf der Website | — |
-| `calendly-webhook` | Aufruf von Calendly | Signatur, `CALENDLY_WEBHOOK_SECRET` |
-| `seo-analysis-callback` | Rueckruf des Analyse-Dienstes | geteiltes Geheimnis, `SEO_CALLBACK_SECRET` |
+| `calendly-webhook` | Aufruf von Calendly | Signatur — siehe unten |
+| `seo-analysis-callback` | Rückruf des Analyse-Dienstes | signierte Rückruf-Adresse, keine Variable nötig |
 
 ## Umgebungsvariablen
 
 | Name | Pflicht | Wirkung, wenn nicht gesetzt |
 |---|---|---|
-| `SESSION_SECRET` | nein | Das Signaturgeheimnis wird aus `SUPABASE_SERVICE_KEY` abgeleitet. Setzen ist sauberer: dann laesst sich die Sitzung unabhaengig vom Datenbank-Key erneuern. Mind. 32 Zeichen. |
-| `CALENDLY_WEBHOOK_SECRET` | **ja, sobald moeglich** | Der Webhook wird **ungeprueft** angenommen und protokolliert eine Warnung. Bis dahin kann jeder erfundene Buchungen einspielen. |
-| `SEO_CALLBACK_SECRET` | **ja, sobald moeglich** | Wie oben fuer den Analyse-Rueckruf. |
+| `SESSION_SECRET` | nein | Das Signaturgeheimnis wird aus `SUPABASE_SERVICE_KEY` abgeleitet. Setzen ist sauberer: dann lässt sich die Sitzung unabhängig vom Datenbank-Key erneuern. Mind. 32 Zeichen. |
+| Calendly-Signaturschlüssel | **ja, sobald verfügbar** | Der Webhook wird **ungeprüft** angenommen und warnt im Log. |
 
-Die beiden Webhook-Geheimnisse lassen bewusst durch, solange sie fehlen — sonst
-waere der Terminfluss ab dem Deploy tot. Sie schliessen in dem Moment, in dem
-der Wert in Netlify steht. **Die Warnung in den Logs ist die Aufgabenliste.**
+### Zum Calendly-Schlüssel
+
+`CALENDLY_API_KEY` ist **nicht** derselbe Wert. Das ist ein Personal Access
+Token für ausgehende Aufrufe (Slots, Event-Typen in `calendar.js`). Der
+Signaturschlüssel ist ein eigener Wert, den Calendly **einmalig beim Anlegen
+der Webhook-Subscription zurückgibt** (`signing_key`) und danach nie wieder
+ausliefert. Ist er nicht notiert worden, hilft nur: Subscription neu anlegen
+und den Schlüssel diesmal festhalten.
+
+Der Name der Variablen ist bewusst tolerant — geprüft werden der Reihe nach:
+`CALENDLY_WEBHOOK_SECRET`, `CALENDLY_SIGNING_KEY`, `CALENDLY_WEBHOOK_SIGNING_KEY`,
+`CALENDLY_WEBHOOK_SIGNING_SECRET`, `CALENDLY_SECRET`. Ein falsch geratener Name
+wäre schlimmer als gar keine Prüfung: Er würde still durchlassen, während alle
+glauben, die Tür sei zu. Das Log sagt, welcher Name gefunden wurde — nur der
+Name, nie der Wert.
+
+### Warum der SEO-Rückruf keine Variable braucht
+
+Dem Analyse-Dienst wird beim Start nur eine `callback_url` mitgegeben und sonst
+kein Geheimnis. Er könnte sich also gar nicht ausweisen — ein
+`SEO_CALLBACK_SECRET` in Netlify wäre wirkungslos und die Prüfung dagegen
+hätte jeden Rückruf abgewiesen. Stattdessen hängt `seo-analysis-start.js` einen
+Nachweis an die Adresse, die der Dienst unverändert zurückschickt. Rückrufe zu
+Analysen, die vor der Umstellung gestartet wurden, werden bis zum 14.09.2026
+noch ohne Nachweis angenommen; die Frist läuft von selbst ab.
 
 ## Was hier bewusst offen bleibt
 
 Die Rollen im Token sind ein Abbild vom Zeitpunkt der Anmeldung. Ein
-Rollenentzug wirkt erst nach Ablauf (12 h) oder erneuter Anmeldung. Fuer die
+Rollenentzug wirkt erst nach Ablauf (12 h) oder erneuter Anmeldung. Für die
 beiden Geld-Endpunkte (`billing-info`, `billing-dashboard`) werden die Rollen
-zusaetzlich frisch aus der Datenbank gelesen.
+zusätzlich frisch aus der Datenbank gelesen.

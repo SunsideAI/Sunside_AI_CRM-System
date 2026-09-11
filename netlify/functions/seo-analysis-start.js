@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { anmeldungVerlangen } from './utils/session.js'
+import { anmeldungVerlangen, nachweisErzeugen } from './utils/session.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -104,7 +104,12 @@ export const handler = async (event) => {
     }
 
     // Call SEO Tool API - correct endpoint: /api/v1/reports/generate
+    // Der Nachweis reist in der Adresse mit, die wir dem Dienst geben - er
+    // schickt sie unveraendert zurueck. Damit ist der Rueckruf belegt, ohne
+    // dass der Dienst ein Geheimnis von uns braucht.
+    const nachweis = nachweisErzeugen(hotLeadId)
     const callbackUrl = `${process.env.CRM_PUBLIC_URL}/.netlify/functions/seo-analysis-callback`
+      + (nachweis ? `?nachweis=${nachweis}` : '')
     const seoToolUrl = `${process.env.SEO_TOOL_URL}/api/v1/reports/generate`
 
     console.log('Calling SEO Tool:', seoToolUrl, 'for lead:', hotLeadId, 'branche:', branche)

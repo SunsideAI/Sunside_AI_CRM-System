@@ -135,50 +135,91 @@ export const corsKopf = KOPFZEILEN
 
 /**
  * Prueft die Calendly-Signatur (Kopf: "t=<zeit>,v1=<hmac>").
- * Ohne gesetztes CALENDLY_WEBHOOK_SECRET wird durchgelassen und gewarnt -
- * sonst waere der Terminfluss ab dem Deploy tot. Sobald das Geheimnis in
- * Netlify steht, ist die Tuer zu.
+ *
+ * Der Name der Umgebungsvariablen ist bewusst tolerant: der Signing Key wurde
+ * bisher nirgends gelesen, und ein falsch geratener Name waere schlimmer als
+ * gar keine Pruefung - er wuerde still durchlassen, waehrend alle glauben, die
+ * Tuer sei zu. Deshalb werden mehrere gaengige Schreibweisen akzeptiert und
+ * der gefundene Name protokolliert (nur der Name, nie der Wert).
  */
+const CALENDLY_NAMEN = [
+  'CALENDLY_WEBHOOK_SECRET',
+  'CALENDLY_SIGNING_KEY',
+  'CALENDLY_WEBHOOK_SIGNING_KEY',
+  'CALENDLY_WEBHOOK_SIGNING_SECRET',
+  'CALENDLY_SECRET'
+]
+
 export function calendlyEcht(event) {
-  const geheim = process.env.CALENDLY_WEBHOOK_SECRET
-  if (!geheim) {
-    console.warn('CALENDLY_WEBHOOK_SECRET fehlt - Webhook wird UNGEPRUEFT angenommen')
+  const name = CALENDLY_NAMEN.find(n => process.env[n])
+  if (!name) {
+    console.warn('Kein Calendly-Signaturschluessel gefunden. Gesucht unter: '
+      + CALENDLY_NAMEN.join(', ') + ' - Webhook wird UNGEPRUEFT angenommen.')
     return true
   }
+  const geheim = process.env[name]
 
   const kopf = event.headers?.['calendly-webhook-signature']
        || event.headers?.['Calendly-Webhook-Signature'] || ''
   const teile = Object.fromEntries(
     kopf.split(',').map(s => s.trim().split('=')).filter(p => p.length === 2))
 
-  if (!teile.t || !teile.v1) return false
+  if (!teile.t || !teile.v1) {
+    console.error(`Calendly-Webhook ohne Signaturkopf (Schluessel ${name} ist gesetzt)`)
+    return false
+  }
 
   // Wiedereinspielen aelterer Aufrufe ausschliessen (3 Minuten Fenster).
   const alter = Math.abs(Date.now() / 1000 - Number(teile.t))
-  if (!Number.isFinite(alter) || alter > 180) return false
+  if (!Number.isFinite(alter) || alter > 180) {
+    console.error('Calendly-Webhook zu alt oder mit unbrauchbarem Zeitstempel')
+    return false
+  }
 
   const erwartet = crypto.createHmac('sha256', geheim)
     .update(`${teile.t}.${event.body || ''}`).digest('hex')
 
   const a = Buffer.from(erwartet)
   const b = Buffer.from(teile.v1)
-  return a.length === b.length && crypto.timingSafeEqual(a, b)
+  const passt = a.length === b.length && crypto.timingSafeEqual(a, b)
+  if (!passt) console.error(`Calendly-Signatur stimmt nicht (geprueft gegen ${name})`)
+  return passt
 }
 
 /**
- * Prueft ein geteiltes Geheimnis im Authorization-Kopf (Rueckrufe eigener
- * Dienste). Gleiche Uebergangsregel wie oben.
+ * Signiert eine Rueckruf-Adresse fuer einen eigenen Dienst.
+ *
+ * Der SEO-Dienst bekommt von uns nur eine callback_url und kein Geheimnis - er
+ * kann sich also gar nicht ausweisen. Statt eines Geheimnisses, das niemand
+ * kennt, legen wir den Nachweis in die Adresse, die wir ihm ohnehin geben.
+ * Braucht keine Umgebungsvariable.
  */
-export function rueckrufEcht(event, umgebungsName) {
-  const geheim = process.env[umgebungsName]
-  if (!geheim) {
-    console.warn(`${umgebungsName} fehlt - Rueckruf wird UNGEPRUEFT angenommen`)
-    return true
+export function nachweisErzeugen(kennung) {
+  const key = geheimnis()
+  if (!key) return null
+  return crypto.createHmac('sha256', key)
+    .update(`rueckruf:${kennung}`).digest('hex').slice(0, 32)
+}
+
+// Rueckrufe zu Analysen, die vor der Umstellung gestartet wurden, tragen noch
+// keinen Nachweis. Sie werden bis zu diesem Zeitpunkt angenommen, danach nicht
+// mehr. Kein Schalter, keine Variable - die Uebergangsfrist laeuft von selbst ab.
+const UEBERGANG_BIS = Date.parse('2026-09-14T00:00:00Z')
+
+export function nachweisPruefen(kennung, nachweis) {
+  const erwartet = nachweisErzeugen(kennung)
+  if (!erwartet) return false
+
+  if (!nachweis) {
+    if (Date.now() < UEBERGANG_BIS) {
+      console.warn('Rueckruf ohne Nachweis angenommen (Uebergangsfrist bis 14.09.2026):', kennung)
+      return true
+    }
+    console.error('Rueckruf ohne Nachweis abgewiesen:', kennung)
+    return false
   }
-  const kopf = (event.headers?.authorization || event.headers?.Authorization || '').trim()
-  const treffer = /^Bearer\s+(.+)$/i.exec(kopf)
-  if (!treffer) return false
-  const a = Buffer.from(geheim)
-  const b = Buffer.from(treffer[1])
+
+  const a = Buffer.from(erwartet)
+  const b = Buffer.from(String(nachweis))
   return a.length === b.length && crypto.timingSafeEqual(a, b)
 }
