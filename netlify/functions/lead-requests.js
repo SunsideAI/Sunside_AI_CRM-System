@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -429,7 +430,7 @@ async function sendUserNotification({ userId, status, genehmigteAnzahl, angefrag
     method: 'POST',
     headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      from: 'Sunside CRM <noreply@sunsideai.de>',
+      from: ABSENDER_SYSTEM,
       to: [userEmail],
       subject,
       html: emailBody

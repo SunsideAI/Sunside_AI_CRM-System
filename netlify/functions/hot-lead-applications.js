@@ -6,6 +6,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { normalisiere } from '../../shared/status.js'
+import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -502,7 +503,7 @@ async function sendAdminNotification({ hotLead, closerName, bewerbungId, komment
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'Sunside CRM <noreply@sunsideai.de>',
+      from: ABSENDER_SYSTEM,
       to: recipients,
       subject: `📋 Neue Hot-Lead-Bewerbung: ${closerName} → ${unternehmen}`,
       html: emailHtml
@@ -617,7 +618,7 @@ async function sendCloserNotification({ closerEmail, closerName, unternehmen, st
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      from: 'Sunside CRM <noreply@sunsideai.de>',
+      from: ABSENDER_SYSTEM,
       to: [closerEmail],
       subject,
       html: emailHtml

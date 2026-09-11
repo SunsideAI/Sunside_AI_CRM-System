@@ -1,6 +1,7 @@
 // Send Email API via Resend - Supabase Version
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { ABSENDER_KUNDE } from './utils/mail.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -140,7 +141,7 @@ export async function handler(event) {
             method: 'POST',
             headers: { 'Authorization': 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              from: 'Sunside CRM <team@sunsideai.de>',
+              from: ABSENDER_KUNDE,
               to: closerEmails,
               subject: '📅 Neues Beratungsgespraech: ' + termin.unternehmen,
               html: emailHtml
@@ -216,7 +217,7 @@ export async function handler(event) {
           method: 'POST',
           headers: { 'Authorization': 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            from: 'Sunside CRM <team@sunsideai.de>',
+            from: ABSENDER_KUNDE,
             to: closerEmails,
             subject: '🔓 Termin freigegeben: ' + termin.unternehmen,
             html: emailHtml

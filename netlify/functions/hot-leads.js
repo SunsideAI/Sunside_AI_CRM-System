@@ -7,6 +7,7 @@ import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { STATUS, normalisiere, uebergangErlaubt, anzeigeName } from '../../shared/status.js'
 import { FELDER, uebergabePruefen, UEBERGABE_1, UEBERGABE_2 } from '../../shared/felder.js'
+import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -520,7 +521,7 @@ export async function handler(event) {
                   'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                  from: 'Sunside CRM <noreply@sunsideai.de>',
+                  from: ABSENDER_SYSTEM,
                   to: closer.email,
                   subject: `${closerLeads.length} neue Leads im Closer-Pool`,
                   html: emailHtml

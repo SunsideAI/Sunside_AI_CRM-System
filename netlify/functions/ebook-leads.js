@@ -2,6 +2,7 @@
 // Empfängt Leads vom E-Book Funnel und verwaltet den E-Book Pool
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -122,7 +123,7 @@ async function notifyVertrieblers(vertriebler, leadData) {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Sunside CRM <noreply@sunsideai.de>',
+        from: ABSENDER_SYSTEM,
         to: emailAddresses,
         subject: `Neuer E-Book Lead: ${leadData.vorname} ${leadData.nachname} - ${leadData.unternehmen || 'Unbekannt'}`,
         html: htmlContent

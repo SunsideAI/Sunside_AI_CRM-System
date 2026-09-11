@@ -4,6 +4,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { calendlyEcht } from './utils/session.js'
 import { STATUS } from '../../shared/status.js'
+import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -986,7 +987,7 @@ async function sendNotificationEmail(user, titel, nachricht, typ, icon, color, d
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        from: 'Sunside CRM <noreply@sunsideai.de>',
+        from: ABSENDER_SYSTEM,
         to: userEmail,
         subject: `${icon} ${titel}: ${unternehmen}`,
         html: emailHtml

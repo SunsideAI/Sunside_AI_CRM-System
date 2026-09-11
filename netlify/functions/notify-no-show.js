@@ -3,10 +3,16 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  // Diese Function las als einzige von 26 SUPABASE_SERVICE_ROLE_KEY - alle
+  // anderen SUPABASE_SERVICE_KEY. Ist nur der gaengige Name gesetzt, bekam
+  // der Client hier undefined und jede Abfrage scheiterte still. Beide Namen
+  // werden akzeptiert, damit es unabhaengig von der Netlify-Konfiguration
+  // laeuft.
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
 )
 
 const corsHeaders = {
@@ -171,7 +177,7 @@ export const handler = async (event) => {
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            from: 'Sunside CRM <noreply@sunside.io>',
+            from: ABSENDER_SYSTEM,
             to: setterEmail,
             subject: `🔴 No-Show: ${unternehmen} - bitte neuen Termin vereinbaren`,
             html: emailHtml
