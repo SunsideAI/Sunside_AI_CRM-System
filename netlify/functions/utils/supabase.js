@@ -277,12 +277,15 @@ async function assignLeadToUser(leadId, userId) {
 /**
  * Lead-Zuweisung entfernen
  */
-async function unassignLeadFromUser(leadId, userId) {
-  const { error } = await supabase
-    .from('lead_assignments')
-    .delete()
-    .eq('lead_id', leadId)
-    .eq('user_id', userId)
+async function unassignLeadFromUser(leadId, userId, grund = 'manuell_entfernt') {
+  // Ueber die RPC, damit der Vorgang in lead_assignment_history landet.
+  // Ein direktes DELETE wuerde den Verlauf zwar per Trigger mitschreiben,
+  // aber ohne Grund - und damit spaeter nicht mehr erklaerbar sein.
+  const { error } = await supabase.rpc('lead_assignments_freigeben', {
+    p_user_id: userId,
+    p_lead_ids: [leadId],
+    p_grund: grund
+  })
 
   return { error }
 }

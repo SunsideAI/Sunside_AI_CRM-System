@@ -188,12 +188,19 @@ export async function handler(event) {
         zurueckgesetztCount = erfolgreichArchiviertIds.length
       }
 
-      // Assignments löschen
-      await supabase
-        .from('lead_assignments')
-        .delete()
-        .eq('user_id', vertriebId)
-        .in('lead_id', erfolgreichArchiviertIds)
+      // Zuweisungen freigeben - ueber die RPC, damit der Grund im
+      // lead_assignment_history landet. Nie direkt loeschen: sonst ist
+      // hinterher nicht mehr feststellbar, wer den Lead eroeffnet hat.
+      const { error: freigabeError } = await supabase.rpc('lead_assignments_freigeben', {
+        p_user_id: vertriebId,
+        p_lead_ids: erfolgreichArchiviertIds,
+        p_grund: 'offboarding_archiviert'
+      })
+
+      if (freigabeError) {
+        console.error('Freigabe-Fehler (archiviert):', freigabeError)
+        throw new Error('Zuweisungen konnten nicht freigegeben werden')
+      }
     }
 
     console.log(`${zurueckgesetztCount} archivierte Leads zurückgesetzt`)
@@ -204,15 +211,22 @@ export async function handler(event) {
     if (nichtKontaktierteLeads.length > 0) {
       const nichtKontaktierteIds = nichtKontaktierteLeads.map(l => l.id)
 
-      const { error: freigebenError } = await supabase
-        .from('lead_assignments')
-        .delete()
-        .eq('user_id', vertriebId)
-        .in('lead_id', nichtKontaktierteIds)
+      // Diese Leads wurden nie bearbeitet und bekommen daher keinen
+      // Archiv-Eintrag. Frueher verschwand ihre Zuweisung damit spurlos -
+      // 31 von 35 Deals ohne Opener stammen aus genau diesem Pfad.
+      // Die RPC schreibt den Verlauf mit.
+      const { data: freigegeben, error: freigebenError } = await supabase.rpc('lead_assignments_freigeben', {
+        p_user_id: vertriebId,
+        p_lead_ids: nichtKontaktierteIds,
+        p_grund: 'offboarding_nicht_kontaktiert'
+      })
 
-      if (!freigebenError) {
-        freigegebenCount = nichtKontaktierteLeads.length
+      if (freigebenError) {
+        console.error('Freigabe-Fehler (nicht kontaktiert):', freigebenError)
+        throw new Error('Zuweisungen konnten nicht freigegeben werden')
       }
+
+      freigegebenCount = typeof freigegeben === 'number' ? freigegeben : nichtKontaktierteLeads.length
     }
 
     console.log(`${freigegebenCount} nicht-kontaktierte Leads freigegeben`)
