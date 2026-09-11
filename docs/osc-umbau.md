@@ -24,6 +24,7 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | 14 | Termin-fand-statt und Anrufzähler | **fertig** |
 | 10 | Angebots-Zweig absichern | **fertig** |
 | 11 | Mail-Modul für alle Rollen | **fertig** |
+| 15 | Kennzahlen | **fertig** |
 | 1 | Statuskette — Datenbank | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
 
 ## Warum die Statuskette noch wartet
@@ -534,3 +535,48 @@ Ansicht die Termine sind.
   Schreiben soll aber immer gehen
 - Serverseitig reicht die Anmeldung — kein Rollen- oder Stufenfilter, genau wie
   gefordert
+
+## Kennzahlen (Ticket 15)
+
+Vier Auswertungen, alle aus Feldern und dem Ereignis-Verlauf — niemand muss
+etwas zusätzlich eingeben. Vorher gab es keine davon.
+
+| Kennzahl | Quelle |
+|---|---|
+| Anwahlen je Opener und Woche | `v_anrufe_je_woche` |
+| Erscheinungsquote je Setter | `v_erscheinungsquote` |
+| Rückgabequote | `v_rueckgabequote` |
+| Vollständigkeit der Übergaben | `v_uebergabe_vollstaendigkeit` |
+
+Die Erscheinungsquote war vorher grundsätzlich nicht bildbar: Es gab nur
+No-Show, also eine Hälfte. Der Klick „Termin fand statt" liefert die andere.
+
+Wo nichts zu teilen ist, bleibt die Quote **null statt 0 %** — das ist keine
+Quote, sondern die ehrliche Aussage „noch nicht messbar".
+
+### Die Rückgabe an den Vorgänger
+
+Für die Rückgabequote fehlte die Aktion selbst — die Kennzahl wäre sonst
+dauerhaft leer geblieben. Sie ist bewusst **keine gewöhnliche
+Statusänderung**: Nur als eigenes Ereignis bleibt sie zählbar, statt in den
+normalen Wechseln unterzugehen.
+
+Genau eine Stufe zurück, Begründung Pflicht, der Vorgänger bekommt eine
+Nachricht. Der Ton folgt F24: „kein Vorwurf, sondern hält die Qualität der
+Übergaben hoch" — kein Warnrot, keine Fehlermeldung.
+
+## Ein Linter, weil der Build zu wenig sieht
+
+In `Closing.jsx` stand ein `loadData()`, das dort nie definiert war; in
+`Kaltakquise.jsx` ein `showToast()`. **Beides baut fehlerfrei durch und knallt
+erst beim Klick.**
+
+Ein erster Versuch, das mit einer eigenen Heuristik zu finden, lieferte 1174
+Fehlalarme — sie verstand weder `useState`-Destrukturierung noch deutsche Wörter
+in Texten. Eine Prüfung, die so schreit, wird ignoriert; sie ist wieder raus.
+
+Stattdessen `oxlint` mit `no-undef`. Aktuell: **null Treffer.**
+
+    npm run pruefe
+
+prüft beides — die Wachen und die undefinierten Aufrufe.

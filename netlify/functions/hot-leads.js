@@ -5,7 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
-import { STATUS, normalisiere, uebergangErlaubt, anzeigeName } from '../../shared/status.js'
+import { STATUS, normalisiere, uebergangErlaubt, anzeigeName, ruecknahmeZiel } from '../../shared/status.js'
 import { FELDER, uebergabePruefen, UEBERGABE_1, UEBERGABE_2 } from '../../shared/felder.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
 
@@ -569,6 +569,86 @@ export async function handler(event) {
             total: closerLeads.length,
             closerName: targetCloserName
           })
+        }
+      }
+
+      // ==========================================
+      // ACTION: zurueck-an-vorgaenger
+      // ==========================================
+      // Der Sonderweg aus F25.3: genau EINE Stufe zurueck, mit Pflicht-Grund.
+      // Bewusst eine eigene Aktion und kein gewoehnlicher Statuswechsel - nur
+      // so bleibt die Rueckgabequote zaehlbar, statt in den normalen Wechseln
+      // unterzugehen.
+      if (body.action === 'zurueck-an-vorgaenger') {
+        const { hotLeadId, grund } = body
+
+        if (!hotLeadId || !grund || !String(grund).trim()) {
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'hotLeadId und ein Grund sind erforderlich' })
+          }
+        }
+
+        const { data: stand } = await supabase
+          .from('hot_leads').select('status, setter_id, closer_id, opener_id, unternehmen')
+          .eq('id', hotLeadId).maybeSingle()
+
+        if (!stand) {
+          return { statusCode: 404, headers: corsHeaders, body: JSON.stringify({ error: 'Kontakt nicht gefunden' }) }
+        }
+
+        const ziel = ruecknahmeZiel(stand.status)
+        if (!ziel) {
+          return {
+            statusCode: 409,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              error: `Aus "${anzeigeName(stand.status)}" gibt es keinen Schritt zurueck.`
+            })
+          }
+        }
+
+        const { error: zurueckError } = await supabase
+          .from('hot_leads')
+          .update({ status: ziel, zuletzt_geaendert_von: angemeldet.id })
+          .eq('id', hotLeadId)
+
+        if (zurueckError) throw new Error(zurueckError.message)
+
+        // Als eigenes Ereignis festhalten, damit die Quote zaehlbar wird. Der
+        // Statuswechsel selbst wird vom Datenbank-Trigger ohnehin protokolliert.
+        await supabase.from('hot_lead_ereignisse').insert({
+          hot_lead_id: hotLeadId,
+          art: 'rueckgabe',
+          von_status: normalisiere(stand.status),
+          nach_status: ziel,
+          akteur_id: angemeldet.id,
+          bemerkung: String(grund).trim()
+        })
+
+        // Den Vorgaenger benachrichtigen - er soll nachbessern koennen.
+        // Wer das ist, haengt an der Stufe: Gibt der Setter zurueck, landet der
+        // Kontakt wieder beim Opener; gibt der Closer zurueck, beim Setter.
+        const empfaenger = ziel === STATUS.BERATUNG_VEREINBART
+          ? stand.opener_id
+          : stand.setter_id
+        if (empfaenger && empfaenger !== angemeldet.id) {
+          await supabase.from('system_messages').insert({
+            message_id: 'RG-' + Date.now().toString(36).toUpperCase(),
+            empfaenger_id: empfaenger,
+            titel: 'Kontakt zurueckgegeben: ' + (stand.unternehmen || 'Ohne Namen'),
+            nachricht: angemeldet.name + ' hat den Kontakt zurueckgegeben. Grund: ' + String(grund).trim(),
+            typ: 'Pool Update',
+            hot_lead_id: hotLeadId,
+            gelesen: false
+          })
+        }
+
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ success: true, status: ziel })
         }
       }
 

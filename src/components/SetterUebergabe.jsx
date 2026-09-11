@@ -3,6 +3,7 @@ import { CheckCircle2, CalendarPlus, Loader2, AlertTriangle } from 'lucide-react
 import { STATUS } from '../../shared/status.js'
 import { UEBERGABE_2 } from '../../shared/felder.js'
 import UebergabeFelder, { AnfragenBedarf } from './UebergabeFelder'
+import RueckgabeKnopf from './RueckgabeKnopf'
 
 // Die Ansicht des Setters: Termin bestätigen, dokumentieren, Abschlussgespräch
 // legen. Sie hängt am Termin und nicht in der Closing-Ansicht, weil der Setter
@@ -157,6 +158,11 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
         </div>
       )}
       {meldung && <p className="text-sm text-green-700">{meldung}</p>}
+
+      {/* Reicht der Erstanruf nicht aus, geht der Kontakt zurück an den Opener. */}
+      <div className="pt-2 border-t">
+        <RueckgabeKnopf hotLead={lead} onErledigt={onGespeichert} />
+      </div>
     </div>
   )
 }

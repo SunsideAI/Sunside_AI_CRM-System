@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext'
 import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
 import AbschlussForm from '../components/AbschlussForm'
+import RueckgabeKnopf from '../components/RueckgabeKnopf'
 import BillingPanel from '../components/BillingPanel'
 import { deriveBillingMode } from '../utils/billingMode'
 import {
@@ -2773,6 +2774,14 @@ function Closing() {
                     ) : (
                       /* View Mode */
                       <>
+                        {/* Reicht die Übergabe des Setters nicht, geht der
+                            Kontakt mit Begründung zurück. Kein Vorwurf -
+                            die Rückgabequote misst die Qualität der Übergaben. */}
+                        <RueckgabeKnopf
+                          hotLead={selectedLead}
+                          onErledigt={() => { setSelectedLead(null); loadLeads() }}
+                        />
+
                         {/* Info Grid */}
                         <div className="grid grid-cols-2 gap-4">
                           <div>
