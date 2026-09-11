@@ -1,10 +1,11 @@
 import { STATUS } from '../../shared/status.js'
 import SetterUebergabe from '../components/SetterUebergabe'
 import SetterPool from '../components/SetterPool'
+import EmailComposer from '../components/EmailComposer'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { Calendar, ChevronLeft, ChevronRight, Clock, User, Users, Loader2, Building2, Phone, Video, RefreshCw, CalendarDays, CalendarRange, PhoneCall, X } from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight, Clock, User, Users, Loader2, Building2, Phone, Video, RefreshCw, CalendarDays, CalendarRange, PhoneCall, X, Mail } from 'lucide-react'
 
 function Termine() {
   const { user, isAdmin } = useAuth()
@@ -14,6 +15,9 @@ function Termine() {
   const [error, setError] = useState('')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedEvent, setSelectedEvent] = useState(null)
+  // Mail-Modul ohne Stufen-Sperre: F23 verlangt ausdruecklich, dass Opener
+  // und Setter in JEDER Stufe schreiben koennen, in jeder Ansicht.
+  const [mailOffen, setMailOffen] = useState(false)
   
   // View Mode: own = Meine Termine, all = Alle Termine (nur Admin)
   const [viewMode, setViewMode] = useState('own')
@@ -830,12 +834,45 @@ function Termine() {
                       </div>
                     </div>
 
+                    {/* Schreiben geht immer - unabhängig von der Stufe und
+                        davon, wer den Termin hält. */}
+                    <div className="border-t pt-4 mt-4">
+                      {mailOffen ? (
+                        <EmailComposer
+                          hotLeadId={selectedEvent.hotLeadId}
+                          lead={{
+                            id: selectedEvent.lead?.originalLeadId || selectedEvent.hotLeadId,
+                            unternehmensname: selectedEvent.unternehmen,
+                            email: selectedEvent.email,
+                            telefon: selectedEvent.telefon,
+                            ort: selectedEvent.ort,
+                            ansprechpartnerVorname: selectedEvent.lead?.ansprechpartnerVorname,
+                            ansprechpartnerNachname: selectedEvent.lead?.ansprechpartnerNachname
+                          }}
+                          user={user}
+                          inline={true}
+                          kategorie="Setting"
+                          onClose={() => setMailOffen(false)}
+                          onSent={() => setMailOffen(false)}
+                        />
+                      ) : (
+                        <button
+                          onClick={() => setMailOffen(true)}
+                          className="flex items-center gap-2 px-4 py-2 border border-purple-300
+                                     text-purple-700 rounded-lg hover:bg-purple-50"
+                        >
+                          <Mail className="w-4 h-4" />
+                          E-Mail an den Kontakt
+                        </button>
+                      )}
+                    </div>
+
                     {/* Was der Setter nach dem Gespräch tut. Nur für den, der
                         den Termin hält - und für Admins. */}
                     {(selectedEvent.isMySetting || isAdmin()) && selectedEvent.lead && (
                       <SetterUebergabe
                         lead={selectedEvent.lead}
-                        onGespeichert={() => { setSelectedEvent(null); loadTermine() }}
+                        onGespeichert={() => { setSelectedEvent(null); setMailOffen(false); loadTermine() }}
                       />
                     )}
                   </>

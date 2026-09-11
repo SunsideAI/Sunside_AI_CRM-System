@@ -8,7 +8,9 @@ const supabase = createClient(
 )
 
 // Gültige Kategorien
-const VALID_CATEGORIES = ['Kaltakquise', 'Closing', 'Allgemein']
+// 'Setting' ist mit dem OSC-Umbau dazugekommen: Der Setter braucht eigene
+// Vorlagen zwischen Erstanruf und Abschlussgespraech.
+const VALID_CATEGORIES = ['Kaltakquise', 'Setting', 'Closing', 'Allgemein']
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

@@ -23,6 +23,7 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | 13 | Wiedervorlage-Wecker | **fertig** |
 | 14 | Termin-fand-statt und Anrufzähler | **fertig** |
 | 10 | Angebots-Zweig absichern | **fertig** |
+| 11 | Mail-Modul für alle Rollen | **fertig** |
 | 1 | Statuskette — Datenbank | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
 
 ## Warum die Statuskette noch wartet
@@ -519,3 +520,17 @@ Zwei neue Regeln im stündlichen Lauf:
 die Zähler im Lauf-Protokoll waren um den Faktor „Anzahl Admins" zu hoch. Das
 wäre nie aufgefallen, weil die Zahl plausibel aussieht. Rückgabe ist jetzt
 1 = erinnert, 0 = war schon erinnert.
+
+## Das Mail-Modul (Ticket 11)
+
+F23 verlangt es ausdrücklich: für Opener und Setter in **jeder** Stufe, in
+jeder Ansicht, ohne Stufen-Sperre. Bisher gab es das Modul nur in der
+Kaltakquise und im Closing — **der Setter hatte gar keinen Zugang**, weil seine
+Ansicht die Termine sind.
+
+- Neue Vorlagen-Kategorie `Setting` zwischen Kaltakquise und Closing
+- Der Mail-Knopf in der Termin-Ansicht ist **bewusst außerhalb** der
+  Setter-Übergabe platziert: Die wird bei anderen Stufen ausgeblendet, das
+  Schreiben soll aber immer gehen
+- Serverseitig reicht die Anmeldung — kein Rollen- oder Stufenfilter, genau wie
+  gefordert
