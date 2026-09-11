@@ -289,7 +289,10 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
         }
         perUserMap[closerName].verloren++
       }
-    } else if (status === STATUS.TERMIN_ABGESAGT) {
+    } else if (status === STATUS.NICHT_ERSCHIENEN || status === STATUS.TERMIN_ABGESAGT) {
+      // Bisher zaehlte hier nur "Termin abgesagt". Der eigentliche No-Show -
+      // der Kunde erscheint nicht - fiel in den else-Zweig und wurde als
+      // "offen" gefuehrt. Die Kennzahl mass damit Absagen statt Nichterscheinen.
       noShow++
       if (closerName && isAdmin) {
         if (!perUserMap[closerName]) {

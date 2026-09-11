@@ -3,6 +3,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
+import { istOpener, istSetter, istLeitung } from '../../shared/rollen.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -42,12 +43,11 @@ async function loadVertrieblerEmails() {
 
     return (users || [])
       .filter(u => {
+        // Die Rolle Opener traf keine der frueheren drei Bedingungen - ein
+        // umgetragener Nutzer haette keine E-Book-Benachrichtigung mehr
+        // bekommen, ohne dass es jemandem auffaellt.
         const rollen = u.rollen || []
-        return rollen.some(r =>
-          r.toLowerCase().includes('setter') ||
-          r.toLowerCase().includes('coldcaller') ||
-          r.toLowerCase() === 'admin'
-        )
+        return istOpener(rollen) || istSetter(rollen) || istLeitung(rollen)
       })
       .map(u => ({
         email: u.email_geschaeftlich || u.email,

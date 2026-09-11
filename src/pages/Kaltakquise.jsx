@@ -1,4 +1,18 @@
 import { STATUS } from '../../shared/status.js'
+
+/**
+ * Wer darf einen geplatzten Termin neu legen?
+ *
+ * Frueher: wer als Setter eingetragen war. Nach dem OSC-Umbau bedeutet
+ * setter_id aber "wer das Beratungsgespraech haelt" - der Bucher steht in
+ * opener_id. Mit der alten Pruefung kam der Opener nicht mehr an seinen
+ * eigenen geplatzten Termin, und der Setter darf die Kaltakquise gar nicht
+ * oeffnen. Damit kam NIEMAND an diesen Pfad.
+ */
+function darfNachterminieren(hotLead, user) {
+  if (!hotLead || !user?.id) return false
+  return hotLead.openerId === user.id || hotLead.setterId === user.id
+}
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
@@ -1549,22 +1563,42 @@ function Kaltakquise() {
                 <TerminPicker
                   lead={selectedLead}
                   onTerminBooked={async (termin) => {
-                    // Bei Re-Terminierung (No-Show oder Abgesagt): Hot Lead Status auf "Im Closing" setzen + Closer benachrichtigen
+                    // Bei Re-Terminierung (nicht erschienen oder abgesagt) zurueck in
+                    // den vereinbarten Termin. Frueher stand hier "Im Closing" - ein
+                    // mechanisch umbenanntes altes 'Im Closing', das die Uebergangs-
+                    // matrix nicht erlaubt. Der Aufruf wurde mit 409 abgewiesen, es
+                    // wurde NICHTS gespeichert, und der Closer bekam trotzdem eine
+                    // Nachricht ueber einen Termin, den es im CRM nicht gab.
+                    //
+                    // Welcher Termin geplatzt ist, sagt das Abschluss-Datum: Ist es
+                    // gesetzt, ging es um das Abschlussgespraech, sonst um die Beratung.
                     const isReEngagement = hotLeadData?.id && (hotLeadData?.status === STATUS.NICHT_ERSCHIENEN || hotLeadData?.status === STATUS.TERMIN_ABGESAGT)
                     if (isReEngagement) {
                       try {
-                        // Hot Lead Status updaten
-                        await fetch('/.netlify/functions/hot-leads', {
+                        const zielStatus = hotLeadData?.termin_abschlussgespraech
+                          ? STATUS.ABSCHLUSS_VEREINBART
+                          : STATUS.BERATUNG_VEREINBART
+
+                        const antwort = await fetch('/.netlify/functions/hot-leads', {
                           method: 'PATCH',
                           headers: { 'Content-Type': 'application/json' },
                           body: JSON.stringify({
                             hotLeadId: hotLeadData.id,
                             updates: {
-                              status: STATUS.IM_ABSCHLUSS,
+                              status: zielStatus,
                               terminDatum: termin.datum
                             }
                           })
                         })
+
+                        // Fehlschlag nicht verschlucken: Sonst meldet die Oberflaeche
+                        // Erfolg, waehrend im CRM das alte Datum steht.
+                        if (!antwort.ok) {
+                          const daten = await antwort.json().catch(() => ({}))
+                          alert(daten.error
+                            || 'Der Termin wurde bei Calendly gebucht, im CRM aber nicht gespeichert. Bitte den Lead prüfen.')
+                          return
+                        }
 
                         // Closer über neuen Termin benachrichtigen (wenn Closer zugewiesen)
                         if (hotLeadData.closerId) {
@@ -1596,6 +1630,7 @@ function Kaltakquise() {
               ) : showEmailComposer ? (
                 // Email Composer anzeigen
                 <EmailComposer
+                  hotLeadId={hotLeadData?.id}
                   lead={selectedLead}
                   user={user}
                   inline={true}
@@ -1666,7 +1701,7 @@ function Kaltakquise() {
                     <Loader2 className="w-5 h-5 text-gray-400 animate-spin flex-shrink-0" />
                     <span className="text-sm text-gray-500">Status wird geladen...</span>
                   </div>
-                ) : hotLeadData?.status === STATUS.NICHT_ERSCHIENEN && hotLeadData?.setterId === user?.id ? (
+                ) : hotLeadData?.status === STATUS.NICHT_ERSCHIENEN && darfNachterminieren(hotLeadData, user) ? (
                   <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-3">
                     <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
                     <div>
@@ -1678,7 +1713,7 @@ function Kaltakquise() {
                       </p>
                     </div>
                   </div>
-                ) : hotLeadData?.status === STATUS.TERMIN_ABGESAGT && hotLeadData?.setterId === user?.id ? (
+                ) : hotLeadData?.status === STATUS.TERMIN_ABGESAGT && darfNachterminieren(hotLeadData, user) ? (
                   <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-lg flex items-center gap-3">
                     <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0" />
                     <div>
@@ -2188,7 +2223,7 @@ function Kaltakquise() {
                         {/* Soft Lock: Bei Beratungsgespräch nur Kommentar-Button, AUSSER bei Re-Engagement */}
                         {selectedLead.ergebnis === 'Beratungsgespräch' ? (
                           // No-Show oder Abgesagt: Setter kann voll bearbeiten
-                          (hotLeadData?.status === STATUS.NICHT_ERSCHIENEN || hotLeadData?.status === STATUS.TERMIN_ABGESAGT) && hotLeadData?.setterId === user?.id ? (
+                          (hotLeadData?.status === STATUS.NICHT_ERSCHIENEN || hotLeadData?.status === STATUS.TERMIN_ABGESAGT) && darfNachterminieren(hotLeadData, user) ? (
                             <button
                               onClick={() => setEditMode(true)}
                               className={`flex items-center px-4 py-2 text-white rounded-lg transition-colors ${

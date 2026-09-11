@@ -60,6 +60,21 @@ export function normalisiereLead(lead) {
   return neu === lead.status ? lead : { ...lead, status: neu }
 }
 
+/**
+ * Alle Schreibweisen, die auf denselben Zustand zeigen.
+ *
+ * Für Datenbank-Filter gedacht: Der Filter kommt mit einem neuen Wert herein,
+ * der Bestand trägt aber noch den alten, solange die Migration aussteht. Ein
+ * `.eq('status', neu)` liefert dann leer - ohne Fehler, nur ohne Ergebnis.
+ */
+export function beideSchreibweisen(status) {
+  const neu = normalisiere(status)
+  const alte = Object.entries(ALTBESTAND)
+    .filter(([, ziel]) => ziel === neu)
+    .map(([alt]) => alt)
+  return [neu, ...alte]
+}
+
 /** Die Stufen des Prozesses in ihrer Reihenfolge - für Anzeige und Sortierung. */
 export const REIHENFOLGE = [
   STATUS.BERATUNG_VEREINBART,

@@ -399,3 +399,41 @@ Zu prüfen: Steht in `BRIDGE_URL` bei Netlify dieselbe Adresse? Dann fiele auch
 der Weg über die Anwendung aus. Die Adresse gehört ohnehin in die
 Konfiguration, nicht in den Funktionsrumpf — zusammen mit dem Token, das dort
 ebenfalls fest steht.
+
+## Die acht Befunde aus der Prüfung
+
+Alle erledigt. Zwei davon brachen echte Abläufe:
+
+**Die Neu-Terminierung schlug still fehl.** Die Kaltakquise setzte beim
+Neubuchen nach No-Show oder Absage den Status auf „Im Abschluss" — ein
+mechanisch umbenanntes altes `'Im Closing'`, das die Übergangsmatrix nicht
+erlaubt. Der Aufruf wurde mit 409 abgewiesen, es wurde **nichts** gespeichert,
+auch das neue Datum nicht — und der Closer bekam trotzdem eine Nachricht über
+einen Termin, den es im CRM nicht gab. Jetzt geht es zurück in den vereinbarten
+Termin, und welcher das ist, sagt das Abschluss-Datum: Ist es gesetzt, ging es
+um das Abschlussgespräch, sonst um die Beratung. Fehlschläge werden gemeldet
+statt verschluckt.
+
+**An die geplatzten Termine kam niemand mehr heran.** Drei Stellen prüften
+`setterId === user.id`. Nach dem Umbau ist das „wer das Beratungsgespräch
+hält" — der Bucher steht in `opener_id`. Der Opener kam damit nicht mehr an
+seinen eigenen geplatzten Termin, und der Setter darf die Kaltakquise gar nicht
+öffnen. `darfNachterminieren()` prüft jetzt beide.
+
+Die übrigen sechs:
+
+- **`ebook-leads`** kannte die Rolle `Opener` nicht (`includes('setter')` usw.).
+  Ein umgetragener Nutzer hätte keine Benachrichtigung mehr bekommen, ohne dass
+  es auffällt.
+- **Die No-Show-Kennzahl** zählte nur „Termin abgesagt". Das eigentliche
+  Nichterscheinen fiel in den `else`-Zweig und galt als „offen" — die Kennzahl
+  maß Absagen statt No-Shows.
+- **`follow-up`** lieferte den Status roh und filterte mit neuen Werten gegen
+  den nicht migrierten Bestand: ein `.eq()` das leer liefert, ohne Fehler.
+  `beideSchreibweisen()` in `shared/status.js` löst das.
+- **Die Bewerbungsliste** zeigte Setter- und Closer-Bewerbungen als identische
+  Zeilen. Der Admin konnte nicht sehen, was er genehmigt.
+- **`material_versendet`** war ein hartes Gate, das laut eigenem Hilfetext das
+  System füllt — es füllte es aber niemand. Statt das Gate zu entschärfen,
+  schreibt `send-email.js` die versendete Unterlage jetzt am Kontakt fort. Der
+  Hilfetext stimmt damit.

@@ -228,7 +228,7 @@ export async function handler(event) {
     }
 
     // STANDARD EMAIL
-    const { to, subject, content, senderName, senderEmail, senderTelefon, replyTo, leadId, templateName, attachments } = body
+    const { to, subject, content, senderName, senderEmail, senderTelefon, replyTo, leadId, hotLeadId: hotLeadFuerMaterial, templateName, attachments } = body
 
     if (!to || !subject || !content) {
       return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'to, subject und content erforderlich' }) }
@@ -275,6 +275,28 @@ export async function handler(event) {
       try {
         await updateLeadHistory({ leadId, action: 'email', details: 'E-Mail gesendet: "' + (templateName || 'Individuell') + '" an ' + to, userName: senderName, attachmentCount: processedAttachments.length })
       } catch (e) { console.error('Lead-Update Fehler:', e) }
+    }
+
+    // Versendete Unterlagen mitschreiben. Der Hilfetext im CRM sagt "Fuellt das
+    // System beim Senden automatisch aus" - bisher tat es das nicht, und der
+    // Setter stand vor einem Pflichtfeld, das er von Hand tippen musste.
+    if (hotLeadFuerMaterial) {
+      try {
+        const stueck = templateName || subject
+        const { data: stand } = await supabase
+          .from('hot_leads').select('material_versendet').eq('id', hotLeadFuerMaterial).maybeSingle()
+
+        const bisher = Array.isArray(stand?.material_versendet) ? stand.material_versendet : []
+        if (stueck && !bisher.includes(stueck)) {
+          await supabase.from('hot_leads')
+            .update({ material_versendet: [...bisher, stueck] })
+            .eq('id', hotLeadFuerMaterial)
+        }
+      } catch (e) {
+        // Der Versand ist gelungen - daran soll ein misslungener Vermerk
+        // nichts aendern.
+        console.error('material_versendet konnte nicht fortgeschrieben werden:', e)
+      }
     }
 
     return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true, emailId: resendData.id, attachmentCount: processedAttachments.length }) }

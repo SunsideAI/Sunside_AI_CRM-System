@@ -70,7 +70,9 @@ const htmlToMarkdown = (html) => {
     .replace(/\n+$/, '')
 }
 
-function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie = null }) {
+// hotLeadId wird durchgereicht, damit der Versand die Liste der versendeten
+// Unterlagen am Kontakt fortschreiben kann (Gate der Uebergabe 2).
+function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie = null, hotLeadId = null }) {
   const [templates, setTemplates] = useState([])
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [loading, setLoading] = useState(true)
@@ -373,6 +375,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
           senderTelefon: user?.telefon,
           replyTo: user?.email_geschaeftlich || user?.email,
           leadId: lead?.id,
+          hotLeadId: hotLeadId || lead?.hotLeadId || null,
           templateName: templates.find(t => t.id === selectedTemplate)?.name || 'Individuell',
           userId: user?.id,
           attachments: attachmentsToSend

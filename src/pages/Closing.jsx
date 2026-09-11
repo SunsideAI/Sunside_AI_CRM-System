@@ -2233,6 +2233,7 @@ function Closing() {
                   </button>
                   
                   <EmailComposer
+                    hotLeadId={selectedLead?.id}
                     lead={selectedLead}
                     user={user}
                     inline={true}

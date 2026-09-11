@@ -64,6 +64,8 @@ function HotLeadBewerbungenVerwaltung() {
 
     try {
       const kommentar = editKommentar[bewerbungId] || ''
+      // Die Stufe bestimmt, was genehmigt wurde - und damit den Meldungstext.
+      const stufe = bewerbungen.find(b => b.id === bewerbungId)?.stufe || 'Closer'
 
       const response = await fetch('/.netlify/functions/hot-lead-applications', {
         method: 'PATCH',
@@ -82,7 +84,9 @@ function HotLeadBewerbungenVerwaltung() {
       }
 
       if (status === 'Genehmigt') {
-        setSuccessMessage('Bewerbung genehmigt! Lead wurde dem Closer zugewiesen.')
+        setSuccessMessage(stufe === 'Setter'
+          ? 'Bewerbung genehmigt! Das Beratungsgespräch wurde dem Setter zugeteilt.'
+          : 'Bewerbung genehmigt! Der Lead wurde dem Closer zugewiesen.')
       } else {
         setSuccessMessage('Bewerbung wurde abgelehnt.')
       }
@@ -217,7 +221,18 @@ function HotLeadBewerbungenVerwaltung() {
                       <Target className="w-5 h-5 text-purple-600" />
                     </div>
                     <div>
-                      <p className="font-medium text-on-surface">{bewerbung.closerName}</p>
+                      <p className="font-medium text-on-surface">
+                        {bewerbung.closerName}
+                        {/* Ohne die Stufe sehen Setter- und Closer-Bewerbung
+                            identisch aus, und der Admin genehmigt blind. */}
+                        <span className={`ml-2 px-2 py-0.5 rounded-full text-label-sm ${
+                          bewerbung.stufe === 'Setter'
+                            ? 'bg-sky-100 text-sky-700'
+                            : 'bg-indigo-100 text-indigo-700'
+                        }`}>
+                          {bewerbung.stufe === 'Setter' ? 'Beratungsgespräch' : 'Abschlussgespräch'}
+                        </span>
+                      </p>
                       <p className="text-sm text-on-surface-variant">
                         {formatDate(bewerbung.erstelltAm)}
                       </p>

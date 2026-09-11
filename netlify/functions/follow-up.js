@@ -6,6 +6,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { normalisiere, beideSchreibweisen } from '../../shared/status.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -313,7 +314,9 @@ export async function handler(event) {
 
       // Filter: Hot-Lead Status (z.B. Lead, Verloren, Wiedervorlage)
       if (hotLeadStatus && hotLeadStatus !== 'all') {
-        query = query.eq('status', hotLeadStatus)
+        // Beide Schreibweisen treffen: Die Datenmigration laeuft spaeter, der
+        // Filter kommt aber schon mit neuen Werten herein.
+        query = query.in('status', beideSchreibweisen(hotLeadStatus))
       }
 
       // Filter: Fälligkeit
@@ -367,7 +370,7 @@ export async function handler(event) {
       }
 
       if (hotLeadStatus && hotLeadStatus !== 'all') {
-        countQuery = countQuery.eq('status', hotLeadStatus)
+        countQuery = countQuery.in('status', beideSchreibweisen(hotLeadStatus))
       }
 
       if (search) {
@@ -420,7 +423,8 @@ export async function handler(event) {
             telefonnummer: lead.telefonnummer || originalLead.telefonnummer || '',
             mail: lead.mail || originalLead.mail || '',
             website: lead.website || '',
-            status: lead.status,
+            // Altbestand auf die neue Liste bringen, bevor das Frontend ihn sieht.
+            status: normalisiere(lead.status),
             termin_beratungsgespraech: lead.termin_beratungsgespraech,
             kommentar: originalLead.kommentar || '',
             follow_up_status: lead.follow_up_status || 'aktiv',
