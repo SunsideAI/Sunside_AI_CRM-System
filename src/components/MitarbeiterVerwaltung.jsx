@@ -243,7 +243,7 @@ function MitarbeiterVerwaltung() {
       console.log('Deaktiviere User:', selectedUser?.vor_nachname)
       console.log('User Rollen:', selectedUser?.rolle)
       
-      // Prüfen ob User Kaltakquise macht (dann Leads archivieren). Die
+      // Prüfen ob User im Opening arbeitet (dann Leads archivieren). Die
       // woertliche Pruefung auf 'Coldcaller' haette nach der Umbenennung
       // stillschweigend aufgehoert zu greifen - und die Leads eines
       // ausscheidenden Openers waeren nirgends gelandet.

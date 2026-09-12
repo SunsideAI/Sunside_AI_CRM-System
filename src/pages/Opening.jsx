@@ -6,7 +6,7 @@ import { STATUS } from '../../shared/status.js'
  * Frueher: wer als Setter eingetragen war. Nach dem OSC-Umbau bedeutet
  * setter_id aber "wer das Beratungsgespraech haelt" - der Bucher steht in
  * opener_id. Mit der alten Pruefung kam der Opener nicht mehr an seinen
- * eigenen geplatzten Termin, und der Setter darf die Kaltakquise gar nicht
+ * eigenen geplatzten Termin, und der Setter darf das Opening gar nicht
  * oeffnen. Damit kam NIEMAND an diesen Pfad.
  */
 function darfNachterminieren(hotLead, user) {
@@ -97,13 +97,13 @@ function getLandFlag(land) {
   return flags[land] || ''
 }
 
-function Kaltakquise() {
+function Opening() {
   const { user, isAdmin } = useAuth()
 
   // Filter-State aus sessionStorage wiederherstellen
   const getStoredFilter = (key, defaultValue) => {
     try {
-      const stored = sessionStorage.getItem(`kaltakquise_${key}`)
+      const stored = sessionStorage.getItem(`opening_${key}`)
       return stored !== null ? stored : defaultValue
     } catch {
       return defaultValue
@@ -239,13 +239,13 @@ function Kaltakquise() {
   // Filter-State in sessionStorage persistieren
   useEffect(() => {
     try {
-      sessionStorage.setItem('kaltakquise_searchInput', searchInput)
-      sessionStorage.setItem('kaltakquise_filterContacted', filterContacted)
-      sessionStorage.setItem('kaltakquise_filterResult', filterResult)
-      sessionStorage.setItem('kaltakquise_filterVertriebler', filterVertriebler)
-      sessionStorage.setItem('kaltakquise_filterLand', filterLand)
-      sessionStorage.setItem('kaltakquise_filterQuelle', filterQuelle)
-      sessionStorage.setItem('kaltakquise_viewMode', viewMode)
+      sessionStorage.setItem('opening_searchInput', searchInput)
+      sessionStorage.setItem('opening_filterContacted', filterContacted)
+      sessionStorage.setItem('opening_filterResult', filterResult)
+      sessionStorage.setItem('opening_filterVertriebler', filterVertriebler)
+      sessionStorage.setItem('opening_filterLand', filterLand)
+      sessionStorage.setItem('opening_filterQuelle', filterQuelle)
+      sessionStorage.setItem('opening_viewMode', viewMode)
     } catch (e) {
       // sessionStorage nicht verfügbar
     }
@@ -802,7 +802,7 @@ function Kaltakquise() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-headline-lg font-display text-on-surface">
-            {viewMode === 'ebook' ? 'E-Book Pool' : 'Kaltakquise'}
+            {viewMode === 'ebook' ? 'E-Book Pool' : 'Opening'}
           </h1>
           <p className="mt-2 text-body-md text-on-surface-variant">
             {viewMode === 'ebook'
@@ -972,7 +972,7 @@ function Kaltakquise() {
           >
             <option value="all">Quelle</option>
             <option value="E-Book">E-Book</option>
-            <option value="Kaltakquise">Kaltakquise</option>
+            <option value="Opening">Opening</option>
             <option value="Empfehlung">Empfehlung</option>
             <option value="Website">Website</option>
             <option value="Sonstige">Sonstige</option>
@@ -1008,7 +1008,7 @@ function Kaltakquise() {
                 // sessionStorage zurücksetzen
                 try {
                   Object.keys(sessionStorage).forEach(key => {
-                    if (key.startsWith('kaltakquise_')) sessionStorage.removeItem(key)
+                    if (key.startsWith('opening_')) sessionStorage.removeItem(key)
                   })
                 } catch (e) {}
               }}
@@ -1634,7 +1634,7 @@ function Kaltakquise() {
                   lead={selectedLead}
                   user={user}
                   inline={true}
-                  kategorie="Kaltakquise"
+                  kategorie="Opening"
                   onClose={() => setShowEmailComposer(false)}
                   onSent={async (info) => {
                     console.log('E-Mail gesendet:', info)
@@ -2353,4 +2353,4 @@ function Kaltakquise() {
   )
 }
 
-export default Kaltakquise
+export default Opening

@@ -614,3 +614,46 @@ Ursprünglich wollte ich den neuesten Branch-Stand auf `main` ziehen. Besser ist
 was jetzt dort steht: **der tatsächlich veröffentlichte Commit.** So beschreibt
 `main` die Wirklichkeit statt einer Absicht — und ein versehentlicher Deploy von
 `main` würde genau das ausliefern, was ohnehin läuft.
+
+## Opening statt Kaltakquise, und ein eigener Setting-Tab
+
+**Kaltakquise heißt jetzt Opening** — an jeder Stelle, die zählt: Menü, Route,
+Seitentitel, Vorlagen-Kategorie, Dashboard-Reiter, die Standard-Quelle neuer
+Hot Leads. Die alte Adresse `/kaltakquise` leitet auf `/opening` weiter, weil
+sie in bereits verschickten Mails und in Lesezeichen steht.
+
+In den Daten war es klein: **genau vier Datensätze** trugen „Kaltakquise" als
+Wert — zwei Quellen, zwei Vorlagen-Kategorien. Der Rest war Beschriftung.
+
+Stehen bleibt das Wort dort, wo es die **Tätigkeit** beschreibt und nicht den
+Reiter: in den Prompt-Texten der Analyse und in der Rollenbeschreibung
+(„Kaltakquise bis zum gelegten Termin"). Das ist das treffende deutsche Wort
+dafür, was ein Opener tut.
+
+### Eine Namenskollision nebenbei
+
+`analytics.js` nannte die Opener-Zahlen `getSettingStats`. Mit einem
+Setting-Tab daneben wäre das garantiert verwechselt worden — der Parameter
+heißt aus Kompatibilitätsgründen weiter `setting`, aber im Code steht jetzt,
+dass das Opening gemeint ist.
+
+### Der Setting-Tab
+
+Zwischen Opening und Closing, in der Reihenfolge des Prozesses. Sichtbar für
+Setter und Admins.
+
+Bisher lag die Setter-Arbeit in den Terminen, als Seitenbereich am Kalender.
+Für den Kalender ist das richtig — aber es ist keine Arbeitsfläche: **Der Setter
+braucht eine Liste seiner Kontakte, nicht einen Monat mit Kästchen.**
+
+Vier Ansichten: Anstehend · Zu dokumentieren · Geplatzt · Alle, jeweils mit
+Zähler. Ein Termin, der vorbei ist, ohne dass jemand „Termin fand statt"
+geklickt hat, wird gelb markiert — das ist die Arbeit, die liegt.
+
+In der Detailansicht steht **was der Opener aufgenommen hat** (Ziel, größtes
+Problem im Wortlaut, Berufsgruppe), damit der Setter damit ins Gespräch geht
+statt danach zu suchen. Darunter: Video beitreten, schreiben, geplatzten Termin
+neu legen, „Termin fand statt", die Übergabe an den Closer und die Rückgabe.
+
+Der Pool der unbesetzten Beratungsgespräche steht oben auf der Seite — dieselbe
+Ansicht wie an den Terminen, nur dort, wo der Setter ohnehin arbeitet.

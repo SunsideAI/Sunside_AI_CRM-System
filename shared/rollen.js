@@ -5,7 +5,7 @@
 //
 // Coldcaller steht weiter in der Liste, weil 18 aktive Nutzer ihn tragen. Wer
 // ihn hat, darf, was ein Opener darf - sonst wäre am Tag der Umstellung die
-// Kaltakquise für alle zu. Der Wert verschwindet, wenn die letzten Nutzer
+// das Opening für alle zu. Der Wert verschwindet, wenn die letzten Nutzer
 // umgetragen sind, nicht vorher.
 
 export const ROLLE = {
@@ -62,7 +62,8 @@ export function istLeitung(rollen) {
  * verbindlich ist die Rollenprüfung in den Functions.
  */
 export const SEITEN_ZUGANG = {
-  kaltakquise:   [ROLLE.OPENER, ROLLE.COLDCALLER, ROLLE.ADMIN],
+  opening:       [ROLLE.OPENER, ROLLE.COLDCALLER, ROLLE.ADMIN],
+  setting:       [ROLLE.SETTER, ROLLE.ADMIN],
   termine:       null,                                   // alle Angemeldeten
   closing:       [ROLLE.CLOSER, ROLLE.ADMIN],
   'follow-up':   [ROLLE.CLOSER, ROLLE.ADMIN],

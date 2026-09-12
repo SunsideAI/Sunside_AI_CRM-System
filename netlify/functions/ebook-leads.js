@@ -103,7 +103,7 @@ async function notifyVertrieblers(vertriebler, leadData) {
         </table>
       </div>
       <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crmsunsideai.netlify.app/kaltakquise" style="display: inline-block; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
+        <a href="https://crmsunsideai.netlify.app/opening" style="display: inline-block; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
           Jetzt im E-Book Pool uebernehmen
         </a>
       </div>

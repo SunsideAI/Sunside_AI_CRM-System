@@ -40,7 +40,11 @@ export async function handler(event) {
 
   try {
     const params = event.queryStringParameters || {}
-    const { userName, userId, userRole } = params
+    // Identitaet und Rolle kommen aus dem Token. Vorher genuegte
+    // ?userName=<fremder Name>, um dessen Kennzahlen zu sehen.
+    const userName = angemeldet.name
+    const userId = angemeldet.id
+    const userRole = angemeldet.istAdmin ? 'Admin' : (params.userRole || '')
 
     console.log('Dashboard API - Params:', { userName, userId, userRole })
 

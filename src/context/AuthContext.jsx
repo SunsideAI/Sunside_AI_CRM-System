@@ -53,7 +53,7 @@ export function AuthProvider({ children }) {
   const isSetter = () => istSetter(user?.rolle)
   // Opener und Coldcaller sind dieselbe Aufgabe unter zwei Namen. Solange
   // Nutzer den alten Wert tragen, gelten sie als Opener - sonst wäre am Tag
-  // der Umstellung die Kaltakquise für alle zu.
+  // der Umstellung das Opening für alle zu.
   const isOpener = () => istOpener(user?.rolle)
   const isColdcaller = isOpener
   const isLeitung = () => istLeitung(user?.rolle)

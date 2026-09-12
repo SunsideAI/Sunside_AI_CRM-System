@@ -16,13 +16,14 @@ import {
   Clock,
   CheckCheck,
   RotateCcw,
-  Euro
+  Euro,
+  Users
 } from 'lucide-react'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import Clippy from './Clippy'
 
 function Layout({ children }) {
-  const { user, logout, isColdcaller, isCloser, isAdmin, isGeschaeftsfuehrer } = useAuth()
+  const { user, logout, isColdcaller, isSetter, isCloser, isAdmin, isGeschaeftsfuehrer } = useAuth()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -147,7 +148,7 @@ function Layout({ children }) {
               message: a.adminKommentar || (a.status === 'Genehmigt' ? 'Deine Leads sind bereit!' : ''),
               time: a.bearbeitetAm || a.erstelltAm,
               unread: !readNotifications.includes(a.id),
-              link: '/kaltakquise'
+              link: '/opening'
             }))
             allNotifications = [...allNotifications, ...anfragenNotifs]
           }
@@ -299,7 +300,7 @@ function Layout({ children }) {
                 message: lead.unternehmensname || 'Rückruf',
                 time: new Date().toISOString(),
                 unread: true,
-                link: '/kaltakquise',
+                link: '/opening',
                 isReminder: true,
                 terminId: lead.id
               })
@@ -364,10 +365,17 @@ function Layout({ children }) {
       show: true
     },
     {
-      name: 'Kaltakquise',
-      path: '/kaltakquise',
+      name: 'Opening',
+      path: '/opening',
       icon: Phone,
       show: isColdcaller() || isAdmin()
+    },
+    {
+      // Zwischen Opening und Closing - in der Reihenfolge des Prozesses.
+      name: 'Setting',
+      path: '/setting',
+      icon: Users,
+      show: isSetter() || isAdmin()
     },
     {
       name: 'Closing',
@@ -496,7 +504,7 @@ function Layout({ children }) {
                             }`}
                             onClick={() => {
                               markAsRead(notif.id, notif.isSystemMessage, notif.airtableId, notif.isReminder, notif.terminId)
-                              navigate(notif.link || (isAdmin() ? '/einstellungen?tab=anfragen' : '/kaltakquise'))
+                              navigate(notif.link || (isAdmin() ? '/einstellungen?tab=anfragen' : '/opening'))
                               setNotificationOpen(false)
                             }}
                           >

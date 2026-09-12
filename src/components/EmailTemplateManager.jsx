@@ -85,7 +85,7 @@ const renderFormattedPreview = (text) => {
 
 // Kategorie-Optionen für Templates
 const KATEGORIE_OPTIONS = [
-  { value: 'Kaltakquise', label: 'Kaltakquise', description: 'Für Unterlagen nach Cold Calls' },
+  { value: 'Opening', label: 'Opening', description: 'Für Unterlagen nach dem Erstanruf' },
   { value: 'Closing', label: 'Closing', description: 'Für Angebote im Closing-Prozess' },
   { value: 'Allgemein', label: 'Allgemein', description: 'Überall verfügbar' }
 ]
@@ -567,7 +567,7 @@ function EmailTemplateManager() {
                     <h4 className="font-medium text-gray-900">{template.name}</h4>
                     {/* Kategorie Badge */}
                     <span className={`px-2 py-0.5 text-xs rounded-full font-medium ${
-                      template.kategorie === 'Kaltakquise' 
+                      template.kategorie === 'Opening' 
                         ? 'bg-blue-100 text-blue-700'
                         : template.kategorie === 'Closing'
                         ? 'bg-purple-100 text-purple-700'

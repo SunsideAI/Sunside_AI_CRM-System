@@ -357,7 +357,11 @@ async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDat
 }
 
 // ==========================================
-// SETTING STATS (Kaltakquise Leads)
+// OPENING STATS (Leads aus der Kaltakquise)
+//
+// Achtung bei der Benennung: Diese Zahlen gehoeren zum OPENER, nicht zur
+// Setting-Stufe des neuen Prozesses. Der Parameter heisst aus
+// Kompatibilitaetsgruenden weiter 'setting'; gemeint ist das Opening.
 // ==========================================
 async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate, startDateStr, endDateStr }) {
   // User-IDs ermitteln falls nötig

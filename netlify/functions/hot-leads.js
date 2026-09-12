@@ -786,7 +786,7 @@ export async function handler(event) {
         unternehmen: unternehmen || '',
         termin_beratungsgespraech: terminDatum,
         status: STATUS.BERATUNG_VEREINBART,
-        quelle: quelle || 'Kaltakquise',
+        quelle: quelle || 'Opening',
         setter_id: setterRecordId || null,
         closer_id: closerRecordId || null,
         // Wer bucht, ist der Opener. Ausdruecklich setzen statt dem Trigger zu

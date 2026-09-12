@@ -201,7 +201,7 @@ function Dashboard() {
   const isCloser = () => hasRole('Closer')
   const isAdmin = () => hasRole('Admin')
 
-  const showKaltakquiseTab = isColdcaller() || isAdmin()
+  const showOpeningTab = isColdcaller() || isAdmin()
   const showClosingTab = isCloser() || isAdmin()
 
   return (
@@ -212,7 +212,7 @@ function Dashboard() {
           <h1 className="text-headline-lg font-display text-on-surface">Dashboard</h1>
           <p className="mt-2 text-body-md text-on-surface-variant">
             {activeView === 'uebersicht' && 'Hier ist dein Überblick für heute.'}
-            {activeView === 'kaltakquise' && 'Kaltakquise Performance-Analyse'}
+            {activeView === 'opening' && 'Opening Performance-Analyse'}
             {activeView === 'closing' && 'Closing Performance-Analyse'}
           </p>
         </div>
@@ -233,17 +233,17 @@ function Dashboard() {
               <span className="xs:hidden">Start</span>
             </button>
 
-            {showKaltakquiseTab && (
+            {showOpeningTab && (
               <button
-                onClick={() => setActiveView('kaltakquise')}
+                onClick={() => setActiveView('opening')}
                 className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
-                  activeView === 'kaltakquise'
+                  activeView === 'opening'
                     ? 'bg-gradient-primary text-white shadow-glow-primary'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
                 <Phone className="h-4 w-4" />
-                <span className="hidden sm:inline">Kaltakquise</span>
+                <span className="hidden sm:inline">Opening</span>
                 <span className="sm:hidden">Akquise</span>
               </button>
             )}
@@ -269,8 +269,8 @@ function Dashboard() {
       {activeView === 'uebersicht' && (
         <UebersichtContent user={user} isColdcaller={isColdcaller} isCloser={isCloser} isAdmin={isAdmin} />
       )}
-      {activeView === 'kaltakquise' && (
-        <KaltakquiseAnalytics user={user} isAdmin={isAdmin} />
+      {activeView === 'opening' && (
+        <OpeningAnalytics user={user} isAdmin={isAdmin} />
       )}
       {activeView === 'closing' && (
         <ClosingAnalytics user={user} isAdmin={isAdmin} />
@@ -382,8 +382,8 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
   const quickActions = [
     {
       name: 'Leads anrufen',
-      description: 'Starte mit der Kaltakquise',
-      path: '/kaltakquise',
+      description: 'Starte mit dem Opening',
+      path: '/opening',
       icon: Phone,
       color: 'text-green-600 bg-green-100',
       show: isColdcaller() || isAdmin()
@@ -1196,7 +1196,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 // ==========================================
 // KALTAKQUISE ANALYTICS (ehemals Setting)
 // ==========================================
-function KaltakquiseAnalytics({ user, isAdmin }) {
+function OpeningAnalytics({ user, isAdmin }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [stats, setStats] = useState(null)
@@ -1216,12 +1216,12 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
   // Cache Keys
   const getCacheKey = () => {
     const userPart = isAdmin() ? `admin_${selectedUser}` : (user?.vor_nachname || 'user')
-    return `dashboard_kaltakquise_${dateRange}_${userPart}`
+    return `dashboard_opening_${dateRange}_${userPart}`
   }
 
   const getCompareCacheKey = () => {
     const userPart = isAdmin() ? `admin_${selectedUser}` : (user?.vor_nachname || 'user')
-    return `dashboard_kaltakquise_compare_${compareDateRange}_${userPart}`
+    return `dashboard_opening_compare_${compareDateRange}_${userPart}`
   }
 
   // Prüfen ob Zeiträume identisch sind
@@ -1291,7 +1291,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         throw new Error('Fehler beim Laden')
       }
     } catch (err) {
-      console.error('Kaltakquise Analytics Error:', err)
+      console.error('Opening Analytics Error:', err)
       setError('Fehler beim Laden der Analytics')
     } finally {
       setLoading(false)
@@ -1461,7 +1461,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         <p className="text-body-sm text-on-surface-variant">
           {isAdmin()
             ? (selectedUser === 'all' ? 'Übersicht aller Vertriebler' : `Performance: ${selectedUser}`)
-            : 'Deine Kaltakquise Performance'
+            : 'Deine Opening-Performance'
           }
         </p>
 
@@ -1989,7 +1989,7 @@ function KaltakquiseAnalytics({ user, isAdmin }) {
         <div className="text-center py-12">
           <BarChart3 className="h-12 w-12 text-outline mx-auto mb-4" />
           <h3 className="text-title-lg font-display text-on-surface mb-2">Keine Daten verfügbar</h3>
-          <p className="text-on-surface-variant">Es gibt noch keine Kaltakquise-Daten für den ausgewählten Zeitraum.</p>
+          <p className="text-on-surface-variant">Es gibt noch keine Opening-Daten für den ausgewählten Zeitraum.</p>
         </div>
       )}
     </div>

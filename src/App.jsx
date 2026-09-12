@@ -9,7 +9,8 @@ import Layout from './components/Layout'
 import Login from './pages/Login'
 import ForgotPassword from './pages/ForgotPassword'
 import Dashboard from './pages/Dashboard'
-import Kaltakquise from './pages/Kaltakquise'
+import Opening from './pages/Opening'
+import Setting from './pages/Setting'
 import Closing from './pages/Closing'
 import Termine from './pages/Termine'
 import Profil from './pages/Profil'
@@ -70,14 +71,23 @@ function App() {
         <Route path="profil" element={<Profil />} />
         
         <Route 
-          path="kaltakquise" 
+          path="opening" 
           element={
-            <ProtectedRoute allowedRoles={SEITEN_ZUGANG.kaltakquise}>
-              <Kaltakquise />
+            <ProtectedRoute allowedRoles={SEITEN_ZUGANG.opening}>
+              <Opening />
             </ProtectedRoute>
           } 
         />
         
+        <Route
+          path="setting"
+          element={
+            <ProtectedRoute allowedRoles={SEITEN_ZUGANG.setting}>
+              <Setting />
+            </ProtectedRoute>
+          }
+        />
+
         <Route
           path="closing"
           element={
@@ -104,6 +114,10 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Alte Adresse: In bereits verschickten Mails und in Lesezeichen
+            steht noch /kaltakquise. */}
+        <Route path="kaltakquise" element={<Navigate to="/opening" replace />} />
 
         <Route path="termine" element={<Termine />} />
         

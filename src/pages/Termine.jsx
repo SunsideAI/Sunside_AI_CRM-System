@@ -930,11 +930,11 @@ function Termine() {
 
                     <div className="pt-6">
                       <a
-                        href="/kaltakquise"
+                        href="/opening"
                         className="btn-primary w-full inline-flex items-center justify-center gap-2"
                       >
                         <PhoneCall className="w-4 h-4" />
-                        Zur Kaltakquise
+                        Zum Opening
                       </a>
                     </div>
                   </>

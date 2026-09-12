@@ -416,7 +416,7 @@ function FollowUp() {
         </div>
       </div>
 
-      {/* Filter & Suche - gleiches Layout wie Closing/Kaltakquise */}
+      {/* Filter & Suche - gleiches Layout wie Closing/Opening */}
       <div className="card p-5 space-y-4">
         {/* Zeile 1: Suche + Buttons */}
         <div className="flex gap-4">

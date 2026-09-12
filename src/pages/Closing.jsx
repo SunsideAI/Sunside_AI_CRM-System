@@ -1869,7 +1869,7 @@ function Closing() {
       ) : (
         /* ==================== NORMALE CLOSING-ANSICHT ==================== */
         <>
-          {/* Filter & Suche - gleiches Layout wie Kaltakquise */}
+          {/* Filter & Suche - gleiches Layout wie Opening */}
       <div className="card p-5 space-y-4">
         {/* Zeile 1: Suche + Refresh */}
         <div className="flex gap-4">
