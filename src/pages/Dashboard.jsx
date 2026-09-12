@@ -1,5 +1,5 @@
 import { STATUS, IST_VERLOREN } from '../../shared/status.js'
-import { istOpener, ROLLE } from '../../shared/rollen.js'
+import { istOpener, istSetter, ROLLE } from '../../shared/rollen.js'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -283,13 +283,19 @@ function Dashboard() {
 // ÜBERSICHT CONTENT
 // ==========================================
 function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
+  // Der Setter kam im Dashboard bisher gar nicht vor: Er passte in keine der
+  // Bedingungen und sah deshalb genau eine Kachel in einem Raster fuer vier.
+  // Die Zahlen dafuer liefert die Schnittstelle laengst mit.
+  const istSetterNutzer = () => istSetter(user?.rolle)
+
   const [loading, setLoading] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
   const [data, setData] = useState({
     zugewiesenLeads: 0,
     callsHeute: 0,
     termineWoche: 0,
-    abschluesseMonat: 0
+    abschluesseMonat: 0,
+    meineHotLeads: 0
   })
 
   useEffect(() => {
@@ -315,7 +321,13 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
     try {
       const params = new URLSearchParams()
       params.append('userName', user?.vor_nachname || '')
-      params.append('userRole', isAdmin() ? 'Admin' : isColdcaller() ? ROLLE.COLDCALLER : ROLLE.CLOSER)
+      // Ein Setter wurde hier als Closer gemeldet - die Kette kannte ihn
+      // schlicht nicht. Heute wertet die Function die Rolle zwar nicht aus,
+      // aber eine falsche Angabe wartet nur darauf, irgendwann zu wirken.
+      params.append('userRole', isAdmin() ? 'Admin'
+        : isColdcaller() ? ROLLE.COLDCALLER
+        : istSetter(user?.rolle) ? ROLLE.SETTER
+        : ROLLE.CLOSER)
 
       const response = await fetch(`/.netlify/functions/dashboard?${params.toString()}`)
       const result = await response.json()
@@ -344,7 +356,8 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       zugewiesenLeads: zugewiesene,
       callsHeute: result.heute || 0,
       termineWoche: result.termineWoche || 0,
-      abschluesseMonat: result.abschluesseMonat || 0
+      abschluesseMonat: result.abschluesseMonat || 0,
+      meineHotLeads: result.zugewieseneHotLeads || 0
     })
   }
 
@@ -371,11 +384,20 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       show: true
     },
     {
+      name: 'Meine Beratungsgespräche',
+      value: initialLoading ? '...' : data.meineHotLeads.toLocaleString('de-DE'),
+      icon: Users,
+      color: 'bg-primary',
+      show: istSetterNutzer()
+    },
+    {
+      // Die Schnittstelle zaehlt Gewonnene, an denen man als Closer ODER
+      // als Setter haengt - die Zahl stimmt fuer beide Rollen.
       name: 'Abschlüsse Monat',
       value: initialLoading ? '...' : data.abschluesseMonat.toLocaleString('de-DE'),
       icon: TrendingUp,
       color: 'bg-orange-500',
-      show: isCloser() || isAdmin()
+      show: isCloser() || istSetterNutzer() || isAdmin()
     }
   ].filter(stat => stat.show)
 
@@ -387,6 +409,14 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       icon: Phone,
       color: 'text-green-600 bg-green-100',
       show: isColdcaller() || isAdmin()
+    },
+    {
+      name: 'Beratungsgespräche führen',
+      description: 'Halten, dokumentieren, übergeben',
+      path: '/setting',
+      icon: Users,
+      color: 'text-primary bg-secondary-container',
+      show: istSetterNutzer()
     },
     {
       name: 'Closing vorbereiten',
@@ -483,7 +513,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       )}
 
       {/* Meine Leads im Closing - für alle Rollen */}
-      {(isColdcaller() || isCloser() || isAdmin()) && (
+      {(isColdcaller() || isCloser() || istSetterNutzer() || isAdmin()) && (
         <MeineLeadsImClosing 
           userId={user?.id} 
           userName={user?.vor_nachname} 
