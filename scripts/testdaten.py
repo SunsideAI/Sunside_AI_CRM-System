@@ -9,7 +9,8 @@ Skript nichts.
     python3 scripts/testdaten.py --loeschen entfernt es
 
 Loeschen fasst nur Datensaetze an, deren Name mit TEST beginnt, und die daran
-haengenden Ereignisse, Bewerbungen, Nachrichten und Anrufversuche.
+haengenden Ereignisse, Bewerbungen, Nachrichten und Anrufversuche. Dazu den
+Testnutzer TEST Setter, der fuer den Durchlauf angelegt wurde.
 """
 import sys, os, json, urllib.request, urllib.error
 
@@ -38,13 +39,22 @@ st, leads = ruf("GET", "hot_leads?select=id,unternehmen,status,termin_beratungsg
 if not isinstance(leads, list):
     sys.exit(f"Abfrage fehlgeschlagen: {st} {leads}")
 
-if not leads:
+st, nutzer = ruf("GET", "users?select=id,vor_nachname,email,rollen&vorname=eq.TEST")
+nutzer = nutzer if isinstance(nutzer, list) else []
+
+if not leads and not nutzer:
     print("Keine Testdaten vorhanden.")
     sys.exit(0)
 
-print(f"{len(leads)} Testdatensatz/-saetze:\n")
-for l in leads:
-    print(f"  {l['unternehmen'][:44]:<46} {l['status']}")
+for n in nutzer:
+    print(f"  Testnutzer: {n['vor_nachname']} <{n['email']}> {n['rollen']}")
+if nutzer and leads:
+    print()
+
+if leads:
+    print(f"{len(leads)} Testdatensatz/-saetze:\n")
+    for l in leads:
+        print(f"  {l['unternehmen'][:44]:<46} {l['status']}")
 
 if not loeschen:
     print("\nZum Entfernen: python3 scripts/testdaten.py --loeschen")
@@ -67,6 +77,15 @@ for tabelle, spalte in [
 
 st, weg = ruf("DELETE", f"hot_leads?unternehmen=like.TEST*")
 print(f"  {'hot_leads':<24} {len(weg) if isinstance(weg, list) else weg}")
+
+# Der Nutzer zuletzt: An ihm haengen Spalten ohne Kaskade (etwa
+# no_show_marked_by). Erst wenn die Testleads weg sind, geht er weg.
+for n in nutzer:
+    st, weg = ruf("DELETE", f"users?id=eq.{n['id']}")
+    if st >= 400:
+        print(f"  {'users':<24} {n['vor_nachname']} bleibt: {weg}")
+    else:
+        print(f"  {'users':<24} {n['vor_nachname']} entfernt")
 
 st, rest = ruf("GET", "hot_leads?select=id&unternehmen=like.TEST*")
 print("\n" + ("Rueckstandsfrei." if isinstance(rest, list) and not rest

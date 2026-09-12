@@ -20,6 +20,29 @@ Deshalb die eine Abmachung dieses Durchlaufs:
 
 > **Jeder Testdatensatz heißt „TEST …"** — Firmenname beginnt mit `TEST`.
 
+## Der Testnutzer
+
+Für den Durchlauf steht ein Konto bereit, das **nur die Setter-Rolle** trägt:
+
+    TEST Setter · test-setter@sunside.invalid
+
+Das Passwort steht nicht hier — frag danach. Mit einem Admin-Konto siehst du den
+Setting-Tab zwar auch, aber der Pool testet sich damit nicht ehrlich: Admin darf
+ohnehin alles. Was der Durchlauf beweisen soll, ist, dass ein **reiner Setter**
+genau das kann, was er können soll, und nichts darüber hinaus. Nachgemessen ist
+das bereits an der Schnittstelle:
+
+| Aufruf als reiner Setter | Antwort |
+|---|---|
+| Setter-Pool lesen | 200 |
+| Nutzerverwaltung | 403 |
+| Bewerbung genehmigen | 403 |
+| Schalter „Bewerbung nötig" umlegen | 403 |
+| ohne Anmeldung | 401 |
+
+Das Konto verschwindet mit `python3 scripts/testdaten.py --loeschen` zusammen mit
+den Testdatensätzen.
+
 Danach entfernt ein Befehl alles wieder:
 
     python3 scripts/testdaten.py              # zeigt, was da ist
@@ -72,9 +95,9 @@ Danach entfernt ein Befehl alles wieder:
 
 ## 3. Der Setting-Tab und der Pool (Tickets 5 und 11)
 
-7. **Setting** im Menü öffnen. Steht der Punkt nicht da, fehlt deinem Nutzer die
-   Setter-Rolle — Einstellungen → Mitarbeiter → Rolle **Setter** ergänzen,
-   neu anmelden.
+7. Abmelden, als **TEST Setter** anmelden, **Setting** im Menü öffnen. Steht der
+   Punkt nicht da, fehlt dem Nutzer die Setter-Rolle — Einstellungen →
+   Mitarbeiter → Rolle **Setter** ergänzen, neu anmelden.
 
    **Erwartung:** Der Punkt steht **zwischen Opening und Closing** — in der
    Reihenfolge des Prozesses.
@@ -82,12 +105,16 @@ Danach entfernt ein Befehl alles wieder:
 8. Oben der Block **„Beratungsgespräche ohne Setter"** mit dem Testtermin aus
    Schritt 6. **„Übernehmen"** klicken.
 
-   **Erwartung:** Bei „Bewerbung nötig" steht danach *beworben*. Ein Admin
-   sieht sie unter Einstellungen → Hot-Lead-Bewerbungen, **mit dem Zusatz
-   „Beratungsgespräch"** statt „Abschlussgespräch". Genehmigen.
+   **Erwartung:** Bei „Bewerbung nötig" steht danach *beworben*. Als TEST Setter
+   kommst du an die Genehmigung **nicht heran** — dafür zurück auf dein
+   Admin-Konto: Einstellungen → Hot-Lead-Bewerbungen, **mit dem Zusatz
+   „Beratungsgespräch"** statt „Abschlussgespräch". Genehmigen, dann wieder als
+   TEST Setter anmelden.
 
-9. Bist du zugleich der Opener, erscheint beim Bewerben **„dein Erstanruf"** —
-   der Interessenkonflikt wird markiert, nicht verboten.
+9. Ist derselbe Nutzer zugleich der Opener, erscheint beim Bewerben **„dein
+   Erstanruf"** — der Interessenkonflikt wird markiert, nicht verboten. (Mit dem
+   TEST-Setter tritt der Fall nicht auf, er hat keinen Erstanruf geführt; zum
+   Prüfen buchst du den Testtermin unter demselben Konto.)
 
 10. Nach der Genehmigung erscheint der Kontakt in der Liste unter **Anstehend**.
     Die vier Ansichten tragen Zähler: Anstehend · Zu dokumentieren · Geplatzt ·
