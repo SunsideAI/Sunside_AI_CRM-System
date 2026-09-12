@@ -190,11 +190,26 @@ export async function handler(event) {
       let setterIdFilter = setterId
       let closerIdFilter = closerId
 
+      // Ein Name, der sich nicht aufloesen laesst, darf NICHT bedeuten
+      // "kein Filter". Genau das passierte vorher: getUserIdByName() gab
+      // null zurueck, der Filter fiel weg, und die Abfrage lieferte den
+      // gesamten Bestand statt der eigenen Kontakte. Ein Setter sah damit
+      // die Termine aller anderen. Hier wird stattdessen leer geliefert.
+      let filterInsLeere = false
+
       if (!setterIdFilter && setterName) {
         setterIdFilter = await getUserIdByName(setterName)
+        if (!setterIdFilter) {
+          console.warn('[hot-leads GET] setterName nicht aufloesbar:', setterName)
+          filterInsLeere = true
+        }
       }
       if (!closerIdFilter && closerName) {
         closerIdFilter = await getUserIdByName(closerName)
+        if (!closerIdFilter) {
+          console.warn('[hot-leads GET] closerName nicht aufloesbar:', closerName)
+          filterInsLeere = true
+        }
       }
 
       // Der Opener braucht einen eigenen Filter: Nach dem Umbau zeigt setter_id
@@ -204,6 +219,18 @@ export async function handler(event) {
       let openerIdFilter = openerId
       if (!openerIdFilter && openerName) {
         openerIdFilter = await getUserIdByName(openerName)
+        if (!openerIdFilter) {
+          console.warn('[hot-leads GET] openerName nicht aufloesbar:', openerName)
+          filterInsLeere = true
+        }
+      }
+
+      if (filterInsLeere) {
+        return {
+          statusCode: 200,
+          headers: corsHeaders,
+          body: JSON.stringify({ hotLeads: [], total: 0 })
+        }
       }
 
       while (hotLeadsData.length < maxLimit) {

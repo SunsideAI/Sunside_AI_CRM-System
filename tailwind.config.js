@@ -60,6 +60,12 @@ export default {
           DEFAULT: '#EF4444',
           container: '#FEE2E2',
         },
+        // Abdunkler hinter Schubladen und Dialogen.
+        // Fehlte bisher komplett: 'bg-scrim/50' stand an acht Stellen im
+        // Code, erzeugte aber keine einzige CSS-Regel - jeder Dialog hatte
+        // damit einen unsichtbaren Hintergrund, die Seite darunter blieb
+        // voll sichtbar und der Dialog wirkte wie ein Darstellungsfehler.
+        'scrim': '#151C27',
         // Outline (Ghost Border)
         'outline': {
           DEFAULT: '#79747E',
