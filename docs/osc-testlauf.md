@@ -41,9 +41,7 @@ das bereits an der Schnittstelle:
 | ohne Anmeldung | 401 |
 
 Das Konto verschwindet mit `python3 scripts/testdaten.py --loeschen` zusammen mit
-den Testdatensätzen.
-
-Danach entfernt ein Befehl alles wieder:
+den Testdatensätzen:
 
     python3 scripts/testdaten.py              # zeigt, was da ist
     python3 scripts/testdaten.py --loeschen   # entfernt es
