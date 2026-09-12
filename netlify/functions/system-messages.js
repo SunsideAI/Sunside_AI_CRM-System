@@ -43,15 +43,10 @@ export async function handler(event) {
     // GET: Nachrichten für User laden
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
-      const { userId, unreadOnly } = params
-
-      if (!userId) {
-        return {
-          statusCode: 400,
-          headers: corsHeaders,
-          body: JSON.stringify({ error: 'userId ist erforderlich' })
-        }
-      }
+      // Man liest das eigene Postfach. Vorher genuegte ?userId=<fremde ID>,
+      // um die Nachrichten eines Kollegen zu lesen.
+      const { unreadOnly } = params
+      const userId = angemeldet.id
 
       console.log('Loading System Messages for userId:', userId)
 
@@ -236,7 +231,9 @@ export async function handler(event) {
     // PATCH: Nachricht als gelesen markieren
     if (event.httpMethod === 'PATCH') {
       const body = JSON.parse(event.body)
-      const { messageId, markAllRead, userId } = body
+      // Als gelesen markiert man nur die eigenen Nachrichten.
+      const { messageId, markAllRead } = body
+      const userId = angemeldet.id
 
       if (markAllRead && userId) {
         const { data: updated, error } = await supabase
@@ -269,6 +266,7 @@ export async function handler(event) {
         .from('system_messages')
         .update({ gelesen: true })
         .eq('id', messageId)
+        .eq('empfaenger_id', userId)
 
       if (error) {
         throw new Error(error.message)

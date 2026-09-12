@@ -37,8 +37,9 @@ function formatDate(isoString) {
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 204, headers: corsHeaders, body: '' }
+  }
 
-  // Ohne Signaturpruefung konnte jeder frei erfundene Buchungen einspielen -
+  // Ohne Signaturpruefung kann jeder frei erfundene Buchungen einspielen -
   // und damit Hot Leads und Termine im CRM erzeugen.
   if (!calendlyEcht(event)) {
     console.error('Calendly-Webhook mit ungueltiger Signatur abgewiesen')
@@ -47,7 +48,6 @@ export async function handler(event) {
       headers: corsHeaders,
       body: JSON.stringify({ error: 'Ungueltige Signatur' })
     }
-  }
   }
 
   if (event.httpMethod !== 'POST') {

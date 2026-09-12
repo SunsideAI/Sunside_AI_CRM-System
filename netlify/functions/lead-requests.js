@@ -53,9 +53,12 @@ export async function handler(event) {
     // GET - Anfragen laden
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
-      const userId = params.userId
+      // Adminrechte kommen aus dem Token, nicht aus der Anfrage. Vorher
+      // genuegte ?isAdmin=true, um alles zu sehen.
+      const isAdmin = angemeldet.istAdmin
+      // Und man sieht die eigenen Anfragen, nicht die eines beliebigen Nutzers.
+      const userId = angemeldet.id
       const status = params.status
-      const isAdmin = params.isAdmin === 'true'
 
       console.log('[Lead-Requests GET] Params:', { userId, status, isAdmin })
 

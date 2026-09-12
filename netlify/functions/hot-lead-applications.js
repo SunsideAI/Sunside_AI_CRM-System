@@ -52,9 +52,13 @@ export async function handler(event) {
     // GET - Bewerbungen laden
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
-      const userId = params.userId
+      // Adminrechte kommen aus dem Token, nicht aus der Anfrage. Vorher
+      // genuegte ?isAdmin=true, um alles zu sehen.
+      const isAdmin = angemeldet.istAdmin
+      // Und man sieht die eigenen Bewerbungen, nicht die eines beliebigen
+      // Nutzers - dort haengen Kontaktdaten der Leads dran.
+      const userId = angemeldet.id
       const status = params.status
-      const isAdmin = params.isAdmin === 'true'
 
       console.log('[Hot-Lead-Applications GET] Params:', { userId, status, isAdmin })
 

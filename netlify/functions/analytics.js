@@ -76,9 +76,12 @@ export async function handler(event) {
   try {
     const params = event.queryStringParameters || {}
     const type = params.type || 'setting'
-    const isAdmin = params.admin === 'true'
+    // Adminrechte und Identitaet kommen aus dem Token. Vorher genuegte
+    // ?admin=true fuer die Zahlen aller Closer, und ?userName=<fremder Name>
+    // fuer die eines Kollegen.
+    const isAdmin = angemeldet.istAdmin
     const userEmail = params.email
-    const userName = params.userName
+    const userName = angemeldet.name
     const filterUserName = params.filterUserName
 
     // Datum-Filter als Strings behalten (YYYY-MM-DD Format)

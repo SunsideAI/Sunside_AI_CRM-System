@@ -348,6 +348,17 @@ export async function handler(event) {
       // ACTION: release-closer-leads - Alle Hot Leads eines Closers in Pool zurückgeben
       // ==========================================
       if (body.action === 'release-closer-leads') {
+        // Gibt saemtliche Leads eines Closers in den Pool zurueck - das darf
+        // nur die Leitung. Vorher konnte jeder Angemeldete einem Kollegen
+        // seinen gesamten Bestand entziehen.
+        if (!angemeldet.istAdmin) {
+          return {
+            statusCode: 403,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Nur die Leitung darf Leads eines Closers freigeben' })
+          }
+        }
+
         const { closerId, closerName } = body
 
         if (!closerId && !closerName) {
@@ -786,6 +797,23 @@ export async function handler(event) {
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({ error: 'Keine gültigen Update-Felder' })
+        }
+      }
+
+      // Zuteilungen laufen ueber den Bewerbungsweg, nicht ueber ein beliebiges
+      // PATCH-Feld. Sonst koennte sich jeder Angemeldete mit
+      // {"updates":{"closerId":"<eigene ID>"}} zum Closer eines fremden Leads
+      // machen und den Genehmigungsweg umgehen.
+      for (const feld of ['closerId', 'setterId']) {
+        const spalte = fieldMap[feld]
+        if (spalte && fields[spalte] !== undefined && !angemeldet.istAdmin) {
+          return {
+            statusCode: 403,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              error: 'Zuteilungen laufen ueber die Bewerbung, nicht ueber das Bearbeiten des Kontakts'
+            })
+          }
         }
       }
 
