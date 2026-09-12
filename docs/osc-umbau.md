@@ -25,6 +25,7 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | 10 | Angebots-Zweig absichern | **fertig** |
 | 11 | Mail-Modul für alle Rollen | **fertig** |
 | 15 | Kennzahlen | **fertig** |
+| 9 · 12 | Nachrichten-Ketten | **Struktur fertig**, Wortlaute fehlen |
 | 1 | Statuskette — Datenbank | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
 
 ## Warum die Statuskette noch wartet
@@ -105,14 +106,66 @@ erreichbar — ein Kontakt kann jederzeit absagen. Der Sonderweg „zurück an d
 Vorgänger" läuft über `status_ruecknahme_ziel()` als eigene Aktion mit
 Pflicht-Grund, damit die Rückgabequote zählbar bleibt.
 
-## Offene Entscheidungen (nicht von mir zu treffen)
+## Entscheidungen
+
+**Getroffen am 12.09.2026:**
+
+- **Die 49 Coldcaller bleiben Coldcaller.** Keine Umstellung auf `Opener`.
+  Das kostet nichts: Jede Zugangsentscheidung im Code läuft über `istOpener()`,
+  das beide Werte annimmt — nachgeprüft, es gibt keinen einzigen wörtlichen
+  Vergleich auf `'Coldcaller'` oder `'Opener'` in `src/`, `netlify/` oder
+  `shared/`. Neue Mitarbeiter bekommen `Opener`, die bestehenden behalten ihren
+  Wert, beide arbeiten im selben Tab.
+- **Strecke B folgt Miro: Tag 0/3/7/14/28.** Das Vertriebshandbuch sagte 21.
+  Die Miro-Tabelle F25.1 ist die jüngere Quelle und deckt sich mit dem
+  Eintrag „B5 — Tag 28" in der Nachrichtenliste.
+
+**Noch offen:**
 
 - Werden die Übergabe-Gates hart erzwungen oder zunächst als Warnung? Empfehlung
   aus F23: Gates hart, Pflichtfelder als Warnung.
-- Werden die 49 Coldcaller auf die neue Rolle `Opener` umgestellt? Der Wert ist
-  angelegt, die Umstellung ist eine eigene Entscheidung.
-- Strecke B: Vertriebshandbuch sagt Tag 0/3/7/14/**21**, Miro sagt **28**.
-- Die Mail-Wortlaute („ressourcen-crm-mailstrecken") liegen nicht im Repo.
+- Sollen die 189 alten „Verloren" neu qualifiziert werden?
+- Die Mail-**Wortlaute** liegen weder im Repo noch auf dem Miro-Board (siehe
+  unten).
+
+## Die Nachrichten-Ketten (Tickets 9 und 12)
+
+Die Struktur ist vollständig: `shared/mailstrecken.js` bildet alle **23**
+Nachrichten aus der Miro-Tabelle F25.1 ab — Auslöser, Zeitpunkt, Platzhalter,
+Versandart, Freigabestand und die Fundstelle des Wortlauts.
+
+| Kette | Nachrichten | Zeitplan |
+|---|---|---|
+| Vor dem Beratungsgespräch | 9 | an Ereignissen, nicht an Tagen |
+| Vor dem Abschlussgespräch | 3 | an Ereignissen |
+| Strecke A — zufrieden mit dem Ist | 5 | Tag 0 · 4 · 10 · 21 · 35 |
+| Strecke B — will, traut sich nicht | 5 | Tag 0 · 3 · 7 · 14 · 28 |
+| Werkzeugkasten | 1 | füllt die Nachfass-Mails |
+
+Nur fünf Nachrichten gehen automatisch raus (drei Calendly-Einladungen, zwei
+SMS). Alle übrigen legt das System vor, abgeschickt wird von Hand — das ist
+keine Sparmaßnahme, sondern die Vorgabe aus F23: *„Kein Automatikversand: Das
+System schlägt vor, ein Mensch schickt ab."*
+
+**Was fehlt: die Texte.** Die Tabelle verweist für jeden Wortlaut auf eine
+Datei `ressourcen-crm-mailstrecken` mit den Teilen B, E, Strecke A und
+Strecke B. Diese Datei liegt **nicht auf dem Miro-Board** — dort gibt es weder
+ein Dokument noch eine Einbettung, nur die Verweise in der Tabellenspalte
+„Fundstelle in der Datei". F23 nennt als Ort „Projektordner"; im Repo und in
+den durchsuchten lokalen Ordnern ist sie ebenfalls nicht. Sie muss also noch
+beschafft werden.
+
+Zwei Wortlaute wären selbst dann noch nicht fertig: die Segment-Mail
+Kaufinteressenten (Übergangsfassung, wartet auf das Käufer-Video) und Mail 4
+der Strecke A (drei Baustein-Texte in Freigabe).
+
+Der Motor dazu liegt als `20260913_osc_nachfass_serien.sql` bereit und ist
+**nicht eingespielt** — er schreibt Systemnachrichten an Closer, und das darf
+vor dem Veröffentlichen nicht passieren. Geprüft wurde er trotzdem: Die
+Migration lief vollständig in einer Transaktion gegen die Produktivdatenbank
+und wurde zurückgerollt. Ein Testkontakt in Strecke B, Tag 0 vor neun Tagen,
+zwei Schritte erledigt, ergab im ersten Lauf **einen** fälligen Schritt und im
+zweiten **null** — die Wiederholungssperre greift.
 
 ## Die Status im Code
 
