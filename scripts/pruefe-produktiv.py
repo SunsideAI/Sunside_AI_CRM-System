@@ -40,6 +40,13 @@ def pruefe(name, ok, detail=""):
     print(("  OK    " if ok else "  BRUCH ") + name + (("  -> " + str(detail)) if detail else ""))
 
 MARKE = "ZZ Produktivpruefung " + uuid.uuid4().hex[:6]
+
+# Rueckstaende frueherer Laeufe zuerst wegraeumen. Bricht ein Lauf ab (Netz,
+# Zeitueberschreitung), bleibt sonst eine offene Bewerbung liegen und der
+# naechste Lauf scheitert am eindeutigen Schluessel - ein Bruch, der keiner ist.
+ruf("DELETE", "hot_lead_applications?bewerbung_id=like.ZZ-*")
+ruf("DELETE", "hot_leads?unternehmen=like.ZZ Produktivpruefung*")
+
 print("Alter Produktivcode gegen die aktuelle Datenbank:\n")
 
 # Hot Lead anlegen wie der alte Code: nur alte Spalten, alter Statuswert.
