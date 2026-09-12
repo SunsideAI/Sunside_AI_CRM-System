@@ -1,6 +1,12 @@
 # Testdurchlauf für den OSC-Umbau
 
-Für die Branch-Adresse von `osc-umbau`. Dauer etwa 20 Minuten.
+**Adresse:** <https://osc-umbau--crmsunsideai.netlify.app>
+
+Dauer etwa 25 Minuten.
+
+Der Produktivbetrieb läuft unverändert unter `crmsunsideai.netlify.app` — die
+Vorschau ist ein eigener Build mit eigener Adresse, er wird durch nichts
+veröffentlicht, was du hier tust.
 
 ## Vorher lesen
 
@@ -30,10 +36,12 @@ Danach entfernt ein Befehl alles wieder:
 
 ---
 
-## 1. Anmeldung und Rollen
+## 1. Anmeldung, Menü und Rollen
 
 1. Anmelden. **Erwartung:** geht durch; bei einem 401 hat der Branch kein
    Token-Geheimnis — dann abbrechen und melden.
+   Im Menü heißt der erste Punkt jetzt **Opening**, nicht mehr Kaltakquise.
+   Die alte Adresse `/kaltakquise` muss auf `/opening` weiterleiten.
 2. Einstellungen → Mitarbeiter → einen Nutzer öffnen.
    **Erwartung:** Die Rollenauswahl bietet **Opener, Setter, Closer, Admin,
    Geschäftsführer**. Coldcaller steht nicht mehr zur Wahl.
@@ -44,7 +52,7 @@ Danach entfernt ein Befehl alles wieder:
 
 ## 2. Erstanruf mit Übergabe (Ticket 8)
 
-4. Kaltakquise → einen Lead öffnen → Termin buchen.
+4. **Opening** → einen Lead öffnen → Termin buchen.
 5. Nach der Terminauswahl erscheint **„5. Übergabe an den Setter"** mit neun
    Feldern. **Zuerst absichtlich leer lassen** und buchen.
    **Erwartung:** Es wird *nicht* gebucht. Meldung nennt die fehlenden Felder:
@@ -62,22 +70,36 @@ Danach entfernt ein Befehl alles wieder:
    Status muss **Beratungsgespräch vereinbart** sein, `opener_gesetzt` wahr,
    `im_setter_pool` wahr — **wer bucht, ist der Opener, nicht der Setter.**
 
-## 3. Der Setter-Pool (Ticket 5)
+## 3. Der Setting-Tab und der Pool (Tickets 5 und 11)
 
-7. Termine öffnen. **Erwartung:** Oben der Block „Beratungsgespräche ohne
-   Setter" mit dem Testtermin. Trägt dein Nutzer die Setter-Rolle nicht, ist
-   der Block unsichtbar — dann Rolle ergänzen.
-8. „Übernehmen" klicken.
-   **Erwartung:** Bei „Bewerbung nötig" steht danach *beworben*; ein Admin
-   sieht sie in Einstellungen → Hot-Lead-Bewerbungen, **mit dem Zusatz
+7. **Setting** im Menü öffnen. Steht der Punkt nicht da, fehlt deinem Nutzer die
+   Setter-Rolle — Einstellungen → Mitarbeiter → Rolle **Setter** ergänzen,
+   neu anmelden.
+
+   **Erwartung:** Der Punkt steht **zwischen Opening und Closing** — in der
+   Reihenfolge des Prozesses.
+
+8. Oben der Block **„Beratungsgespräche ohne Setter"** mit dem Testtermin aus
+   Schritt 6. **„Übernehmen"** klicken.
+
+   **Erwartung:** Bei „Bewerbung nötig" steht danach *beworben*. Ein Admin
+   sieht sie unter Einstellungen → Hot-Lead-Bewerbungen, **mit dem Zusatz
    „Beratungsgespräch"** statt „Abschlussgespräch". Genehmigen.
-9. Bist du zugleich der Opener, erscheint beim Bewerben der Hinweis
-   **„dein Erstanruf"** — der Interessenkonflikt wird markiert, nicht verboten.
+
+9. Bist du zugleich der Opener, erscheint beim Bewerben **„dein Erstanruf"** —
+   der Interessenkonflikt wird markiert, nicht verboten.
+
+10. Nach der Genehmigung erscheint der Kontakt in der Liste unter **Anstehend**.
+    Die vier Ansichten tragen Zähler: Anstehend · Zu dokumentieren · Geplatzt ·
+    Alle.
 
 ## 4. Nach dem Gespräch (Tickets 8 und 14)
 
-10. Termine → den Termin anklicken. **Erwartung:** Knopf **„Termin fand statt"**.
-11. Klicken.
+11. Den Kontakt anklicken. **Erwartung:** Oben steht **„Aus dem Erstanruf"** mit
+    Ziel, größtem Problem im Wortlaut und Berufsgruppe — das, was der Opener
+    aufgenommen hat. Darunter der Knopf **„Termin fand statt"**.
+
+12. Klicken.
 
     ```sql
     select von_status, nach_status, art, akteur_id is not null as akteur_bekannt
@@ -88,25 +110,41 @@ Danach entfernt ein Befehl alles wieder:
     Es muss ein `statuswechsel` auf **Beratungsgespräch geführt** stehen, mit
     bekanntem Akteur.
 
+13. Zurück in der Liste: Der Kontakt ist jetzt unter **Zu dokumentieren**, mit
+    grünem Haken.
+
 ## 5. Übergabe an den Closer (Ticket 8)
 
-12. Derselbe Termin zeigt jetzt **„Übergabe an den Closer"** mit zwölf Feldern.
-13. Nur die Hälfte ausfüllen, Datum fürs Abschlussgespräch setzen, buchen.
+14. Denselben Kontakt öffnen. **Erwartung:** **„Übergabe an den Closer"** mit
+    zwölf Feldern.
+15. Nur die Hälfte ausfüllen, Datum fürs Abschlussgespräch setzen, buchen.
     **Erwartung:** Wird abgewiesen, die fehlenden Felder werden benannt.
-14. „Kunde wollte keine Zahlen nennen" anhaken.
+16. „Kunde wollte keine Zahlen nennen" anhaken.
     **Erwartung:** Die Zahlenfelder werden blass und **gelten als beantwortet** —
     das Gate verlangt sie nicht mehr.
-15. Haken wieder weg, Zuwachs **12** und Quote **3** eintragen.
+17. Haken wieder weg, Zuwachs **12** und Quote **3** eintragen.
     **Erwartung:** Darunter erscheint **„Nötige Anfragen pro Monat: 3,3 (2 bis 4)"**.
     Steht dort 40, ist der Teiler kaputt.
-16. Rest ausfüllen, buchen.
-    **Erwartung:** Status **Abschlussgespräch vereinbart**.
+18. Rest ausfüllen, buchen.
+    **Erwartung:** Status **Abschlussgespräch vereinbart**. Der Kontakt
+    verschwindet aus dem Setting-Tab — ab hier ist der Closer zuständig.
+
+### Was im Setting-Tab sonst noch zu prüfen ist
+
+- **Gelbe Markierung:** Ein Termin, der vorbei ist, ohne dass „Termin fand
+  statt" geklickt wurde, bekommt ein gelbes Warnzeichen. Zum Prüfen einen
+  Testtermin in die Vergangenheit legen:
+  `update hot_leads set termin_beratungsgespraech = now() - interval '2 hours' where unternehmen like 'TEST%';`
+- **E-Mail an den Kontakt** steht in **jeder** Stufe zur Verfügung, nicht nur in
+  einer bestimmten — das ist Absicht (Ticket 11).
+- **Geplatzte Termine:** Status auf „Nicht erschienen" setzen, Kontakt öffnen.
+  **Erwartung:** Knopf **„Neuen Termin buchen"**.
 
 ## 6. Rückgabe an den Vorgänger (Ticket 15)
 
-17. Im Closing den Testkontakt öffnen → **„Zurück an den Vorgänger"**.
-18. Ohne Begründung absenden. **Erwartung:** wird verlangt.
-19. Mit Begründung absenden.
+19. Im Closing den Testkontakt öffnen → **„Zurück an den Vorgänger"**.
+20. Ohne Begründung absenden. **Erwartung:** wird verlangt.
+21. Mit Begründung absenden.
     **Erwartung:** Status eine Stufe zurück auf **Beratungsgespräch geführt**,
     der Vorgänger bekommt eine Nachricht.
 
@@ -119,14 +157,14 @@ Danach entfernt ein Befehl alles wieder:
 
 ## 7. Die Übergangsmatrix (Ticket 1)
 
-20. Im Closing den Status von Hand auf **Gewonnen** setzen, während der Kontakt
+22. Im Closing den Status von Hand auf **Gewonnen** setzen, während der Kontakt
     auf „Beratungsgespräch geführt" steht.
     **Erwartung:** Wird abgewiesen mit einer verständlichen Meldung, nicht mit
     einem Datenbankfehler. Der Weg führt über Abschlussgespräch und Im Abschluss.
 
 ## 8. Fristen und Kennzahlen (Tickets 6, 13, 15)
 
-21. Der stündliche Lauf greift von selbst. Von Hand anstoßen:
+23. Der stündliche Lauf greift von selbst. Von Hand anstoßen:
 
     ```sql
     select public.crm_fristen_pruefen();
@@ -135,7 +173,7 @@ Danach entfernt ein Befehl alles wieder:
     erscheint unter `termine_ohne_setter`; ein zweiter Lauf zählt ihn **nicht
     erneut**.
 
-22. Kennzahlen:
+24. Kennzahlen:
 
     ```sql
     select * from v_erscheinungsquote  where setter is not null order by monat desc limit 5;
