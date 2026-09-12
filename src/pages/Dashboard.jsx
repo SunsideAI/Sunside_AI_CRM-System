@@ -512,8 +512,11 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
         </div>
       )}
 
-      {/* Meine Leads im Closing - für alle Rollen */}
-      {(isColdcaller() || isCloser() || istSetterNutzer() || isAdmin()) && (
+      {/* Der Block zeigt Kontakte, bei denen man selbst der Closer ist. Wer
+          kein Closer ist, sah hier eine immer leere Kachel - Opener und
+          Setter gleichermassen. Mehrfachrollen bleiben abgedeckt: Wer auch
+          Closer ist, hat isCloser() wahr. */}
+      {(isCloser() || isAdmin()) && (
         <MeineLeadsImClosing 
           userId={user?.id} 
           userName={user?.vor_nachname} 
