@@ -317,17 +317,24 @@ export async function handler(event) {
 
       // Terminart aus Event-Location ableiten
       const eventLocation = data.scheduled_event?.location || {}
-      const isVideoLocation =
-        eventLocation.type === 'google_conference' ||
-        eventLocation.type === 'zoom' ||
-        eventLocation.type === 'microsoft_teams_conference' ||
-        (typeof eventLocation.location === 'string' && eventLocation.location.includes('meet.google.com'))
-      const terminart = isVideoLocation ? 'Video' : 'Telefonisch'
+
+      // Der Link ist das Erkennungsmerkmal, nicht der Anbietername: Frueher
+      // stand hier eine Liste aus google_conference, zoom und teams. Calendlys
+      // eigenes Video und jeder andere Anbieter fielen durch und landeten als
+      // "Telefonisch" im CRM - das haette einen Wechsel des Konferenz-Anbieters
+      // still sabotiert.
       const meetingLink =
         eventLocation.join_url ||
-        (typeof eventLocation.location === 'string' && eventLocation.location.includes('http')
+        (typeof eventLocation.location === 'string' && eventLocation.location.startsWith('http')
           ? eventLocation.location
           : null)
+
+      // Eine Telefonnummer ist kein Video. Alles mit Einwahl-Adresse schon.
+      const istTelefon =
+        eventLocation.type === 'physical' ||
+        eventLocation.type === 'outbound_call' ||
+        eventLocation.type === 'inbound_call'
+      const terminart = (meetingLink && !istTelefon) ? 'Video' : 'Telefonisch'
 
       // Schritt 1: Cold Lead in `leads` sicherstellen
       // Match auf leads.mail via Email. Wenn gefunden → als kontaktiert markieren

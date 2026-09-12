@@ -451,9 +451,12 @@ export const handler = async (event) => {
           if (data.resource?.location) {
             const loc = data.resource.location
             console.log('Direct location from booking:', JSON.stringify(loc, null, 2))
+            // join_url liefert jeder Anbieter. Der Rueckfall prueft auf eine
+            // Adresse und nicht auf meet.google.com - sonst greift er nur fuer
+            // Google und blockiert jeden Wechsel.
             if (loc.join_url) {
               meetingLink = loc.join_url
-            } else if (loc.location && loc.location.includes('meet.google.com')) {
+            } else if (typeof loc.location === 'string' && loc.location.startsWith('http')) {
               meetingLink = loc.location
             }
           }
@@ -472,14 +475,14 @@ export const handler = async (event) => {
               const location = eventData.resource?.location
               if (location) {
                 console.log('Event location:', JSON.stringify(location, null, 2))
-                // Google Meet Link extrahieren - verschiedene Formate
+                // Einwahl-Adresse extrahieren, anbieterunabhaengig. Vorher
+                // pruefte jeder Zweig auf Google - ein Wechsel des Anbieters
+                // haette hier keinen Link mehr gefunden.
                 if (location.join_url) {
                   meetingLink = location.join_url
-                } else if (location.type === 'google_conference' && location.location) {
+                } else if (typeof location.location === 'string' && location.location.startsWith('http')) {
                   meetingLink = location.location
-                } else if (location.type === 'custom' && location.location?.includes('meet.google.com')) {
-                  meetingLink = location.location
-                } else if (typeof location === 'string' && location.includes('meet.google.com')) {
+                } else if (typeof location === 'string' && location.startsWith('http')) {
                   meetingLink = location
                 }
               }
