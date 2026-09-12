@@ -40,6 +40,21 @@
     scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+
+    /* Der Scrollbalken ist immer da, auch wenn die Seite kurz ist.
+       Sonst passiert Folgendes: Eine Seite laedt, ist zunaechst leer und
+       kurz - kein Balken. Die Daten kommen, die Seite wird laenger, der
+       Balken erscheint und nimmt Breite weg. Alles Mittige rutscht in dem
+       Moment um die halbe Balkenbreite zur Seite - sichtbar am Logo.
+
+       scrollbar-gutter allein reicht dafuer nicht: Es wirkt nur auf
+       Scroll-Container, und <html> steht hier auf overflow: visible.
+       Nachgemessen am 12.09.2026 auf der Vorschau - der berechnete Wert
+       war 'visible', der Platz wurde also nicht reserviert.
+
+       overflow-y: scroll wirkt ueberall und braucht keine Ausnahme. Wo der
+       Balken nichts wegnimmt (macOS mit Trackpad), aendert es nichts. */
+    overflow-y: scroll;
     scrollbar-gutter: stable;
   }
 
