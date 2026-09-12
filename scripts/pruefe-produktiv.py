@@ -45,7 +45,7 @@ MARKE = "ZZ Produktivpruefung " + uuid.uuid4().hex[:6]
 # Zeitueberschreitung), bleibt sonst eine offene Bewerbung liegen und der
 # naechste Lauf scheitert am eindeutigen Schluessel - ein Bruch, der keiner ist.
 ruf("DELETE", "hot_lead_applications?bewerbung_id=like.ZZ-*")
-ruf("DELETE", "hot_leads?unternehmen=like.ZZ Produktivpruefung*")
+ruf("DELETE", "hot_leads?unternehmen=like.ZZ*")
 
 print("Alter Produktivcode gegen die aktuelle Datenbank:\n")
 
