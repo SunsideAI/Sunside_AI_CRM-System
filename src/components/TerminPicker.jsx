@@ -657,7 +657,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -681,12 +681,12 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
             onClick={() => { setSelectedType('video'); setSelectedDate(null); setSelectedSlot(null); setSlots([]); setError('') }}
             className={`p-4 rounded-lg border-2 transition-all ${
               selectedType === 'video'
-                ? 'border-purple-500 bg-purple-50'
+                ? 'border-secondary bg-primary-fixed/30'
                 : 'border-gray-200 hover:border-gray-300'
             }`}
           >
-            <Video className={`w-6 h-6 mx-auto mb-2 ${selectedType === 'video' ? 'text-purple-600' : 'text-gray-400'}`} />
-            <p className={`font-medium ${selectedType === 'video' ? 'text-purple-700' : 'text-gray-700'}`}>Video</p>
+            <Video className={`w-6 h-6 mx-auto mb-2 ${selectedType === 'video' ? 'text-primary' : 'text-gray-400'}`} />
+            <p className={`font-medium ${selectedType === 'video' ? 'text-primary' : 'text-gray-700'}`}>Video</p>
             <p className="text-xs text-gray-500">Google Meet</p>
           </button>
           
@@ -694,12 +694,12 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
             onClick={() => { setSelectedType('phone'); setSelectedDate(null); setSelectedSlot(null); setSlots([]); setError('') }}
             className={`p-4 rounded-lg border-2 transition-all ${
               selectedType === 'phone'
-                ? 'border-purple-500 bg-purple-50'
+                ? 'border-secondary bg-primary-fixed/30'
                 : 'border-gray-200 hover:border-gray-300'
             }`}
           >
-            <Phone className={`w-6 h-6 mx-auto mb-2 ${selectedType === 'phone' ? 'text-purple-600' : 'text-gray-400'}`} />
-            <p className={`font-medium ${selectedType === 'phone' ? 'text-purple-700' : 'text-gray-700'}`}>Telefonisch</p>
+            <Phone className={`w-6 h-6 mx-auto mb-2 ${selectedType === 'phone' ? 'text-primary' : 'text-gray-400'}`} />
+            <p className={`font-medium ${selectedType === 'phone' ? 'text-primary' : 'text-gray-700'}`}>Telefonisch</p>
             <p className="text-xs text-gray-500">Anruf</p>
           </button>
         </div>
@@ -748,11 +748,11 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                   disabled={past}
                   className={`p-2 rounded-lg text-center transition-all ${
                     selected
-                      ? 'bg-purple-600 text-white'
+                      ? 'bg-primary text-white'
                       : past
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         : today
-                          ? 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                          ? 'bg-primary-fixed/30 text-primary hover:bg-secondary-container'
                           : 'bg-gray-50 hover:bg-gray-100'
                   }`}
                 >
@@ -778,7 +778,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
           
           {loadingSlots ? (
             <div className="flex items-center justify-center py-6">
-              <Loader2 className="w-6 h-6 animate-spin text-purple-600" />
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
               <span className="ml-2 text-gray-500">Lade verfügbare Termine...</span>
             </div>
           ) : slots.length === 0 ? (
@@ -793,7 +793,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                   onClick={() => setSelectedSlot(slot)}
                   className={`p-2 rounded-lg text-sm font-medium transition-all ${
                     selectedSlot?.start === slot.start
-                      ? 'bg-purple-600 text-white'
+                      ? 'bg-primary text-white'
                       : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                   }`}
                 >
@@ -818,7 +818,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 type="text"
                 value={ansprechpartnerVorname}
                 onChange={(e) => setAnsprechpartnerVorname(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Vorname"
               />
             </div>
@@ -828,7 +828,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 type="text"
                 value={ansprechpartnerNachname}
                 onChange={(e) => setAnsprechpartnerNachname(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="Nachname"
               />
             </div>
@@ -841,7 +841,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
               type="text"
               value={unternehmensname}
               onChange={(e) => setUnternehmensname(e.target.value)}
-              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="Firmenname"
             />
           </div>
@@ -854,7 +854,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 type="email"
                 value={contactEmail}
                 onChange={(e) => setContactEmail(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="email@beispiel.de"
               />
             </div>
@@ -864,7 +864,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 type="tel"
                 value={contactPhone}
                 onChange={(e) => setContactPhone(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
                 placeholder="+49 123 456789"
               />
             </div>
@@ -878,7 +878,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 onClick={() => setTaetigkeit('Immobilienmakler')}
                 className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
                   taetigkeit === 'Immobilienmakler'
-                    ? 'bg-purple-600 text-white'
+                    ? 'bg-primary text-white'
                     : 'bg-gray-100 hover:bg-gray-200'
                 }`}
               >
@@ -888,7 +888,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 onClick={() => setTaetigkeit('Sachverständiger')}
                 className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
                   taetigkeit === 'Sachverständiger'
-                    ? 'bg-purple-600 text-white'
+                    ? 'bg-primary text-white'
                     : 'bg-gray-100 hover:bg-gray-200'
                 }`}
               >
@@ -911,7 +911,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 }
               }}
               rows={3}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none ${
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none ${
                 validationErrors.problemstellung ? 'border-red-500 bg-red-50' : ''
               }`}
               placeholder="Was sind die Herausforderungen und Ziele des Maklers?"
@@ -949,7 +949,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 type="checkbox"
                 checked={setzeSelbst}
                 onChange={e => setSetzeSelbst(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+                className="mt-0.5 w-4 h-4 rounded text-primary focus:ring-primary"
               />
               <span className="text-gray-700">
                 Ich halte das Beratungsgespräch selbst
@@ -1000,7 +1000,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
                 <button
                   onClick={() => bookTermin(false)}
                   disabled={booking}
-                  className="flex items-center justify-center px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 transition-colors"
+                  className="flex items-center justify-center px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-container disabled:opacity-50 transition-colors"
                 >
                   {booking ? (
                     <Loader2 className="w-5 h-5 animate-spin" />

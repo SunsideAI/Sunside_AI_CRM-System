@@ -62,7 +62,7 @@ function ForgotPassword() {
               </p>
               <Link
                 to="/login"
-                className="inline-flex items-center justify-center w-full px-4 py-3 bg-sunside-primary text-white font-medium rounded-lg hover:bg-purple-700 transition-all"
+                className="inline-flex items-center justify-center w-full px-4 py-3 bg-sunside-primary text-white font-medium rounded-lg hover:bg-primary-container transition-all"
               >
                 Zurück zum Login
               </Link>
@@ -71,7 +71,7 @@ function ForgotPassword() {
             // Form
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-16 h-16 bg-secondary-container rounded-full flex items-center justify-center mx-auto mb-4">
                   <Mail className="w-8 h-8 text-sunside-primary" />
                 </div>
                 <h2 className="text-xl font-semibold text-gray-900">Passwort vergessen?</h2>
@@ -108,7 +108,7 @@ function ForgotPassword() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center px-4 py-3 bg-sunside-primary text-white font-medium rounded-lg hover:bg-purple-700 focus:ring-4 focus:ring-purple-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center px-4 py-3 bg-sunside-primary text-white font-medium rounded-lg hover:bg-primary-container focus:ring-4 focus:ring-primary-fixed-dim transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />

@@ -116,9 +116,9 @@ export default function BillingPanel({ leadId, leadStatus, userId }) {
         <>
           {/* Provisions-Partner Badge */}
           {data.contract?.billing_mode === 'provision_partner' && (
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4 flex items-center gap-2">
-              <span className="text-purple-600 font-medium text-sm">🤝 Provisions-Partner</span>
-              <span className="text-purple-600 text-xs">– Keine monatliche Abrechnung, nur Provision bei vermittelten Leads</span>
+            <div className="bg-primary-fixed/30 border border-primary-fixed-dim rounded-lg p-3 mb-4 flex items-center gap-2">
+              <span className="text-primary font-medium text-sm">🤝 Provisions-Partner</span>
+              <span className="text-primary text-xs">– Keine monatliche Abrechnung, nur Provision bei vermittelten Leads</span>
             </div>
           )}
 
@@ -170,7 +170,7 @@ export default function BillingPanel({ leadId, leadStatus, userId }) {
                         href={`${LEXWARE_CONTACT_URL}/${data.contact.lexware_contact_id}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-purple-600 hover:underline inline-flex items-center gap-1"
+                        className="text-primary hover:underline inline-flex items-center gap-1"
                       >
                         {data.contact.lexware_customer_number ? `#${data.contact.lexware_customer_number}` : 'Öffnen'}
                         <ExternalLink size={12} />
@@ -249,7 +249,7 @@ export default function BillingPanel({ leadId, leadStatus, userId }) {
                                 href={`${LEXWARE_INVOICE_URL}/${inv.lexware_invoice_id}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-purple-600 hover:text-purple-700 inline-flex items-center gap-1"
+                                className="text-primary hover:text-primary inline-flex items-center gap-1"
                                 title="In Lexware öffnen"
                               >
                                 <ExternalLink size={14} />

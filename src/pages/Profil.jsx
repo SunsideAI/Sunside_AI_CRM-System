@@ -192,7 +192,7 @@ function Profil() {
           {!showPasswordForm && (
             <button
               onClick={() => setShowPasswordForm(true)}
-              className="text-sm text-sunside-primary hover:text-purple-700 font-medium"
+              className="text-sm text-sunside-primary hover:text-primary font-medium"
             >
               Ändern
             </button>
@@ -271,7 +271,7 @@ function Profil() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex-1 flex items-center justify-center px-4 py-2.5 bg-sunside-primary text-white font-medium rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                className="flex-1 flex items-center justify-center px-4 py-2.5 bg-sunside-primary text-white font-medium rounded-lg hover:bg-primary-container transition-colors disabled:opacity-50"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />

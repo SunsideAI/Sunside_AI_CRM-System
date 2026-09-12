@@ -367,7 +367,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       name: 'Termine diese Woche',
       value: initialLoading ? '...' : data.termineWoche.toLocaleString('de-DE'),
       icon: Calendar,
-      color: 'bg-purple-500',
+      color: 'bg-secondary',
       show: true
     },
     {
@@ -393,7 +393,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       description: 'Nächste Termine ansehen',
       path: '/closing',
       icon: Calendar,
-      color: 'text-purple-600 bg-purple-100',
+      color: 'text-primary bg-secondary-container',
       show: isCloser() || isAdmin()
     }
   ].filter(action => action.show)
@@ -1044,7 +1044,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                     </span>
                   )}
                   {selectedLead.closerName && (
-                    <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-label-sm">
+                    <span className="px-2 py-1 bg-secondary-container text-primary rounded-full text-label-sm">
                       Closer: {selectedLead.closerName}
                     </span>
                   )}
@@ -1436,7 +1436,7 @@ function OpeningAnalytics({ user, isAdmin }) {
   // Damit man die Zuordnung sofort erkennt
   const CHART_COLORS = {
     // Funnel (Bar Chart)
-    einwahlen: '#7C3AED',          // Purple - wie KPICard color="purple"
+    einwahlen: '#460E74',          // Markenfarbe, wie KPICard color="purple"
     erreicht: '#3B82F6',           // Blue - wie KPICard color="blue"
 
     // Ergebnisse (Pie Chart)
@@ -2372,7 +2372,7 @@ function ClosingAnalytics({ user, isAdmin }) {
                       }}
                     />
                     <Legend />
-                    <Bar dataKey="aktiv" name="Aktiv" fill="#8B5CF6" stackId="a" />
+                    <Bar dataKey="aktiv" name="Aktiv" fill="#460E74" stackId="a" />
                     <Bar dataKey="abgeschlossen" name="Abgeschlossen" fill="#10B981" stackId="a" />
                     <Bar dataKey="verloren" name="Verloren" fill="#EF4444" stackId="a" radius={[0, 4, 4, 0]} />
                   </BarChart>
@@ -2400,7 +2400,7 @@ function ClosingAnalytics({ user, isAdmin }) {
                       labelLine={{ stroke: '#44474F', strokeWidth: 1 }}
                     >
                       {stats.leadsProCloser.filter(c => c.gesamt > 0).map((entry, index) => {
-                        const colors = ['#8B5CF6', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#6366F1', '#14B8A6', '#F97316', '#84CC16']
+                        const colors = ['#460E74', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#6366F1', '#14B8A6', '#F97316', '#84CC16']
                         return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
                       })}
                     </Pie>

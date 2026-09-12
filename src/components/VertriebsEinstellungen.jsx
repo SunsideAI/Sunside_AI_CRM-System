@@ -74,7 +74,7 @@ export default function VertriebsEinstellungen() {
   return (
     <div className="card-elevated p-6">
       <div className="flex items-center gap-2 mb-1">
-        <UserCheck className="w-5 h-5 text-purple-600" />
+        <UserCheck className="w-5 h-5 text-primary" />
         <h3 className="font-medium text-on-surface">Zuteilung von Terminen</h3>
       </div>
       <p className="text-body-sm text-on-surface-variant mb-5">
@@ -109,7 +109,7 @@ export default function VertriebsEinstellungen() {
                 disabled={speichert === schluessel}
                 onClick={() => umschalten(schluessel, !an)}
                 className={`relative shrink-0 w-12 h-6 rounded-full transition-colors
-                            disabled:opacity-50 ${an ? 'bg-purple-600' : 'bg-gray-300'}`}
+                            disabled:opacity-50 ${an ? 'bg-primary' : 'bg-gray-300'}`}
               >
                 <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow
                                   transition-transform ${an ? 'translate-x-6' : 'translate-x-0.5'}`} />

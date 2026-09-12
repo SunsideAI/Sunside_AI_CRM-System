@@ -72,7 +72,7 @@ export default function SetterPool({ onGeaendert }) {
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
       <div className="flex items-center gap-2 mb-1">
-        <Users className="w-5 h-5 text-purple-600" />
+        <Users className="w-5 h-5 text-primary" />
         <h3 className="font-medium text-gray-900">
           Beratungsgespräche ohne Setter ({termine.length})
         </h3>
@@ -118,8 +118,8 @@ export default function SetterPool({ onGeaendert }) {
                 <button
                   onClick={() => bewerben(lead)}
                   disabled={sendet === lead.id}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-600 text-white
-                             rounded-lg hover:bg-purple-700 disabled:opacity-50 shrink-0"
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-white
+                             rounded-lg hover:bg-primary-container disabled:opacity-50 shrink-0"
                 >
                   {sendet === lead.id
                     ? <Loader2 className="w-4 h-4 animate-spin" />

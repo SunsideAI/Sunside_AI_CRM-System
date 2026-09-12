@@ -326,7 +326,7 @@ function Termine() {
     }
     // Meine Buchung (ich bin Setter, aber nicht Closer) = Lila
     if (event.isMyBooking && !event.isMyClosing) {
-      return 'bg-purple-100 border-purple-300 text-purple-800'
+      return 'bg-secondary-container border-primary-fixed-dim text-primary'
     }
     return 'bg-blue-100 border-blue-300 text-blue-800'
   }
@@ -475,7 +475,7 @@ function Termine() {
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : calendarMode === 'week' ? (
           /* ========== WOCHENANSICHT ========== */
@@ -485,8 +485,8 @@ function Termine() {
               {weekDays.map((date, idx) => {
                 const isToday = date.toDateString() === new Date().toDateString()
                 return (
-                  <div key={idx} className={`p-3 text-center border-r last:border-r-0 ${isToday ? 'bg-purple-50' : ''}`}>
-                    <div className={`text-lg font-semibold ${isToday ? 'text-purple-600' : 'text-gray-900'}`}>
+                  <div key={idx} className={`p-3 text-center border-r last:border-r-0 ${isToday ? 'bg-primary-fixed/30' : ''}`}>
+                    <div className={`text-lg font-semibold ${isToday ? 'text-primary' : 'text-gray-900'}`}>
                       {date.getDate()}
                     </div>
                   </div>
@@ -502,7 +502,7 @@ function Termine() {
                 const isWeekend = date.getDay() === 0 || date.getDay() === 6
                 
                 return (
-                  <div key={idx} className={`border-r last:border-r-0 p-2 ${isToday ? 'bg-purple-50/50' : isWeekend ? 'bg-gray-50' : ''}`}>
+                  <div key={idx} className={`border-r last:border-r-0 p-2 ${isToday ? 'bg-primary-fixed/20' : isWeekend ? 'bg-gray-50' : ''}`}>
                     {dayEvents.length === 0 ? (
                       <div className="text-xs text-gray-400 text-center py-4">Keine Termine</div>
                     ) : (
@@ -551,12 +551,12 @@ function Termine() {
                   key={idx} 
                   className={`min-h-[100px] border-b border-r p-1 ${
                     !isCurrentMonth ? 'bg-gray-50 text-gray-400' : 
-                    isToday ? 'bg-purple-50' : 
+                    isToday ? 'bg-primary-fixed/30' : 
                     isWeekend ? 'bg-gray-50/50' : ''
                   }`}
                 >
                   <div className={`text-sm font-medium mb-1 px-1 ${
-                    isToday ? 'text-purple-600' : 
+                    isToday ? 'text-primary' : 
                     !isCurrentMonth ? 'text-gray-400' : 'text-gray-700'
                   }`}>
                     {date.getDate()}
@@ -593,7 +593,7 @@ function Termine() {
               <span>Mein Closing</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-purple-200 border border-purple-300"></div>
+              <div className="w-3 h-3 rounded bg-primary-fixed-dim border border-primary-fixed-dim"></div>
               <span>Von mir gebucht</span>
             </div>
             <div className="flex items-center gap-2">
@@ -662,7 +662,7 @@ function Termine() {
                       {selectedEvent.source === 'beratungsgespraech' && (
                         <span className={`inline-flex items-center px-2 py-1 rounded-full text-label-sm ${
                           selectedEvent.terminart === 'Video'
-                            ? 'bg-purple-100 text-purple-700'
+                            ? 'bg-secondary-container text-primary'
                             : 'bg-blue-100 text-blue-700'
                         }`}>
                           {selectedEvent.terminart === 'Video' ? <Video className="w-3 h-3 mr-1" /> : <Phone className="w-3 h-3 mr-1" />}
@@ -801,7 +801,7 @@ function Termine() {
                       </h3>
                       <div className="flex flex-wrap gap-2">
                         {selectedEvent.closerName && (
-                          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-label-sm">
+                          <span className="px-2 py-1 bg-secondary-container text-primary rounded-full text-label-sm">
                             Closer: {selectedEvent.closerName}
                           </span>
                         )}
@@ -811,7 +811,7 @@ function Termine() {
                           </span>
                         )}
                         {selectedEvent.isMyBooking && !selectedEvent.isMyClosing && (
-                          <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-label-sm">
+                          <span className="px-2 py-1 bg-secondary-container text-primary rounded-full text-label-sm">
                             Von mir gebucht
                           </span>
                         )}
@@ -858,8 +858,8 @@ function Termine() {
                       ) : (
                         <button
                           onClick={() => setMailOffen(true)}
-                          className="flex items-center gap-2 px-4 py-2 border border-purple-300
-                                     text-purple-700 rounded-lg hover:bg-purple-50"
+                          className="flex items-center gap-2 px-4 py-2 border border-primary-fixed-dim
+                                     text-primary rounded-lg hover:bg-primary-fixed/30"
                         >
                           <Mail className="w-4 h-4" />
                           E-Mail an den Kontakt
@@ -906,7 +906,7 @@ function Termine() {
                       <div className="flex items-start gap-3">
                         <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
                         <div>
-                          <a href={`tel:${selectedEvent.telefon}`} className="text-purple-600 hover:underline">
+                          <a href={`tel:${selectedEvent.telefon}`} className="text-primary hover:underline">
                             {selectedEvent.telefon}
                           </a>
                         </div>

@@ -69,7 +69,7 @@ export default function RueckgabeKnopf({ hotLead, onErledigt }) {
         value={grund}
         onChange={e => setGrund(e.target.value)}
         placeholder="Was fehlt?"
-        className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-purple-500"
+        className="w-full px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-primary"
       />
       {fehler && <p className="text-sm text-red-600">{fehler}</p>}
       <div className="flex gap-2">

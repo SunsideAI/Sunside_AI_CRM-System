@@ -88,7 +88,7 @@ function Login() {
                 </label>
                 <Link 
                   to="/passwort-vergessen" 
-                  className="text-sm text-sunside-primary hover:text-purple-700"
+                  className="text-sm text-sunside-primary hover:text-primary"
                 >
                   Passwort vergessen?
                 </Link>
@@ -117,7 +117,7 @@ function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex items-center justify-center px-4 py-3 bg-sunside-primary text-white font-medium rounded-lg hover:bg-purple-700 focus:ring-4 focus:ring-purple-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full flex items-center justify-center px-4 py-3 bg-sunside-primary text-white font-medium rounded-lg hover:bg-primary-container focus:ring-4 focus:ring-primary-fixed-dim transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>

@@ -553,7 +553,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
                         type="button"
                         onClick={insertLink}
                         disabled={!linkUrl || !linkText}
-                        className="px-2 py-1 text-xs bg-sunside-primary text-white rounded hover:bg-purple-700 disabled:opacity-50"
+                        className="px-2 py-1 text-xs bg-sunside-primary text-white rounded hover:bg-primary-container disabled:opacity-50"
                       >
                         Einfügen
                       </button>
@@ -613,9 +613,9 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
             <p className="text-xs text-gray-600">
               Schiefer Berg 3 | 38124 Braunschweig | Deutschland<br />
               E-Mail: {user?.email_geschaeftlich || user?.email || 'contact@sunsideai.de'} | Tel: {user?.telefon || '+49 176 56039050'}<br />
-              <span className="text-purple-600">www.sunsideai.de</span> |
-              <span className="text-purple-600 ml-1">Jetzt Termin buchen</span> |
-              <span className="text-purple-600 ml-1">Zur Podcast-Folge</span>
+              <span className="text-primary">www.sunsideai.de</span> |
+              <span className="text-primary ml-1">Jetzt Termin buchen</span> |
+              <span className="text-primary ml-1">Zur Podcast-Folge</span>
             </p>
             <p className="text-xs text-gray-500 mt-1">Geschäftsführung: Paul Probodziak und Niklas Schwerin</p>
             
@@ -646,7 +646,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
                 const FileIcon = getFileIcon(att.type)
                 const isSelected = selectedAttachments.includes(att.id)
                 return (
-                  <label key={att.id} className={`flex items-center p-3 border rounded-lg cursor-pointer ${isSelected ? 'border-sunside-primary bg-purple-50' : 'border-gray-200'}`}>
+                  <label key={att.id} className={`flex items-center p-3 border rounded-lg cursor-pointer ${isSelected ? 'border-sunside-primary bg-primary-fixed/30' : 'border-gray-200'}`}>
                     <input type="checkbox" checked={isSelected} onChange={() => toggleAttachment(att.id)} className="w-4 h-4 text-sunside-primary" />
                     <FileIcon className={`w-5 h-5 ml-3 ${isSelected ? 'text-sunside-primary' : 'text-gray-400'}`} />
                     <span className="ml-3 text-sm truncate">{att.filename}</span>
@@ -668,7 +668,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
           <button
             onClick={handleSend}
             disabled={sending || !empfaenger || !betreff || !inhalt}
-            className="px-6 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+            className="px-6 py-2 bg-sunside-primary text-white rounded-lg hover:bg-primary-container disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
           >
             {sending ? (
               <>
@@ -844,7 +844,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
                           type="button"
                           onClick={insertLink}
                           disabled={!linkUrl || !linkText}
-                          className="px-2 py-1 text-xs bg-sunside-primary text-white rounded hover:bg-purple-700 disabled:opacity-50"
+                          className="px-2 py-1 text-xs bg-sunside-primary text-white rounded hover:bg-primary-container disabled:opacity-50"
                         >
                           Einfügen
                         </button>
@@ -886,7 +886,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
                       key={att.id}
                       className={`flex items-center p-3 border rounded-lg cursor-pointer transition-colors ${
                         isSelected 
-                          ? 'border-sunside-primary bg-purple-50' 
+                          ? 'border-sunside-primary bg-primary-fixed/30' 
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >

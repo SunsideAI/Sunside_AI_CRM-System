@@ -73,8 +73,8 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
         <button
           onClick={() => senden({ status: STATUS.BERATUNG_GEFUEHRT })}
           disabled={laeuft}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg
-                     hover:bg-purple-700 disabled:opacity-50"
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg
+                     hover:bg-primary-container disabled:opacity-50"
         >
           {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
           Termin fand statt
@@ -126,7 +126,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
           type="datetime-local"
           value={terminAbschluss}
           onChange={e => setTerminAbschluss(e.target.value)}
-          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
         />
         <p className="mt-1 text-xs text-gray-500">
           Vorerst von Hand. Die Buchung über den Sammel-Kalender kommt mit dem
@@ -137,8 +137,8 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
       <button
         onClick={buchen}
         disabled={laeuft}
-        className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg
-                   hover:bg-purple-700 disabled:opacity-50"
+        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg
+                   hover:bg-primary-container disabled:opacity-50"
       >
         {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarPlus className="w-4 h-4" />}
         Abschlussgespräch buchen

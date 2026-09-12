@@ -217,8 +217,8 @@ function HotLeadBewerbungenVerwaltung() {
                   onClick={() => setExpandedId(expandedId === bewerbung.id ? null : bewerbung.id)}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                      <Target className="w-5 h-5 text-purple-600" />
+                    <div className="w-10 h-10 bg-secondary-container rounded-full flex items-center justify-center">
+                      <Target className="w-5 h-5 text-primary" />
                     </div>
                     <div>
                       <p className="font-medium text-on-surface">
@@ -270,17 +270,17 @@ function HotLeadBewerbungenVerwaltung() {
                 {expandedId === bewerbung.id && (
                   <div className="mt-4 ml-14 space-y-4">
                     {/* Lead Details */}
-                    <div className="p-4 bg-purple-50 rounded-lg">
-                      <h4 className="text-sm font-medium text-purple-800 mb-3">Lead-Details</h4>
+                    <div className="p-4 bg-primary-fixed/30 rounded-lg">
+                      <h4 className="text-sm font-medium text-primary mb-3">Lead-Details</h4>
                       <div className="grid grid-cols-2 gap-3 text-sm">
                         <div className="flex items-center gap-2">
-                          <Building2 className="w-4 h-4 text-purple-600" />
+                          <Building2 className="w-4 h-4 text-primary" />
                           <span className="text-gray-600">Unternehmen:</span>
                           <span className="font-medium">{bewerbung.unternehmen}</span>
                         </div>
                         {bewerbung.ansprechpartner && (
                           <div className="flex items-center gap-2">
-                            <User className="w-4 h-4 text-purple-600" />
+                            <User className="w-4 h-4 text-primary" />
                             <span className="text-gray-600">Ansprechpartner:</span>
                             <span className="font-medium">{bewerbung.ansprechpartner}</span>
                           </div>
@@ -298,7 +298,7 @@ function HotLeadBewerbungenVerwaltung() {
                           </div>
                         )}
                         <div className="flex items-center gap-2">
-                          <Calendar className="w-4 h-4 text-purple-600" />
+                          <Calendar className="w-4 h-4 text-primary" />
                           <span className="text-gray-600">Termin:</span>
                           <span className="font-medium">{formatDate(bewerbung.terminDatum)}</span>
                         </div>
@@ -364,8 +364,8 @@ function HotLeadBewerbungenVerwaltung() {
       )}
 
       {/* Info Box */}
-      <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-        <p className="text-sm text-purple-700">
+      <div className="p-4 bg-primary-fixed/30 border border-primary-fixed-dim rounded-lg">
+        <p className="text-sm text-primary">
           <strong>Info:</strong> Wenn du eine Bewerbung genehmigst, wird der Hot Lead automatisch
           dem Closer zugewiesen. Andere offene Bewerbungen für denselben Lead werden automatisch abgelehnt.
         </p>

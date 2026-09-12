@@ -420,8 +420,15 @@ function Layout({ children }) {
 
   return (
     <div className="min-h-screen bg-surface">
-      {/* Header - Glassmorphism */}
-      <header className="glass-nav fixed top-0 left-0 right-0 z-50 shadow-ambient-sm">
+      {/* Kopfzeile. sticky, nicht fixed - und das ist der Punkt:
+          Ein fixed-Kopf wird an der Fensterkante ausgerichtet, der Inhalt
+          darunter an der Kante des Dokuments. Sobald ein Scrollbalken Platz
+          braucht, sind das zwei verschiedene Breiten - und das mittig
+          gesetzte Logo steht ein paar Pixel neben dem Inhalt darunter.
+          Beim Wechsel zwischen einer kurzen und einer langen Seite wandert
+          es sichtbar. sticky sitzt im Textfluss und teilt sich die Breite
+          mit dem Inhalt, mit Balken wie ohne. */}
+      <header className="glass-nav sticky top-0 z-50 shadow-ambient-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
@@ -709,8 +716,9 @@ function Layout({ children }) {
         )}
       </header>
 
-      {/* Main Content */}
-      <main className="pt-16">
+      {/* Kein pt-16 mehr: Der sticky Kopf steht im Fluss und nimmt seine
+          Hoehe selbst ein. */}
+      <main>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {children || <Outlet />}
         </div>

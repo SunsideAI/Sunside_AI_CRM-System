@@ -228,8 +228,8 @@ function LeadAnfragenVerwaltung() {
                   onClick={() => setExpandedId(expandedId === anfrage.id ? null : anfrage.id)}
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
-                      <Users className="w-5 h-5 text-purple-600" />
+                    <div className="w-10 h-10 bg-secondary-container rounded-full flex items-center justify-center">
+                      <Users className="w-5 h-5 text-primary" />
                     </div>
                     <div>
                       <p className="font-medium text-on-surface">{anfrage.userName}</p>

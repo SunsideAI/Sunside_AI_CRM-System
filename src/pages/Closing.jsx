@@ -109,7 +109,7 @@ const STATUS_OPTIONS = [
   { value: STATUS.IM_ABSCHLUSS,         label: 'Im Abschluss',                 color: 'bg-indigo-100 text-indigo-700' },
   { value: STATUS.NICHT_ERSCHIENEN,     label: 'Nicht erschienen',             color: 'bg-rose-100 text-rose-700' },
   { value: STATUS.ANGEBOT_ANGEFORDERT,  label: anzeigeName(STATUS.ANGEBOT_ANGEFORDERT), color: 'bg-yellow-100 text-yellow-700' },
-  { value: STATUS.ANGEBOT_VERSCHICKT,   label: anzeigeName(STATUS.ANGEBOT_VERSCHICKT),  color: 'bg-purple-100 text-purple-700' },
+  { value: STATUS.ANGEBOT_VERSCHICKT,   label: anzeigeName(STATUS.ANGEBOT_VERSCHICKT),  color: 'bg-secondary-container text-primary' },
   { value: STATUS.WIRD_NACHGEFASST,     label: 'Wird nachgefasst',             color: 'bg-amber-100 text-amber-700' },
   { value: STATUS.GEWONNEN,             label: 'Gewonnen',                     color: 'bg-green-100 text-green-700' },
   { value: STATUS.TERMIN_ABGESAGT,      label: 'Termin abgesagt',              color: 'bg-orange-100 text-orange-700' },
@@ -2348,8 +2348,8 @@ function Closing() {
 
                     {/* Website-Setup Feld (nur für Website-Produkte) */}
                     {PRODUKTE_MIT_WEBSITE_SETUP.includes(angebotData.produkt) && (
-                      <div className="bg-purple-50 rounded-xl p-5">
-                        <h4 className="font-medium text-purple-900 mb-4">Website-Komponente</h4>
+                      <div className="bg-primary-fixed/30 rounded-xl p-5">
+                        <h4 className="font-medium text-primary mb-4">Website-Komponente</h4>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
                             Website Setup-Gebühr (netto)
@@ -2360,7 +2360,7 @@ function Closing() {
                               value={angebotData.websiteSetup}
                               onChange={(e) => setAngebotData(prev => ({ ...prev, websiteSetup: e.target.value }))}
                               placeholder="z.B. 2500"
-                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
                             />
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
                           </div>
@@ -2527,7 +2527,7 @@ function Closing() {
                         {angebotData.websiteSetup && (
                           <div className="bg-white rounded-lg p-3 sm:p-4 text-center">
                             <p className="text-xs sm:text-sm text-gray-500 mb-1">Website-Setup</p>
-                            <p className="text-lg sm:text-2xl font-bold text-purple-600">{(parseFloat(angebotData.websiteSetup) || 0).toLocaleString('de-DE')} €</p>
+                            <p className="text-lg sm:text-2xl font-bold text-primary">{(parseFloat(angebotData.websiteSetup) || 0).toLocaleString('de-DE')} €</p>
                             <p className="text-xs text-gray-400">einmalig, netto</p>
                           </div>
                         )}
@@ -2851,7 +2851,7 @@ function Closing() {
                         </span>
                       )}
                       {safeString(selectedLead.closerName) && (
-                        <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-label-sm">
+                        <span className="px-2 py-1 bg-secondary-container text-primary rounded-full text-label-sm">
                           Closer: {safeString(selectedLead.closerName)}
                         </span>
                       )}
@@ -3095,7 +3095,7 @@ function Closing() {
                         onChange={(e) => handleEditChange('neuerKommentar', e.target.value)}
                         rows={3}
                         placeholder="Notiz hinzufügen..."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none resize-none"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
                       />
                     </div>
                   )}
@@ -3157,9 +3157,9 @@ function Closing() {
                             className="flex items-center justify-between p-3 bg-gray-50 rounded-lg group hover:bg-gray-100 transition-colors"
                           >
                             <div className="flex items-center min-w-0 flex-1">
-                              <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <div className="w-10 h-10 bg-secondary-container rounded-lg flex items-center justify-center flex-shrink-0">
                                 {attachment.filename?.toLowerCase().endsWith('.pdf') ? (
-                                  <FileText className="w-5 h-5 text-purple-600" />
+                                  <FileText className="w-5 h-5 text-primary" />
                                 ) : attachment.type?.startsWith('image') || attachment.filename?.match(/\.(png|jpg|jpeg)$/i) ? (
                                   <File className="w-5 h-5 text-blue-600" />
                                 ) : (
@@ -3180,7 +3180,7 @@ function Closing() {
                                 href={attachment.url}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors"
+                                className="p-2 text-primary hover:bg-secondary-container rounded-lg transition-colors"
                                 title="Herunterladen"
                               >
                                 <Download className="w-4 h-4" />
@@ -3205,7 +3205,7 @@ function Closing() {
                             className={`flex items-center justify-center p-3 border-2 border-dashed rounded-lg cursor-pointer transition-colors ${
                               uploading 
                                 ? 'border-gray-200 bg-gray-50 cursor-not-allowed' 
-                                : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                                : 'border-gray-300 hover:border-secondary hover:bg-primary-fixed/30'
                             }`}
                           >
                             {uploading ? (
@@ -3227,12 +3227,12 @@ function Closing() {
                           className={`block p-6 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
                             uploading 
                               ? 'border-gray-200 bg-gray-50 cursor-not-allowed' 
-                              : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                              : 'border-gray-300 hover:border-secondary hover:bg-primary-fixed/30'
                           }`}
                         >
                           {uploading ? (
                             <>
-                              <Loader2 className="w-8 h-8 text-purple-400 mx-auto mb-2 animate-spin" />
+                              <Loader2 className="w-8 h-8 text-secondary mx-auto mb-2 animate-spin" />
                               <p className="text-sm text-gray-500">Wird hochgeladen...</p>
                             </>
                           ) : (

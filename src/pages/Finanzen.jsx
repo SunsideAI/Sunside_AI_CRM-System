@@ -14,8 +14,8 @@ import {
 const LEXWARE_INVOICE_URL = 'https://app.lexware.de/permalink/invoices/view'
 
 const CHART_COLORS = {
-  primary: '#7C3AED',
-  primaryLight: '#A78BFA',
+  primary: '#460E74',
+  primaryLight: '#8127CF',
   blue: '#3B82F6',
   green: '#10B981',
   amber: '#F59E0B',
@@ -389,7 +389,7 @@ function AnalyticsTab({ data }) {
 
 function HeroKPI({ label, value, change, icon: Icon }) {
   return (
-    <div className="relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-purple-600 to-purple-700 text-white">
+    <div className="relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-primary to-primary-container text-white">
       <div className="flex items-start justify-between">
         <div className="flex-1">
           <p className="text-xs uppercase tracking-wide text-white/80">{label}</p>
@@ -560,7 +560,7 @@ function InvoicesTable({ invoices }) {
                       href={`${LEXWARE_INVOICE_URL}/${inv.lexware_invoice_id}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-purple-600 hover:text-purple-700"
+                      className="text-primary hover:text-primary"
                       title="In Lexware öffnen"
                     >
                       <ExternalLink size={14} />

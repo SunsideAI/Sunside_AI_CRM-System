@@ -77,7 +77,7 @@ const renderFormattedPreview = (text) => {
   const str = String(text)
   
   return str
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" class="text-purple-600 underline">$1</a>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" class="text-primary underline">$1</a>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/^• (.+)$/gm, '<span class="flex items-start"><span class="mr-2">•</span><span>$1</span></span>')
     .replace(/\n/g, '<br>')
@@ -487,7 +487,7 @@ function EmailTemplateManager() {
         </div>
         <button
           onClick={openCreateMode}
-          className="flex items-center px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors"
+          className="flex items-center px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-primary-container transition-colors"
         >
           <Plus className="w-4 h-4 mr-2" />
           Neues Template
@@ -547,7 +547,7 @@ function EmailTemplateManager() {
           <p className="text-gray-500">Noch keine Templates vorhanden</p>
           <button
             onClick={openCreateMode}
-            className="mt-3 text-sunside-primary hover:text-purple-700 font-medium"
+            className="mt-3 text-sunside-primary hover:text-primary font-medium"
           >
             Erstes Template erstellen
           </button>
@@ -570,7 +570,7 @@ function EmailTemplateManager() {
                       template.kategorie === 'Opening' 
                         ? 'bg-blue-100 text-blue-700'
                         : template.kategorie === 'Closing'
-                        ? 'bg-purple-100 text-purple-700'
+                        ? 'bg-secondary-container text-primary'
                         : 'bg-gray-100 text-gray-600'
                     }`}>
                       {template.kategorie || 'Allgemein'}
@@ -682,12 +682,12 @@ function EmailTemplateManager() {
                       onClick={() => setFormKategorie(option.value)}
                       className={`p-3 rounded-lg border-2 text-left transition-all ${
                         formKategorie === option.value
-                          ? 'border-purple-500 bg-purple-50'
+                          ? 'border-secondary bg-primary-fixed/30'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
                       <p className={`font-medium text-sm ${
-                        formKategorie === option.value ? 'text-purple-700' : 'text-gray-900'
+                        formKategorie === option.value ? 'text-primary' : 'text-gray-900'
                       }`}>
                         {option.label}
                       </p>
@@ -766,7 +766,7 @@ function EmailTemplateManager() {
                               type="button"
                               onClick={insertLinkInEditor}
                               disabled={!linkUrl || !linkText}
-                              className="px-3 py-1.5 text-sm bg-sunside-primary text-white rounded hover:bg-purple-700 disabled:opacity-50"
+                              className="px-3 py-1.5 text-sm bg-sunside-primary text-white rounded hover:bg-primary-container disabled:opacity-50"
                             >
                               Einfügen
                             </button>
@@ -870,8 +870,8 @@ function EmailTemplateManager() {
                   flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg cursor-pointer
                   transition-colors
                   ${uploading 
-                    ? 'border-purple-300 bg-purple-50' 
-                    : 'border-gray-300 hover:border-purple-400 hover:bg-purple-50'
+                    ? 'border-primary-fixed-dim bg-primary-fixed/30' 
+                    : 'border-gray-300 hover:border-secondary hover:bg-primary-fixed/30'
                   }
                 `}>
                   <input
@@ -885,8 +885,8 @@ function EmailTemplateManager() {
                   
                   {uploading ? (
                     <>
-                      <Loader2 className="w-8 h-8 text-purple-500 animate-spin mb-2" />
-                      <span className="text-sm text-purple-600">Wird hochgeladen...</span>
+                      <Loader2 className="w-8 h-8 text-secondary animate-spin mb-2" />
+                      <span className="text-sm text-primary">Wird hochgeladen...</span>
                     </>
                   ) : (
                     <>

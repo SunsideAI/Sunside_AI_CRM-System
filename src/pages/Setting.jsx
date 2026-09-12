@@ -133,7 +133,7 @@ function Setting() {
               value={suche}
               onChange={e => setSuche(e.target.value)}
               placeholder="Firma oder Ansprechpartner"
-              className="w-full pl-9 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500"
+              className="w-full pl-9 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
             />
           </div>
           <button
@@ -151,7 +151,7 @@ function Setting() {
               onClick={() => setFilter(f.wert)}
               className={`px-3 py-1.5 rounded-full text-label-lg transition-colors ${
                 filter === f.wert
-                  ? 'bg-purple-600 text-white'
+                  ? 'bg-primary text-white'
                   : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
               }`}
             >
@@ -184,7 +184,7 @@ function Setting() {
               >
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                   lead.status === STATUS.BERATUNG_GEFUEHRT ? 'bg-amber-100' :
-                  lead.status === STATUS.BERATUNG_VEREINBART ? 'bg-purple-100' : 'bg-rose-100'
+                  lead.status === STATUS.BERATUNG_VEREINBART ? 'bg-secondary-container' : 'bg-rose-100'
                 }`}>
                   {lead.terminart === 'Video'
                     ? <Video className="w-5 h-5 text-on-surface-variant" />
@@ -251,7 +251,7 @@ function Setting() {
               {gewaehlt.telefon && (
                 <div>
                   <p className="text-body-sm text-on-surface-variant">Telefon</p>
-                  <a href={`tel:${gewaehlt.telefon}`} className="text-purple-600 hover:underline">
+                  <a href={`tel:${gewaehlt.telefon}`} className="text-primary hover:underline">
                     {gewaehlt.telefon}
                   </a>
                 </div>
@@ -269,8 +269,8 @@ function Setting() {
                 href={gewaehlt.meeting_link}
                 target="_blank"
                 rel="noreferrer"
-                className="flex items-center gap-2 p-3 bg-purple-50 border border-purple-200
-                           rounded-lg text-purple-700 hover:bg-purple-100"
+                className="flex items-center gap-2 p-3 bg-primary-fixed/30 border border-primary-fixed-dim
+                           rounded-lg text-primary hover:bg-secondary-container"
               >
                 <Video className="w-4 h-4" /> Video-Meeting beitreten
               </a>
@@ -321,8 +321,8 @@ function Setting() {
               ) : (
                 <button
                   onClick={() => setMailOffen(true)}
-                  className="flex items-center gap-2 px-4 py-2 border border-purple-300
-                             text-purple-700 rounded-lg hover:bg-purple-50"
+                  className="flex items-center gap-2 px-4 py-2 border border-primary-fixed-dim
+                             text-primary rounded-lg hover:bg-primary-fixed/30"
                 >
                   <Mail className="w-4 h-4" /> E-Mail an den Kontakt
                 </button>

@@ -17,7 +17,7 @@ function Hilfe({ text }) {
         type="button"
         onClick={() => setOffen(o => !o)}
         onBlur={() => setOffen(false)}
-        className="text-gray-400 hover:text-purple-600"
+        className="text-gray-400 hover:text-primary"
         aria-label="Hilfe zu diesem Feld"
       >
         <HelpCircle className="w-4 h-4" />
@@ -39,7 +39,7 @@ export default function UebergabeFelder({ bereich, werte, onChange, offen = [] }
   const setzen = (schluessel, wert) => onChange({ ...werte, [schluessel]: wert })
 
   const rahmen = (schluessel) =>
-    `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${
+    `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
       fehlt.has(schluessel) ? 'border-red-400 bg-red-50' : ''
     }`
 
@@ -82,10 +82,10 @@ export default function UebergabeFelder({ bereich, werte, onChange, offen = [] }
                     onClick={() => setzen(schluessel, w)}
                     className={`px-4 py-2 rounded-lg border text-sm ${
                       wert === w
-                        ? 'bg-purple-600 text-white border-purple-600'
+                        ? 'bg-primary text-white border-primary'
                         : fehlt.has(schluessel)
                           ? 'border-red-400 bg-red-50 text-gray-700'
-                          : 'bg-white text-gray-700 hover:border-purple-400'
+                          : 'bg-white text-gray-700 hover:border-secondary'
                     }`}
                   >
                     {text}
@@ -100,7 +100,7 @@ export default function UebergabeFelder({ bereich, werte, onChange, offen = [] }
                   type="checkbox"
                   checked={wert === true}
                   onChange={e => setzen(schluessel, e.target.checked)}
-                  className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
+                  className="w-4 h-4 rounded text-primary focus:ring-primary"
                 />
                 <span>{feld.name}</span>
               </label>
@@ -164,7 +164,7 @@ export function AnfragenBedarf({ werte }) {
   const bereich = proMonat < 2 ? 'unter 2' : proMonat <= 4 ? '2 bis 4' : 'über 4'
 
   return (
-    <div className="mt-4 p-3 bg-purple-50 border border-purple-200 rounded-lg text-sm">
+    <div className="mt-4 p-3 bg-primary-fixed/30 border border-primary-fixed-dim rounded-lg text-sm">
       <div className="text-gray-700">
         Nötige Anfragen pro Monat: <strong>{proMonat.toLocaleString('de-DE')}</strong>
         <span className="text-gray-500"> ({bereich})</span>

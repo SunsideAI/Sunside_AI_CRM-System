@@ -478,7 +478,7 @@ function MitarbeiterVerwaltung() {
   if (loading) {
     return (
       <div className="bg-white rounded-xl border border-outline-variant/15 p-12 text-center">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-600 mx-auto mb-4" />
+        <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-4" />
         <p className="text-on-surface-variant">Lade Mitarbeiter...</p>
       </div>
     )
@@ -508,8 +508,8 @@ function MitarbeiterVerwaltung() {
       <div className="bg-white rounded-xl border border-outline-variant/15 p-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-purple-100 rounded-lg">
-              <Users className="w-6 h-6 text-purple-600" />
+            <div className="p-3 bg-secondary-container rounded-lg">
+              <Users className="w-6 h-6 text-primary" />
             </div>
             <div>
               <h2 className="text-lg font-semibold text-on-surface">Mitarbeiterverwaltung</h2>
@@ -526,7 +526,7 @@ function MitarbeiterVerwaltung() {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Suchen..."
-                className="pl-10 pr-4 py-2 border border-outline-variant/30 rounded-lg text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent w-full sm:w-48"
+                className="pl-10 pr-4 py-2 border border-outline-variant/30 rounded-lg text-sm focus:ring-2 focus:ring-primary focus:border-transparent w-full sm:w-48"
               />
             </div>
 
@@ -545,7 +545,7 @@ function MitarbeiterVerwaltung() {
                 resetForm()
                 setShowAddModal(true)
               }}
-              className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-container transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span className="hidden sm:inline">Mitarbeiter</span>
@@ -573,8 +573,8 @@ function MitarbeiterVerwaltung() {
                 <tr key={user.id} className="hover:bg-surface-container">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center mr-3">
-                        <span className="text-purple-600 font-medium">
+                      <div className="w-10 h-10 bg-secondary-container rounded-full flex items-center justify-center mr-3">
+                        <span className="text-primary font-medium">
                           {user.vor_nachname?.charAt(0) || '?'}
                         </span>
                       </div>
@@ -616,7 +616,7 @@ function MitarbeiterVerwaltung() {
                         <span 
                           key={rolle}
                           className={`px-2 py-0.5 text-xs rounded-full ${
-                            rolle === 'Admin' ? 'bg-purple-100 text-purple-700' :
+                            rolle === 'Admin' ? 'bg-secondary-container text-primary' :
                             rolle === 'Closer' ? 'bg-success-container text-green-700' :
                             'bg-blue-100 text-blue-700'
                           }`}
@@ -692,7 +692,7 @@ function MitarbeiterVerwaltung() {
                             setTimeout(() => setSuccess(''), 3000)
                           })
                         }}
-                        className="text-sm text-purple-600 hover:text-purple-800"
+                        className="text-sm text-primary hover:text-primary"
                       >
                         Reaktivieren
                       </button>
@@ -725,7 +725,7 @@ function MitarbeiterVerwaltung() {
                   value={formData.vorname}
                   onChange={(e) => setFormData({ ...formData, vorname: e.target.value })}
                   placeholder="Max"
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -735,7 +735,7 @@ function MitarbeiterVerwaltung() {
                   value={formData.nachname}
                   onChange={(e) => setFormData({ ...formData, nachname: e.target.value })}
                   placeholder="Mustermann"
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -745,7 +745,7 @@ function MitarbeiterVerwaltung() {
                   value={formData.telefon}
                   onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
                   placeholder="+49 176 12345678"
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -759,7 +759,7 @@ function MitarbeiterVerwaltung() {
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                   placeholder="max@beispiel.de"
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -769,7 +769,7 @@ function MitarbeiterVerwaltung() {
                   value={formData.email_geschaeftlich}
                   onChange={(e) => setFormData({ ...formData, email_geschaeftlich: e.target.value })}
                   placeholder="max@sunsideai.de"
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -783,7 +783,7 @@ function MitarbeiterVerwaltung() {
                   value={formData.strasse}
                   onChange={(e) => setFormData({ ...formData, strasse: e.target.value })}
                   placeholder="Musterstraße 1"
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -793,7 +793,7 @@ function MitarbeiterVerwaltung() {
                   value={formData.plz}
                   onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
                   placeholder="12345"
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div className="col-span-2">
@@ -803,7 +803,7 @@ function MitarbeiterVerwaltung() {
                   value={formData.ort}
                   onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
                   placeholder="Berlin"
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -815,7 +815,7 @@ function MitarbeiterVerwaltung() {
                 <select
                   value={formData.bundesland}
                   onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Bitte auswählen...</option>
                   {BUNDESLAENDER.map(bl => (
@@ -833,7 +833,7 @@ function MitarbeiterVerwaltung() {
                       onClick={() => toggleRolle(rolle)}
                       className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                         formData.rolle.includes(rolle)
-                          ? 'bg-purple-600 text-white'
+                          ? 'bg-primary text-white'
                           : 'bg-surface-container text-on-surface hover:bg-gray-200'
                       }`}
                     >
@@ -893,7 +893,7 @@ function MitarbeiterVerwaltung() {
                   type="text"
                   value={formData.vorname}
                   onChange={(e) => setFormData({ ...formData, vorname: e.target.value })}
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -902,7 +902,7 @@ function MitarbeiterVerwaltung() {
                   type="text"
                   value={formData.nachname}
                   onChange={(e) => setFormData({ ...formData, nachname: e.target.value })}
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -911,7 +911,7 @@ function MitarbeiterVerwaltung() {
                   type="tel"
                   value={formData.telefon}
                   onChange={(e) => setFormData({ ...formData, telefon: e.target.value })}
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -924,7 +924,7 @@ function MitarbeiterVerwaltung() {
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -933,7 +933,7 @@ function MitarbeiterVerwaltung() {
                   type="email"
                   value={formData.email_geschaeftlich}
                   onChange={(e) => setFormData({ ...formData, email_geschaeftlich: e.target.value })}
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -947,7 +947,7 @@ function MitarbeiterVerwaltung() {
                   value={formData.strasse}
                   onChange={(e) => setFormData({ ...formData, strasse: e.target.value })}
                   placeholder="Musterstraße 1"
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div>
@@ -957,7 +957,7 @@ function MitarbeiterVerwaltung() {
                   value={formData.plz}
                   onChange={(e) => setFormData({ ...formData, plz: e.target.value })}
                   placeholder="12345"
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
               <div className="col-span-2">
@@ -967,7 +967,7 @@ function MitarbeiterVerwaltung() {
                   value={formData.ort}
                   onChange={(e) => setFormData({ ...formData, ort: e.target.value })}
                   placeholder="Berlin"
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 />
               </div>
             </div>
@@ -979,7 +979,7 @@ function MitarbeiterVerwaltung() {
                 <select
                   value={formData.bundesland}
                   onChange={(e) => setFormData({ ...formData, bundesland: e.target.value })}
-                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  className="w-full px-4 py-2 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary"
                 >
                   <option value="">Bitte auswählen...</option>
                   {BUNDESLAENDER.map(bl => (
@@ -997,7 +997,7 @@ function MitarbeiterVerwaltung() {
                       onClick={() => toggleRolle(rolle)}
                       className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${
                         formData.rolle.includes(rolle)
-                          ? 'bg-purple-600 text-white'
+                          ? 'bg-primary text-white'
                           : 'bg-surface-container text-on-surface hover:bg-gray-200'
                       }`}
                     >
@@ -1029,11 +1029,11 @@ function MitarbeiterVerwaltung() {
             </div>
 
             {/* Vertrag erneut senden */}
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+            <div className="bg-primary-fixed/30 border border-primary-fixed-dim rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-start">
-                  <Send className="w-5 h-5 text-purple-600 mr-3 mt-0.5" />
-                  <div className="text-sm text-purple-700">
+                  <Send className="w-5 h-5 text-primary mr-3 mt-0.5" />
+                  <div className="text-sm text-primary">
                     <p className="font-medium">Vertrag erneut senden</p>
                     <p className="mt-1">Sendet den Vertrag erneut an diesen Mitarbeiter.</p>
                   </div>
@@ -1041,7 +1041,7 @@ function MitarbeiterVerwaltung() {
                 <button
                   onClick={resendContract}
                   disabled={saving}
-                  className="px-3 py-1.5 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                  className="px-3 py-1.5 bg-primary text-white text-sm rounded-lg hover:bg-primary-container disabled:opacity-50"
                 >
                   {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Senden'}
                 </button>

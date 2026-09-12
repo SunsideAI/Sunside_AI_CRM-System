@@ -1726,11 +1726,11 @@ function Opening() {
                     </div>
                   </div>
                 ) : (
-                  <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center gap-3">
-                    <Lock className="w-5 h-5 text-purple-600 flex-shrink-0" />
+                  <div className="mb-4 p-3 bg-primary-fixed/30 border border-primary-fixed-dim rounded-lg flex items-center gap-3">
+                    <Lock className="w-5 h-5 text-primary flex-shrink-0" />
                     <div>
-                      <p className="text-sm font-medium text-purple-800">Dieser Lead ist im Closing-Prozess</p>
-                      <p className="text-xs text-purple-600">Änderungen nur noch über die Closing-Seite. Du kannst weiterhin Kommentare hinzufügen.</p>
+                      <p className="text-sm font-medium text-primary">Dieser Lead ist im Closing-Prozess</p>
+                      <p className="text-xs text-primary">Änderungen nur noch über die Closing-Seite. Du kannst weiterhin Kommentare hinzufügen.</p>
                     </div>
                   </div>
                 )
@@ -2179,7 +2179,7 @@ function Opening() {
                       <button
                         onClick={saveKommentarOnly}
                         disabled={saving || !editForm.neuerKommentar?.trim()}
-                        className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50"
+                        className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-container transition-colors disabled:opacity-50"
                       >
                         {saving ? (
                           <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -2210,7 +2210,7 @@ function Opening() {
                         <button
                           onClick={saveLead}
                           disabled={saving || editForm.ergebnis === 'Beratungsgespräch'}
-                          className="flex items-center px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex items-center px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-primary-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {saving ? (
                             <Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -2239,7 +2239,7 @@ function Opening() {
                             // Normal Closing: nur Kommentar
                             <button
                               onClick={() => setKommentarOnlyMode(true)}
-                              className="flex items-center px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                              className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-container transition-colors"
                             >
                               <MessageSquare className="w-4 h-4 mr-2" />
                               Kommentar hinzufügen
@@ -2248,7 +2248,7 @@ function Opening() {
                         ) : (
                           <button
                             onClick={() => setEditMode(true)}
-                            className="px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-purple-700 transition-colors"
+                            className="px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-primary-container transition-colors"
                           >
                             Bearbeiten
                           </button>

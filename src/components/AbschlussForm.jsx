@@ -454,7 +454,7 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
             )
           })()}
           {form.billing_mode === 'provision_partner' && (
-            <p className="text-xs text-purple-600 mt-1">
+            <p className="text-xs text-primary mt-1">
               🤝 Keine monatliche Rechnung. Provisionen werden separat abgerechnet.
             </p>
           )}
