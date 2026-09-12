@@ -10,7 +10,7 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | Nr | Ticket | Stand |
 |---|---|---|
 | 0.1 | Serverseitige Autorisierung | fertig, im Live-Branch |
-| 0.2 | Deploy-Falle entschärfen | offen — ein Force-Push auf `main` |
+| 0.2 | Deploy-Falle entschärfen | **erledigt** |
 | 0.3 | Live-Schema als Ausgangszustand | fertig, im Live-Branch |
 | 0.4 | opener_id + Zuordnungs-Verlauf | fertig, im Live-Branch |
 | 2 | Neue Felder laut Schema-Delta | **eingespielt** (`20260912_osc_felder.sql`) |
@@ -580,3 +580,37 @@ Stattdessen `oxlint` mit `no-undef`. Aktuell: **null Treffer.**
     npm run pruefe
 
 prüft beides — die Wachen und die undefinierten Aufrufe.
+
+## Wie Code bei Sunside live geht
+
+Wichtig zu wissen, bevor man etwas plant — ich hatte es zuerst falsch verstanden:
+
+**Netlify baut jeden Push**, auch auf Nebenzweige. Jeder dieser Builds bekommt
+eine eigene Adresse. **Veröffentlicht wird aber von Hand**: In der Deploy-Liste
+trägt genau ein Build das Kennzeichen „Published", und der bedient die
+Produktivadresse.
+
+Deshalb war von vier grün gebauten Commits nichts im Live-Bundle zu finden —
+sie waren gebaut, aber nicht veröffentlicht.
+
+Das ist eine gute Eigenschaft: Bauen ist folgenlos, Veröffentlichen ist eine
+bewusste Handlung.
+
+### Die Branch-Landkarte
+
+| Branch | Bedeutung |
+|---|---|
+| `main` | **Der veröffentlichte Stand.** Entspricht exakt dem, was läuft. |
+| `claude/analyze-repo-fKMVI` | Fundament-Arbeit: Autorisierung, Schema-Sicherung, opener_id. Gebaut, **nicht veröffentlicht.** |
+| `osc-umbau` | Der Umbau. Bleibt hier, bis er getestet ist. |
+
+Der alte `main` (April-Stand aus der Airtable-Zeit, 35 eigene Commits) ist als
+Tag `main-airtable-stand-april2026` erhalten — falls doch je etwas daraus
+gebraucht wird.
+
+### Ticket 0.2, anders gelöst als geplant
+
+Ursprünglich wollte ich den neuesten Branch-Stand auf `main` ziehen. Besser ist,
+was jetzt dort steht: **der tatsächlich veröffentlichte Commit.** So beschreibt
+`main` die Wirklichkeit statt einer Absicht — und ein versehentlicher Deploy von
+`main` würde genau das ausliefern, was ohnehin läuft.
