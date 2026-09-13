@@ -887,6 +887,17 @@ export async function handler(event) {
         }
       }
 
+      // Fehlt 'updates', lief die Funktion vorher weiter und scheiterte erst
+      // an updates.kommentar - mit einer 500 und einer internen Meldung, aus
+      // der niemand ablesen kann, was am Aufruf falsch war.
+      if (!updates || typeof updates !== 'object' || Array.isArray(updates)) {
+        return {
+          statusCode: 400,
+          headers: corsHeaders,
+          body: JSON.stringify({ error: 'updates fehlt oder ist kein Objekt' })
+        }
+      }
+
       // Felder mappen
       const fieldMap = {
         // Die Felder beider Uebergaben heissen im CRM wie in der Datenbank -
