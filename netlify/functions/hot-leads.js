@@ -254,6 +254,11 @@ export async function handler(event) {
         //   pool=setter             -> Beratungsgespräche ohne Setter
         if (pool === 'setter') {
           query = query.is('setter_id', null)
+          // Der Pool ist eine Liste zum Bewerben. Ein abgesagter Termin steht
+          // nicht zur Uebernahme - er gehoert dem Opener, der neu terminiert.
+          // Das Frontend filtert ebenfalls; hier steht es, damit es auch fuer
+          // jeden anderen Aufrufer gilt.
+          query = query.eq('status', STATUS.BERATUNG_VEREINBART)
         } else if (pool === 'true' || pool === 'closer') {
           query = query.is('closer_id', null)
         }
@@ -1032,6 +1037,30 @@ export async function handler(event) {
                    + `"${anzeigeName(fields.status)}" gewechselt werden.`,
               von: normalisiere(vorher.status),
               nach: fields.status
+            })
+          }
+        }
+
+        // Dieselbe Regel wie beim Calendly-Webhook, damit sie unabhängig vom
+        // Weg gilt: Wird ein Beratungsgespräch abgesagt oder ist niemand
+        // erschienen, ist es keine Aufgabe des Setters mehr. Der Kontakt geht
+        // an den Opener zurück, der neu terminieren kann.
+        if (fields.status === STATUS.TERMIN_ABGESAGT || fields.status === STATUS.NICHT_ERSCHIENEN) {
+          const { data: stand } = await supabase
+            .from('hot_leads').select('setter_id, status').eq('id', hotLeadId).maybeSingle()
+
+          if (stand?.setter_id) {
+            fields.setter_id = null
+            await supabase.from('hot_lead_ereignisse').insert({
+              hot_lead_id: hotLeadId,
+              art: 'setter_freigestellt',
+              von_status: normalisiere(stand.status),
+              nach_status: fields.status,
+              akteur_id: angemeldet.id,
+              bemerkung: fields.status === STATUS.NICHT_ERSCHIENEN
+                ? 'Nicht erschienen - zurück an den Opener'
+                : 'Termin abgesagt - zurück an den Opener',
+              daten: { frueherer_setter: stand.setter_id }
             })
           }
         }

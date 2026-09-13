@@ -109,15 +109,18 @@ function Setting() {
 
   return (
     <div className="space-y-8">
-      {/* Beratungsgespräche ohne Setter — dieselbe Ansicht wie an den Terminen */}
-      <SetterPool onGeaendert={laden} />
-
+      {/* Die Seite beginnt mit ihrem Titel, wie jede andere auch. Der Pool
+          stand vorher darueber, weil er das Dringendste ist - das las sich
+          aber, als gehoere er zu keiner Seite. */}
       <div>
         <h1 className="text-headline-md text-on-surface">Setting</h1>
         <p className="text-body-md text-on-surface-variant mt-1">
           Deine Beratungsgespräche — halten, dokumentieren, an den Closer übergeben.
         </p>
       </div>
+
+      {/* Beratungsgespräche ohne Setter — dieselbe Ansicht wie an den Terminen */}
+      <SetterPool onGeaendert={laden} />
 
       {fehler && (
         <div className="bg-error-container rounded-xl p-4 text-error">{fehler}</div>

@@ -763,19 +763,45 @@ async function findHotLeadByEmail(email) {
   return null
 }
 
-// Hot Lead bei Absage aktualisieren - NUR Status ändern, Termin behalten für Referenz
+// Hot Lead bei Absage aktualisieren - Termin behalten für Referenz
 async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
   console.log('Aktualisiere Hot Lead Absage:', { hotLeadId, originalLeadId })
 
-  // Nur Status ändern - termin_beratungsgespraech bleibt erhalten für Referenz
+  // Ein abgesagter Termin ist keine Aufgabe des Setters mehr. Blieb setter_id
+  // stehen, hing der Kontakt bei jemandem, für den es nichts zu tun gab - und
+  // der Opener, der neu terminieren muss, sah ihn nicht als seinen. Deshalb
+  // geht die Zuständigkeit an den Opener zurück.
+  //
+  // termin_beratungsgespraech bleibt erhalten: Er belegt, dass es einen Termin
+  // gab. Die Zuordnung geht dabei nicht verloren, der Trigger auf hot_leads
+  // schreibt den Statuswechsel mit, und das Ereignis unten hält fest, wer
+  // freigestellt wurde.
+  const { data: vorher } = await supabase
+    .from('hot_leads').select('setter_id, status').eq('id', hotLeadId).maybeSingle()
+
   const { error } = await supabase
     .from('hot_leads')
-    .update({ status: STATUS.TERMIN_ABGESAGT, zuletzt_geaendert_durch: 'calendly-webhook' })
+    .update({
+      status: STATUS.TERMIN_ABGESAGT,
+      setter_id: null,
+      zuletzt_geaendert_durch: 'calendly-webhook'
+    })
     .eq('id', hotLeadId)
 
   if (error) {
     console.error('Update Fehler:', error)
     return false
+  }
+
+  if (vorher?.setter_id) {
+    await supabase.from('hot_lead_ereignisse').insert({
+      hot_lead_id: hotLeadId,
+      art: 'setter_freigestellt',
+      von_status: vorher.status,
+      nach_status: STATUS.TERMIN_ABGESAGT,
+      bemerkung: 'Termin abgesagt - zurück an den Opener',
+      daten: { frueherer_setter: vorher.setter_id, verbindung: 'calendly-webhook' }
+    })
   }
 
   if (originalLeadId) {
