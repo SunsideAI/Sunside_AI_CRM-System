@@ -5,7 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
-import { STATUS, normalisiere, uebergangErlaubt, anzeigeName, ruecknahmeZiel } from '../../shared/status.js'
+import { STATUS, normalisiere, uebergangErlaubt, anzeigeName, ruecknahmeZiel, beideSchreibweisen } from '../../shared/status.js'
 import { FELDER, uebergabePruefen, UEBERGABE_1, UEBERGABE_2 } from '../../shared/felder.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
 
@@ -258,7 +258,12 @@ export async function handler(event) {
           // nicht zur Uebernahme - er gehoert dem Opener, der neu terminiert.
           // Das Frontend filtert ebenfalls; hier steht es, damit es auch fuer
           // jeden anderen Aufrufer gilt.
-          query = query.eq('status', STATUS.BERATUNG_VEREINBART)
+          //
+          // beideSchreibweisen() ist hier Pflicht, nicht Vorsicht: Der Bestand
+          // traegt in der Datenbank noch 'Lead', die neue Bezeichnung entsteht
+          // erst beim Ausliefern. Ein Vergleich gegen den neuen Wert allein
+          // liesse den Pool leer erscheinen, obwohl sieben Termine darin sind.
+          query = query.in('status', beideSchreibweisen(STATUS.BERATUNG_VEREINBART))
         } else if (pool === 'true' || pool === 'closer') {
           query = query.is('closer_id', null)
         }
@@ -286,10 +291,13 @@ export async function handler(event) {
           console.warn('[hot-leads GET] closerIdFilter ist keine gültige UUID, ignoriert:', closerIdFilter)
         }
 
-        // Status-Filter
+        // Status-Filter. Wie im Pool gilt: Der Aufrufer nennt die neue
+        // Bezeichnung, in der Datenbank steht bei Bestandsdaten noch die alte.
+        // follow-up.js macht es an zwei Stellen genauso.
         if (status) {
           const statusList = status.split(',').map(s => s.trim())
-          query = query.in('status', statusList)
+            .flatMap(s => beideSchreibweisen(s))
+          query = query.in('status', [...new Set(statusList)])
         }
 
         // Original Lead ID Filter (für No-Show Bearbeitung durch Setter)
