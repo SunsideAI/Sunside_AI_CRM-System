@@ -72,6 +72,23 @@ Beide erwähnt, weil sie sonst beim nächsten Durchgang wieder auftauchen:
 - **„Anfrage fehlgeschlagen"** beim Dashboard-Aufruf: `ERR_ABORTED` durch den
   doppelten Mount im Entwicklungsmodus. Der zweite Aufruf kommt mit 200.
 
+### 6. „Meine Leads im Closing" zeigte dem Opener nichts
+
+Der Block ist mit Absicht für alle Rollen da: Opener und Setter sollen sehen,
+was in der nächsten Phase mit den Kontakten passiert, die sie übergeben haben.
+Er fragte aber nur als **Closer** und als **Setter** ab.
+
+Vor dem Umbau fiel das nicht auf, weil `setter_id` auf den zeigte, der den
+Termin gebucht hatte — also auf den Opener. Seit dem Umbau meint `setter_id`
+wirklich den Setter, und der Opener hängt an `opener_id`. Damit sah genau die
+Rolle nichts, für die der Block gedacht ist. Dritte Abfrage über `openerName`
+ergänzt.
+
+Gefunden nicht durch die Prüfung, sondern durch einen Hinweis von Paul: Ich
+hatte den Block zuerst für falsch platziert gehalten und auf Closer begrenzt.
+Das war meine Fehldeutung — die Absicht war eine andere, und dahinter lag der
+eigentliche Fehler.
+
 ## Nicht behoben, weil es eine Entscheidung ist
 
 Im Setting-Tab steht der Block „Beratungsgespräche ohne Setter" **über** der

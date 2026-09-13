@@ -512,11 +512,10 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
         </div>
       )}
 
-      {/* Der Block zeigt Kontakte, bei denen man selbst der Closer ist. Wer
-          kein Closer ist, sah hier eine immer leere Kachel - Opener und
-          Setter gleichermassen. Mehrfachrollen bleiben abgedeckt: Wer auch
-          Closer ist, hat isCloser() wahr. */}
-      {(isCloser() || isAdmin()) && (
+      {/* Absicht: Opener und Setter sollen sehen, was in der naechsten Phase
+          mit den Kontakten geschieht, die sie uebergeben haben. Deshalb
+          bewusst fuer alle Rollen. */}
+      {(isColdcaller() || isCloser() || istSetterNutzer() || isAdmin()) && (
         <MeineLeadsImClosing 
           userId={user?.id} 
           userName={user?.vor_nachname} 
@@ -559,18 +558,27 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
     }
     
     try {
-      // Beide Abfragen parallel: Als Closer UND als Setter (wie in Termine.jsx)
-      const [closerResponse, setterResponse] = await Promise.all([
+      // Drei Abfragen parallel: als Closer, als Setter UND als Opener.
+      // Der Opener fehlte hier. Vor dem Umbau fiel das nicht auf, weil
+      // setter_id auf den zeigte, der den Termin gebucht hatte - also auf
+      // den Opener. Seit dem Umbau meint setter_id wirklich den Setter, und
+      // der Opener haengt an opener_id. Ohne die dritte Abfrage saehe genau
+      // die Rolle hier nichts, fuer die der Block gedacht ist.
+      const [closerResponse, setterResponse, openerResponse] = await Promise.all([
         fetch(`/.netlify/functions/hot-leads?closerName=${encodeURIComponent(userName)}`)
           .then(r => r.json())
           .catch(() => ({ hotLeads: [] })),
         fetch(`/.netlify/functions/hot-leads?setterName=${encodeURIComponent(userName)}`)
           .then(r => r.json())
+          .catch(() => ({ hotLeads: [] })),
+        fetch(`/.netlify/functions/hot-leads?openerName=${encodeURIComponent(userName)}`)
+          .then(r => r.json())
           .catch(() => ({ hotLeads: [] }))
       ])
-      
+
       // Kombinieren und Duplikate entfernen (basierend auf ID)
-      const allLeads = [...(closerResponse.hotLeads || []), ...(setterResponse.hotLeads || [])]
+      const allLeads = [...(closerResponse.hotLeads || []), ...(setterResponse.hotLeads || []),
+                        ...(openerResponse.hotLeads || [])]
       const uniqueLeads = allLeads.reduce((acc, lead) => {
         if (!acc.find(l => l.id === lead.id)) {
           acc.push(lead)
