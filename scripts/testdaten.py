@@ -5,8 +5,10 @@ Testdaten werden am Firmennamen erkannt: Er muss mit "TEST" beginnen. Das ist
 die einzige Abmachung des Durchlaufs - halte sie ein, sonst findet dieses
 Skript nichts.
 
-    python3 scripts/testdaten.py            zeigt, was da ist
-    python3 scripts/testdaten.py --loeschen entfernt es
+    python3 scripts/testdaten.py             zeigt, was da ist
+    python3 scripts/testdaten.py --loeschen  entfernt die Datensaetze
+    python3 scripts/testdaten.py --loeschen --auch-nutzer
+                                             entfernt zusaetzlich TEST Setter
 
 Loeschen fasst nur Datensaetze an, deren Name mit TEST beginnt, und die daran
 haengenden Ereignisse, Bewerbungen, Nachrichten und Anrufversuche. Dazu den
@@ -33,6 +35,10 @@ def ruf(methode, pfad, daten=None):
         return e.code, e.read().decode()[:300]
 
 loeschen = "--loeschen" in sys.argv
+# Der Testnutzer bleibt standardmaessig stehen: Er wird fuer den naechsten
+# Durchlauf gebraucht, und ihn versehentlich mitzuloeschen kostet mehr Zeit,
+# als ihn stehen zu lassen.
+auch_nutzer = "--auch-nutzer" in sys.argv
 
 st, leads = ruf("GET", "hot_leads?select=id,unternehmen,status,termin_beratungsgespraech"
                        "&unternehmen=like.TEST*&order=created_at.desc")
@@ -47,7 +53,8 @@ if not leads and not nutzer:
     sys.exit(0)
 
 for n in nutzer:
-    print(f"  Testnutzer: {n['vor_nachname']} <{n['email']}> {n['rollen']}")
+    zusatz = "" if auch_nutzer or not loeschen else "  (bleibt stehen, --auch-nutzer entfernt ihn)"
+    print(f"  Testnutzer: {n['vor_nachname']} <{n['email']}> {n['rollen']}{zusatz}")
 if nutzer and leads:
     print()
 
@@ -80,7 +87,7 @@ print(f"  {'hot_leads':<24} {len(weg) if isinstance(weg, list) else weg}")
 
 # Der Nutzer zuletzt: An ihm haengen Spalten ohne Kaskade (etwa
 # no_show_marked_by). Erst wenn die Testleads weg sind, geht er weg.
-for n in nutzer:
+for n in (nutzer if auch_nutzer else []):
     st, weg = ruf("DELETE", f"users?id=eq.{n['id']}")
     if st >= 400:
         print(f"  {'users':<24} {n['vor_nachname']} bleibt: {weg}")
