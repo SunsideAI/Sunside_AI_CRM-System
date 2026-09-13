@@ -43,8 +43,10 @@ function SlideDrawer({ isOpen, onClose, title, children, width = 'max-w-xl', hea
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto">
+        {/* Inhalt. Der Innenabstand gehoert hierher, nicht in jeden Aufrufer:
+            Die Kopfzeile darueber hat ihn bereits, und ohne ihn klebte der
+            Inhalt an der linken Kante, waehrend der Titel eingerueckt stand. */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
           {children}
         </div>
       </div>
