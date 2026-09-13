@@ -89,9 +89,45 @@ hatte den Block zuerst für falsch platziert gehalten und auf Closer begrenzt.
 Das war meine Fehldeutung — die Absicht war eine andere, und dahinter lag der
 eigentliche Fehler.
 
-## Nicht behoben, weil es eine Entscheidung ist
+### 7. Die Schublade klebte an der Kante
 
-Im Setting-Tab steht der Block „Beratungsgespräche ohne Setter" **über** der
-Seitenüberschrift. Jede andere Seite beginnt mit ihrem Titel. Das war
-Absicht — der Pool ist das Dringendste —, sieht aber uneinheitlich aus.
-Soll er unter die Überschrift?
+Der Titel war eingerückt, der Inhalt darunter stand bündig am linken Rand:
+`SlideDrawer` gab seinem Inhaltsbereich keinen Innenabstand, und der einzige
+Aufrufer setzte auch keinen. Jetzt trägt ihn die Schublade selbst, wie die
+Kopfzeile darüber ihn schon hatte.
+
+### 8. Ein abgesagter Termin blieb beim Setter hängen
+
+Eine Absage änderte nur den Status. `setter_id` blieb stehen — der Kontakt hing
+bei jemandem, für den es nichts zu tun gab, und der Opener, der neu terminieren
+muss, sah ihn nicht als seinen. Beide Wege stellen den Setter jetzt frei, der
+Calendly-Webhook und die Statusänderung von Hand, und schreiben dazu ein
+Ereignis `setter_freigestellt`, damit die frühere Zuordnung belegt bleibt. Der
+Termin-Zeitstempel bleibt erhalten: Er beweist, dass es einen Termin gab.
+
+Der Pool filtert zusätzlich serverseitig, statt sich auf das Frontend zu
+verlassen — ein abgesagter Termin steht nicht zur Bewerbung.
+
+Nachgewiesen am lebenden System: Testkontakt mit Setter angelegt, über die
+Schnittstelle abgesagt, danach `setter_freigestellt = true`, `opener_bleibt =
+true`, Termin erhalten, zwei Ereignisse geschrieben, nicht mehr im Pool.
+
+### 9. Ein PATCH ohne `updates` endete in einer 500
+
+Fehlte das Feld, lief die Funktion weiter und scheiterte erst an
+`updates.kommentar` — mit einer internen Meldung, aus der niemand ablesen kann,
+was am Aufruf falsch war. Jetzt eine 400 mit klarem Text.
+
+### 10. Mein eigener Pool-Filter leerte den Pool
+
+Beim Beheben von Punkt 8 verglich ich gegen den **gespeicherten** Status. Der
+Bestand trägt in der Datenbank aber noch `Lead`; die neue Bezeichnung entsteht
+erst beim Ausliefern. Der Pool ging dadurch von sieben Einträgen auf null.
+`beideSchreibweisen()` gibt es genau dafür — `follow-up.js` benutzt es an zwei
+Stellen bereits. Der `status`-Parameter der Abfrage hatte dieselbe Lücke.
+
+Gefunden, weil ich nach der Änderung nachgesehen habe statt sie anzunehmen.
+
+### 11. Der Pool stand über der Seitenüberschrift
+
+Jede andere Seite beginnt mit ihrem Titel. Der Pool steht jetzt darunter.
