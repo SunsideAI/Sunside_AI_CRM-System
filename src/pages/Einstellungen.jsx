@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import PasswordManager from '../components/PasswordManager'
 import VertriebsEinstellungen from '../components/VertriebsEinstellungen'
+import TerminartenZuordnung from '../components/TerminartenZuordnung'
 import EmailTemplateManager from '../components/EmailTemplateManager'
 import MitarbeiterVerwaltung from '../components/MitarbeiterVerwaltung'
 import LeadAnfragenVerwaltung from '../components/LeadAnfragenVerwaltung'
@@ -138,6 +139,7 @@ function SystemeinstellungenContent({ user }) {
 
       {/* Zuteilung von Terminen */}
       <VertriebsEinstellungen />
+      <TerminartenZuordnung />
 
       {/* Password Manager */}
       <PasswordManager />

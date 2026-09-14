@@ -1561,6 +1561,7 @@ function Opening() {
               {showTerminPicker ? (
                 // Termin-Picker anzeigen
                 <TerminPicker
+                  zweck="beratung"
                   lead={selectedLead}
                   onTerminBooked={async (termin) => {
                     // Bei Re-Terminierung (nicht erschienen oder abgesagt) zurueck in

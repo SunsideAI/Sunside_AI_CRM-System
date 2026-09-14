@@ -337,6 +337,7 @@ function Setting() {
               <div className="border-t pt-4">
                 {terminOffen ? (
                   <TerminPicker
+                    zweck="beratung"
                     lead={{ id: gewaehlt.originalLeadId, unternehmensname: gewaehlt.unternehmen }}
                     hotLeadId={gewaehlt.id}
                     onTerminBooked={() => { setTerminOffen(false); setGewaehlt(null); laden() }}

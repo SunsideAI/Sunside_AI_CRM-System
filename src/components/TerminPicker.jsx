@@ -14,7 +14,14 @@ const toLocalDateString = (date) => {
   return `${year}-${month}-${day}`
 }
 
-function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
+// `zweck` sagt, wofuer gebucht wird: 'beratung' oder 'abschluss'. Ohne
+// Angabe verhaelt sich der Waehler wie vorher und zeigt alle Terminarten.
+//
+// Das ist keine Bequemlichkeit. Die Terminart wurde bisher allein ueber
+// 'video' oder 'phone' gesucht - sobald es mehr als einen Zweck gibt, trifft
+// diese Suche je nach Reihenfolge der Calendly-Antwort die falsche, und ein
+// Beratungsgespraech landet still im Abschluss-Kalender.
+function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null }) {
   const { user } = useAuth()
   
   // Modus: Neuer Termin oder Neu-Terminierung eines bestehenden Hot Leads
@@ -96,7 +103,23 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel }) {
       const data = await response.json()
       
       if (response.ok && data.success) {
-        setEventTypes(data.eventTypes)
+        let arten = data.eventTypes || []
+
+        // Auf den Zweck einschraenken, sofern zugeordnet ist. Ist fuer diesen
+        // Zweck nichts zugeordnet, bleibt es bei allen - sonst haette eine
+        // fehlende Einstellung zur Folge, dass gar nichts buchbar ist.
+        if (zweck) {
+          try {
+            const e = await fetch('/.netlify/functions/einstellungen').then(r => r.json())
+            const karte = JSON.parse(e?.einstellungen?.calendly_terminart_zuordnung?.wert || '{}')
+            const passend = arten.filter(a => karte[a.uri] === zweck)
+            if (passend.length) arten = passend
+          } catch {
+            // Zuordnung nicht lesbar: lieber alle zeigen als nichts.
+          }
+        }
+
+        setEventTypes(arten)
       } else {
         setError('Fehler beim Laden der Terminarten')
       }

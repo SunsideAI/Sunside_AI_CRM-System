@@ -22,7 +22,10 @@ const corsHeaders = {
 // Was das CRM sehen und aendern darf. Alles andere bleibt unsichtbar.
 const ERLAUBT = {
   bewerbung_pflicht_setter: { art: 'schalter' },
-  bewerbung_pflicht_closer: { art: 'schalter' }
+  bewerbung_pflicht_closer: { art: 'schalter' },
+  // Ticket 7: welche Calendly-Terminart welchem Gespraech dient, als JSON
+  // { "<uri>": "beratung" | "abschluss" }. Leer heisst "wie bisher".
+  calendly_terminart_zuordnung: { art: 'text' }
 }
 
 export async function handler(event) {
@@ -48,6 +51,7 @@ export async function handler(event) {
         einstellungen[zeile.schluessel] = {
           wert: zeile.wert,
           an: zeile.wert === 'an',
+          art: ERLAUBT[zeile.schluessel]?.art || 'schalter',
           beschreibung: zeile.beschreibung
         }
       }
@@ -63,7 +67,7 @@ export async function handler(event) {
         }
       }
 
-      const { schluessel, an } = JSON.parse(event.body)
+      const { schluessel, an, wert: neuerWert } = JSON.parse(event.body)
 
       if (!ERLAUBT[schluessel]) {
         return {
@@ -73,7 +77,20 @@ export async function handler(event) {
         }
       }
 
-      const wert = an ? 'an' : 'aus'
+      let wert
+      if (ERLAUBT[schluessel].art === 'text') {
+        // Freitext, aber nicht beliebig lang - hier stehen Calendly-URIs.
+        if (neuerWert !== null && neuerWert !== undefined && typeof neuerWert !== 'string') {
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'wert muss Text sein' })
+          }
+        }
+        wert = String(neuerWert ?? '').trim().slice(0, 4000)
+      } else {
+        wert = an ? 'an' : 'aus'
+      }
       const { error } = await supabase
         .from('einstellungen')
         .update({ wert, geaendert_am: new Date().toISOString() })
@@ -82,7 +99,11 @@ export async function handler(event) {
       if (error) throw new Error(error.message)
 
       console.log(`[Einstellungen] ${schluessel} = ${wert} durch ${angemeldet.name}`)
-      return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ schluessel, wert, an: an === true }) }
+      return {
+        statusCode: 200,
+        headers: corsHeaders,
+        body: JSON.stringify({ schluessel, wert, an: wert === 'an' })
+      }
     }
 
     return { statusCode: 405, headers: corsHeaders, body: JSON.stringify({ error: 'Method not allowed' }) }

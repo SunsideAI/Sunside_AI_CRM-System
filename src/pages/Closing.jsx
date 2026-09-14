@@ -2603,8 +2603,11 @@ function Closing() {
                     )
                   })()}
 
-                  {/* TerminPicker */}
+                  {/* Auch hier wird ein Beratungsgespraech neu gelegt: Der
+                      Waehler schreibt termin_beratungsgespraech, nicht den
+                      Abschlusstermin. */}
                   <TerminPicker
+                    zweck="beratung"
                     lead={{
                       id: selectedLead.originalLeadId,
                       unternehmen: selectedLead.unternehmen,
