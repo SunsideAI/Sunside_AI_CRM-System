@@ -752,8 +752,14 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
             </div>
           </div>
 
-          {/* Mini-Stats - Glass Cards */}
-          <div className="flex gap-3">
+          {/* Mini-Stats - Glass Cards.
+              flex-wrap ist hier kein Schoenheitsfehler-Schutz, sondern noetig:
+              Drei Plaettchen zu je rund 102 px plus Abstaende brauchen mehr
+              Platz, als die Karte auf einem 390 px breiten Bildschirm innen
+              hat. Die Karte hat overflow-hidden - ohne Umbruch wurden die
+              Zahlen schlicht abgeschnitten, und zwar unerreichbar, weil
+              nichts daran waagerecht scrollbar ist. */}
+          <div className="flex flex-wrap gap-3">
             <div className="glass-panel px-4 py-2 text-center min-w-[70px]">
               <span className="block text-title-lg font-display text-secondary">
                 {loading ? <Loader2 className="w-5 h-5 animate-spin mx-auto text-secondary/50" /> : stats.lead}
