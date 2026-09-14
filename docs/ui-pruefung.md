@@ -52,6 +52,23 @@ Dazu die Kopfzeile von `fixed` auf `sticky`: Ein fixierter Kopf richtet sich
 an der Fensterkante aus, der Inhalt an der Dokumentkante — zwei verschiedene
 Breiten, sobald ein Balken Platz braucht.
 
+### 12. Abgeschnittene Zahlen auf dem Handy
+
+Die drei Plättchen „Offen · Angebot · Gewonnen" in „Meine Leads im Closing"
+brauchen zusammen rund 330 px; die Karte hat auf einem 390 px breiten Schirm
+innen etwa 310 px. Die Karte hat `overflow-hidden`, und nichts daran ist
+waagerecht scrollbar — die Zahlen waren also weg, nicht nur verschoben.
+`flex-wrap` ergänzt.
+
+Aufgefallen erst im zweiten Durchgang: Vorher sah ein Setter diese Karte nicht,
+weil das Dashboard seine Rolle nicht kannte (Punkt 3). Ein behobener Fehler hat
+den nächsten sichtbar gemacht.
+
+## Abschluss des Durchgangs
+
+Letzter Lauf über alle acht Seiten in beiden Breiten: **ohne Befund**, bis auf
+die zwei bekannten Fehlalarme unten.
+
 ## Geprüft und in Ordnung
 
 - **Rollensperre der Seiten.** Ein reiner Setter, der `/opening`, `/closing`,
