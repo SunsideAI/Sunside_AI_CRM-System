@@ -17,7 +17,8 @@ const SCHLUESSEL = 'calendly_terminart_zuordnung'
 const ZWECKE = [
   { wert: '',          name: '— nicht zugeordnet —' },
   { wert: 'beratung',  name: 'Beratungsgespräch' },
-  { wert: 'abschluss', name: 'Abschlussgespräch' }
+  { wert: 'abschluss', name: 'Abschlussgespräch' },
+  { wert: 'folgetermin', name: 'Folgetermin' }
 ]
 
 export default function TerminartenZuordnung() {
@@ -142,6 +143,7 @@ export default function TerminartenZuordnung() {
       <div className="text-label-sm text-on-surface-variant mt-4 space-y-1">
         <div>Beratungsgespräch: {zaehle('beratung')} Terminart(en) zugeordnet</div>
         <div>Abschlussgespräch: {zaehle('abschluss')} Terminart(en) zugeordnet</div>
+        <div>Folgetermin: {zaehle('folgetermin')} Terminart(en) zugeordnet</div>
         {zaehle('abschluss') === 0 && (
           <div className="text-on-surface">
             Ohne zugeordnete Terminart wird der Abschlusstermin weiterhin von

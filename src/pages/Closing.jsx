@@ -18,6 +18,7 @@ function altbestand(kommentar) {
   return (k.split(/\n(?=\[\d{2}\.\d{2}\.\d{4})/)[0] || '').trim()
 }
 import Verlauf from '../components/Verlauf'
+import Gespraechsausgang from '../components/Gespraechsausgang'
 import {
   Calendar,
   Users,
@@ -3015,6 +3016,17 @@ function Closing() {
                       </div>
                     )}
                   </div>
+
+                  {/* Der Ausgang steht vor dem Verlauf: Er ist das, was nach
+                      dem Gespräch als Erstes festzuhalten ist. Nur sichtbar,
+                      wenn es ein Abschlussgespräch gab — vorher gibt es keinen
+                      Ausgang. */}
+                  {selectedLead.termin_abschlussgespraech && (
+                    <Gespraechsausgang
+                      lead={selectedLead}
+                      onGespeichert={() => loadLeads()}
+                    />
+                  )}
 
                   {/* NOTIZEN & VERLAUF Section.
                       Die Zeitleiste steht hier oben, nicht als eigener Kasten

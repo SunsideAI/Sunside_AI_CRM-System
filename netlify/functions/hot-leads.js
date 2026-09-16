@@ -408,6 +408,8 @@ export async function handler(event) {
           anfragen_bereich: record.anfragen_bereich ?? null,
           termin_abschlussgespraech: record.termin_abschlussgespraech || null,
           meeting_link_abschluss: record.meeting_link_abschluss || null,
+          termin_folgetermin: record.termin_folgetermin || null,
+          meeting_link_folgetermin: record.meeting_link_folgetermin || null,
 
           // Der Angebots-Zweig. Der Stand beim Versand bleibt erhalten, auch
           // wenn sich die Vertragsfelder bis zum Abschluss noch aendern.
@@ -915,6 +917,8 @@ export async function handler(event) {
         'schmerzpunkt_vertieft': 'schmerzpunkt_vertieft',
         'termin_abschlussgespraech': 'termin_abschlussgespraech',
         'meeting_link_abschluss': 'meeting_link_abschluss',
+        'termin_folgetermin': 'termin_folgetermin',
+        'meeting_link_folgetermin': 'meeting_link_folgetermin',
         'gespraechsausgang': 'gespraechsausgang',
         'zugesagter_schritt': 'zugesagter_schritt',
         'zugesagt_bis': 'zugesagt_bis',
