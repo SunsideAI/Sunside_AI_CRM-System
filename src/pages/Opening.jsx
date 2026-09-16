@@ -17,6 +17,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import TerminPicker from '../components/TerminPicker'
+import Verlauf from '../components/Verlauf'
 import EmailComposer from '../components/EmailComposer'
 import {
   Search,
@@ -2075,6 +2076,19 @@ function Opening() {
                         </span>
                       </div>
                     )}
+
+                    {/* Die Zeitleiste: dieselben Ereignisse, aber auswertbar und
+                        nach Art filterbar. Der Kommentar-Block darunter bleibt,
+                        weil dort die undatierten Altzeilen stehen — die haben
+                        bewusst keinen Zeitstempel bekommen. */}
+                    <details className="border border-outline-variant rounded-xl mb-3">
+                      <summary className="px-4 py-2 cursor-pointer text-label-lg text-on-surface">
+                        Verlauf
+                      </summary>
+                      <div className="px-4 pb-4">
+                        <Verlauf leadId={selectedLead.id} />
+                      </div>
+                    </details>
 
                     {/* History / Kommentar Anzeige */}
                     <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[200px] overflow-y-auto">

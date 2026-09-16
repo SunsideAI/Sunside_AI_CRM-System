@@ -8,6 +8,7 @@ import { STATUS, anzeigeName } from '../../shared/status.js'
 import SlideDrawer from '../components/SlideDrawer'
 import SetterUebergabe from '../components/SetterUebergabe'
 import SetterPool from '../components/SetterPool'
+import Verlauf from '../components/Verlauf'
 import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
 
@@ -278,6 +279,16 @@ function Setting() {
                 <Video className="w-4 h-4" /> Video-Meeting beitreten
               </a>
             )}
+
+            {/* Die Strecke des Kontakts: was wann passiert ist. */}
+            <details className="border border-outline-variant rounded-lg">
+              <summary className="px-3 py-2 cursor-pointer text-label-lg text-on-surface">
+                Verlauf
+              </summary>
+              <div className="px-3 pb-3">
+                <Verlauf hotLeadId={gewaehlt.id} leadId={gewaehlt.originalLeadId} />
+              </div>
+            </details>
 
             {/* Was der Opener aufgenommen hat — der Setter geht damit ins Gespräch */}
             {(gewaehlt.schmerzpunkt_wortlaut || gewaehlt.ziel) && (
