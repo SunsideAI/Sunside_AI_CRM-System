@@ -2,7 +2,7 @@
 
 **Adresse:** <https://osc-umbau--crmsunsideai.netlify.app>
 
-Dauer etwa 30 Minuten.
+Dauer etwa 35 Minuten.
 
 Der Produktivbetrieb läuft unverändert unter `crmsunsideai.netlify.app` — die
 Vorschau ist ein eigener Build mit eigener Adresse, er wird durch nichts
@@ -48,8 +48,8 @@ den Testdatensätzen:
 
 ## Was noch nicht geht
 
-- **Abschlussgespräch-Termin von Hand** eintragen — der Sammel-Kalender ist
-  Ticket 7 und braucht mehrere Calendly-Nutzer
+- **Folgetermin am Closer-Kalender** — der Rest von Ticket 7. Dafür bräuchte
+  jeder Closer einen eigenen Kalender; im gemeinsamen Calendly geht das nicht.
 - **Statuskette in der Datenbank** ist nicht eingespielt. Die Übergangsprüfung
   läuft nur im Code, nicht als Riegel in der Datenbank. Genau das testen wir.
 - **setter_id** zeigt noch auf „wer gebucht hat". Die Rückumstellung läuft mit
@@ -150,9 +150,36 @@ den Testdatensätzen:
 17. Haken wieder weg, Zuwachs **12** und Quote **3** eintragen.
     **Erwartung:** Darunter erscheint **„Nötige Anfragen pro Monat: 3,3 (2 bis 4)"**.
     Steht dort 40, ist der Teiler kaputt.
-18. Rest ausfüllen, buchen.
+18. **Termin buchen** klicken.
+
+    **Erwartung:** Der Terminwähler öffnet sich und bietet **nur das
+    Abschlussgespräch** an (45 Minuten, Video) — nicht die beiden
+    Beratungs-Terminarten. Steht dort eine 30-Minuten-Art zur Wahl, ist die
+    Zuordnung unter Einstellungen → Terminarten kaputt.
+
+    Einen Slot wählen und buchen. **Der Termin geht wirklich in euer Calendly** —
+    also eine Zeit nehmen, die niemanden stört, und hinterher absagen.
+
+19. **Jetzt die wichtigste Stelle des ganzen Durchlaufs:** Nach der Buchung ein
+    Pflichtfeld wieder leeren und absenden.
+
+    **Erwartung:** Es wird abgewiesen, die fehlenden Felder werden benannt —
+    **und der gebuchte Termin bleibt stehen.** Genau hier könnte ein Kontakt
+    mit gebuchtem Termin, aber ohne Übergabe zurückbleiben: Der Kunde hätte
+    eine Einladung, der Closer nichts in der Hand. Passiert das, ist es der
+    wertvollste Fund des Tages.
+
+20. Feld wieder ausfüllen, absenden.
     **Erwartung:** Status **Abschlussgespräch vereinbart**. Der Kontakt
-    verschwindet aus dem Setting-Tab — ab hier ist der Closer zuständig.
+    verschwindet aus dem Setting-Tab — ab hier ist der Closer zuständig. Der
+    Termin steht in `termin_abschlussgespraech`, der Einwahllink in
+    `meeting_link_abschluss` — nicht in den Feldern des Beratungsgesprächs:
+
+    ```sql
+    select termin_beratungsgespraech, termin_abschlussgespraech,
+           meeting_link, meeting_link_abschluss
+      from hot_leads where unternehmen like 'TEST%';
+    ```
 
 ### Was im Setting-Tab sonst noch zu prüfen ist
 
@@ -167,7 +194,7 @@ den Testdatensätzen:
 
 ## 6. Der Verlauf (Zeitleiste)
 
-19. Einen beliebigen Kontakt öffnen — in **Opening, Setting, Closing,
+21. Einen beliebigen Kontakt öffnen — in **Opening, Setting, Closing,
     Follow-Up** oder **Termine** — und den Block **„Verlauf"** aufklappen.
 
     **Erwartung:** Eine Strecke von oben nach unten, neueste zuerst: Symbol je
@@ -175,10 +202,10 @@ den Testdatensätzen:
     Kontakt mit Vorgeschichte stehen dort zweistellig viele Einträge — sie
     stammen aus dem Kommentarfeld, das dafür nicht angefasst wurde.
 
-20. Die vier Filter durchklicken: **Alles · Kontakt · Termine · Notizen**.
+22. Die vier Filter durchklicken: **Alles · Kontakt · Termine · Notizen**.
     **Erwartung:** Die Liste wird kürzer, die Reihenfolge bleibt.
 
-21. **Der eigentliche Test:** Beim selben Kontakt etwas tun, das einen Eintrag
+23. **Der eigentliche Test:** Beim selben Kontakt etwas tun, das einen Eintrag
     erzeugt — eine E-Mail schicken, ein Ergebnis setzen oder eine Notiz
     speichern. Dann den Verlauf neu aufklappen.
 
@@ -193,16 +220,16 @@ den Testdatensätzen:
      order by geschehen_am desc limit 5;
     ```
 
-22. **Was bewusst NICHT im Verlauf steht:** Zeilen ohne Datum. Davon gibt es
+24. **Was bewusst NICHT im Verlauf steht:** Zeilen ohne Datum. Davon gibt es
     5.490 im Bestand, sie stammen aus einer älteren Migration. Sie stehen
     weiterhin im Kommentarfeld darunter — in Opening siehst du beides
     untereinander. Ein geschätzter Zeitstempel wäre schlimmer als eine Lücke.
 
 ## 7. Rückgabe an den Vorgänger (Ticket 15)
 
-23. Im Closing den Testkontakt öffnen → **„Zurück an den Vorgänger"**.
-24. Ohne Begründung absenden. **Erwartung:** wird verlangt.
-25. Mit Begründung absenden.
+25. Im Closing den Testkontakt öffnen → **„Zurück an den Vorgänger"**.
+26. Ohne Begründung absenden. **Erwartung:** wird verlangt.
+27. Mit Begründung absenden.
     **Erwartung:** Status eine Stufe zurück auf **Beratungsgespräch geführt**,
     der Vorgänger bekommt eine Nachricht.
 
@@ -215,14 +242,14 @@ den Testdatensätzen:
 
 ## 8. Die Übergangsmatrix (Ticket 1)
 
-26. Im Closing den Status von Hand auf **Gewonnen** setzen, während der Kontakt
+28. Im Closing den Status von Hand auf **Gewonnen** setzen, während der Kontakt
     auf „Beratungsgespräch geführt" steht.
     **Erwartung:** Wird abgewiesen mit einer verständlichen Meldung, nicht mit
     einem Datenbankfehler. Der Weg führt über Abschlussgespräch und Im Abschluss.
 
 ## 9. Fristen und Kennzahlen (Tickets 6, 13, 15)
 
-27. Der stündliche Lauf greift von selbst. Von Hand anstoßen:
+29. Der stündliche Lauf greift von selbst. Von Hand anstoßen:
 
     ```sql
     select public.crm_fristen_pruefen();
@@ -231,7 +258,7 @@ den Testdatensätzen:
     erscheint unter `termine_ohne_setter`; ein zweiter Lauf zählt ihn **nicht
     erneut**.
 
-28. Kennzahlen:
+30. Kennzahlen:
 
     ```sql
     select * from v_erscheinungsquote  where setter is not null order by monat desc limit 5;
