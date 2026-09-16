@@ -138,7 +138,9 @@ export default function Verlauf({ leadId, hotLeadId }) {
                   <div className="text-label-sm text-on-surface-variant mb-0.5">{datum(e.wann)}</div>
                 )}
 
-                <div className="text-body-sm text-on-surface">{e.titel}</div>
+                {/* whitespace-pre-line: Eine Notiz kann über viele Zeilen gehen.
+                    Ohne das stünde alles in einer Wurst. */}
+                <div className="text-body-sm text-on-surface whitespace-pre-line">{e.titel}</div>
 
                 <div className="text-label-sm text-on-surface-variant mt-0.5">
                   {uhrzeit(e.wann)} Uhr · {art.name}

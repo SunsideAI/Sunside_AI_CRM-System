@@ -2187,17 +2187,6 @@ function Closing() {
 
             {/* Body - Scrollbar hier */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-              {/* Die Strecke des Kontakts — dieselbe Ansicht wie in Opening
-                  und Setting. */}
-              <details className="border border-outline-variant rounded-xl">
-                <summary className="px-4 py-2 cursor-pointer text-label-lg text-on-surface">
-                  Verlauf
-                </summary>
-                <div className="px-4 pb-4">
-                  <Verlauf hotLeadId={selectedLead.id} leadId={selectedLead.originalLeadId} />
-                </div>
-              </details>
-
 
               {angebotSuccess ? (
                 /* ========================================
@@ -3019,11 +3008,25 @@ function Closing() {
                     )}
                   </div>
 
-                  {/* NOTIZEN & VERLAUF Section */}
+                  {/* NOTIZEN & VERLAUF Section.
+                      Die Zeitleiste steht hier oben, nicht als eigener Kasten
+                      weiter unten — zwei Verlaufs-Abschnitte nebeneinander
+                      waren genau das Durcheinander, das zu beheben war.
+                      Das Kommentarfeld darunter bleibt: Dort stehen die
+                      undatierten Altzeilen, die bewusst keinen Zeitstempel
+                      bekommen haben. */}
                   <div className="border-t border-outline-variant pt-6">
                     <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide mb-3">
                       Notizen & Verlauf
                     </h3>
+
+                    <div className="mb-4">
+                      <Verlauf hotLeadId={selectedLead.id} leadId={selectedLead.originalLeadId} />
+                    </div>
+
+                    <div className="text-label-sm text-on-surface-variant mb-2">
+                      Kommentarfeld im Original
+                    </div>
                     <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[250px] overflow-y-auto">
                       {selectedLead.kommentar ? (
                         <div className="space-y-3">
