@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   Search, Calendar, Phone, Video, Loader2, User as UserIcon, Building2, MapPin,
-  CheckCircle2, AlertCircle, Users, Mail, RefreshCw
+  CheckCircle2, AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { STATUS, anzeigeName } from '../../shared/status.js'
@@ -52,8 +52,13 @@ function Setting() {
   // ihn sucht, und die Zahl daneben sagt, ob sich das Hinsehen lohnt.
   const [ansicht, setAnsicht] = useState('meine')
   const [poolAnzahl, setPoolAnzahl] = useState(0)
+  const [seite, setSeite] = useState(1)
 
-  useEffect(() => { laden(); poolZaehlen() }, [])
+  // Wie im Closing: zehn je Seite. Vorher standen alle Zeilen auf einmal da —
+  // bei 312 Gesprächen ist das keine Liste mehr, sondern eine Wand.
+  const PRO_SEITE = 10
+
+  useEffect(() => { laden(); poolZaehlen() }, [ansicht])
 
   // Die Zahl im Umschalter muss stimmen, BEVOR man umschaltet — sonst stünde
   // dort 0, und niemand sähe, dass etwas wartet. Dieselbe Bedingung wie im
@@ -76,7 +81,9 @@ function Setting() {
     try {
       // Admins sehen alles, sonst die eigenen. Der Server prüft das noch
       // einmal — der Filter hier ist Bequemlichkeit, keine Absicherung.
-      const pfad = isAdmin()
+      // "Alle" holt ohne Setter-Filter — sonst sähe ein Admin dort dasselbe
+      // wie unter "Meine Leads".
+      const pfad = (isAdmin() && ansicht === 'alle')
         ? '/.netlify/functions/hot-leads'
         : `/.netlify/functions/hot-leads?setterName=${encodeURIComponent(user?.vor_nachname || '')}`
 
@@ -114,6 +121,13 @@ function Setting() {
       || `${l.ansprechpartnerVorname || ''} ${l.ansprechpartnerNachname || ''}`.toLowerCase().includes(suchbegriff))
     .sort((a, b) => new Date(a.terminDatum || 0) - new Date(b.terminDatum || 0))
 
+  // Blättern wie im Closing: Seite begrenzen, damit ein Filterwechsel nicht
+  // auf einer Seite landet, die es nicht mehr gibt.
+  const seitenGesamt = Math.max(1, Math.ceil(sichtbar.length / PRO_SEITE))
+  const sichereSeite = Math.min(seite, seitenGesamt)
+  const beginn = (sichereSeite - 1) * PRO_SEITE
+  const geblaettert = sichtbar.slice(beginn, beginn + PRO_SEITE)
+
   const zaehler = (wert) => {
     const s = FILTER.find(f => f.wert === wert)?.stufen || []
     return kontakte.filter(l => s.includes(l.status)).length
@@ -134,13 +148,16 @@ function Setting() {
       {/* Kopfzeile mit Umschalter — gebaut wie im Closing. */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-headline-md text-on-surface">
+          <h1 className="text-headline-lg font-display text-on-surface">
             {ansicht === 'pool' ? 'Setter-Pool' : 'Setting'}
+            {ansicht === 'alle' && ' (alle Gespräche)'}
           </h1>
           <p className="text-body-md text-on-surface-variant mt-1">
             {ansicht === 'pool'
               ? 'Beratungsgespräche, die der Opener gelegt hat — noch ohne Setter'
-              : 'Deine Beratungsgespräche — halten, dokumentieren, an den Closer übergeben.'}
+              : ansicht === 'alle'
+                ? 'Alle Beratungsgespräche, unabhängig vom Setter'
+                : 'Deine Beratungsgespräche — halten, dokumentieren, an den Closer übergeben.'}
           </p>
         </div>
 
@@ -174,6 +191,19 @@ function Setting() {
                 {poolAnzahl}
               </span>
             </button>
+            {isAdmin() && (
+              <button
+                onClick={() => { setAnsicht('alle'); setSeite(1) }}
+                className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                  ansicht === 'alle'
+                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+                }`}
+              >
+                <Users className="w-4 h-4 mr-1.5" />
+                Alle
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -193,46 +223,53 @@ function Setting() {
       ) : (
       <>
 
-      {/* Filter und Suche — gleiches Layout wie Opening und Closing */}
-      <div className="card-elevated p-4">
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* input-field und der runde Neu-laden-Knopf wie in Opening —
-              vorher standen hier eigene Klassen, die fast, aber nicht ganz
-              gleich aussahen. */}
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant" />
+      {/* Filter & Suche — Zeile für Zeile dieselbe Hülle wie im Closing. */}
+      <div className="card p-5 space-y-4">
+        {/* Zeile 1: Suche + Aktualisieren */}
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-outline" />
             <input
               type="text"
-              value={suche}
-              onChange={e => setSuche(e.target.value)}
               placeholder="Firma, Name, Ort suchen..."
-              className="input-field pl-10"
+              value={suche}
+              onChange={e => { setSuche(e.target.value); setSeite(1) }}
+              className="input-field pl-10 pr-10"
             />
+            {suche && (
+              <button
+                type="button"
+                onClick={() => { setSuche(''); setSeite(1) }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
+
           <button
             onClick={laden}
             disabled={laedt}
             aria-label="Neu laden"
-            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm shrink-0"
+            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
           >
             <RefreshCw className={`w-5 h-5 text-on-surface-variant ${laedt ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-2 mt-3">
-          {FILTER.map(f => (
-            <button
-              key={f.wert}
-              onClick={() => setFilter(f.wert)}
-              className={`px-3 py-1.5 rounded-full text-label-lg transition-colors ${
-                filter === f.wert
-                  ? 'bg-primary text-white'
-                  : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'
-              }`}
-            >
-              {f.name} ({zaehler(f.wert)})
-            </button>
-          ))}
+        {/* Zeile 2: Filter. Auswahlfeld wie im Closing — die Zahl bleibt
+            trotzdem sichtbar, sie stand vorher auf den Pillen und ist zu
+            nützlich, um sie beim Angleichen wegzuwerfen. */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <select
+            value={filter}
+            onChange={e => { setFilter(e.target.value); setSeite(1) }}
+            className="select-field w-full sm:w-auto sm:min-w-[200px] text-body-sm py-2.5"
+          >
+            {FILTER.map(f => (
+              <option key={f.wert} value={f.wert}>{f.name} ({zaehler(f.wert)})</option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -240,7 +277,7 @@ function Setting() {
           Kopfzeile, gleiche Zeilenfarben im Wechsel, gleiche Regeln dafür,
           welche Spalte auf schmalen Schirmen wegfällt. Vorher stand hier eine
           Kartenliste — dieselbe Arbeit sah je nach Tab anders aus. */}
-      <div className="card-elevated overflow-hidden min-h-[400px]">
+      <div className="card-elevated overflow-hidden min-h-[600px]">
         {laedt ? (
           <div className="flex items-center justify-center py-20 text-on-surface-variant">
             <Loader2 className="w-6 h-6 animate-spin mr-2" /> Wird geladen …
@@ -253,6 +290,7 @@ function Setting() {
               : 'Nichts in dieser Ansicht.'}
           </div>
         ) : (
+          <>
           <table className="w-full">
             <thead>
               <tr className="bg-surface-container">
@@ -277,7 +315,7 @@ function Setting() {
               </tr>
             </thead>
             <tbody>
-              {sichtbar.map((lead, index) => {
+              {geblaettert.map((lead, index) => {
                 const ueberfaellig = istVorbei(lead.terminDatum)
                   && lead.status === STATUS.BERATUNG_VEREINBART
                 return (
@@ -341,6 +379,36 @@ function Setting() {
               })}
             </tbody>
           </table>
+
+          {sichtbar.length > PRO_SEITE && (
+            <div className="px-4 md:px-6 py-3 md:py-4 bg-surface-container/50 flex items-center justify-between">
+              <span className="text-body-sm text-on-surface-variant">
+                {beginn + 1}-{Math.min(beginn + PRO_SEITE, sichtbar.length)} von {sichtbar.length}
+              </span>
+              <div className="flex items-center gap-1 md:gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSeite(p => Math.max(1, p - 1))}
+                  disabled={sichereSeite === 1}
+                  className="p-2 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50"
+                >
+                  <ChevronLeft className="w-4 h-4 text-on-surface-variant" />
+                </button>
+                <span className="text-body-sm text-on-surface px-2">
+                  {sichereSeite} / {seitenGesamt}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSeite(p => Math.min(seitenGesamt, p + 1))}
+                  disabled={sichereSeite === seitenGesamt}
+                  className="p-2 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50"
+                >
+                  <ChevronRight className="w-4 h-4 text-on-surface-variant" />
+                </button>
+              </div>
+            </div>
+          )}
+          </>
         )}
       </div>
 
