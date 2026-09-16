@@ -125,6 +125,19 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
         }
 
         setEventTypes(arten)
+
+        // Bleibt nach dem Einschraenken genau eine Terminart uebrig, gibt es
+        // nichts zu waehlen: Sie wird gesetzt, Schritt 1 entfaellt.
+        //
+        // Das ist der ganze Mechanismus hinter "Setting nur telefonisch":
+        // Dem Zweck 'beratung' ist nur die Telefon-Terminart zugeordnet, also
+        // sieht der Opener direkt den Kalender. Beim Abschlussgespraech gilt
+        // dasselbe - dort ist es die Video-Terminart. Wer die Zuordnung
+        // aendert, aendert damit auch die Auswahl; im Code steht keine Regel,
+        // die man zusaetzlich nachziehen muesste.
+        if (arten.length === 1) {
+          setSelectedType(arten[0].type)
+        }
       } else {
         setError('Fehler beim Laden der Terminarten')
       }
@@ -710,7 +723,10 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
         </div>
       )}
 
-      {/* Step 1: Terminart wählen */}
+      {/* Schritt 1 entfaellt, wenn nur eine Terminart in Frage kommt — dann
+          gibt es nichts zu entscheiden, und eine Auswahl mit einer Antwort
+          ist keine Auswahl, sondern eine Huerde. */}
+      {eventTypes.length > 1 && (
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           1. Terminart wählen
@@ -743,12 +759,13 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
           </button>
         </div>
       </div>
+      )}
 
-      {/* Step 2: Datum wählen */}
+      {/* Datum wählen */}
       {selectedType && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            2. Datum wählen
+            {eventTypes.length > 1 ? '2. Datum wählen' : 'Datum wählen'}
           </label>
           
           {/* Wochennavigation */}
@@ -812,7 +829,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
       {selectedDate && (
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            3. Uhrzeit wählen
+            {eventTypes.length > 1 ? '3. Uhrzeit wählen' : 'Uhrzeit wählen'}
           </label>
           
           {loadingSlots ? (
@@ -847,7 +864,9 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
       {/* Step 4: Kontaktdaten */}
       {selectedSlot && (
         <div className="space-y-4 border-t pt-4">
-          <h4 className="font-medium text-gray-900">4. Kontaktdaten des Maklers</h4>
+          <h4 className="font-medium text-gray-900">
+            {eventTypes.length > 1 ? '4. Kontaktdaten des Maklers' : 'Kontaktdaten des Maklers'}
+          </h4>
           
           {/* Ansprechpartner */}
           <div className="grid grid-cols-2 gap-3">
