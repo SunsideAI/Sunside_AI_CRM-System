@@ -9,6 +9,14 @@ import AbschlussForm from '../components/AbschlussForm'
 import RueckgabeKnopf from '../components/RueckgabeKnopf'
 import BillingPanel from '../components/BillingPanel'
 import { deriveBillingMode } from '../utils/billingMode'
+
+// Alles vor dem ersten datierten Eintrag: der Rest aus einer aelteren
+// Migration, den die Zeitleiste bewusst nicht uebernimmt.
+function altbestand(kommentar) {
+  const k = kommentar || ''
+  if (/^\[\d{2}\.\d{2}\.\d{4}/.test(k)) return ''
+  return (k.split(/\n(?=\[\d{2}\.\d{2}\.\d{4})/)[0] || '').trim()
+}
 import Verlauf from '../components/Verlauf'
 import {
   Calendar,
@@ -3012,9 +3020,10 @@ function Closing() {
                       Die Zeitleiste steht hier oben, nicht als eigener Kasten
                       weiter unten — zwei Verlaufs-Abschnitte nebeneinander
                       waren genau das Durcheinander, das zu beheben war.
-                      Das Kommentarfeld darunter bleibt: Dort stehen die
-                      undatierten Altzeilen, die bewusst keinen Zeitstempel
-                      bekommen haben. */}
+                      Darunter steht NUR noch der Altbestand — alles vor dem
+                      ersten datierten Eintrag. Die datierten Einträge stehen
+                      in der Zeitleiste; sie hier nochmals zu zeigen war
+                      doppelt gemoppelt. Betrifft 588 von 7.588 Kontakten. */}
                   <div className="border-t border-outline-variant pt-6">
                     <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide mb-3">
                       Notizen & Verlauf
@@ -3024,81 +3033,18 @@ function Closing() {
                       <Verlauf hotLeadId={selectedLead.id} leadId={selectedLead.originalLeadId} />
                     </div>
 
-                    <div className="text-label-sm text-on-surface-variant mb-2">
-                      Kommentarfeld im Original
-                    </div>
-                    <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[250px] overflow-y-auto">
-                      {selectedLead.kommentar ? (
-                        <div className="space-y-3">
-                          {(() => {
-                            // Group consecutive plain text lines together
-                            const lines = selectedLead.kommentar.split('\n').filter(line => line.trim())
-                            const groups = []
-                            let currentPlainGroup = []
-
-                            lines.forEach((line) => {
-                              const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
-
-                              if (historyMatch) {
-                                // If we have accumulated plain text, save it as a group
-                                if (currentPlainGroup.length > 0) {
-                                  groups.push({ type: 'plain', lines: currentPlainGroup })
-                                  currentPlainGroup = []
-                                }
-                                groups.push({ type: 'history', match: historyMatch, line })
-                              } else {
-                                // Accumulate plain text lines
-                                currentPlainGroup.push(line)
-                              }
-                            })
-
-                            // Don't forget remaining plain text
-                            if (currentPlainGroup.length > 0) {
-                              groups.push({ type: 'plain', lines: currentPlainGroup })
-                            }
-
-                            return groups.map((group, index) => {
-                              if (group.type === 'history') {
-                                const [, datum, zeit, rest] = group.match
-                                // Extract emoji and text
-                                const emojiMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬|🎯|📞|❌|✉️|📄)\s*(.+)$/)
-                                const emoji = emojiMatch ? emojiMatch[1] : '📋'
-                                let text = emojiMatch ? emojiMatch[2] : rest
-                                // Extract username at end
-                                const userMatch = text.match(/\(([^)]+)\)$/)
-                                const userName = userMatch ? userMatch[1] : null
-                                if (userMatch) text = text.replace(/\s*\([^)]+\)$/, '')
-
-                                return (
-                                  <div key={index} className="flex items-start gap-3 p-2 rounded-lg hover:bg-surface-container transition-colors">
-                                    <span className="text-lg flex-shrink-0">{emoji}</span>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="text-body-sm text-on-surface">{text}</p>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <span className="text-label-sm text-outline">{datum}, {zeit}</span>
-                                        {userName && (
-                                          <span className="text-label-sm text-on-surface-variant">• {userName}</span>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                )
-                              } else {
-                                // Plain text group - render all lines together with one icon
-                                return (
-                                  <div key={index} className="flex items-start gap-3 p-2">
-                                    <span className="text-lg flex-shrink-0">💬</span>
-                                    <div className="text-body-sm text-on-surface space-y-1">
-                                      {group.lines.map((line, lineIdx) => (
-                                        <p key={lineIdx}>{line}</p>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )
-                              }
-                            })
-                          })()}
-                        </div>
+                    {altbestand(selectedLead.kommentar) && (
+                      <div className="text-label-sm text-on-surface-variant mb-2">
+                        Ältere Notizen ohne Datum
+                      </div>
+                    )}
+                    <div className={altbestand(selectedLead.kommentar)
+                      ? 'bg-surface-container-lowest rounded-xl p-4 max-h-[250px] overflow-y-auto'
+                      : 'hidden'}>
+                      {altbestand(selectedLead.kommentar) ? (
+                        <p className="text-body-sm text-on-surface whitespace-pre-line">
+                          {altbestand(selectedLead.kommentar)}
+                        </p>
                       ) : (
                         <p className="text-body-sm text-outline italic">Keine Notizen vorhanden</p>
                       )}
