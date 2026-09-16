@@ -26,6 +26,7 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | 11 | Mail-Modul für alle Rollen | **fertig** |
 | 15 | Kennzahlen | **fertig** |
 | 9 · 12 | Nachrichten und Nachfass-Toolkit | **Wortlaute da**, Struktur auf den Werkzeugkasten umgestellt |
+| — | Verlauf je Kontakt | **fertig**, in allen fünf Lead-Ansichten |
 | 1 | Statuskette — Datenbank | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
 
 ## Warum die Statuskette noch wartet
@@ -195,6 +196,51 @@ gemeint ist, ist es eine Zeile.
 | Die vier VSL | nicht aufgenommen; bis dahin Loom bzw. Referenzschreiben als Übergang |
 | GEO-Ergänzung im Sichtbarkeits-Ratgeber | offen |
 | Webinar, Voicebot-Demo-Nummer | einzurichten |
+
+## Der Verlauf je Kontakt
+
+Alles, was einem Kontakt widerfuhr, stand als Text oben in `leads.kommentar` —
+29.543 Zeilen über 7.586 Kontakte, in der Form
+
+    [TT.MM.JJJJ, HH:MM] <Emoji> <was passiert ist> (<wer>)
+
+Lesbar, aber nicht filterbar und nicht zählbar. Daraus ist eine Zeitleiste
+geworden: **22.024 Ereignisse für 7.000 Kontakte**, 11.12.2025 bis heute.
+
+**Gemessen, bevor gebaut wurde.** 22.019 Zeilen tragen einen Zeitstempel
+(74,5 %), 5.490 keinen, 2.034 sind leer. Beim Zerlegen: null ohne Zeitstempel,
+null ohne Inhalt, 21.441 mit erkennbarem Bearbeiter. Die Emojis *waren* bereits
+die Ereignistypen — sie mussten nur benannt werden.
+
+**Drei Entscheidungen, die den Ausschlag geben:**
+
+- **Das Kommentarfeld bleibt unangetastet.** `kontakt_verlauf` ist abgeleitet,
+  nicht ersetzend; jede Zeile behält ihr Original in `roh`, damit jede Auslegung
+  nachprüfbar bleibt.
+- **Undatierte Zeilen bekommen kein Datum.** Sie stammen aus einer älteren
+  Migration. Ein geschätzter Zeitstempel ist schlimmer als eine Lücke, weil man
+  einer Zeitleiste glaubt. Deshalb bleibt in Opening der Kommentar-Block
+  daneben stehen — dort sind sie sichtbar.
+- **Keine Doppelung aus `hot_leads`:** 526 der 543 Hot-Lead-Kommentare sind
+  Kopien des Lead-Kommentars. Übernommen wurde aus `leads`, aus `hot_leads` nur
+  was fehlte (gemessen: 5 Zeilen).
+
+**Sie führt sich selbst fort.** Statt alle schreibenden Stellen umzubauen —
+`send-email`, `calendly-webhook`, `follow-up`, `ebook-leads` und was sonst noch
+schreibt — hängt ein Auslöser auf `leads.kommentar` jeden neuen Eintrag an.
+Das deckt auch unbekannte Wege ab, und darauf kommt es an: Ein Verlauf mit
+Lücken ist schlimmer als keiner, weil man ihm glaubt. Geprüft: schreibt mit,
+verdoppelt bei einem zweiten Schreibvorgang nicht.
+
+`v_kontakt_verlauf` führt die migrierten Zeilen mit Statuswechseln und
+Anwahlen zu einem Strom zusammen. Die Oberfläche muss nicht wissen, woher ein
+Ereignis kommt.
+
+**Im Browser nachgesehen, nicht behauptet:** Opening 14 Einträge, Closing 29,
+Follow-Up 29; Setting und Termine eingebaut. Dabei zwei eigene Fehler gefunden —
+der Block saß zuerst in der Kopfzeile der Schublade statt im Inhalt, und eine
+erste Messung meldete ihn fälschlich als fehlend, weil die Listen des
+Testnutzers schlicht leer waren.
 
 ## Die Status im Code
 

@@ -2,7 +2,7 @@
 
 **Adresse:** <https://osc-umbau--crmsunsideai.netlify.app>
 
-Dauer etwa 25 Minuten.
+Dauer etwa 30 Minuten.
 
 Der Produktivbetrieb läuft unverändert unter `crmsunsideai.netlify.app` — die
 Vorschau ist ein eigener Build mit eigener Adresse, er wird durch nichts
@@ -165,11 +165,44 @@ den Testdatensätzen:
 - **Geplatzte Termine:** Status auf „Nicht erschienen" setzen, Kontakt öffnen.
   **Erwartung:** Knopf **„Neuen Termin buchen"**.
 
-## 6. Rückgabe an den Vorgänger (Ticket 15)
+## 6. Der Verlauf (Zeitleiste)
 
-19. Im Closing den Testkontakt öffnen → **„Zurück an den Vorgänger"**.
-20. Ohne Begründung absenden. **Erwartung:** wird verlangt.
-21. Mit Begründung absenden.
+19. Einen beliebigen Kontakt öffnen — in **Opening, Setting, Closing,
+    Follow-Up** oder **Termine** — und den Block **„Verlauf"** aufklappen.
+
+    **Erwartung:** Eine Strecke von oben nach unten, neueste zuerst: Symbol je
+    Art, Datum, die Aussage, darunter Uhrzeit · Art · Bearbeiter. Bei einem
+    Kontakt mit Vorgeschichte stehen dort zweistellig viele Einträge — sie
+    stammen aus dem Kommentarfeld, das dafür nicht angefasst wurde.
+
+20. Die vier Filter durchklicken: **Alles · Kontakt · Termine · Notizen**.
+    **Erwartung:** Die Liste wird kürzer, die Reihenfolge bleibt.
+
+21. **Der eigentliche Test:** Beim selben Kontakt etwas tun, das einen Eintrag
+    erzeugt — eine E-Mail schicken, ein Ergebnis setzen oder eine Notiz
+    speichern. Dann den Verlauf neu aufklappen.
+
+    **Erwartung:** Der neue Eintrag steht ganz oben, mit der richtigen Art und
+    deinem Namen. Er wird von einem Auslöser in der Datenbank mitgeschrieben,
+    nicht vom Frontend — steht er nicht da, ist genau das die wichtige Meldung.
+
+    ```sql
+    select to_char(geschehen_am, 'DD.MM. HH24:MI') as wann, art, left(titel, 50), akteur_name
+      from public.v_kontakt_verlauf
+     where lead_id = (select id from leads where unternehmen like 'TEST%')
+     order by geschehen_am desc limit 5;
+    ```
+
+22. **Was bewusst NICHT im Verlauf steht:** Zeilen ohne Datum. Davon gibt es
+    5.490 im Bestand, sie stammen aus einer älteren Migration. Sie stehen
+    weiterhin im Kommentarfeld darunter — in Opening siehst du beides
+    untereinander. Ein geschätzter Zeitstempel wäre schlimmer als eine Lücke.
+
+## 7. Rückgabe an den Vorgänger (Ticket 15)
+
+23. Im Closing den Testkontakt öffnen → **„Zurück an den Vorgänger"**.
+24. Ohne Begründung absenden. **Erwartung:** wird verlangt.
+25. Mit Begründung absenden.
     **Erwartung:** Status eine Stufe zurück auf **Beratungsgespräch geführt**,
     der Vorgänger bekommt eine Nachricht.
 
@@ -180,16 +213,16 @@ den Testdatensätzen:
        and hot_lead_id = (select id from hot_leads where unternehmen like 'TEST%');
     ```
 
-## 7. Die Übergangsmatrix (Ticket 1)
+## 8. Die Übergangsmatrix (Ticket 1)
 
-22. Im Closing den Status von Hand auf **Gewonnen** setzen, während der Kontakt
+26. Im Closing den Status von Hand auf **Gewonnen** setzen, während der Kontakt
     auf „Beratungsgespräch geführt" steht.
     **Erwartung:** Wird abgewiesen mit einer verständlichen Meldung, nicht mit
     einem Datenbankfehler. Der Weg führt über Abschlussgespräch und Im Abschluss.
 
-## 8. Fristen und Kennzahlen (Tickets 6, 13, 15)
+## 9. Fristen und Kennzahlen (Tickets 6, 13, 15)
 
-23. Der stündliche Lauf greift von selbst. Von Hand anstoßen:
+27. Der stündliche Lauf greift von selbst. Von Hand anstoßen:
 
     ```sql
     select public.crm_fristen_pruefen();
@@ -198,7 +231,7 @@ den Testdatensätzen:
     erscheint unter `termine_ohne_setter`; ein zweiter Lauf zählt ihn **nicht
     erneut**.
 
-24. Kennzahlen:
+28. Kennzahlen:
 
     ```sql
     select * from v_erscheinungsquote  where setter is not null order by monat desc limit 5;
@@ -206,7 +239,7 @@ den Testdatensätzen:
     select * from v_rueckgabequote     order by monat desc limit 5;
     ```
 
-## 9. Aufräumen
+## 10. Aufräumen
 
     python3 scripts/testdaten.py --loeschen
 
