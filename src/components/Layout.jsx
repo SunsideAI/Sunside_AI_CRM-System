@@ -19,7 +19,6 @@ import {
   Euro
 } from 'lucide-react'
 import { useState, useEffect, useRef, useCallback } from 'react'
-import Clippy from './Clippy'
 
 function Layout({ children }) {
   const { user, logout, isColdcaller, isCloser, isAdmin, isGeschaeftsfuehrer } = useAuth()
@@ -742,8 +741,6 @@ function Layout({ children }) {
         </div>
       )}
 
-      {/* Clippy - Der hilfreiche Assistent */}
-      <Clippy />
     </div>
   )
 }
