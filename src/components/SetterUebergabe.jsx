@@ -4,6 +4,7 @@ import { STATUS } from '../../shared/status.js'
 import { UEBERGABE_2 } from '../../shared/felder.js'
 import UebergabeFelder, { AnfragenBedarf } from './UebergabeFelder'
 import RueckgabeKnopf from './RueckgabeKnopf'
+import TerminPicker from './TerminPicker'
 
 // Die Ansicht des Setters: Termin bestätigen, dokumentieren, Abschlussgespräch
 // legen. Sie hängt am Termin und nicht in der Closing-Ansicht, weil der Setter
@@ -19,8 +20,13 @@ const FELDER_2 = [
 export default function SetterUebergabe({ lead, onGespeichert }) {
   const [werte, setWerte] = useState(() =>
     Object.fromEntries(FELDER_2.map(k => [k, lead?.[k] ?? null])))
-  const [terminAbschluss, setTerminAbschluss] = useState(
-    lead?.termin_abschlussgespraech ? lead.termin_abschlussgespraech.slice(0, 16) : '')
+  // Der gebuchte Termin, wie ihn der Terminwähler zurückgibt.
+  const [termin, setTermin] = useState(
+    lead?.termin_abschlussgespraech
+      ? { start: lead.termin_abschlussgespraech, meetingLink: lead.meeting_link_abschluss || null,
+          terminart: lead.terminart_abschluss || null }
+      : null)
+  const [waehlerOffen, setWaehlerOffen] = useState(false)
   const [laeuft, setLaeuft] = useState(false)
   const [offen, setOffen] = useState([])
   const [meldung, setMeldung] = useState('')
@@ -87,14 +93,18 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
   // Stufe 2: dokumentieren und das Abschlussgespräch legen
   if (status !== STATUS.BERATUNG_GEFUEHRT) return null
 
+  // Erst wenn der Termin steht, geht alles zusammen raus: die zwölf Felder,
+  // der Termin und der Statuswechsel. Ein Zug, ein Gate — sonst bliebe bei
+  // fehlenden Feldern ein gebuchter Termin ohne Übergabe zurück.
   const buchen = async () => {
-    if (!terminAbschluss) {
-      setFehler('Bitte Datum und Uhrzeit des Abschlussgesprächs eintragen.')
+    if (!termin?.start) {
+      setFehler('Bitte zuerst einen Termin für das Abschlussgespräch buchen.')
       return
     }
     await senden({
       ...werte,
-      termin_abschlussgespraech: new Date(terminAbschluss).toISOString(),
+      termin_abschlussgespraech: new Date(termin.start).toISOString(),
+      meeting_link_abschluss: termin.meetingLink || null,
       status: STATUS.ABSCHLUSS_VEREINBART
     })
   }
@@ -120,17 +130,56 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Abschlussgespräch am <span className="text-red-500">*</span>
+          Abschlussgespräch <span className="text-red-500">*</span>
         </label>
-        <input
-          type="datetime-local"
-          value={terminAbschluss}
-          onChange={e => setTerminAbschluss(e.target.value)}
-          className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
-        />
+
+        {termin?.start ? (
+          <div className="flex items-center justify-between gap-3 p-3 bg-success-container rounded-lg">
+            <div className="text-body-sm text-on-surface">
+              {new Date(termin.start).toLocaleString('de-DE', {
+                weekday: 'long', day: '2-digit', month: '2-digit',
+                hour: '2-digit', minute: '2-digit'
+              })} Uhr
+              {termin.terminart && <> · {termin.terminart}</>}
+            </div>
+            <button
+              type="button"
+              onClick={() => { setTermin(null); setWaehlerOffen(true) }}
+              className="text-label-sm text-primary hover:underline shrink-0"
+            >
+              ändern
+            </button>
+          </div>
+        ) : waehlerOffen ? (
+          <TerminPicker
+            lead={{
+              id: lead?.originalLeadId || lead?.lead_id,
+              unternehmen: lead?.unternehmen,
+              unternehmensname: lead?.unternehmen,
+              email: lead?.email,
+              telefon: lead?.telefonnummer,
+              ansprechpartnerVorname: lead?.ansprechpartnerVorname,
+              ansprechpartnerNachname: lead?.ansprechpartnerNachname,
+              stadt: lead?.ort
+            }}
+            zweck="abschluss"
+            nurBuchen
+            onTerminBooked={(t) => { setTermin(t); setWaehlerOffen(false); setFehler('') }}
+            onCancel={() => setWaehlerOffen(false)}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setWaehlerOffen(true)}
+            className="btn-primary inline-flex items-center gap-2"
+          >
+            <CalendarPlus className="w-4 h-4" /> Termin buchen
+          </button>
+        )}
+
         <p className="mt-1 text-xs text-gray-500">
-          Vorerst von Hand. Die Buchung über den Sammel-Kalender kommt mit dem
-          Kalender-Umbau.
+          Gebucht wird über Calendly, in der Terminart fürs Abschlussgespräch.
+          Der Kunde bekommt Einladung und Einwahllink automatisch.
         </p>
       </div>
 

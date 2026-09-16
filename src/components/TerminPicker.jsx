@@ -21,7 +21,12 @@ const toLocalDateString = (date) => {
 // 'video' oder 'phone' gesucht - sobald es mehr als einen Zweck gibt, trifft
 // diese Suche je nach Reihenfolge der Calendly-Antwort die falsche, und ein
 // Beratungsgespraech landet still im Abschluss-Kalender.
-function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null }) {
+// `nurBuchen` gibt den Termin nach der Calendly-Buchung an den Aufrufer
+// zurueck, statt den Hot Lead selbst zu schreiben. Das braucht die Uebergabe
+// an den Closer: Dort muessen Termin UND die zwoelf Felder in EINEM Zug zum
+// Server, sonst laeuft das Gate ins Leere und der Kontakt bleibt halb
+// geschrieben zurueck.
+function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null, nurBuchen = false }) {
   const { user } = useAuth()
   
   // Modus: Neuer Termin oder Neu-Terminierung eines bestehenden Hot Leads
@@ -266,6 +271,17 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null 
       // Meeting-Link für Video-Termine extrahieren
       const meetingLink = calendlyData.meetingLink || null
       console.log('Meeting-Link:', meetingLink)
+
+      // Der Aufrufer schreibt selbst: Termin zurueckgeben und hier aufhoeren.
+      if (nurBuchen) {
+        onTerminBooked?.({
+          start: selectedSlot.start,
+          meetingLink,
+          terminart: selectedType === 'video' ? 'Video' : 'Telefonisch'
+        })
+        setBooking(false)
+        return
+      }
 
       // Hot Lead in Airtable erstellen oder aktualisieren
       if (isReschedule && hotLeadId) {
