@@ -1,48 +1,34 @@
 import { useState } from 'react'
-import { CalendarPlus, Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Loader2, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { AUSWAHL } from '../../shared/felder.js'
-import TerminPicker from './TerminPicker'
 
 /**
  * Was ist aus dem Abschlussgespräch geworden?
  *
  * Die Felder dafür gab es längst in der Datenbank — gespraechsausgang,
  * zugesagter_schritt, nachfass_grund — nur keine Stelle, sie zu füllen. Der
- * Ausgang eines Abschlussgesprächs blieb damit unerfasst, und daran hängt
- * einiges: die Rückgabequote, die Empfehlung fürs Nachfassen, und der
- * Folgetermin.
+ * Ausgang eines Abschlussgesprächs blieb damit unerfasst, und daran hängen
+ * die Rückgabequote und die Empfehlung fürs Nachfassen.
  *
- * Aus Teil D der Ressourcen-Datei: „Ein gebuchter Termin schlägt jede Mail.
- * Der beste Ausgang von ‚Wird nachgefasst' ist der noch im Abschlussgespräch
- * gebuchte Follow-Up-Termin." Deshalb steht der Terminwähler direkt am
- * Ausgang „Nächster Schritt vereinbart" — nicht in einem späteren Menü.
+ * Ein Folgetermin wird hier bewusst NICHT gebucht (Entscheidung 16.09.2026).
+ * Es bleibt bei zwei Terminen in der Kette: Beratung und Abschluss. Was
+ * danach geschieht, entscheidet der Closer selbst — das CRM hält fest, was
+ * vereinbart wurde, und terminiert es nicht.
  */
 export default function Gespraechsausgang({ lead, onGespeichert }) {
   const [ausgang, setAusgang] = useState(lead?.gespraechsausgang || '')
   const [schritt, setSchritt] = useState(lead?.zugesagter_schritt || '')
   const [grund, setGrund] = useState(lead?.nachfass_grund || '')
-  const [termin, setTermin] = useState(
-    lead?.termin_folgetermin
-      ? { start: lead.termin_folgetermin, meetingLink: lead.meeting_link_folgetermin || null }
-      : null)
-  const [waehlerOffen, setWaehlerOffen] = useState(false)
   const [laeuft, setLaeuft] = useState(false)
   const [fehler, setFehler] = useState('')
   const [fertig, setFertig] = useState(false)
 
-  // Nur bei diesem Ausgang ist ein Folgetermin die Sache; bei einem Auftrag
-  // gibt es nichts nachzufassen, bei einer Absage nichts zu terminieren.
-  const brauchtTermin = ausgang === 'Nächster Schritt vereinbart'
   // Wer nicht abgeschlossen und nicht abgesagt hat, wird nachgefasst — und
   // dafür entscheidet die Diagnose die Tonlage.
   const brauchtDiagnose = ausgang && ausgang !== 'Auftrag' && ausgang !== 'Absage'
 
   const speichern = async () => {
     if (!ausgang) { setFehler('Bitte den Ausgang des Gesprächs wählen.'); return }
-    if (brauchtTermin && !termin?.start) {
-      setFehler('„Nächster Schritt vereinbart" ohne Termin ist keiner — bitte buchen.')
-      return
-    }
     if (brauchtDiagnose && !grund) {
       setFehler('Bitte die Diagnose wählen. Sie bestimmt, was das System zum Nachfassen vorschlägt.')
       return
@@ -58,9 +44,7 @@ export default function Gespraechsausgang({ lead, onGespeichert }) {
           updates: {
             gespraechsausgang: ausgang,
             zugesagter_schritt: schritt || null,
-            nachfass_grund: brauchtDiagnose ? grund : null,
-            termin_folgetermin: termin?.start ? new Date(termin.start).toISOString() : null,
-            meeting_link_folgetermin: termin?.meetingLink || null
+            nachfass_grund: brauchtDiagnose ? grund : null
           }
         })
       })
@@ -127,63 +111,6 @@ export default function Gespraechsausgang({ lead, onGespeichert }) {
               placeholder="z. B. Er spricht bis Freitag mit seinem Partner"
               className="input-field"
             />
-          </div>
-        )}
-
-        {brauchtTermin && (
-          <div>
-            <label className="block text-body-sm font-medium text-on-surface mb-2">
-              Folgetermin <span className="text-error">*</span>
-            </label>
-
-            {termin?.start ? (
-              <div className="flex items-center justify-between gap-3 p-3 bg-success-container rounded-lg">
-                <div className="text-body-sm text-on-surface">
-                  {new Date(termin.start).toLocaleString('de-DE', {
-                    weekday: 'long', day: '2-digit', month: '2-digit',
-                    hour: '2-digit', minute: '2-digit'
-                  })} Uhr
-                </div>
-                <button
-                  type="button"
-                  onClick={() => { setTermin(null); setWaehlerOffen(true) }}
-                  className="text-label-sm text-primary hover:underline shrink-0"
-                >
-                  ändern
-                </button>
-              </div>
-            ) : waehlerOffen ? (
-              <TerminPicker
-                lead={{
-                  id: lead?.originalLeadId,
-                  unternehmen: lead?.unternehmen,
-                  unternehmensname: lead?.unternehmen,
-                  email: lead?.email,
-                  telefon: lead?.telefonnummer,
-                  ansprechpartnerVorname: lead?.ansprechpartnerVorname,
-                  ansprechpartnerNachname: lead?.ansprechpartnerNachname,
-                  stadt: lead?.ort
-                }}
-                zweck="folgetermin"
-                nurBuchen
-                onTerminBooked={(t) => { setTermin(t); setWaehlerOffen(false); setFehler('') }}
-                onCancel={() => setWaehlerOffen(false)}
-              />
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={() => setWaehlerOffen(true)}
-                  className="btn-primary inline-flex items-center gap-2"
-                >
-                  <CalendarPlus className="w-4 h-4" /> Folgetermin buchen
-                </button>
-                <p className="mt-1 text-xs text-on-surface-variant">
-                  Ein gebuchter Termin schlägt jede Nachfass-Mail. Solange er
-                  steht, geht nur die Einladung raus.
-                </p>
-              </>
-            )}
           </div>
         )}
 

@@ -2,7 +2,7 @@
 
 **Adresse:** <https://osc-umbau--crmsunsideai.netlify.app>
 
-Dauer etwa 40 Minuten.
+Dauer etwa 35 Minuten.
 
 Der Produktivbetrieb läuft unverändert unter `crmsunsideai.netlify.app` — die
 Vorschau ist ein eigener Build mit eigener Adresse, er wird durch nichts
@@ -48,9 +48,9 @@ den Testdatensätzen:
 
 ## Was noch nicht geht
 
-- **Nichts mehr.** Der Folgetermin ist gebaut; er braucht nur noch eine
-  eigene Terminart in Calendly und die Zuordnung unter Einstellungen →
-  Terminarten. Fehlt sie, bietet der Wähler alle Terminarten an statt keiner.
+- **Nichts mehr.** Die Kette hat zwei Termine, und beide sind buchbar.
+  Ein Folgetermin ist bewusst nicht vorgesehen (Entscheidung 16.09.2026) —
+  was danach geschieht, entscheidet der Closer selbst.
 - **Statuskette in der Datenbank** ist nicht eingespielt. Die Übergangsprüfung
   läuft nur im Code, nicht als Riegel in der Datenbank. Genau das testen wir.
 - **setter_id** zeigt noch auf „wer gebucht hat". Die Rückumstellung läuft mit
@@ -226,7 +226,7 @@ den Testdatensätzen:
     weiterhin im Kommentarfeld darunter — in Opening siehst du beides
     untereinander. Ein geschätzter Zeitstempel wäre schlimmer als eine Lücke.
 
-## 7. Ausgang des Abschlussgesprächs und der Folgetermin
+## 7. Ausgang des Abschlussgesprächs
 
 Nur sichtbar, wenn der Kontakt ein Abschlussgespräch hat.
 
@@ -234,25 +234,19 @@ Nur sichtbar, wenn der Kontakt ein Abschlussgespräch hat.
     **„Ausgang des Abschlussgesprächs"** mit vier Möglichkeiten: Auftrag ·
     Nächster Schritt vereinbart · Vertagt ohne festen Schritt · Absage.
 
-22. **„Nächster Schritt vereinbart"** wählen und ohne Termin festhalten.
-    **Erwartung:** Wird abgewiesen — ein vereinbarter nächster Schritt ohne
-    Termin ist keiner.
+22. **„Nächster Schritt vereinbart"** wählen, eintragen was zugesagt wurde,
+    Diagnose wählen, festhalten.
 
-23. **„Folgetermin buchen"** klicken, Slot wählen, buchen. Dann die Diagnose
-    wählen und festhalten.
-
-    **Erwartung:** Gespeichert. Der Termin steht in `termin_folgetermin` mit
-    eigenem Link — er darf den des Abschlussgesprächs nicht überschreiben:
+    **Erwartung:** Gespeichert. Ein Folgetermin wird nicht verlangt und auch
+    nicht angeboten — was danach geschieht, entscheidet der Closer selbst.
 
     ```sql
-    select gespraechsausgang, zugesagter_schritt, nachfass_grund,
-           termin_abschlussgespraech, termin_folgetermin,
-           meeting_link_abschluss, meeting_link_folgetermin
+    select gespraechsausgang, zugesagter_schritt, nachfass_grund
       from hot_leads where unternehmen like 'TEST%';
     ```
 
-24. **„Auftrag"** wählen. **Erwartung:** Weder Folgetermin noch Diagnose
-    werden verlangt — bei einem Auftrag gibt es nichts nachzufassen.
+23. **„Auftrag"** wählen. **Erwartung:** Die Diagnose wird nicht verlangt —
+    bei einem Auftrag gibt es nichts nachzufassen.
 
 ## 8. Rückgabe an den Vorgänger (Ticket 15)
 
