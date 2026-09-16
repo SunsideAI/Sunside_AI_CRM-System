@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  Search, Calendar, Phone, Video, Loader2, User, Building2, MapPin,
+  Search, Calendar, Phone, Video, Loader2, User as UserIcon, Building2, MapPin,
   CheckCircle2, AlertCircle, Users, Mail, RefreshCw
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -47,8 +47,29 @@ function Setting() {
   const [gewaehlt, setGewaehlt] = useState(null)
   const [mailOffen, setMailOffen] = useState(false)
   const [terminOffen, setTerminOffen] = useState(false)
+  // 'meine' oder 'pool' — dieselbe Umschaltung wie im Closing. Der Pool war
+  // vorher ein Block ueber der Liste; als eigene Ansicht ist er dort, wo man
+  // ihn sucht, und die Zahl daneben sagt, ob sich das Hinsehen lohnt.
+  const [ansicht, setAnsicht] = useState('meine')
+  const [poolAnzahl, setPoolAnzahl] = useState(0)
 
-  useEffect(() => { laden() }, [])
+  useEffect(() => { laden(); poolZaehlen() }, [])
+
+  // Die Zahl im Umschalter muss stimmen, BEVOR man umschaltet — sonst stünde
+  // dort 0, und niemand sähe, dass etwas wartet. Dieselbe Bedingung wie im
+  // Pool selbst: bevorstehend und ohne Setter.
+  const poolZaehlen = async () => {
+    try {
+      const antwort = await fetch('/.netlify/functions/hot-leads?pool=setter')
+      const daten = await antwort.json()
+      const offen = (daten.hotLeads || []).filter(l =>
+        l.status === STATUS.BERATUNG_VEREINBART &&
+        l.terminDatum && new Date(l.terminDatum) > new Date())
+      setPoolAnzahl(offen.length)
+    } catch {
+      // Zahl bleibt, wie sie war — ein Zähler ist kein Grund für eine Meldung.
+    }
+  }
 
   const laden = async () => {
     setLaedt(true); setFehler('')
@@ -110,22 +131,67 @@ function Setting() {
 
   return (
     <div className="space-y-8">
-      {/* Die Seite beginnt mit ihrem Titel, wie jede andere auch. Der Pool
-          stand vorher darueber, weil er das Dringendste ist - das las sich
-          aber, als gehoere er zu keiner Seite. */}
-      <div>
-        <h1 className="text-headline-md text-on-surface">Setting</h1>
-        <p className="text-body-md text-on-surface-variant mt-1">
-          Deine Beratungsgespräche — halten, dokumentieren, an den Closer übergeben.
-        </p>
-      </div>
+      {/* Kopfzeile mit Umschalter — gebaut wie im Closing. */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-headline-md text-on-surface">
+            {ansicht === 'pool' ? 'Setter-Pool' : 'Setting'}
+          </h1>
+          <p className="text-body-md text-on-surface-variant mt-1">
+            {ansicht === 'pool'
+              ? 'Beratungsgespräche, die der Opener gelegt hat — noch ohne Setter'
+              : 'Deine Beratungsgespräche — halten, dokumentieren, an den Closer übergeben.'}
+          </p>
+        </div>
 
-      {/* Beratungsgespräche ohne Setter — dieselbe Ansicht wie an den Terminen */}
-      <SetterPool onGeaendert={laden} />
+        <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="flex items-center bg-gray-100 rounded-lg p-1 min-w-max">
+            <button
+              onClick={() => setAnsicht('meine')}
+              className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                ansicht === 'meine'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+              }`}
+            >
+              <UserIcon className="w-4 h-4 mr-1.5" />
+              <span className="hidden sm:inline">Meine Gespräche</span>
+              <span className="sm:hidden">Meine</span>
+            </button>
+            <button
+              onClick={() => setAnsicht('pool')}
+              className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                ansicht === 'pool'
+                  ? 'bg-secondary text-white shadow-glow-secondary'
+                  : 'text-on-surface-variant hover:text-secondary hover:bg-secondary-container/30'
+              }`}
+            >
+              <Calendar className="w-4 h-4 mr-1.5" />
+              Pool
+              <span className={`ml-1.5 min-w-[24px] text-center px-1.5 py-0.5 text-label-sm rounded-md ${
+                ansicht === 'pool' ? 'bg-white/20 text-white' : 'bg-secondary-container text-secondary'
+              }`}>
+                {poolAnzahl}
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
 
       {fehler && (
         <div className="bg-error-container rounded-xl p-4 text-error">{fehler}</div>
       )}
+
+      {/* Pool-Ansicht: die Übergabe vom Opener. SetterPool meldet, wie viele
+          es sind — sonst stünde im Umschalter eine Zahl, die niemand pflegt. */}
+      {ansicht === 'pool' ? (
+        <SetterPool
+          onGeaendert={() => { laden(); poolZaehlen(); setAnsicht('meine') }}
+          onAnzahl={setPoolAnzahl}
+          alsAnsicht
+        />
+      ) : (
+      <>
 
       {/* Filter und Suche — gleiches Layout wie Opening und Closing */}
       <div className="card-elevated p-4">
@@ -277,6 +343,9 @@ function Setting() {
           </table>
         )}
       </div>
+
+      </>
+      )}
 
       {/* Detailansicht */}
       <SlideDrawer

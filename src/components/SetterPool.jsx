@@ -9,7 +9,11 @@ import { STATUS } from '../../shared/status.js'
 // statt zugreifen - ein Admin entscheidet. Wer den Kontakt selbst am Telefon
 // hatte, wird dem Admin dabei sichtbar markiert.
 
-export default function SetterPool({ onGeaendert }) {
+// `alsAnsicht` heisst: Der Pool ist die Seite, nicht ein Kasten darueber.
+// Dann traegt die Kopfzeile der Seite den Titel, und hier waere er doppelt.
+// `onAnzahl` meldet die Zahl nach oben, damit der Umschalter sie zeigen kann,
+// ohne dieselbe Abfrage ein zweites Mal zu stellen.
+export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }) {
   const { user, isSetter, isAdmin } = useAuth()
   const [termine, setTermine] = useState([])
   const [laedt, setLaedt] = useState(true)
@@ -29,7 +33,9 @@ export default function SetterPool({ onGeaendert }) {
       const offen = (daten.hotLeads || []).filter(l =>
         l.status === STATUS.BERATUNG_VEREINBART &&
         l.terminDatum && new Date(l.terminDatum) > new Date())
-      setTermine(offen.sort((a, b) => new Date(a.terminDatum) - new Date(b.terminDatum)))
+      const sortiert = offen.sort((a, b) => new Date(a.terminDatum) - new Date(b.terminDatum))
+      setTermine(sortiert)
+      onAnzahl?.(sortiert.length)
     } catch (e) {
       setFehler('Pool konnte nicht geladen werden: ' + e.message)
     } finally {
@@ -67,16 +73,26 @@ export default function SetterPool({ onGeaendert }) {
       </div>
     )
   }
-  if (termine.length === 0) return null
+  if (termine.length === 0) {
+    if (!alsAnsicht) return null
+    return (
+      <div className="card-elevated py-20 text-center text-on-surface-variant">
+        <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
+        Kein Beratungsgespräch wartet auf einen Setter.
+      </div>
+    )
+  }
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
-      <div className="flex items-center gap-2 mb-1">
-        <Users className="w-5 h-5 text-primary" />
-        <h3 className="font-medium text-gray-900">
-          Beratungsgespräche ohne Setter ({termine.length})
-        </h3>
-      </div>
+      {!alsAnsicht && (
+        <div className="flex items-center gap-2 mb-1">
+          <Users className="w-5 h-5 text-primary" />
+          <h3 className="font-medium text-gray-900">
+            Beratungsgespräche ohne Setter ({termine.length})
+          </h3>
+        </div>
+      )}
       <p className="text-xs text-gray-500 mb-3">
         Wer den Kontakt selbst am Telefon hatte, wird dabei sichtbar markiert —
         das ist kein Hindernis, nur Transparenz. Ob ein Admin zuteilt oder direkt
