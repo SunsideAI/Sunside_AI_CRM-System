@@ -155,7 +155,7 @@ function Setting() {
               }`}
             >
               <UserIcon className="w-4 h-4 mr-1.5" />
-              <span className="hidden sm:inline">Meine Gespräche</span>
+              <span className="hidden sm:inline">Meine Leads</span>
               <span className="sm:hidden">Meine</span>
             </button>
             <button
