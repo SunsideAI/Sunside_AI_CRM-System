@@ -1,141 +1,113 @@
 /**
- * Die Nachrichten-Ketten des OSC-Prozesses (Tickets 9 und 12).
+ * Die Nachrichten des OSC-Prozesses (Tickets 9 und 12).
  *
- * Quelle: Miro F25.1 "Mail-Uebersicht: alle Nachrichten der drei Ketten",
- * abgerufen am 2026-09-12. Alle 23 Eintraege sind hier abgebildet - Ausloeser,
- * Zeitpunkt, Platzhalter, Versandart und die Fundstelle im Quelltext-Dokument.
+ * QUELLE DER WORTLAUTE: docs/ressourcen/2026-08-12-ressourcen-crm-mailstrecken.md
+ * Die Texte werden dort gepflegt und von dort wortgleich uebernommen. Hier steht
+ * nur, WANN und WOFUER eine Nachricht gilt - nie der Text selbst. Zwei Quellen
+ * fuer denselben Satz laufen immer auseinander.
  *
- * WAS HIER NICHT STEHT: die Wortlaute. Die liegen in
- * "ressourcen-crm-mailstrecken" (Teil B, Teil E, Strecke A, Strecke B) und sind
- * noch nicht im Zugriff. Der `fundstelle`-Eintrag jeder Nachricht sagt, aus
- * welchem Abschnitt der Text kommt - mehr braucht es nicht, um ihn spaeter
- * einzusetzen: Text in email_templates anlegen, `vorlage` hier eintragen.
+ * ACHTUNG, EINE UMKEHR GEGENUEBER MIRO F25.1:
+ * Die Miro-Tabelle beschreibt zwei getaktete Nachfass-Strecken (Tag 0/4/10/21/35
+ * und 0/3/7/14/28). Teil D der Ressourcen-Datei hebt das auf:
  *
- * Zwei Regeln aus F23, die den Aufbau bestimmen:
+ *     "Es gibt keine getaktete Mail-Serie mehr." (Entscheidung Niklas, 15.09.2026)
  *
- *   1. "Kein Automatikversand: Das System schlaegt vor, ein Mensch schickt ab."
- *      Deshalb traegt jede Nachricht ein `versand` - und nur die drei
- *      Calendly-Nachrichten und die zwei SMS stehen auf 'automatisch'.
- *   2. Das Mail-Modul ist in JEDER Stufe frei. Diese Ketten sind ein Vorschlag,
- *      keine Sperre.
+ * Das Nachfassen ist seitdem ein Werkzeugkasten. Das CRM empfiehlt EIN Stueck,
+ * der Closer waehlt Zeitpunkt und Reihenfolge. Deshalb steht hier kein
+ * Terminplan mehr, sondern eine Empfehlung - und die Begruendung dazu, damit
+ * niemand raten muss, warum gerade dieses Stueck.
  */
+
+// ---------------------------------------------------------------------------
+// Die festen Ketten: was vor den beiden Terminen laeuft
+// ---------------------------------------------------------------------------
 
 export const KETTE = {
   VOR_BERATUNG:  'Vor dem Beratungsgespräch',
-  VOR_ABSCHLUSS: 'Vor dem Abschlussgespräch',
-  STRECKE_A:     'Nachfassen zufrieden mit dem Ist',
-  STRECKE_B:     'Nachfassen will aber traut sich nicht',
-  WERKZEUGKASTEN:'Werkzeugkasten'
+  VOR_ABSCHLUSS: 'Vor dem Abschlussgespräch'
 }
 
-/** Versandart. 'automatisch' laeuft ohne uns - Calendly bzw. der SMS-Weg. */
+/** 'automatisch' laeuft ohne uns - Calendly bzw. der SMS-Weg. */
 export const VERSAND = {
-  AUTOMATISCH: 'automatisch',   // Calendly oder System, kein Mensch beteiligt
-  EIN_KLICK:   'ein Klick',     // System legt vor, Mensch bestaetigt
-  VORGELEGT:   'vorgelegt',     // System schlaegt vor, Mensch bearbeitet
-  MENSCH:      'Mensch'         // reine Handarbeit (Anruf, freie Mail)
+  AUTOMATISCH: 'automatisch',
+  EIN_KLICK:   'ein Klick',      // System legt vor, Mensch bestaetigt
+  MENSCH:      'Mensch'          // Handarbeit (Anruf, freie Mail)
 }
 
 /**
- * `nachfass_grund` waehlt die Strecke. Die beiden Werte stehen so in
- * shared/felder.js - hier ist die Abbildung auf die Kette.
+ * Die Segmente. Das Segment ist das Ziel aus dem Kaltanruf (Alltagsregel,
+ * Teil A) - es bestimmt, welche Fassung der Segment-Mail laeuft, welcher VSL
+ * folgt und welcher Magnet fuers Abschlussgespraech entsteht.
  */
-export const GRUND_ZU_STRECKE = {
-  'Kunde ist zufrieden mit dem Ist-Zustand': KETTE.STRECKE_A,
-  'Kunde will, traut sich noch nicht':       KETTE.STRECKE_B
+// Die Datei nennt die Segmente kurz "Eigentuemer, Kaeufer, Zeit". Im CRM
+// heisst das Feld anders - die Werte stehen in shared/felder.js unter
+// AUSWAHL.ziel und werden von der Oberflaeche geschrieben. Hier gelten die
+// CRM-Werte, sonst trifft keine Zuordnung.
+export const SEGMENT = {
+  EIGENTUEMER: 'Mehr Eigentümer-Anfragen',
+  KAEUFER:     'Mehr Kaufinteressenten',
+  ZEIT:        'Zeitersparnis und Entlastung',
+  OFFEN:       'Noch nicht besprochen'
 }
 
 /**
- * Alle Nachrichten. `tag` ist der Versatz in Tagen ab Streckenbeginn und nur
- * bei den zwei Nachfass-Strecken gesetzt; die uebrigen Ketten haengen an einem
- * Ereignis, das in `ausloeser` steht.
- *
- * `freigabe: false` heisst: Der Wortlaut ist noch nicht freigegeben. Solche
- * Nachrichten darf das System vorschlagen, aber nicht als fertig ausweisen.
+ * Zwei Felder schlagen das Segment, in dieser Reihenfolge:
+ *   1. Vorhaben = ja        -> die Vorhaben-Fassung, in jedem Segment
+ *   2. Berufsgruppe = SV    -> die Sachverstaendigen-Fassung
+ * Erst danach entscheidet das Ziel. Steht das Ziel auf 'nicht erhoben', waehlt
+ * der Opener nach dem, worueber geklagt wurde (Teil A).
  */
+export function segmentMailFassung(lead) {
+  if (lead?.vorhaben === true) return 'vorhaben'
+  if (lead?.berufsgruppe === 'Sachverständige') return 'sachverstaendige'
+  switch (lead?.ziel) {
+    case SEGMENT.EIGENTUEMER: return 'eigentuemer'
+    case SEGMENT.KAEUFER:     return 'kaeufer'
+    case SEGMENT.ZEIT:        return 'automatisierung'
+    default:                  return null   // Opener waehlt von Hand
+  }
+}
+
 export const NACHRICHTEN = [
-  // ---------------------------------------------------------------- Kette 1
+  // ------------------------------------------------ vor dem Beratungsgespräch
   {
     id: 'einladung_beratung',
     kette: KETTE.VOR_BERATUNG,
-    name: 'Kalender-Einladung Beratungsgespräch',
-    ausloeser: 'Buchung durch den Opener',
+    name: 'Calendly-Einladung Beratungsgespräch',
+    ausloeser: 'Buchung im Kaltanruf',
     versand: VERSAND.AUTOMATISCH,
     platzhalter: ['Vorname Nachname', 'Absender'],
-    freigabe: true,
-    fundstelle: 'Teil E, Nr. 1'
+    fundstelle: 'Teil E, Vor-Termin-Kette Nr. 1'
   },
   {
-    id: 'segment_eigentuemer',
+    id: 'segment_mail',
     kette: KETTE.VOR_BERATUNG,
-    name: 'Segment-Mail Eigentümer (Video Streil)',
-    ausloeser: 'binnen Minuten nach dem Erstanruf, Empfehlungsfenster',
+    name: 'Segment-Mail mit Video',
+    ausloeser: 'binnen Minuten nach dem Kaltanruf',
     versand: VERSAND.EIN_KLICK,
-    // Welche der fuenf Fassungen gilt, entscheidet das Feld - nicht der Mensch.
-    gesteuert_ueber: { feld: 'ziel', wert: 'Eigentümer' },
-    platzhalter: ['Nachname', 'Wochentag', 'Video-Link', 'Link'],
-    freigabe: true,
-    fundstelle: 'Teil E, Nr. 2, Fassung Eigentümergewinnung'
+    // Fuenf Fassungen, gewaehlt von segmentMailFassung().
+    fassungen: {
+      eigentuemer:       { video: 'Streil-Kurzschnitt',  fundstelle: 'Teil E, Nr. 2, Fassung Eigentümergewinnung' },
+      kaeufer:           { video: 'Käufer-Video',        fundstelle: 'Teil E, Nr. 2, Fassung Kaufinteressenten',
+                           offen: 'Käufer-Video noch nicht gedreht — bis dahin die Übergangsfassung mit dem Streil-Kurzschnitt.' },
+      automatisierung:   { video: 'Beier-Kurzschnitt',   fundstelle: 'Teil E, Nr. 2, Fassung Automatisierung/Entlastung' },
+      sachverstaendige:  { video: 'Beier-Kurzschnitt',   fundstelle: 'Teil E, Nr. 2, Fassung Sachverständige' },
+      vorhaben:          { video: 'Beier-Kurzschnitt',   fundstelle: 'Teil E, Nr. 2, Fassung Vorhaben' }
+    },
+    platzhalter: ['Nachname', 'Video-Link'],
+    braucht: ['ziel', 'berufsgruppe'],
+    fundstelle: 'Teil E, Vor-Termin-Kette Nr. 2'
   },
   {
-    id: 'segment_kaeufer',
-    kette: KETTE.VOR_BERATUNG,
-    name: 'Segment-Mail Kaufinteressenten',
-    ausloeser: 'binnen Minuten nach dem Erstanruf, Empfehlungsfenster',
-    versand: VERSAND.EIN_KLICK,
-    gesteuert_ueber: { feld: 'ziel', wert: 'Käufer' },
-    platzhalter: ['Nachname', 'Wochentag', 'Video-Link', 'Link'],
-    freigabe: false,
-    hinweis: 'Übergangsfassung mit Streil-Kurzschnitt. Die Zielfassung wartet auf das Käufer-Video.',
-    fundstelle: 'Teil E, Nr. 2, Fassung Kaufinteressenten'
-  },
-  {
-    id: 'segment_automatisierung',
-    kette: KETTE.VOR_BERATUNG,
-    name: 'Segment-Mail Automatisierung/Entlastung (Video Beier)',
-    ausloeser: 'binnen Minuten nach dem Erstanruf, Empfehlungsfenster',
-    versand: VERSAND.EIN_KLICK,
-    gesteuert_ueber: { feld: 'ziel', wert: 'Zeit' },
-    platzhalter: ['Nachname', 'Wochentag', 'Video-Link', 'Link'],
-    freigabe: true,
-    fundstelle: 'Teil E, Nr. 2, Fassung Automatisierung'
-  },
-  {
-    id: 'segment_sachverstaendige',
-    kette: KETTE.VOR_BERATUNG,
-    name: 'Segment-Mail Sachverständige (Video Beier, eigene Fassung)',
-    // Diese eine Fassung schlaegt das Ziel: Die Berufsgruppe entscheidet.
-    ausloeser: 'binnen Minuten nach dem Erstanruf, gesteuert über die Berufsgruppe',
-    versand: VERSAND.EIN_KLICK,
-    gesteuert_ueber: { feld: 'berufsgruppe', wert: 'Sachverständige' },
-    schlaegt: ['segment_eigentuemer', 'segment_kaeufer', 'segment_automatisierung'],
-    platzhalter: ['Nachname', 'Wochentag', 'Video-Link', 'Link'],
-    freigabe: true,
-    fundstelle: 'Teil E, Nr. 2, Fassung Sachverständige'
-  },
-  {
-    id: 'vorhaben_mail',
-    kette: KETTE.VOR_BERATUNG,
-    name: 'Vorhaben-Mail (nennt das Vorhaben wörtlich, Beier-Video als Umsetzungs-Beweis)',
-    ausloeser: 'binnen Minuten nach dem Erstanruf, gesteuert über das Vorhaben-Feld',
-    versand: VERSAND.EIN_KLICK,
-    gesteuert_ueber: { feld: 'vorhaben', wert: true },
-    // Ersetzt die Segment-Mail vollstaendig, auch die Sachverstaendigen-Fassung.
-    schlaegt: ['segment_eigentuemer', 'segment_kaeufer', 'segment_automatisierung', 'segment_sachverstaendige'],
-    platzhalter: ['Nachname', 'Wochentag', 'Vorhaben wörtlich', 'Video-Link'],
-    freigabe: true,
-    fundstelle: 'Teil E, Nr. 2, Fassung Vorhaben'
-  },
-  {
-    id: 'erinnerung_24h_beratung',
+    id: 'erinnerung_24h',
     kette: KETTE.VOR_BERATUNG,
     name: 'Erinnerung 24 Stunden vorher',
     ausloeser: '24 h vor dem Termin',
     versand: VERSAND.AUTOMATISCH,
-    platzhalter: ['Vorname Nachname', 'Uhrzeit', 'Absender'],
-    freigabe: true,
-    hinweis: 'Enthält einen Absage-Absatz. Das ist Absicht, nicht versehentlich.',
-    fundstelle: 'Teil E, Nr. 3'
+    platzhalter: ['Vorname Nachname', 'Absender'],
+    hinweis: 'Generisch für alle Segmente. Enthält den Absage-Absatz — das ist Absicht: '
+           + 'Eine ehrliche Absage ist mehr wert als ein leerer Termin.',
+    fundstelle: 'Teil E, Vor-Termin-Kette Nr. 3'
   },
   {
     id: 'sms_1h_beratung',
@@ -145,9 +117,7 @@ export const NACHRICHTEN = [
     versand: VERSAND.AUTOMATISCH,
     braucht: ['mobilnummer'],
     platzhalter: ['Absender'],
-    freigabe: true,
-    hinweis: 'Mehr Erinnerung gibt es bewusst nicht.',
-    fundstelle: 'Teil E, Nr. 4'
+    fundstelle: 'Teil E, Vor-Termin-Kette Nr. 4'
   },
   {
     id: 'bestaetigungsanruf',
@@ -156,33 +126,32 @@ export const NACHRICHTEN = [
     ausloeser: 'ein Tag vor dem Termin',
     versand: VERSAND.MENSCH,
     platzhalter: [],
-    freigabe: true,
-    hinweis: 'Kein Mailtext - ein Gesprächsleitfaden.',
-    fundstelle: 'Skript Terminbestätigung (eigene Datei, in Teil E verlinkt)'
+    hinweis: 'Kein Mailtext — ein Gesprächsleitfaden.',
+    fundstelle: 'gespraechsfuehrung/2026-08-01-skript-terminbestaetigung.md'
   },
 
-  // ---------------------------------------------------------------- Kette 2
+  // ----------------------------------------------- vor dem Abschlussgespräch
   {
     id: 'einladung_abschluss',
     kette: KETTE.VOR_ABSCHLUSS,
-    name: 'Kalender-Einladung Abschlussgespräch',
-    ausloeser: 'Buchung durch den Setter im Gespräch',
+    name: 'Calendly-Einladung Abschlussgespräch',
+    ausloeser: 'Buchung im Beratungsgespräch',
     versand: VERSAND.AUTOMATISCH,
-    platzhalter: ['Nachname', 'Absender'],
-    freigabe: true,
-    hinweis: 'Der Termin trägt kein Etikett - der Kunde soll nicht "Abschluss" lesen.',
+    platzhalter: ['Vorname Nachname', 'Absender'],
+    hinweis: 'Der Termin trägt dem Makler gegenüber kein Etikett — nicht '
+           + '„Abschlussgespräch", nicht „Strategiegespräch", sondern „unser Gespräch".',
     fundstelle: 'Teil E, Nr. 5'
   },
   {
     id: 'bestaetigung_hausaufgabe',
     kette: KETTE.VOR_ABSCHLUSS,
-    name: 'Bestätigungsmail mit Video-Hausaufgabe und Magnet-Ankündigung',
+    name: 'Bestätigungsmail mit VSL und Magnet-Ankündigung',
     ausloeser: 'direkt nach dem Beratungsgespräch',
     versand: VERSAND.EIN_KLICK,
-    platzhalter: ['Nachname', 'Datum', 'Uhrzeit', 'Ausgesprochener Bedarf', 'Magnet-Einschub', 'VSL-Link'],
-    freigabe: true,
-    hinweis: 'Vier Magnet-Einschübe je Segment, Referenzschreiben-PS je Segment. VSL-Übergangsregel beachten.',
-    fundstelle: 'Teil E, Nr. 6 inkl. Magnet-Einschüben und Übergangsregel'
+    platzhalter: ['Nachname', 'Ausgesprochener Bedarf', 'Magnet-Einschub', 'VSL-Link'],
+    hinweis: 'Magnet-Einschub je Segment, Referenzschreiben-PS je Segment '
+           + '(Wüstenrot für Makler, Beier für Sachverständige).',
+    fundstelle: 'Teil E, Nr. 6'
   },
   {
     id: 'sms_1h_abschluss',
@@ -192,157 +161,200 @@ export const NACHRICHTEN = [
     versand: VERSAND.AUTOMATISCH,
     braucht: ['mobilnummer'],
     platzhalter: [],
-    freigabe: true,
+    hinweis: 'Mehr Erinnerung gibt es vor dem Abschlussgespräch bewusst nicht.',
     fundstelle: 'Teil E, Nr. 7'
-  },
-
-  // ------------------------------------------------- Kette 3: Strecke A
-  {
-    id: 'a1', kette: KETTE.STRECKE_A, schritt: 1, tag: 0,
-    name: 'Mail 1: die Zusammenfassung seiner Zahlen',
-    ausloeser: 'Tag 0 nach der Streckenwahl',
-    versand: VERSAND.VORGELEGT,
-    platzhalter: ['Anrede', 'Gesprächsdatum', 'Zuwachs', 'Nötige Anfragen im Monat', 'Schmerzpunkt im Wortlaut'],
-    freigabe: true, fundstelle: 'Strecke A, A1'
-  },
-  {
-    id: 'a2', kette: KETTE.STRECKE_A, schritt: 2, tag: 4,
-    name: 'Mail 2: das Fallbeispiel',
-    ausloeser: 'Tag 4', versand: VERSAND.VORGELEGT,
-    platzhalter: [], aus_werkzeugkasten: true,
-    freigabe: true, fundstelle: 'Strecke A, A2'
-  },
-  {
-    id: 'a3', kette: KETTE.STRECKE_A, schritt: 3, tag: 10,
-    name: 'Mail 3: Anruf und Mail zusammen',
-    ausloeser: 'Tag 10', versand: VERSAND.MENSCH,
-    platzhalter: [], aus_werkzeugkasten: true,
-    freigabe: true, fundstelle: 'Strecke A, A3'
-  },
-  {
-    id: 'a4', kette: KETTE.STRECKE_A, schritt: 4, tag: 21,
-    name: 'Mail 4: etwas, das nützt (Themen-Baustein)',
-    ausloeser: 'Tag 21', versand: VERSAND.VORGELEGT,
-    platzhalter: [], aus_werkzeugkasten: true,
-    freigabe: false,
-    hinweis: 'Drei Baustein-Texte sind noch in Freigabe.',
-    fundstelle: 'Strecke A, A4 + Ordner nachfass-bausteine'
-  },
-  {
-    id: 'a5', kette: KETTE.STRECKE_A, schritt: 5, tag: 35,
-    name: 'Mail 5: der Abschied',
-    ausloeser: 'Tag 35', versand: VERSAND.VORGELEGT,
-    platzhalter: ['Anrede', 'Absender'],
-    beendet_strecke: true,
-    freigabe: true,
-    hinweis: 'Ende der Serie. Danach Wiedervorlage setzen.',
-    fundstelle: 'Strecke A, A5'
-  },
-
-  // ------------------------------------------------- Kette 4: Strecke B
-  {
-    id: 'b1', kette: KETTE.STRECKE_B, schritt: 1, tag: 0,
-    name: 'Mail 1: der offene Punkt aus dem Gespräch',
-    ausloeser: 'Tag 0', versand: VERSAND.VORGELEGT,
-    platzhalter: ['Anrede', 'Offener Punkt'],
-    freigabe: true, fundstelle: 'Strecke B, B1'
-  },
-  {
-    id: 'b2', kette: KETTE.STRECKE_B, schritt: 2, tag: 3,
-    name: 'Mail 2: das eine Beweisstück',
-    ausloeser: 'Tag 3', versand: VERSAND.VORGELEGT,
-    platzhalter: [], aus_werkzeugkasten: true,
-    freigabe: true, fundstelle: 'Strecke B, B2'
-  },
-  {
-    id: 'b3', kette: KETTE.STRECKE_B, schritt: 3, tag: 7,
-    name: 'Mail 3: Anruf und Mail zusammen',
-    ausloeser: 'Tag 7', versand: VERSAND.MENSCH,
-    platzhalter: [], aus_werkzeugkasten: true,
-    freigabe: true, fundstelle: 'Strecke B, B3'
-  },
-  {
-    id: 'b4', kette: KETTE.STRECKE_B, schritt: 4, tag: 14,
-    name: 'Mail 4: der Lead-Magnet in seinen Farben',
-    ausloeser: 'Tag 14', versand: VERSAND.VORGELEGT,
-    platzhalter: [], aus_werkzeugkasten: true,
-    freigabe: true, fundstelle: 'Strecke B, B4'
-  },
-  {
-    id: 'b5', kette: KETTE.STRECKE_B, schritt: 5, tag: 28,
-    name: 'Mail 5: der Abschied',
-    ausloeser: 'Tag 28', versand: VERSAND.VORGELEGT,
-    platzhalter: ['Anrede', 'Absender'],
-    beendet_strecke: true,
-    freigabe: true,
-    fundstelle: 'Strecke B, B5'
-  },
-
-  // ---------------------------------------------------------------- Kette 5
-  {
-    id: 'werkzeugkasten',
-    kette: KETTE.WERKZEUGKASTEN,
-    name: 'Nachfass-Toolset: sechs Karten',
-    ausloeser: 'füllt die Nachfass-Mails, Auswahl nach Empfehlungstabelle',
-    versand: VERSAND.MENSCH,
-    platzhalter: [],
-    freigabe: true,
-    hinweis: 'Zwei E-Books, Analyse-Aufhänger, Webinar, Beweis-Stücke, '
-           + 'Telefonassistenz-Demo. Das System empfiehlt, der Closer darf überstimmen.',
-    fundstelle: 'Teil B (Karten, Empfehlungstabelle, Ausweichregel, Versandregel)'
   }
 ]
 
-// ---------------------------------------------------------------------------
-
-/** Alle Nachrichten einer Kette, in ihrer Reihenfolge. */
-export function kette(name) {
-  return NACHRICHTEN.filter(n => n.kette === name)
-                    .sort((a, b) => (a.tag ?? 0) - (b.tag ?? 0))
+/** Der Magnet, der bis zum Abschlussgespräch entsteht. Wird wörtlich benannt. */
+export const MAGNET = {
+  eigentuemer:      'eine SEO- und GEO-Analyse zur Eigentümergewinnung in {Region} und Umgebung',
+  kaeufer:          'eine Kalkulation mit Ihren Zahlen und eine Muster-Anzeige für eines Ihrer Objekte',
+  automatisierung:  'Ihre Automatisierungs-Kurzanalyse: Ihre drei größten Zeitfresser aus dem Gespräch und was davon KI übernehmen kann',
+  sachverstaendige: 'Ihre Automatisierungs-Kurzanalyse: Ihre größten Zeitfresser im Gutachtenprozess und was davon KI übernehmen kann'
 }
 
-/** Die Strecke eines Kontakts - aus `nachfass_grund`. */
-export function streckeVon(lead) {
-  return GRUND_ZU_STRECKE[lead?.nachfass_grund] || null
+// ---------------------------------------------------------------------------
+// Das Nachfass-Toolkit: Sammlung statt Serie
+// ---------------------------------------------------------------------------
+
+/** Die acht Vorlagen aus Teil D, plus der SV-Beweis aus Teil B. */
+export const WERKZEUGE = [
+  { id: 'zusammenfassung', name: 'Die Zusammenfassung seiner Zahlen',
+    greift: 'direkt nach dem Gespräch, solange es frisch ist',
+    platzhalter: ['Anrede', 'Gesprächsdatum', 'Zuwachs', 'Nötige Anfragen im Monat', 'Schmerzpunkt im Wortlaut'],
+    anhang: false, fundstelle: 'Vorlage 1' },
+  { id: 'fallbeispiel', name: 'Das Fallbeispiel',
+    greift: 'er soll sich in einem vergleichbaren Büro wiedererkennen',
+    platzhalter: ['Anrede', 'Region', 'Schmerzpunkt im Wortlaut'],
+    anhang: true, fundstelle: 'Vorlage 2' },
+  { id: 'auswirkungsfrage', name: 'Die Auswirkungsfrage',
+    greift: 'der Zufriedene bewegt sich nicht',
+    platzhalter: ['Anrede', 'Nötige Anfragen im Monat', 'Lücke'],
+    anhang: false, mit_anruf: true, fundstelle: 'Vorlage 3' },
+  { id: 'sichtbarkeits_check', name: 'Der Sichtbarkeits-Check seiner Region',
+    greift: 'Ziel Eigentümer — nur wenn er in ChatGPT und Google wirklich fehlt',
+    platzhalter: ['Anrede', 'Ort', 'Büro 1', 'Büro 2', 'Nötige Anfragen im Monat'],
+    anhang: false, fundstelle: 'Vorlage 4',
+    regel: 'Der Check wird vor dem Versand wirklich gemacht. Kein Platzhalter-Raten.' },
+  { id: 'ratgeber', name: 'Der Ratgeber „Sichtbarer in Ihrer Region"',
+    greift: 'Ziel Eigentümer, wenn der Sichtbarkeits-Check nicht greift',
+    platzhalter: ['Nachname', 'Schmerzpunkt im Wortlaut'],
+    anhang: true, fundstelle: 'Vorlage 5' },
+  { id: 'sv_ranking', name: 'Der SV-Ranking-Beweis (Scheffler vor Heid)',
+    greift: 'Sachverständige, Ziel Aufträge oder Sichtbarkeit',
+    platzhalter: ['Nachname', 'Absender'],
+    anhang: true, fundstelle: 'Teil B, Vorlage SV-Ranking-Beweis',
+    regel: 'Screenshot vor jedem Versand aktuell ziehen — Rankings sind beweglich.' },
+  { id: 'beweisstueck', name: 'Das eine Beweisstück',
+    greift: 'er will, traut sich nicht — der Beleg, der seinen offenen Punkt trifft',
+    platzhalter: ['Anrede', 'Offener Punkt'],
+    anhang: true, fundstelle: 'Vorlage 6' },
+  { id: 'referenzanruf', name: 'Das Referenzanruf-Angebot',
+    greift: 'der stärkste Vertrauens-Beweis: er spricht mit einem Kunden, ohne uns',
+    platzhalter: ['Anrede', 'Absender'],
+    anhang: false, mit_anruf: true, fundstelle: 'Vorlage 7',
+    regel: 'Danach kommt beim Zweifler nichts mehr. 14 Tage ohne Reaktion → wiedervorlagefähig.' },
+  { id: 'abschied', name: 'Der Abschied',
+    greift: 'spätestens nach fünf Versuchen, oder wenn die Lage ausgereizt ist',
+    platzhalter: ['Anrede', 'Zuwachs', 'Nötige Anfragen im Monat', 'Absender'],
+    anhang: false, beendet: true, fundstelle: 'Vorlage 8' },
+  { id: 'ki_hacks', name: 'E-Book „KI-Hacks"',
+    greift: 'der Standard-Erstgriff und der Rückfall, wenn nichts anderes passt',
+    platzhalter: ['Anrede'], anhang: true, fundstelle: 'Teil B, Karten' },
+  { id: 'webinar', name: 'Webinar-Einladung',
+    greift: 'zweiter Griff nach den KI-Hacks — der stärkste Impuls, weil er ein Datum hat',
+    platzhalter: ['Anrede'], anhang: false, fundstelle: 'Teil B, Karten' },
+  { id: 'voicebot_demo', name: 'Voicebot-Demo-Nummer',
+    greift: 'er wollte mehr Erreichbarkeit und interessierte sich für den Voicebot',
+    platzhalter: ['Anrede'], anhang: false, fundstelle: 'Teil B, Karten' },
+  { id: 'erreichbarkeit', name: 'Erreichbarkeits-Baustein',
+    greift: 'Segment Automatisierung, zufrieden mit dem Ist',
+    platzhalter: ['Anrede'], anhang: false, fundstelle: 'nachfass-bausteine/' }
+]
+
+/** Der Gesprächsausgang, der die Tonlage bestimmt (Diagnosefrage des Closers). */
+export const DIAGNOSE = {
+  ZUFRIEDEN: 'Kunde ist zufrieden mit dem Ist-Zustand',
+  TRAUT_SICH_NICHT: 'Kunde will, traut sich noch nicht'
 }
 
 /**
- * Welche Nachricht ist als naechste faellig?
+ * Die Empfehlungstabelle aus Teil B: aus Diagnose und Segment ein Stueck.
  *
- * `nachfass_schritt` zaehlt, was schon raus ist (0 oder null = noch nichts).
- * Zurueck kommt die naechste Nachricht mit dem Datum, an dem sie ansteht -
- * und ob dieses Datum erreicht ist. Die Entscheidung, ob wirklich geschickt
- * wird, trifft ein Mensch; diese Funktion legt nur vor.
+ * Wichtig: Das ist ein VORSCHLAG. "Der Closer darf ueberstimmen, denn er war
+ * im Gespraech. Kein automatischer Versand."
  */
-export function naechsteNachricht(lead, heute = new Date()) {
-  const streckeName = streckeVon(lead)
-  if (!streckeName) return null
-
-  const schritte = kette(streckeName)
-  const erledigt = Number(lead?.nachfass_schritt) || 0
-  if (erledigt >= schritte.length) return null      // Serie durch
-
-  const naechste = schritte[erledigt]
-  const start = lead?.nachfass_beginn_am || lead?.termin_abschlussgespraech
-  if (!start) return { nachricht: naechste, faellig_am: null, faellig: false }
-
-  const faelligAm = new Date(start)
-  faelligAm.setDate(faelligAm.getDate() + naechste.tag)
-
-  // Auf den Tag genau, nicht auf die Stunde: Eine Mail am Tag 3 ist am Tag 3
-  // faellig, egal ob das Gespraech morgens oder abends war.
-  const aufTag = d => new Date(d.getFullYear(), d.getMonth(), d.getDate())
-
-  return {
-    nachricht: naechste,
-    faellig_am: faelligAm,
-    faellig: aufTag(heute) >= aufTag(faelligAm),
-    von: schritte.length,
-    schritt: erledigt + 1
+const EMPFEHLUNG = {
+  [DIAGNOSE.ZUFRIEDEN]: {
+    sachverstaendige: ['sv_ranking', 'ki_hacks'],
+    eigentuemer:      ['sichtbarkeits_check', 'ratgeber'],
+    kaeufer:          ['ki_hacks', 'webinar'],
+    automatisierung:  ['erreichbarkeit', 'voicebot_demo']
+  },
+  [DIAGNOSE.TRAUT_SICH_NICHT]: {
+    sachverstaendige: ['sv_ranking', 'beweisstueck'],
+    eigentuemer:      ['beweisstueck', 'referenzanruf'],
+    kaeufer:          ['beweisstueck', 'referenzanruf'],
+    automatisierung:  ['beweisstueck', 'referenzanruf']
   }
 }
 
-/** Fehlt zu dieser Nachricht noch der freigegebene Wortlaut? */
-export function wortlautFehlt(nachricht) {
-  return nachricht?.freigabe === false
+/** Sachverstaendige schlagen das Segment - auch beim Nachfassen. */
+function empfehlungsSegment(lead) {
+  if (lead?.berufsgruppe === 'Sachverständige') return 'sachverstaendige'
+  switch (lead?.ziel) {
+    case SEGMENT.EIGENTUEMER: return 'eigentuemer'
+    case SEGMENT.KAEUFER:     return 'kaeufer'
+    case SEGMENT.ZEIT:        return 'automatisierung'
+    default:                  return null
+  }
+}
+
+/**
+ * Was soll der Closer als Naechstes schicken?
+ *
+ * Zurueck kommt EIN Stueck mit einer Zeile Begruendung - keine Liste zum
+ * Durchsuchen (Teil C: "eine Empfehlung mit einer Zeile Begruendung").
+ *
+ * `bereitsGesendet` ist das Feld "Zuletzt gesendetes Material": Jedes Stueck
+ * geht je Kontakt nur einmal raus.
+ */
+export function empfehlung(lead, bereitsGesendet = []) {
+  const diagnose = lead?.nachfass_grund
+  const segment = empfehlungsSegment(lead)
+
+  // Fallback aus Teil B: Liegt keine Diagnose vor, sind es die KI-Hacks.
+  // "Sie verlangen kein Bekenntnis zu einer Massnahme."
+  const kandidaten = (EMPFEHLUNG[diagnose]?.[segment] || ['ki_hacks'])
+    .concat('ki_hacks', 'webinar')          // Ausweichregel: universellstes zuerst
+    .filter(id => !bereitsGesendet.includes(id))
+
+  const id = kandidaten[0]
+  if (!id) return null
+
+  const werkzeug = WERKZEUGE.find(w => w.id === id)
+  if (!werkzeug) return null
+
+  const grund = !diagnose
+    ? 'keine Diagnose hinterlegt — die KI-Hacks funktionieren als Reaktivierung immer'
+    : `${diagnose === DIAGNOSE.ZUFRIEDEN ? 'zufrieden mit dem Ist' : 'will, traut sich nicht'}`
+      + (segment ? `, Segment ${segment}` : ', Segment offen')
+
+  return { werkzeug, grund, ueberstimmbar: true }
+}
+
+/**
+ * Die Ausweichregel: Eine abgelehnte Massnahme wird nie zum Mail-Inhalt - die
+ * Ablehnung der Massnahme ist aber nicht die Ablehnung des Ziels.
+ */
+export function ausweichen(abgelehnt) {
+  if (abgelehnt === 'SEO') {
+    return { hinweis: 'GEO trägt den neuen Winkel: in KI-Suchen empfohlen werden statt bei Google ranken.',
+             sonst: 'ki_hacks' }
+  }
+  return { hinweis: 'Das universellste noch nicht versendete Stück.', sonst: 'ki_hacks' }
+}
+
+/**
+ * Haekchen B aus Teil A: "Er hat Anbieter, Werkzeuge oder eigene Versuche
+ * genannt." Die Werte stammen aus shared/felder.js.
+ *
+ * 'Nicht gefragt' ist NICHT dasselbe wie 'Nichts genannt' - das eine heisst
+ * unbekannt, das andere heisst nein. Die Formel in der Datei kennt nur ja und
+ * nein; unbekannt wird hier wie nein behandelt, also vorsichtig eingestuft.
+ * Das ist eine Auslegung, keine Vorgabe - sie steht so auch in der Migration.
+ */
+export function haekchenB(lead) {
+  return ['Anbieter beauftragt', 'Eigenes Werkzeug im Einsatz', 'Beides']
+    .includes(lead?.vorerfahrung)
+}
+
+/** Haekchen A: Hat er ein konkretes Problem benannt? */
+export function haekchenA(lead) {
+  return Boolean(String(lead?.schmerzpunkt_wortlaut || '').trim())
+}
+
+/**
+ * Bewusstseinsstufe und Tiefe nach der Formel aus Teil A.
+ * C sticht: Wer von sich aus nach Preis, Ablauf oder Start fragt, ist Stufe 5.
+ */
+export function stufeUndTiefe(lead) {
+  const a = haekchenA(lead)
+  const b = haekchenB(lead)
+  const c = lead?.fragt_nach_konditionen === true
+
+  if (c)             return { stufe: 5, tiefe: 'Angebot' }
+  if (!a && !b)      return { stufe: 1, tiefe: 'Grundlage' }
+  if (a && !b)       return { stufe: 2, tiefe: 'Grundlage' }
+  if (!a && b)       return { stufe: 3, tiefe: 'Beweis' }
+  return { stufe: 4, tiefe: 'Beweis' }
+}
+
+/** Die Obergrenze aus Teil D. Danach der Abschied, dann wiedervorlagefähig. */
+export const HOECHSTENS_VERSUCHE = 5
+
+/** Alle Nachrichten einer festen Kette. */
+export function kette(name) {
+  return NACHRICHTEN.filter(n => n.kette === name)
 }

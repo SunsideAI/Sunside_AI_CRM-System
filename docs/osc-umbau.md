@@ -25,7 +25,7 @@ Branch: `osc-umbau`, abgezweigt vom Live-Branch `claude/analyze-repo-fKMVI`.
 | 10 | Angebots-Zweig absichern | **fertig** |
 | 11 | Mail-Modul für alle Rollen | **fertig** |
 | 15 | Kennzahlen | **fertig** |
-| 9 · 12 | Nachrichten-Ketten | **Struktur fertig**, Wortlaute fehlen |
+| 9 · 12 | Nachrichten und Nachfass-Toolkit | **Wortlaute da**, Struktur auf den Werkzeugkasten umgestellt |
 | 1 | Statuskette — Datenbank | **vorbereitet, nicht eingespielt** (`20260913_osc_statuskette.sql`) |
 
 ## Warum die Statuskette noch wartet
@@ -128,44 +128,73 @@ Pflicht-Grund, damit die Rückgabequote zählbar bleibt.
 - Die Mail-**Wortlaute** liegen weder im Repo noch auf dem Miro-Board (siehe
   unten).
 
-## Die Nachrichten-Ketten (Tickets 9 und 12)
+## Die Nachrichten (Tickets 9 und 12)
 
-Die Struktur ist vollständig: `shared/mailstrecken.js` bildet alle **23**
-Nachrichten aus der Miro-Tabelle F25.1 ab — Auslöser, Zeitpunkt, Platzhalter,
-Versandart, Freigabestand und die Fundstelle des Wortlauts.
+Die Wortlaute liegen seit dem 16.09.2026 vor:
+`docs/ressourcen/2026-08-12-ressourcen-crm-mailstrecken.md`. Sie werden dort
+gepflegt und von dort wortgleich übernommen — `shared/mailstrecken.js` hält nur
+fest, wann und wofür eine Nachricht gilt, nie den Text selbst. Zwei Quellen für
+denselben Satz laufen immer auseinander.
 
-| Kette | Nachrichten | Zeitplan |
-|---|---|---|
-| Vor dem Beratungsgespräch | 9 | an Ereignissen, nicht an Tagen |
-| Vor dem Abschlussgespräch | 3 | an Ereignissen |
-| Strecke A — zufrieden mit dem Ist | 5 | Tag 0 · 4 · 10 · 21 · 35 |
-| Strecke B — will, traut sich nicht | 5 | Tag 0 · 3 · 7 · 14 · 28 |
-| Werkzeugkasten | 1 | füllt die Nachfass-Mails |
+### Die Datei kippt eine Grundannahme
 
-Nur fünf Nachrichten gehen automatisch raus (drei Calendly-Einladungen, zwei
-SMS). Alle übrigen legt das System vor, abgeschickt wird von Hand — das ist
-keine Sparmaßnahme, sondern die Vorgabe aus F23: *„Kein Automatikversand: Das
-System schlägt vor, ein Mensch schickt ab."*
+Miro F25.1 beschreibt zwei **getaktete** Nachfass-Strecken, Tag 0/4/10/21/35 und
+0/3/7/14/28. Genau die hatte ich gebaut, und dazu lag die Entscheidung „Strecke B
+auf Tag 28" vor. Teil D der Datei hebt das auf:
 
-**Was fehlt: die Texte.** Die Tabelle verweist für jeden Wortlaut auf eine
-Datei `ressourcen-crm-mailstrecken` mit den Teilen B, E, Strecke A und
-Strecke B. Diese Datei liegt **nicht auf dem Miro-Board** — dort gibt es weder
-ein Dokument noch eine Einbettung, nur die Verweise in der Tabellenspalte
-„Fundstelle in der Datei". F23 nennt als Ort „Projektordner"; im Repo und in
-den durchsuchten lokalen Ordnern ist sie ebenfalls nicht. Sie muss also noch
-beschafft werden.
+> **Es gibt keine getaktete Mail-Serie mehr.** *(Entscheidung Niklas, 15.09.2026)*
+> Das Nachfassen ist eine Sammlung von Vorlagen und Werkzeugen, aus der der
+> Closer wählt. Das CRM empfiehlt ein Stück und legt die passende Vorlage vor;
+> Zeitpunkt und Reihenfolge bestimmt der Closer.
 
-Zwei Wortlaute wären selbst dann noch nicht fertig: die Segment-Mail
-Kaufinteressenten (Übergangsfassung, wartet auf das Käufer-Video) und Mail 4
-der Strecke A (drei Baustein-Texte in Freigabe).
+Die Miro-Tabelle ist damit überholt. **Die Datei gilt, sie ist die jüngere und
+die redaktionell gepflegte Quelle.** Folgen:
 
-Der Motor dazu liegt als `20260913_osc_nachfass_serien.sql` bereit und ist
-**nicht eingespielt** — er schreibt Systemnachrichten an Closer, und das darf
-vor dem Veröffentlichen nicht passieren. Geprüft wurde er trotzdem: Die
-Migration lief vollständig in einer Transaktion gegen die Produktivdatenbank
-und wurde zurückgerollt. Ein Testkontakt in Strecke B, Tag 0 vor neun Tagen,
-zwei Schritte erledigt, ergab im ersten Lauf **einen** fälligen Schritt und im
-zweiten **null** — die Wiederholungssperre greift.
+- `20260913_osc_nachfass_serien.sql` ist **gelöscht**. Sie hätte einen Terminplan
+  erzwungen, den es nicht mehr gibt. Nachgeprüft: nie eingespielt, die Tabelle
+  `nachfass_zeitplan` existiert in der Datenbank nicht.
+- `shared/mailstrecken.js` ist neu geschrieben: acht feste Nachrichten vor den
+  beiden Terminen, dazu dreizehn Werkzeuge ohne Kalender.
+- Die Entscheidung „Strecke B auf Tag 28" ist gegenstandslos.
+
+### Was jetzt steht
+
+| Teil | Inhalt |
+|---|---|
+| Feste Ketten | 8 Nachrichten — Einladung, Segment-Mail, Erinnerung, SMS, Bestätigungsanruf; nach dem Setting Einladung, Bestätigungsmail, SMS |
+| Segment-Mail | fünf Fassungen. **Vorhaben schlägt alles**, danach schlägt die Berufsgruppe das Ziel |
+| Werkzeugkasten | 13 Stücke, jedes mit Fundstelle, Platzhaltern und der Regel dazu |
+| Empfehlung | aus Diagnose × Segment, mit einer Zeile Begründung; Rückfall KI-Hacks |
+| Grenzen | höchstens fünf Versuche, jedes Stück je Kontakt nur einmal |
+
+### Eine Falle, die beim Abgleich auffiel
+
+Die Datei nennt die Segmente kurz „Eigentümer, Käufer, Zeit". Im CRM heißen die
+Werte `Mehr Eigentümer-Anfragen`, `Mehr Kaufinteressenten`,
+`Zeitersparnis und Entlastung`. Mein erster Entwurf hätte die Werte der Datei
+verglichen und **nie** eine Zuordnung getroffen — still, ohne Fehlermeldung.
+`shared/mailstrecken.js` benutzt jetzt die CRM-Werte aus `shared/felder.js`.
+
+### Bewusstseinsstufe und Tiefe
+
+Teil A gibt zwei Formeln vor. Beide sind als berechnete Spalten eingespielt
+(`20260916_osc_bewusstseinsstufe_und_toolkit.sql`), damit niemand eine Stufe
+*wählt*: „Der Vertriebler klickt ein Häkchen, sonst nichts."
+
+Eine Auslegung steckt darin, und sie ist nicht von mir zu entscheiden:
+`Vorerfahrung` kennt drei Zustände — ja, nein und **„Nicht gefragt" = unbekannt**.
+Die Formel der Datei kennt nur ja und nein. Unbekannt wird vorsichtig wie nein
+behandelt, der Kontakt landet also auf der niedrigeren Stufe. Falls das anders
+gemeint ist, ist es eine Zeile.
+
+### Was an Wortlauten noch fehlt
+
+| Stück | Warum |
+|---|---|
+| Segment-Mail Kaufinteressenten | Käufer-Video nicht gedreht; bis dahin Übergangsfassung mit dem Streil-Kurzschnitt |
+| Die vier VSL | nicht aufgenommen; bis dahin Loom bzw. Referenzschreiben als Übergang |
+| GEO-Ergänzung im Sichtbarkeits-Ratgeber | offen |
+| Webinar, Voicebot-Demo-Nummer | einzurichten |
 
 ## Die Status im Code
 
