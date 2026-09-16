@@ -2,6 +2,7 @@ import { STATUS, anzeigeName } from '../../shared/status.js'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
+import Verlauf from '../components/Verlauf'
 import * as XLSX from 'xlsx'
 import {
   RotateCcw,
@@ -737,6 +738,18 @@ function FollowUp() {
 
             <div className="p-6 space-y-6">
               {/* Kontakt-Info */}
+              {/* Die Strecke des Kontakts — dieselbe Ansicht wie in Opening
+                  und Setting. */}
+              <details className="border border-outline-variant rounded-xl">
+                <summary className="px-4 py-2 cursor-pointer text-label-lg text-on-surface">
+                  Verlauf
+                </summary>
+                <div className="px-4 pb-4">
+                  <Verlauf hotLeadId={selectedLead.id} />
+                </div>
+              </details>
+
+
               <div className="space-y-3">
                 <div className="flex items-center gap-2 text-on-surface-variant">
                   <Building2 className="w-4 h-4" />

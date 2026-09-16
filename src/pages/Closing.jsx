@@ -9,6 +9,7 @@ import AbschlussForm from '../components/AbschlussForm'
 import RueckgabeKnopf from '../components/RueckgabeKnopf'
 import BillingPanel from '../components/BillingPanel'
 import { deriveBillingMode } from '../utils/billingMode'
+import Verlauf from '../components/Verlauf'
 import {
   Calendar,
   Users,
@@ -2186,6 +2187,18 @@ function Closing() {
 
             {/* Body - Scrollbar hier */}
             <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              {/* Die Strecke des Kontakts — dieselbe Ansicht wie in Opening
+                  und Setting. */}
+              <details className="border border-outline-variant rounded-xl">
+                <summary className="px-4 py-2 cursor-pointer text-label-lg text-on-surface">
+                  Verlauf
+                </summary>
+                <div className="px-4 pb-4">
+                  <Verlauf hotLeadId={selectedLead.id} leadId={selectedLead.originalLeadId} />
+                </div>
+              </details>
+
+
               {angebotSuccess ? (
                 /* ========================================
                    ERFOLGS-ANSICHT nach Angebot versenden

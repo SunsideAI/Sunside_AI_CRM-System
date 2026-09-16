@@ -5,6 +5,7 @@ import EmailComposer from '../components/EmailComposer'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import Verlauf from '../components/Verlauf'
 import { Calendar, ChevronLeft, ChevronRight, Clock, User, Users, Loader2, Building2, Phone, Video, RefreshCw, CalendarDays, CalendarRange, PhoneCall, X, Mail } from 'lucide-react'
 
 function Termine() {
@@ -643,6 +644,18 @@ function Termine() {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto p-6">
+              {/* Die Strecke des Kontakts — dieselbe Ansicht wie in Opening
+                  und Setting. */}
+              <details className="border border-outline-variant rounded-xl">
+                <summary className="px-4 py-2 cursor-pointer text-label-lg text-on-surface">
+                  Verlauf
+                </summary>
+                <div className="px-4 pb-4">
+                  <Verlauf hotLeadId={selectedEvent.hotLeadId} />
+                </div>
+              </details>
+
+
 
               {/* TERMIN-INFO Section */}
               <div className="space-y-3">
