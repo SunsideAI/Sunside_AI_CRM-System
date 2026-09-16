@@ -8,6 +8,33 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 }
 
+
+// Video oder Telefon? Calendly weiss es selbst - es steht in `locations`.
+//
+// Vorher wurde geraten: "klon" im Slug oder "video"/"meet" im Namen. Das ging
+// gut, solange es genau zwei Terminarten gab, von denen eine zufaellig ein
+// Duplikat war. Mit der dritten kippte es: "Abschlussgespraech" ist ein
+// Google-Meet-Termin, heisst aber weder so, noch traegt der Slug "klon" - und
+// galt damit als Telefontermin. Das CRM haette ihn als "Telefonisch"
+// gespeichert und keinen Einwahllink gezeigt.
+function terminartAusCalendly(et) {
+  const arten = (et.locations || []).map(l => String(l?.kind || l?.type || '').toLowerCase())
+
+  const istKonferenz = arten.some(a =>
+    a.includes('google_conference') || a.includes('gotomeeting') ||
+    a.includes('zoom') || a.includes('microsoft_teams') || a.includes('webex') ||
+    a.includes('conference'))
+
+  if (istKonferenz) return 'video'
+  if (arten.length) return 'phone'
+
+  // Keine Ortsangabe von Calendly: dann doch der alte Weg, damit nichts
+  // schlechter wird als vorher.
+  return (et.slug?.includes('klon') ||
+          et.name?.toLowerCase().includes('video') ||
+          et.name?.toLowerCase().includes('meet')) ? 'video' : 'phone'
+}
+
 export const handler = async (event) => {
   // CORS Preflight
   if (event.httpMethod === 'OPTIONS') {
@@ -125,10 +152,9 @@ export const handler = async (event) => {
             slug: et.slug,
             duration: et.duration,
             scheduling_url: et.scheduling_url,
-            // Video wenn "klon" im Slug oder "video"/"meet" im Namen
-            type: (et.slug?.includes('klon') || et.name?.toLowerCase().includes('video') || et.name?.toLowerCase().includes('meet')) 
-              ? 'video' 
-              : 'phone'
+            type: terminartAusCalendly(et),
+            // Die Ortsangabe mitgeben, damit sich das nachpruefen laesst.
+            locations: (et.locations || []).map(l => l?.kind || l?.type).filter(Boolean)
           })) || []
 
           return {
