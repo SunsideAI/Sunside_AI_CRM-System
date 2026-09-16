@@ -1,5 +1,64 @@
 // Calendly API Integration (Google Calendar entfernt)
 
+const { createClient } = require('@supabase/supabase-js')
+
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
+
+// Video oder Telefon? Calendly weiss es selbst - es steht in `locations`.
+//
+// Vorher wurde geraten: "klon" im Slug oder "video"/"meet" im Namen. Das ging
+// gut, solange es zwei Terminarten gab und eine zufaellig ein Duplikat war.
+// Mit der dritten kippte es: "Abschlussgespraech" ist ein Google-Meet-Termin,
+// heisst aber weder so, noch traegt der Slug "klon" - und galt damit als
+// Telefontermin.
+function terminartAusCalendly(et) {
+  const arten = (et.locations || []).map(l => String((l && (l.kind || l.type)) || '').toLowerCase())
+
+  const istKonferenz = arten.some(a =>
+    a.indexOf('google_conference') >= 0 || a.indexOf('gotomeeting') >= 0 ||
+    a.indexOf('zoom') >= 0 || a.indexOf('microsoft_teams') >= 0 ||
+    a.indexOf('webex') >= 0 || a.indexOf('conference') >= 0)
+
+  if (istKonferenz) return 'video'
+  if (arten.length) return 'phone'
+
+  // Keine Ortsangabe: dann der alte Weg, damit nichts schlechter wird.
+  return ((et.slug && et.slug.indexOf('klon') >= 0) ||
+          (et.name && et.name.toLowerCase().indexOf('video') >= 0) ||
+          (et.name && et.name.toLowerCase().indexOf('meet') >= 0)) ? 'video' : 'phone'
+}
+
+// Welche Terminarten gehoeren zum Beratungsgespraech?
+//
+// Der Terminwaehler sucht seine Terminart mit
+//     eventTypes.find(et => et.type === selectedType)
+// also allein nach Video oder Telefon. Bei mehreren Terminarten derselben
+// Form trifft find() die erste in der Antwort - seit es das 45-minuetige
+// Abschlussgespraech gibt, also womoeglich dieses. Gebucht wurde dann der
+// falsche Termin, und Calendly wies die unpassende Ortsangabe mit 400 ab.
+//
+// Die Zuordnung Zweck -> Terminart steht in der Tabelle einstellungen. Der
+// Waehler bucht in dieser Fassung ausschliesslich Beratungsgespraeche
+// (Kaltakquise und Neu-Terminierung im Closing), also wird darauf gefiltert.
+//
+// Ist nichts zugeordnet oder die Einstellung nicht lesbar, bleibt es bei
+// allen Terminarten - eine fehlende Einstellung darf das Buchen nicht
+// unmoeglich machen.
+async function nurBeratungsgespraeche(eventTypes) {
+  try {
+    const { data } = await supabase
+      .from('einstellungen').select('wert')
+      .eq('schluessel', 'calendly_terminart_zuordnung').maybeSingle()
+
+    const karte = JSON.parse((data && data.wert) || '{}')
+    const passend = eventTypes.filter(a => karte[a.uri] === 'beratung')
+    return passend.length ? passend : eventTypes
+  } catch (e) {
+    console.warn('Terminart-Zuordnung nicht lesbar, zeige alle:', e.message)
+    return eventTypes
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type',
@@ -111,18 +170,16 @@ exports.handler = async (event) => {
           )
           const eventTypesData = await eventTypesResponse.json()
 
-          // Die Event Types mit Video/Phone Typ-Erkennung
-          const eventTypes = eventTypesData.collection?.map(et => ({
+          const alle = (eventTypesData.collection || []).map(et => ({
             uri: et.uri,
             name: et.name,
             slug: et.slug,
             duration: et.duration,
             scheduling_url: et.scheduling_url,
-            // Video wenn "klon" im Slug oder "video"/"meet" im Namen
-            type: (et.slug?.includes('klon') || et.name?.toLowerCase().includes('video') || et.name?.toLowerCase().includes('meet')) 
-              ? 'video' 
-              : 'phone'
-          })) || []
+            type: terminartAusCalendly(et)
+          }))
+
+          const eventTypes = await nurBeratungsgespraeche(alle)
 
           return {
             statusCode: 200,
