@@ -37,6 +37,7 @@ import {
   X,
   Loader2,
   RefreshCw,
+  CalendarPlus,
   Users,
   User as UserIcon,
   Send,
@@ -1041,39 +1042,37 @@ function Opening() {
 
       {/* Re-Engagement Widget: Leads die neu terminiert werden müssen */}
       {setterNoShowLeads.length > 0 && viewMode !== 'ebook' && (
-        <div className="bg-rose-50 border border-rose-200 rounded-xl p-4">
+        <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div
             className="flex items-center justify-between cursor-pointer"
             onClick={() => setReEngagementCollapsed(!reEngagementCollapsed)}
           >
-            <h3 className="text-lg font-semibold text-rose-800 flex items-center gap-2">
-              <AlertCircle className="w-5 h-5" />
-              Lead-Termine neu vereinbaren
-              <span className="ml-2 px-2 py-0.5 bg-rose-200 text-rose-800 rounded-full text-sm">
-                {setterNoShowLeads.length}
-              </span>
+            <h3 className="font-medium text-gray-900 flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-primary" />
+              Lead-Termine neu vereinbaren ({setterNoShowLeads.length})
             </h3>
             <div className="flex items-center gap-2">
               <button
                 onClick={(e) => { e.stopPropagation(); loadSetterNoShowLeads(); }}
                 disabled={loadingSetterNoShows}
-                className="p-1.5 hover:bg-rose-100 rounded-lg transition-colors"
+                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
               >
-                <RefreshCw className={`w-4 h-4 text-rose-600 ${loadingSetterNoShows ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-4 h-4 text-gray-500 ${loadingSetterNoShows ? 'animate-spin' : ''}`} />
               </button>
-              <ChevronRight className={`w-5 h-5 text-rose-600 transition-transform duration-200 ${reEngagementCollapsed ? '' : 'rotate-90'}`} />
+              <ChevronRight className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${reEngagementCollapsed ? '' : 'rotate-90'}`} />
             </div>
           </div>
           {!reEngagementCollapsed && (
             <>
-              <p className="text-sm text-rose-700 mb-3 mt-3">
-                Diese Leads brauchen einen neuen Termin (No-Show oder abgesagt).
+              <p className="text-xs text-gray-500 mb-3 mt-1">
+                Diese Leads brauchen einen neuen Termin, weil der alte geplatzt ist
+                — nicht erschienen oder abgesagt.
               </p>
           <div className="space-y-2">
             {setterNoShowLeads.slice(0, 5).map(lead => (
               <div
                 key={lead.id}
-                className="flex items-center justify-between bg-white rounded-lg p-3 border border-rose-100 hover:border-rose-300 cursor-pointer transition-colors"
+                className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer transition-colors"
                 onClick={() => {
                   // Hot-Lead-Daten auf Lead-Format mappen (vollständig)
                   const mappedLead = {
@@ -1115,8 +1114,8 @@ function Opening() {
                 }}
               >
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium text-on-surface truncate">{lead.unternehmen}</div>
-                  <div className="text-sm text-on-surface-variant flex items-center gap-2 mt-0.5">
+                  <div className="font-medium text-sm text-gray-900 truncate">{lead.unternehmen}</div>
+                  <div className="text-xs text-gray-500 flex items-center gap-2 mt-0.5">
                     <span>{lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}</span>
                     {/* Status-Badge */}
                     {lead.status === STATUS.NICHT_ERSCHIENEN ? (
@@ -1132,7 +1131,7 @@ function Opening() {
                 </div>
                 <div className="flex items-center gap-2">
                   {(lead.no_show_marked_at || lead.terminDatum) && (
-                    <span className="text-xs text-rose-600">
+                    <span className="text-xs text-gray-500">
                       {new Date(lead.no_show_marked_at || lead.terminDatum).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}
                     </span>
                   )}
@@ -1161,15 +1160,17 @@ function Opening() {
                       setHotLeadData(lead)
                       setShowTerminPicker(true)
                     }}
-                    className="px-3 py-1.5 bg-rose-600 text-white rounded-lg text-sm font-medium hover:bg-rose-700 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-white
+                               rounded-lg hover:bg-primary-container shrink-0"
                   >
+                    <CalendarPlus className="w-4 h-4" />
                     Termin buchen
                   </button>
                 </div>
               </div>
             ))}
             {setterNoShowLeads.length > 5 && (
-              <p className="text-sm text-rose-600 text-center pt-2">
+              <p className="text-xs text-gray-500 text-center pt-2">
                 + {setterNoShowLeads.length - 5} weitere
               </p>
             )}
