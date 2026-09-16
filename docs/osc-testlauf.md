@@ -2,7 +2,7 @@
 
 **Adresse:** <https://osc-umbau--crmsunsideai.netlify.app>
 
-Dauer etwa 35 Minuten.
+Dauer etwa 40 Minuten.
 
 Der Produktivbetrieb läuft unverändert unter `crmsunsideai.netlify.app` — die
 Vorschau ist ein eigener Build mit eigener Adresse, er wird durch nichts
@@ -48,8 +48,9 @@ den Testdatensätzen:
 
 ## Was noch nicht geht
 
-- **Folgetermin am Closer-Kalender** — der Rest von Ticket 7. Dafür bräuchte
-  jeder Closer einen eigenen Kalender; im gemeinsamen Calendly geht das nicht.
+- **Nichts mehr.** Der Folgetermin ist gebaut; er braucht nur noch eine
+  eigene Terminart in Calendly und die Zuordnung unter Einstellungen →
+  Terminarten. Fehlt sie, bietet der Wähler alle Terminarten an statt keiner.
 - **Statuskette in der Datenbank** ist nicht eingespielt. Die Übergangsprüfung
   läuft nur im Code, nicht als Riegel in der Datenbank. Genau das testen wir.
 - **setter_id** zeigt noch auf „wer gebucht hat". Die Rückumstellung läuft mit
@@ -225,9 +226,37 @@ den Testdatensätzen:
     weiterhin im Kommentarfeld darunter — in Opening siehst du beides
     untereinander. Ein geschätzter Zeitstempel wäre schlimmer als eine Lücke.
 
-## 7. Rückgabe an den Vorgänger (Ticket 15)
+## 7. Ausgang des Abschlussgesprächs und der Folgetermin
 
-25. Im Closing den Testkontakt öffnen → **„Zurück an den Vorgänger"**.
+Nur sichtbar, wenn der Kontakt ein Abschlussgespräch hat.
+
+21. Im **Closing** den Testkontakt öffnen. **Erwartung:** Ein Block
+    **„Ausgang des Abschlussgesprächs"** mit vier Möglichkeiten: Auftrag ·
+    Nächster Schritt vereinbart · Vertagt ohne festen Schritt · Absage.
+
+22. **„Nächster Schritt vereinbart"** wählen und ohne Termin festhalten.
+    **Erwartung:** Wird abgewiesen — ein vereinbarter nächster Schritt ohne
+    Termin ist keiner.
+
+23. **„Folgetermin buchen"** klicken, Slot wählen, buchen. Dann die Diagnose
+    wählen und festhalten.
+
+    **Erwartung:** Gespeichert. Der Termin steht in `termin_folgetermin` mit
+    eigenem Link — er darf den des Abschlussgesprächs nicht überschreiben:
+
+    ```sql
+    select gespraechsausgang, zugesagter_schritt, nachfass_grund,
+           termin_abschlussgespraech, termin_folgetermin,
+           meeting_link_abschluss, meeting_link_folgetermin
+      from hot_leads where unternehmen like 'TEST%';
+    ```
+
+24. **„Auftrag"** wählen. **Erwartung:** Weder Folgetermin noch Diagnose
+    werden verlangt — bei einem Auftrag gibt es nichts nachzufassen.
+
+## 8. Rückgabe an den Vorgänger (Ticket 15)
+
+25. Im Closing den Testkontakt öffnen → **„Zurück an den Vorgänger" → **„Zurück an den Vorgänger"**.
 26. Ohne Begründung absenden. **Erwartung:** wird verlangt.
 27. Mit Begründung absenden.
     **Erwartung:** Status eine Stufe zurück auf **Beratungsgespräch geführt**,
@@ -240,14 +269,14 @@ den Testdatensätzen:
        and hot_lead_id = (select id from hot_leads where unternehmen like 'TEST%');
     ```
 
-## 8. Die Übergangsmatrix (Ticket 1)
+## 9. Die Übergangsmatrix (Ticket 1)
 
 28. Im Closing den Status von Hand auf **Gewonnen** setzen, während der Kontakt
     auf „Beratungsgespräch geführt" steht.
     **Erwartung:** Wird abgewiesen mit einer verständlichen Meldung, nicht mit
     einem Datenbankfehler. Der Weg führt über Abschlussgespräch und Im Abschluss.
 
-## 9. Fristen und Kennzahlen (Tickets 6, 13, 15)
+## 10. Fristen und Kennzahlen (Tickets 6, 13, 15)
 
 29. Der stündliche Lauf greift von selbst. Von Hand anstoßen:
 
@@ -266,7 +295,7 @@ den Testdatensätzen:
     select * from v_rueckgabequote     order by monat desc limit 5;
     ```
 
-## 10. Aufräumen
+## 11. Aufräumen
 
     python3 scripts/testdaten.py --loeschen
 
