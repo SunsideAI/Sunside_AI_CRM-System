@@ -130,21 +130,26 @@ function Setting() {
       {/* Filter und Suche — gleiches Layout wie Opening und Closing */}
       <div className="card-elevated p-4">
         <div className="flex flex-col sm:flex-row gap-3">
+          {/* input-field und der runde Neu-laden-Knopf wie in Opening —
+              vorher standen hier eigene Klassen, die fast, aber nicht ganz
+              gleich aussahen. */}
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-on-surface-variant" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-on-surface-variant" />
             <input
               type="text"
               value={suche}
               onChange={e => setSuche(e.target.value)}
-              placeholder="Firma oder Ansprechpartner"
-              className="w-full pl-9 pr-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary"
+              placeholder="Firma, Name, Ort suchen..."
+              className="input-field pl-10"
             />
           </div>
           <button
             onClick={laden}
-            className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-surface-container"
+            disabled={laedt}
+            aria-label="Neu laden"
+            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm shrink-0"
           >
-            <RefreshCw className="w-4 h-4" /> Neu laden
+            <RefreshCw className={`w-5 h-5 text-on-surface-variant ${laedt ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
@@ -165,7 +170,10 @@ function Setting() {
         </div>
       </div>
 
-      {/* Liste */}
+      {/* Liste. Dieselbe Tabelle wie in Opening und Closing: gleiche
+          Kopfzeile, gleiche Zeilenfarben im Wechsel, gleiche Regeln dafür,
+          welche Spalte auf schmalen Schirmen wegfällt. Vorher stand hier eine
+          Kartenliste — dieselbe Arbeit sah je nach Tab anders aus. */}
       <div className="card-elevated overflow-hidden min-h-[400px]">
         {laedt ? (
           <div className="flex items-center justify-center py-20 text-on-surface-variant">
@@ -179,55 +187,94 @@ function Setting() {
               : 'Nichts in dieser Ansicht.'}
           </div>
         ) : (
-          <div className="divide-y divide-outline-variant">
-            {sichtbar.map(lead => (
-              <button
-                key={lead.id}
-                onClick={() => { setGewaehlt(lead); setMailOffen(false); setTerminOffen(false) }}
-                className="w-full flex items-center gap-4 p-4 text-left hover:bg-surface-container transition-colors"
-              >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                  lead.status === STATUS.BERATUNG_GEFUEHRT ? 'bg-amber-100' :
-                  lead.status === STATUS.BERATUNG_VEREINBART ? 'bg-secondary-container' : 'bg-rose-100'
-                }`}>
-                  {lead.terminart === 'Video'
-                    ? <Video className="w-5 h-5 text-on-surface-variant" />
-                    : <Phone className="w-5 h-5 text-on-surface-variant" />}
-                </div>
+          <table className="w-full">
+            <thead>
+              <tr className="bg-surface-container">
+                <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
+                  Art
+                </th>
+                <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
+                  Unternehmen
+                </th>
+                <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden md:table-cell">
+                  Ansprechpartner
+                </th>
+                <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
+                  Ort
+                </th>
+                <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
+                  Termin
+                </th>
+                <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
+                  Status
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {sichtbar.map((lead, index) => {
+                const ueberfaellig = istVorbei(lead.terminDatum)
+                  && lead.status === STATUS.BERATUNG_VEREINBART
+                return (
+                  <tr
+                    key={lead.id}
+                    onClick={() => { setGewaehlt(lead); setMailOffen(false); setTerminOffen(false) }}
+                    className={`table-row cursor-pointer ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
+                  >
+                    <td className="px-4 py-4">
+                      <div className={`p-1.5 rounded-lg inline-flex ${
+                        lead.status === STATUS.BERATUNG_GEFUEHRT
+                          ? 'bg-success-container text-success'
+                          : lead.status === STATUS.BERATUNG_VEREINBART
+                          ? 'bg-secondary-container text-primary'
+                          : 'bg-error-container text-error'
+                      }`}>
+                        {lead.terminart === 'Video'
+                          ? <Video className="w-4 h-4" />
+                          : <Phone className="w-4 h-4" />}
+                      </div>
+                    </td>
 
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium text-on-surface truncate">
-                    {lead.unternehmen || 'Ohne Namen'}
-                  </div>
-                  <div className="text-body-sm text-on-surface-variant truncate">
-                    {[lead.ansprechpartnerVorname, lead.ansprechpartnerNachname].filter(Boolean).join(' ')}
-                    {lead.ort && <> · {lead.ort}</>}
-                  </div>
-                </div>
+                    <td className="px-4 py-4">
+                      <div className="font-medium text-on-surface truncate max-w-[22rem]">
+                        {lead.unternehmen || 'Ohne Namen'}
+                      </div>
+                      {/* Auf schmalen Schirmen fehlen die eigenen Spalten —
+                          dann steht der Ansprechpartner hier mit drunter. */}
+                      <div className="text-body-sm text-on-surface-variant truncate md:hidden">
+                        {[lead.ansprechpartnerVorname, lead.ansprechpartnerNachname].filter(Boolean).join(' ')}
+                      </div>
+                    </td>
 
-                <div className="text-right shrink-0">
-                  <div className={`text-body-sm ${
-                    istVorbei(lead.terminDatum) && lead.status === STATUS.BERATUNG_VEREINBART
-                      ? 'text-amber-700 font-medium' : 'text-on-surface-variant'
-                  }`}>
-                    {terminText(lead.terminDatum)}
-                  </div>
-                  <div className="text-label-sm text-on-surface-variant">
-                    {anzeigeName(lead.status)}
-                  </div>
-                </div>
+                    <td className="px-4 py-4 hidden md:table-cell text-body-sm text-on-surface-variant">
+                      {[lead.ansprechpartnerVorname, lead.ansprechpartnerNachname].filter(Boolean).join(' ') || '—'}
+                    </td>
 
-                {/* Der Termin ist vorbei, aber niemand hat bestätigt, dass er
-                    stattfand — das ist die Arbeit, die hier liegt. */}
-                {istVorbei(lead.terminDatum) && lead.status === STATUS.BERATUNG_VEREINBART && (
-                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
-                )}
-                {lead.status === STATUS.BERATUNG_GEFUEHRT && (
-                  <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" />
-                )}
-              </button>
-            ))}
-          </div>
+                    <td className="px-4 py-4 hidden lg:table-cell text-body-sm text-on-surface-variant">
+                      {lead.ort || '—'}
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <div className={`text-body-sm flex items-center gap-1.5 ${
+                        ueberfaellig ? 'text-warning font-medium' : 'text-on-surface-variant'
+                      }`}>
+                        {ueberfaellig && <AlertCircle className="w-4 h-4 shrink-0" />}
+                        {terminText(lead.terminDatum)}
+                      </div>
+                    </td>
+
+                    <td className="px-4 py-4">
+                      <div className="text-body-sm text-on-surface-variant flex items-center gap-1.5">
+                        {lead.status === STATUS.BERATUNG_GEFUEHRT && (
+                          <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
+                        )}
+                        {anzeigeName(lead.status)}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
         )}
       </div>
 
