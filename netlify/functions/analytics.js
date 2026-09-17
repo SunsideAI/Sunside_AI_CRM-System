@@ -1,7 +1,22 @@
-// Analytics API für Setting und Closing Performance - Supabase Version
+// Analytics API: die Auswertungen für Opening, Setting und Closing.
+//
+// Drei Stufen, drei Auswertungen, und jede gehört einer Rolle:
+//
+//   type=opening  Kaltakquise      Opener (auch Coldcaller)
+//   type=setter   Beratungsgespräch Setter
+//   type=closing  Abschluss         Closer
+//
+// Die Leitung sieht alle Zahlen und kann nach Person filtern. Alle anderen
+// sehen ausschliesslich ihre eigenen - über die ID aus dem Sitzungs-Token.
+// Früher wurde der Name aus der Anfrage per Teilzeichenkette verglichen:
+// "Max" hätte die Zahlen von "Max Lehmann" UND "Maximilian Gaik" bekommen.
+//
+// type=setting ist der alte Name der Opening-Auswertung und bleibt als
+// Alias bestehen, damit ein noch offener Browser-Tab nicht bricht.
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { STATUS, normalisiere, IST_VERLOREN } from '../../shared/status.js'
+import { istOpener, istSetter, istCloser, istLeitung } from '../../shared/rollen.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -15,36 +30,13 @@ const corsHeaders = {
   'Content-Type': 'application/json'
 }
 
-// User-Map laden für Namen-Auflösung
-async function loadUserMap() {
-  const { data: users, error } = await supabase
-    .from('users')
-    .select('id, vor_nachname')
+const antwort = (statusCode, body) => ({ statusCode, headers: corsHeaders, body: JSON.stringify(body) })
 
-  if (error) {
-    console.error('Failed to load users:', error)
-    return {}
-  }
-
-  const userMap = {}
-  users.forEach(user => {
-    userMap[user.id] = user.vor_nachname || 'Unbekannt'
-  })
-  return userMap
-}
-
-// User ID nach Name finden
-async function getUserIdByName(userName) {
-  if (!userName) return null
-
-  const { data, error } = await supabase
-    .from('users')
-    .select('id')
-    .ilike('vor_nachname', userName)
-    .limit(1)
-
-  if (error || !data || data.length === 0) return null
-  return data[0].id
+/** Welche Rolle eine Auswertung öffnen darf. Die Leitung darf immer. */
+const AUSWERTUNG = {
+  opening: istOpener,
+  setter:  istSetter,
+  closing: istCloser
 }
 
 export async function handler(event) {
@@ -57,713 +49,475 @@ export async function handler(event) {
   if (zugang.antwort) return zugang.antwort
   const angemeldet = zugang.nutzer
 
-
   if (event.httpMethod !== 'GET') {
-    return {
-      statusCode: 405,
-      headers: corsHeaders,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    }
+    return antwort(405, { error: 'Method not allowed' })
   }
 
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ error: 'Server nicht konfiguriert' })
-    }
+    return antwort(500, { error: 'Server nicht konfiguriert' })
   }
 
   try {
     const params = event.queryStringParameters || {}
-    const type = params.type || 'setting'
-    // Adminrechte und Identitaet kommen aus dem Token. Vorher genuegte
-    // ?admin=true fuer die Zahlen aller Closer, und ?userName=<fremder Name>
-    // fuer die eines Kollegen.
-    const isAdmin = angemeldet.istAdmin
-    const userEmail = params.email
-    const userName = angemeldet.name
-    const filterUserName = params.filterUserName
+    const type = params.type === 'setting' || !params.type ? 'opening' : params.type
+    const darf = AUSWERTUNG[type]
+    if (!darf) return antwort(400, { error: `Unbekannte Auswertung: ${type}` })
 
-    // Datum-Filter als Strings behalten (YYYY-MM-DD Format)
-    const startDateStr = params.startDate || null
-    const endDateStr = params.endDate || null
-
-    // Für Funktionen die Date-Objekte brauchen (Zeitverlauf-Formatierung)
-    const startDate = startDateStr ? new Date(startDateStr + 'T00:00:00') : null
-    const endDate = endDateStr ? new Date(endDateStr + 'T23:59:59') : null
-
-    if (type === 'closing') {
-      const result = await getClosingStats({ isAdmin, userEmail, userName, startDate, endDate, startDateStr, endDateStr })
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify(result)
-      }
-    } else {
-      const result = await getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate, startDateStr, endDateStr })
-      return {
-        statusCode: 200,
-        headers: corsHeaders,
-        body: JSON.stringify(result)
-      }
+    // Die Rollen aus dem Token, nicht aus der Datenbank: Wer eine Rolle
+    // verliert, verliert sie mit der nächsten Anmeldung - wie überall sonst.
+    const leitung = istLeitung(angemeldet.rollen)
+    if (!leitung && !darf(angemeldet.rollen)) {
+      return antwort(403, { error: 'Keine Berechtigung für diese Auswertung', code: 'rolle_fehlt' })
     }
 
+    // Wessen Zahlen: die eigenen - ausser für die Leitung, die optional eine
+    // Person wählt. Ein filterUserId eines Nicht-Leiters wird ignoriert.
+    let personId = leitung ? null : angemeldet.id
+    if (leitung) {
+      if (params.filterUserId) personId = params.filterUserId
+      else if (params.filterUserName) personId = await idZumNamen(params.filterUserName) || 'unbekannt'
+    }
+
+    const zeitraum = {
+      von: gueltigesDatum(params.startDate),
+      bis: gueltigesDatum(params.endDate)
+    }
+
+    const rechner = { opening: openingZahlen, setter: setterZahlen, closing: closingZahlen }[type]
+    const ergebnis = await rechner({ leitung, personId, zeitraum })
+    return antwort(200, { ...ergebnis, sicht: { type, leitung, personId } })
   } catch (error) {
     console.error('Analytics Error:', error)
-    return {
-      statusCode: 500,
-      headers: corsHeaders,
-      body: JSON.stringify({ error: error.message })
-    }
+    return antwort(500, { error: error.message })
   }
 }
 
 // ==========================================
-// CLOSING STATS (Hot Leads)
+// Gemeinsame Helfer
 // ==========================================
-async function getClosingStats({ isAdmin, userEmail, userName, startDate, endDate, startDateStr, endDateStr }) {
-  console.log('getClosingStats - Params:', { isAdmin, userName, startDateStr, endDateStr })
 
-  // User-Map laden
-  const userMap = await loadUserMap()
+function gueltigesDatum(wert) {
+  return typeof wert === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(wert) ? wert : null
+}
 
-  // Alle Hot Leads laden mit User-Joins (Pagination für > 1000 Einträge)
-  let allRecords = []
-  let hotLeadsPage = 0
-  const hotLeadsPageSize = 1000
+// Ein Termin um 23:30 Uhr in Berlin ist in UTC schon der nächste Tag. Mit
+// split('T') landete er im falschen Tag - und am Monatsende im falschen Monat.
+const BERLIN = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit'
+})
 
-  while (true) {
-    const { data, error } = await supabase
-      .from('hot_leads')
-      .select(`
-        *,
-        setter:users!hot_leads_setter_id_fkey(id, vor_nachname),
-        closer:users!hot_leads_closer_id_fkey(id, vor_nachname)
-      `)
-      .range(hotLeadsPage * hotLeadsPageSize, (hotLeadsPage + 1) * hotLeadsPageSize - 1)
+/** Kalendertag in Berlin als YYYY-MM-DD. Reine Datumswerte bleiben, wie sie sind. */
+export function berlinTag(wert) {
+  if (!wert) return null
+  if (/^\d{4}-\d{2}-\d{2}$/.test(wert)) return wert
+  const d = new Date(wert)
+  return isNaN(d.getTime()) ? null : BERLIN.format(d)
+}
 
-    if (error) {
-      throw new Error(error.message)
-    }
+/** Liegt ein Tag im Zeitraum? Ohne Datum zählt nur, wenn kein Zeitraum gesetzt ist. */
+function imZeitraum(tag, { von, bis }) {
+  if (!von && !bis) return true
+  if (!tag) return false
+  if (von && tag < von) return false
+  if (bis && tag > bis) return false
+  return true
+}
 
+async function alleSeiten(tabelle, spalten, filter = q => q) {
+  const seite = 1000
+  let alle = []
+  for (let i = 0; ; i++) {
+    const { data, error } = await filter(supabase.from(tabelle).select(spalten))
+      .order('id')
+      .range(i * seite, (i + 1) * seite - 1)
+    if (error) throw new Error(`${tabelle}: ${error.message}`)
     if (!data || data.length === 0) break
+    alle = alle.concat(data)
+    if (data.length < seite) break
+  }
+  return alle
+}
 
-    allRecords = allRecords.concat(data)
-    hotLeadsPage++
+async function namensListe() {
+  const { data, error } = await supabase.from('users').select('id, vor_nachname')
+  if (error) throw new Error(error.message)
+  return Object.fromEntries((data || []).map(u => [u.id, u.vor_nachname || 'Unbekannt']))
+}
 
-    if (data.length < hotLeadsPageSize) break
+async function idZumNamen(name) {
+  const { data } = await supabase.from('users').select('id').eq('vor_nachname', name).limit(1)
+  return data?.[0]?.id || null
+}
+
+const quote = (teil, ganz) => (ganz > 0 ? (teil / ganz) * 100 : 0)
+
+/** Addiert Zähler in einen Eimer je Tag. */
+function eintragen(verlauf, tag, werte) {
+  if (!tag) return
+  const eimer = verlauf[tag] || (verlauf[tag] = {})
+  for (const [k, v] of Object.entries(werte)) eimer[k] = (eimer[k] || 0) + v
+}
+
+// ==========================================
+// OPENING (Kaltakquise)
+// ==========================================
+//
+// Eine Einwahl ist ein kontaktierter Lead mit Datum - aus dem aktiven
+// Bestand und aus dem Archiv. Das Archiv hält frühere Anrufe fest, deren
+// Lead zurückgesetzt und neu vergeben wurde; beide zählen.
+//
+// "Erreicht" heisst: jemand hat abgenommen. "Ungültiger Lead" und ein
+// fehlendes Ergebnis zählten vorher als erreicht, obwohl dort niemand
+// gesprochen hat.
+
+function openingKategorie(ergebnisRoh, hatWiedervorlage) {
+  const e = (ergebnisRoh || '').toLowerCase()
+  if (e.includes('nicht erreicht')) return 'nichtErreicht'
+  if (e.includes('ungültig') || e.includes('ungueltig')) return 'ungueltig'
+  if (e.includes('beratungsgespräch') || e.includes('beratungsgespraech') || e.includes('termin')) return 'beratungsgespraech'
+  if (e.includes('unterlage') || e.includes('wiedervorlage')) return 'unterlagen'
+  if (e.includes('kein interesse') || e.includes('absage')) return 'keinInteresse'
+  // Kein Ergebnis eingetragen, aber eine Wiedervorlage gesetzt: das
+  // Gespräch hat stattgefunden und geht weiter.
+  if (!e && hatWiedervorlage) return 'unterlagen'
+  return 'ohneErgebnis'
+}
+
+async function openingZahlen({ leitung, personId, zeitraum }) {
+  const [aktiv, zuweisungen, archiv, namen] = await Promise.all([
+    alleSeiten('leads', 'id, ergebnis, datum, wiedervorlage_datum', q => q.eq('bereits_kontaktiert', true)),
+    alleSeiten('lead_assignments', 'id, lead_id, user_id'),
+    alleSeiten('lead_archive', 'id, bereits_kontaktiert, ergebnis, datum, user_id'),
+    namensListe()
+  ])
+
+  const zugewiesen = {}
+  for (const z of zuweisungen) (zugewiesen[z.lead_id] ||= []).push(z.user_id)
+
+  const anrufe = [
+    ...aktiv.map(l => ({
+      tag: berlinTag(l.datum),
+      kategorie: openingKategorie(l.ergebnis, !!l.wiedervorlage_datum),
+      personen: zugewiesen[l.id] || []
+    })),
+    ...archiv.filter(a => a.bereits_kontaktiert).map(a => ({
+      tag: berlinTag(a.datum),
+      kategorie: openingKategorie(a.ergebnis, false),
+      personen: a.user_id ? [a.user_id] : []
+    }))
+  ]
+
+  const leer = () => ({ einwahlen: 0, erreicht: 0, beratungsgespraech: 0, unterlagen: 0, keinInteresse: 0, nichtErreicht: 0, ungueltig: 0, ohneErgebnis: 0 })
+  const summe = leer()
+  const verlauf = {}
+  const proPerson = {}
+
+  const zaehle = (z, kategorie) => {
+    z.einwahlen++
+    z[kategorie]++
+    if (['beratungsgespraech', 'unterlagen', 'keinInteresse'].includes(kategorie)) z.erreicht++
   }
 
-  console.log('Hot Leads geladen:', allRecords.length, `(${hotLeadsPage} Seiten)`)
+  for (const a of anrufe) {
+    if (!imZeitraum(a.tag, zeitraum)) continue
+    if (personId && !a.personen.includes(personId)) continue
 
-  // Leads pro Closer (unabhängig vom Datumsfilter - ALLE Leads)
-  const leadsProCloserMap = {}
-  let totalLeadsCount = 0
-  if (isAdmin) {
-    for (const record of allRecords) {
-      // Closer-Name oder "Pool" für nicht zugewiesene Leads
-      const closerName = record.closer?.vor_nachname || 'Pool (nicht zugewiesen)'
-      // Frueher wurde hier auf Teilzeichenketten in Kleinbuchstaben geprueft
-      // ('abgeschlossen', 'closing'). Das ging bei jedem neuen Wert still
-      // daneben - 'Gewonnen' waere aus der Statistik gefallen, ohne Fehler.
-      const st = normalisiere(record.status)
+    zaehle(summe, a.kategorie)
+    eintragen(verlauf, a.tag, { count: 1 })
 
-      totalLeadsCount++
-
-      if (!leadsProCloserMap[closerName]) {
-        leadsProCloserMap[closerName] = {
-          gesamt: 0,
-          aktiv: 0,
-          imClosing: 0,
-          angebotVersendet: 0,
-          abgeschlossen: 0,
-          verloren: 0
-        }
-      }
-
-      leadsProCloserMap[closerName].gesamt++
-
-      if (st === STATUS.GEWONNEN) {
-        leadsProCloserMap[closerName].abgeschlossen++
-      } else if (IST_VERLOREN.includes(st)) {
-        leadsProCloserMap[closerName].verloren++
-      } else {
-        leadsProCloserMap[closerName].aktiv++
-        if (st === STATUS.IM_ABSCHLUSS) {
-          leadsProCloserMap[closerName].imClosing++
-        } else if (st === STATUS.ANGEBOT_VERSCHICKT || st === STATUS.ANGEBOT_ANGEFORDERT) {
-          leadsProCloserMap[closerName].angebotVersendet++
-        }
-      }
-    }
-    console.log('[Analytics] Leads pro Closer - Total:', totalLeadsCount, 'Closer:', Object.keys(leadsProCloserMap).length)
-  }
-
-  let gewonnen = 0
-  let verloren = 0
-  let angebotVersendet = 0
-  let offen = 0
-  let noShow = 0
-  let umsatzGesamt = 0
-  const zeitverlaufMap = {}
-  const perUserMap = {}
-
-  for (const record of allRecords) {
-    // Status auslesen und normalisieren
-    const status = normalisiere(record.status)
-
-    // Umsatz-Felder
-    const setup = parseCurrency(record.setup)
-    const retainer = parseCurrency(record.retainer)
-    const laufzeit = parseInt(record.laufzeit) || 6
-
-    // Datum-Felder
-    const kundeSeit = record.kunde_seit || null
-    const terminDatum = record.termin_beratungsgespraech || null
-
-    // Closer-Name
-    const closerName = record.closer?.vor_nachname || ''
-    const closerId = record.closer_id
-
-    // Prüfen ob es ein gewonnener Deal ist
-    const istGewonnen = status === STATUS.GEWONNEN
-
-    // Datum-Filter basierend auf relevantem Datum
-    const relevantDateStr = istGewonnen ? (kundeSeit || terminDatum) : terminDatum
-
-    if (startDateStr || endDateStr) {
-      if (relevantDateStr) {
-        const dateOnly = relevantDateStr.split('T')[0]
-        if (startDateStr && dateOnly < startDateStr) continue
-        if (endDateStr && dateOnly > endDateStr) continue
-      }
-    }
-
-    // User-Filter (wenn nicht Admin)
-    if (!isAdmin && userName) {
-      if (!closerName || !closerName.toLowerCase().includes(userName.toLowerCase())) continue
-    }
-
-    // Status kategorisieren
-    if (istGewonnen) {
-      gewonnen++
-      const dealWert = setup + (retainer * laufzeit)
-      umsatzGesamt += dealWert
-
-      // Zeitverlauf
-      const timelineDateStr = kundeSeit || terminDatum
-      if (timelineDateStr) {
-        const date = new Date(timelineDateStr)
-        if (!isNaN(date.getTime())) {
-          const dayKey = date.toISOString().split('T')[0]
-          const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-
-          if (!zeitverlaufMap[dayKey]) {
-            zeitverlaufMap[dayKey] = { count: 0, umsatz: 0 }
-          }
-          zeitverlaufMap[dayKey].count++
-          zeitverlaufMap[dayKey].umsatz += dealWert
-
-          if (!zeitverlaufMap[monthKey]) {
-            zeitverlaufMap[monthKey] = { count: 0, umsatz: 0 }
-          }
-          zeitverlaufMap[monthKey].count++
-          zeitverlaufMap[monthKey].umsatz += dealWert
-        }
-      }
-
-      // Per User Stats (Admin)
-      if (closerName && isAdmin) {
-        if (!perUserMap[closerName]) {
-          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, noShow: 0, umsatz: 0 }
-        }
-        perUserMap[closerName].gewonnen++
-        perUserMap[closerName].umsatz += dealWert
-      }
-    } else if (IST_VERLOREN.includes(status)) {
-      verloren++
-      if (closerName && isAdmin) {
-        if (!perUserMap[closerName]) {
-          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, noShow: 0, umsatz: 0 }
-        }
-        perUserMap[closerName].verloren++
-      }
-    } else if (status === STATUS.NICHT_ERSCHIENEN || status === STATUS.TERMIN_ABGESAGT) {
-      // Bisher zaehlte hier nur "Termin abgesagt". Der eigentliche No-Show -
-      // der Kunde erscheint nicht - fiel in den else-Zweig und wurde als
-      // "offen" gefuehrt. Die Kennzahl mass damit Absagen statt Nichterscheinen.
-      noShow++
-      if (closerName && isAdmin) {
-        if (!perUserMap[closerName]) {
-          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, noShow: 0, umsatz: 0 }
-        }
-        perUserMap[closerName].noShow = (perUserMap[closerName].noShow || 0) + 1
-      }
-    } else if (status === STATUS.ANGEBOT_VERSCHICKT || status === STATUS.ANGEBOT_ANGEFORDERT) {
-      angebotVersendet++
-      if (closerName && isAdmin) {
-        if (!perUserMap[closerName]) {
-          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, noShow: 0, umsatz: 0 }
-        }
-        perUserMap[closerName].offen++
-      }
-    } else {
-      offen++
-      if (closerName && isAdmin) {
-        if (!perUserMap[closerName]) {
-          perUserMap[closerName] = { gewonnen: 0, verloren: 0, offen: 0, noShow: 0, umsatz: 0 }
-        }
-        perUserMap[closerName].offen++
-      }
+    if (leitung) {
+      for (const p of a.personen) zaehle(proPerson[p] ||= { id: p, ...leer() }, a.kategorie)
     }
   }
-
-  // Closing Quote berechnen
-  const totalEntschieden = gewonnen + verloren
-  const closingQuote = totalEntschieden > 0 ? (gewonnen / totalEntschieden) * 100 : 0
-
-  // Durchschnittlicher Umsatz pro Deal
-  const umsatzDurchschnitt = gewonnen > 0 ? umsatzGesamt / gewonnen : 0
-
-  // Zeitverlauf formatieren
-  const zeitverlauf = formatZeitverlauf(zeitverlaufMap, startDate, endDate)
-
-  // Per User sortieren
-  const perUser = Object.entries(perUserMap)
-    .map(([name, stats]) => ({ name, ...stats }))
-    .sort((a, b) => b.umsatz - a.umsatz)
-
-  // Leads pro Closer sortieren (nach aktiven Leads)
-  const leadsProCloser = Object.entries(leadsProCloserMap)
-    .map(([name, stats]) => ({ name, ...stats }))
-    .sort((a, b) => b.aktiv - a.aktiv)
 
   return {
     summary: {
-      gewonnen,
-      verloren,
-      angebotVersendet,
-      noShow,
-      offen: offen + angebotVersendet,
-      closingQuote,
-      umsatzGesamt,
-      umsatzDurchschnitt
+      ...summe,
+      erreichQuote: quote(summe.erreicht, summe.einwahlen),
+      beratungsgespraechQuote: quote(summe.beratungsgespraech, summe.erreicht),
+      unterlagenQuote: quote(summe.unterlagen, summe.erreicht),
+      keinInteresseQuote: quote(summe.keinInteresse, summe.erreicht)
     },
-    zeitverlauf,
-    perUser,
+    zeitverlauf: formatZeitverlauf(verlauf, zeitraum),
+    perUser: Object.values(proPerson)
+      .map(p => ({ ...p, name: namen[p.id] || `User ${String(p.id).slice(0, 6)}` }))
+      .sort((a, b) => b.einwahlen - a.einwahlen)
+  }
+}
+
+// ==========================================
+// SETTING (Beratungsgespräch)
+// ==========================================
+//
+// Jeder Hot Lead mit einem Beratungstermin ist ein Gespräch des Setters.
+// Wie es ausging, steht im Status - mit einer Falle: "Nicht erschienen" und
+// "Termin abgesagt" gibt es für beide Termine. Hat der Lead schon einen
+// Abschlusstermin, ist der geplatzt, nicht das Beratungsgespräch.
+
+const CLOSING_STUFEN = [
+  STATUS.ABSCHLUSS_VEREINBART, STATUS.IM_ABSCHLUSS,
+  STATUS.ANGEBOT_ANGEFORDERT, STATUS.ANGEBOT_VERSCHICKT, STATUS.GEWONNEN
+]
+
+export function beratungsAusgang(lead, heute) {
+  const s = normalisiere(lead.status)
+  const abschlussTermin = !!lead.termin_abschlussgespraech
+
+  if (s === STATUS.BERATUNG_VEREINBART) {
+    const tag = berlinTag(lead.termin_beratungsgespraech)
+    return tag && tag < heute ? 'ohneAusgang' : 'anstehend'
+  }
+  if (!abschlussTermin && s === STATUS.NICHT_ERSCHIENEN) return 'noShow'
+  if (!abschlussTermin && s === STATUS.TERMIN_ABGESAGT) return 'abgesagt'
+  if (abschlussTermin || CLOSING_STUFEN.includes(s)) return 'uebergeben'
+  if (s === STATUS.WIRD_NACHGEFASST) return 'nachfassen'
+  if (IST_VERLOREN.includes(s)) return 'verloren'
+  if (s === STATUS.BERATUNG_GEFUEHRT) return 'gefuehrt'
+  return 'anstehend'
+}
+
+async function setterZahlen({ leitung, personId, zeitraum }) {
+  const [leads, namen] = await Promise.all([
+    alleSeiten('hot_leads', 'id, status, setter_id, termin_beratungsgespraech, termin_abschlussgespraech', q => q.not('termin_beratungsgespraech', 'is', null)),
+    namensListe()
+  ])
+  const heute = berlinTag(new Date().toISOString())
+
+  const leer = () => ({ termine: 0, stattgefunden: 0, uebergeben: 0, nachfassen: 0, verloren: 0, gefuehrt: 0, noShow: 0, abgesagt: 0, ohneAusgang: 0, anstehend: 0 })
+  const summe = leer()
+  const verlauf = {}
+  const proPerson = {}
+
+  const zaehle = (z, ausgang) => {
+    z.termine++
+    z[ausgang]++
+    if (['uebergeben', 'nachfassen', 'verloren', 'gefuehrt'].includes(ausgang)) z.stattgefunden++
+  }
+
+  for (const lead of leads) {
+    const tag = berlinTag(lead.termin_beratungsgespraech)
+    if (!imZeitraum(tag, zeitraum)) continue
+    if (personId && lead.setter_id !== personId) continue
+
+    const ausgang = beratungsAusgang(lead, heute)
+    zaehle(summe, ausgang)
+
+    const stattgefunden = ['uebergeben', 'nachfassen', 'verloren', 'gefuehrt'].includes(ausgang)
+    eintragen(verlauf, tag, {
+      count: 1,
+      stattgefunden: stattgefunden ? 1 : 0,
+      geplatzt: ausgang === 'noShow' || ausgang === 'abgesagt' ? 1 : 0,
+      offen: ausgang === 'anstehend' || ausgang === 'ohneAusgang' ? 1 : 0
+    })
+
+    if (leitung && lead.setter_id) {
+      zaehle(proPerson[lead.setter_id] ||= { id: lead.setter_id, ...leer() }, ausgang)
+    }
+  }
+
+  const mitQuoten = z => ({
+    ...z,
+    // Erschienen ist, wer zum Gespräch kam. Abgesagte Termine fehlen im
+    // Nenner - eine rechtzeitige Absage ist kein Nichterscheinen.
+    erscheinungsQuote: quote(z.stattgefunden, z.stattgefunden + z.noShow),
+    uebergabeQuote: quote(z.uebergeben, z.stattgefunden)
+  })
+
+  return {
+    summary: mitQuoten(summe),
+    zeitverlauf: formatZeitverlauf(verlauf, zeitraum),
+    perUser: Object.values(proPerson)
+      .map(p => mitQuoten({ ...p, name: namen[p.id] || `User ${String(p.id).slice(0, 6)}` }))
+      .sort((a, b) => b.termine - a.termine)
+  }
+}
+
+// ==========================================
+// CLOSING (Abschluss)
+// ==========================================
+//
+// Im Closing ist ein Lead, sobald ein Closer ihn hat oder ein
+// Abschlusstermin steht. Was noch beim Setter liegt, gehört nicht hierher:
+// Vorher zählte jeder Lead im System als "offen" im Closing - auch der
+// gerade erst gebuchte Beratungstermin - und jedes geplatzte
+// Beratungsgespräch als No-Show des Closers.
+
+export function closingAusgang(lead) {
+  const s = normalisiere(lead.status)
+  const abschlussTermin = !!lead.termin_abschlussgespraech
+  if (!lead.closer_id && !abschlussTermin) return null
+
+  if (s === STATUS.GEWONNEN) return 'gewonnen'
+  if (IST_VERLOREN.includes(s)) return 'verloren'
+  if (s === STATUS.NICHT_ERSCHIENEN || s === STATUS.TERMIN_ABGESAGT) {
+    return abschlussTermin ? 'noShow' : null
+  }
+  if (s === STATUS.ANGEBOT_ANGEFORDERT || s === STATUS.ANGEBOT_VERSCHICKT) return 'angebotVersendet'
+  if ([STATUS.ABSCHLUSS_VEREINBART, STATUS.IM_ABSCHLUSS, STATUS.WIRD_NACHGEFASST].includes(s)) return 'offen'
+  return null
+}
+
+/** Der Tag, an dem ein Closing-Ergebnis zählt. */
+function closingTag(lead, ausgang) {
+  const termin = lead.termin_abschlussgespraech || lead.termin_beratungsgespraech
+  return berlinTag(ausgang === 'gewonnen' ? (lead.kunde_seit || termin) : termin)
+}
+
+export function dealWert(lead) {
+  const setup = Number(lead.setup) || 0
+  const retainer = Number(lead.retainer) || 0
+  const laufzeit = parseInt(lead.laufzeit) || 6
+  return setup + retainer * laufzeit
+}
+
+async function closingZahlen({ leitung, personId, zeitraum }) {
+  const [leads, namen] = await Promise.all([
+    alleSeiten('hot_leads', 'id, status, closer_id, setup, retainer, laufzeit, kunde_seit, termin_beratungsgespraech, termin_abschlussgespraech'),
+    namensListe()
+  ])
+
+  const leer = () => ({ gewonnen: 0, verloren: 0, angebotVersendet: 0, noShow: 0, offen: 0, umsatz: 0 })
+  const summe = leer()
+  const verlauf = {}
+  const proPerson = {}
+
+  for (const lead of leads) {
+    const ausgang = closingAusgang(lead)
+    if (!ausgang) continue
+    const tag = closingTag(lead, ausgang)
+    if (!imZeitraum(tag, zeitraum)) continue
+    if (personId && lead.closer_id !== personId) continue
+
+    const wert = ausgang === 'gewonnen' ? dealWert(lead) : 0
+    const zaehle = z => { z[ausgang]++; z.umsatz += wert }
+    zaehle(summe)
+    if (ausgang === 'gewonnen') eintragen(verlauf, tag, { count: 1, umsatz: wert })
+
+    if (leitung && lead.closer_id) zaehle(proPerson[lead.closer_id] ||= { id: lead.closer_id, ...leer() })
+  }
+
+  const entschieden = summe.gewonnen + summe.verloren
+
+  // Die Last je Closer: alles, was jemandem gehört, unabhängig vom Zeitraum.
+  let leadsProCloser = []
+  if (leitung) {
+    const last = {}
+    for (const lead of leads) {
+      const name = lead.closer_id ? (namen[lead.closer_id] || 'Unbekannt') : 'Pool (nicht zugewiesen)'
+      const z = last[name] ||= { name, gesamt: 0, aktiv: 0, imClosing: 0, angebotVersendet: 0, abgeschlossen: 0, verloren: 0 }
+      const s = normalisiere(lead.status)
+      z.gesamt++
+      if (s === STATUS.GEWONNEN) z.abgeschlossen++
+      else if (IST_VERLOREN.includes(s)) z.verloren++
+      else {
+        z.aktiv++
+        if (s === STATUS.IM_ABSCHLUSS) z.imClosing++
+        else if (s === STATUS.ANGEBOT_VERSCHICKT || s === STATUS.ANGEBOT_ANGEFORDERT) z.angebotVersendet++
+      }
+    }
+    leadsProCloser = Object.values(last).sort((a, b) => b.aktiv - a.aktiv)
+  }
+
+  return {
+    summary: {
+      gewonnen: summe.gewonnen,
+      verloren: summe.verloren,
+      angebotVersendet: summe.angebotVersendet,
+      noShow: summe.noShow,
+      offen: summe.offen + summe.angebotVersendet,
+      closingQuote: quote(summe.gewonnen, entschieden),
+      umsatzGesamt: summe.umsatz,
+      umsatzDurchschnitt: summe.gewonnen > 0 ? summe.umsatz / summe.gewonnen : 0
+    },
+    zeitverlauf: formatZeitverlauf(verlauf, zeitraum),
+    perUser: Object.values(proPerson)
+      .map(p => ({ ...p, offen: p.offen + p.angebotVersendet, name: namen[p.id] || 'Unbekannt' }))
+      .sort((a, b) => b.umsatz - a.umsatz),
     leadsProCloser
   }
 }
 
 // ==========================================
-// OPENING STATS (Leads aus der Kaltakquise)
-//
-// Achtung bei der Benennung: Diese Zahlen gehoeren zum OPENER, nicht zur
-// Setting-Stufe des neuen Prozesses. Der Parameter heisst aus
-// Kompatibilitaetsgruenden weiter 'setting'; gemeint ist das Opening.
+// Zeitverlauf
 // ==========================================
-async function getSettingStats({ isAdmin, userEmail, userName, filterUserName, startDate, endDate, startDateStr, endDateStr }) {
-  // User-IDs ermitteln falls nötig
-  let userRecordId = null
-  if (!isAdmin && userName) {
-    userRecordId = await getUserIdByName(userName)
+//
+// Eingabe: Zähler je Berliner Kalendertag. Ausgabe: Tage, Wochen oder
+// Monate - je nach Länge des Zeitraums. Gerechnet wird nur mit
+// Datums-Zeichenketten, damit die Zeitzone des Servers keine Rolle spielt.
+
+const tagPlus = (tag, n) => {
+  const d = new Date(`${tag}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+const alsDatum = tag => new Date(`${tag}T12:00:00Z`)
+
+function summiere(verlauf, tage) {
+  const z = {}
+  for (const t of tage) {
+    for (const [k, v] of Object.entries(verlauf[t] || {})) z[k] = (z[k] || 0) + v
   }
-
-  let filterUserRecordId = null
-  if (isAdmin && filterUserName) {
-    filterUserRecordId = await getUserIdByName(filterUserName)
-  }
-
-  // User-Map laden
-  const userMap = await loadUserMap()
-
-  // Aktive Leads laden - NUR kontaktierte (bereits_kontaktiert = true)
-  // Pagination um alle Daten zu laden (Supabase Limit = 1000)
-  let activeRecords = []
-  let page = 0
-  const pageSize = 1000
-
-  while (true) {
-    const { data, error } = await supabase
-      .from('leads')
-      .select('id, bereits_kontaktiert, ergebnis, datum, wiedervorlage_datum')
-      .eq('bereits_kontaktiert', true)
-      .range(page * pageSize, (page + 1) * pageSize - 1)
-
-    if (error) {
-      throw new Error(error.message)
-    }
-
-    if (!data || data.length === 0) break
-
-    activeRecords = activeRecords.concat(data)
-    page++
-
-    // Wenn weniger als pageSize zurückkommt, sind wir fertig
-    if (data.length < pageSize) break
-  }
-
-  // Lead Assignments laden MIT PAGINATION (Supabase Default-Limit ist 1000)
-  let allAssignments = []
-  let assignPage = 0
-  const assignPageSize = 1000
-
-  while (true) {
-    const { data: assignData, error: assignError } = await supabase
-      .from('lead_assignments')
-      .select('lead_id, user_id')
-      .range(assignPage * assignPageSize, (assignPage + 1) * assignPageSize - 1)
-
-    if (assignError) {
-      console.error('Assignment Load Error:', assignError)
-      break
-    }
-
-    if (!assignData || assignData.length === 0) break
-
-    allAssignments = allAssignments.concat(assignData)
-    assignPage++
-
-    if (assignData.length < assignPageSize) break
-  }
-
-  console.log(`Analytics: ${allAssignments.length} Lead-Assignments geladen (${assignPage} Seiten)`)
-
-  // Assignments zu Map
-  const assignmentMap = {}
-  allAssignments.forEach(a => {
-    if (!assignmentMap[a.lead_id]) {
-      assignmentMap[a.lead_id] = []
-    }
-    assignmentMap[a.lead_id].push(a.user_id)
-  })
-
-  // Archiv-Leads laden (auch mit Pagination)
-  // Hinweis: lead_archive hat KEIN wiedervorlage_datum Feld
-  let archivRecords = []
-  let archivPage = 0
-
-  while (true) {
-    const { data, error } = await supabase
-      .from('lead_archive')
-      .select('id, bereits_kontaktiert, ergebnis, datum, user_id')
-      .range(archivPage * pageSize, (archivPage + 1) * pageSize - 1)
-
-    if (error) {
-      console.error('Archiv Error:', error)
-      break
-    }
-
-    if (!data || data.length === 0) break
-
-    archivRecords = archivRecords.concat(data)
-    archivPage++
-
-    if (data.length < pageSize) break
-  }
-
-  // Debug-Logging
-  console.log(`Analytics: ${activeRecords.length} kontaktierte Leads geladen (${page} Seiten), ${archivRecords.length} Archiv-Einträge (${archivPage} Seiten)`)
-  console.log(`Analytics: ${allAssignments.length} Lead-Assignments geladen, isAdmin=${isAdmin}`)
-
-  // Helper: Boolean-Wert flexibel prüfen (jeder truthy Wert)
-  const isTruthy = (val) => !!val
-
-  // Daten normalisieren - alle activeRecords sind bereits kontaktiert (durch Filter)
-  const normalizedActive = (activeRecords || []).map(record => ({
-    source: 'active',
-    id: record.id,
-    kontaktiert: true,
-    ergebnis: record.ergebnis || '',
-    datum: record.datum || null,
-    wiedervorlageDatum: record.wiedervorlage_datum || null,
-    zugewiesenAn: assignmentMap[record.id] || []
-  }))
-
-  const normalizedArchiv = (archivRecords || []).map(record => ({
-    source: 'archiv',
-    id: record.id,
-    kontaktiert: isTruthy(record.bereits_kontaktiert),
-    ergebnis: record.ergebnis || '',
-    datum: record.datum || null,
-    wiedervorlageDatum: null, // lead_archive hat kein wiedervorlage_datum
-    zugewiesenAn: record.user_id ? [record.user_id] : []
-  }))
-
-  const allRecords = [...normalizedActive, ...normalizedArchiv]
-
-  // Stats berechnen
-  let einwahlen = 0
-  let erreicht = 0
-  let beratungsgespraech = 0
-  let unterlagen = 0
-  let keinInteresse = 0
-  let nichtErreicht = 0
-  const zeitverlaufMap = {}
-  const perUserMap = {}
-
-  // Debug counters
-  let recordsWithAssignments = 0
-  let recordsWithoutAssignments = 0
-  let activeCount = 0
-  let archivCount = 0
-
-  for (const record of allRecords) {
-    if (!record.kontaktiert) continue
-
-    const ergebnis = (record.ergebnis || '').toLowerCase()
-    const datumRaw = record.datum
-    const zugewiesenAn = record.zugewiesenAn
-    const hatWiedervorlage = !!record.wiedervorlageDatum
-
-    // Datum-Filter
-    if (startDateStr || endDateStr) {
-      if (!datumRaw) continue
-      const datum = datumRaw.split('T')[0]
-      if (startDateStr && datum < startDateStr) continue
-      if (endDateStr && datum > endDateStr) continue
-    }
-
-    // User-Filter
-    if (!isAdmin && userRecordId) {
-      if (!zugewiesenAn.includes(userRecordId)) continue
-    }
-
-    if (isAdmin && filterUserRecordId) {
-      if (!zugewiesenAn.includes(filterUserRecordId)) continue
-    }
-
-    einwahlen++
-
-    // Debug: Track assignments and source
-    if (record.source === 'active') activeCount++
-    else archivCount++
-
-    if (zugewiesenAn && zugewiesenAn.length > 0) {
-      recordsWithAssignments++
-    } else {
-      recordsWithoutAssignments++
-    }
-
-    // Ergebnis kategorisieren
-    const istNichtErreicht = ergebnis.includes('nicht erreicht')
-    const istBeratungsgespraech = ergebnis.includes('beratungsgespräch') || ergebnis.includes('beratungsgespraech') || ergebnis.includes('termin')
-    // Unterlagen: auch wenn wiedervorlage_datum gesetzt ist
-    const istUnterlagen = ergebnis.includes('unterlage') || ergebnis.includes('wiedervorlage') || hatWiedervorlage
-    const istKeinInteresse = ergebnis.includes('kein interesse') || ergebnis.includes('absage')
-
-    if (istNichtErreicht) {
-      nichtErreicht++
-    } else {
-      erreicht++
-      if (istBeratungsgespraech) beratungsgespraech++
-      else if (istUnterlagen) unterlagen++
-      else if (istKeinInteresse) keinInteresse++
-    }
-
-    // Zeitverlauf
-    if (datumRaw) {
-      const date = new Date(datumRaw)
-      const dayKey = date.toISOString().split('T')[0]
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-
-      if (!zeitverlaufMap[dayKey]) {
-        zeitverlaufMap[dayKey] = { count: 0 }
-      }
-      zeitverlaufMap[dayKey].count++
-
-      if (!zeitverlaufMap[monthKey]) {
-        zeitverlaufMap[monthKey] = { count: 0 }
-      }
-      zeitverlaufMap[monthKey].count++
-    }
-
-    // Per User Stats (für Admins)
-    if (isAdmin && zugewiesenAn && zugewiesenAn.length > 0) {
-      const oderId = zugewiesenAn[0]
-      if (!perUserMap[oderId]) {
-        perUserMap[oderId] = {
-          id: oderId,
-          einwahlen: 0,
-          erreicht: 0,
-          beratungsgespraech: 0,
-          unterlagen: 0,
-          keinInteresse: 0,
-          nichtErreicht: 0
-        }
-      }
-      perUserMap[oderId].einwahlen++
-
-      if (istNichtErreicht) {
-        perUserMap[oderId].nichtErreicht++
-      } else {
-        perUserMap[oderId].erreicht++
-        if (istBeratungsgespraech) perUserMap[oderId].beratungsgespraech++
-        else if (istUnterlagen) perUserMap[oderId].unterlagen++
-        else if (istKeinInteresse) perUserMap[oderId].keinInteresse++
-      }
-    }
-  }
-
-  // Quoten berechnen
-  const erreichQuote = einwahlen > 0 ? (erreicht / einwahlen) * 100 : 0
-  const beratungsgespraechQuote = erreicht > 0 ? (beratungsgespraech / erreicht) * 100 : 0
-  const unterlagenQuote = erreicht > 0 ? (unterlagen / erreicht) * 100 : 0
-  const keinInteresseQuote = erreicht > 0 ? (keinInteresse / erreicht) * 100 : 0
-
-  // Zeitverlauf formatieren
-  const zeitverlauf = formatZeitverlauf(zeitverlaufMap, startDate, endDate)
-
-  // Per User mit Namen
-  const perUser = Object.values(perUserMap)
-    .map(stats => ({
-      ...stats,
-      name: userMap[stats.id] || `User ${String(stats.id).substring(0, 6)}`
-    }))
-    .sort((a, b) => b.einwahlen - a.einwahlen)
-
-  console.log(`Analytics: perUser hat ${perUser.length} Einträge, unterlagen=${unterlagen}`)
-  console.log(`Analytics: Von ${einwahlen} Einwahlen: ${activeCount} aktiv, ${archivCount} archiv`)
-  console.log(`Analytics: ${recordsWithAssignments} mit Assignments, ${recordsWithoutAssignments} ohne Assignments`)
-
-  return {
-    summary: {
-      einwahlen,
-      erreicht,
-      beratungsgespraech,
-      unterlagen,
-      keinInteresse,
-      nichtErreicht,
-      erreichQuote,
-      beratungsgespraechQuote,
-      unterlagenQuote,
-      keinInteresseQuote
-    },
-    zeitverlauf,
-    perUser
-  }
+  return { count: 0, umsatz: 0, ...z }
 }
 
-// ==========================================
-// HELPER FUNCTIONS
-// ==========================================
+function formatZeitverlauf(verlauf, { von, bis }) {
+  const heute = berlinTag(new Date().toISOString())
+  const vorhandene = Object.keys(verlauf).sort()
+  const ende = bis || heute
+  // Ohne Startdatum ("Gesamt") ab dem ersten Eintrag - höchstens zwei Jahre,
+  // sonst wird der Monatsverlauf unlesbar.
+  const zweiJahre = tagPlus(ende, -730)
+  let start = von || vorhandene[0] || tagPlus(ende, -180)
+  if (!von && start < zweiJahre) start = zweiJahre
+  if (start > ende) return []
 
-function formatZeitverlauf(map, startDate, endDate) {
-  const result = []
-  const now = new Date()
+  const tageZwischen = (a, b) => {
+    const liste = []
+    for (let t = a; t <= b; t = tagPlus(t, 1)) liste.push(t)
+    return liste
+  }
+  const dauer = Math.round((alsDatum(ende) - alsDatum(start)) / 86400000) + 1
+  const ergebnis = []
 
-  const start = startDate || new Date(now.getFullYear(), now.getMonth() - 5, 1)
-  const end = endDate || now
-
-  const diffDays = Math.ceil((end - start) / (1000 * 60 * 60 * 24))
-
-  if (diffDays <= 1) {
-    const dayKey = start.toISOString().split('T')[0]
-    const label = start.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'short' })
-    result.push({
-      period: dayKey,
-      label,
-      count: map[dayKey]?.count || 0,
-      umsatz: map[dayKey]?.umsatz || 0
-    })
-  } else if (diffDays <= 14) {
-    const currentDate = new Date(start)
-    while (currentDate <= end) {
-      const dayKey = currentDate.toISOString().split('T')[0]
-      const label = currentDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric' })
-
-      result.push({
-        period: dayKey,
-        label,
-        count: map[dayKey]?.count || 0,
-        umsatz: map[dayKey]?.umsatz || 0
+  if (dauer <= 14) {
+    for (const t of tageZwischen(start, ende)) {
+      ergebnis.push({
+        period: t,
+        label: alsDatum(t).toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', timeZone: 'UTC', ...(dauer === 1 ? { month: 'short' } : {}) }),
+        ...summiere(verlauf, [t])
       })
-
-      currentDate.setDate(currentDate.getDate() + 1)
     }
-  } else if (diffDays <= 60) {
-    const currentDate = new Date(start)
-    const dayOfWeek = currentDate.getDay()
-    const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek
-    currentDate.setDate(currentDate.getDate() + diff)
-
-    while (currentDate <= end) {
-      const weekKey = `${currentDate.getFullYear()}-W${getWeekNumber(currentDate)}`
-      const label = `KW ${getWeekNumber(currentDate)}`
-
-      let weekCount = 0
-      let weekUmsatz = 0
-      const tempDate = new Date(currentDate)
-      for (let i = 0; i < 7; i++) {
-        const dayKey = tempDate.toISOString().split('T')[0]
-        weekCount += map[dayKey]?.count || 0
-        weekUmsatz += map[dayKey]?.umsatz || 0
-        tempDate.setDate(tempDate.getDate() + 1)
-      }
-
-      result.push({
-        period: weekKey,
-        label,
-        count: weekCount,
-        umsatz: weekUmsatz
-      })
-
-      currentDate.setDate(currentDate.getDate() + 7)
+  } else if (dauer <= 62) {
+    // Wochen ab Montag. Die erste und letzte Woche werden auf den Zeitraum
+    // gekürzt, damit nichts ausserhalb mitgezählt wird.
+    let t = start
+    while (t <= ende) {
+      const wochentag = (alsDatum(t).getUTCDay() + 6) % 7
+      const sonntag = tagPlus(t, 6 - wochentag)
+      const bisTag = sonntag < ende ? sonntag : ende
+      ergebnis.push({ period: `KW${kalenderwoche(t)}-${t}`, label: `KW ${kalenderwoche(t)}`, ...summiere(verlauf, tageZwischen(t, bisTag)) })
+      t = tagPlus(bisTag, 1)
     }
   } else {
-    const currentDate = new Date(start.getFullYear(), start.getMonth(), 1)
-
-    while (currentDate <= end) {
-      const monthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
-      const label = currentDate.toLocaleDateString('de-DE', { month: 'short', year: '2-digit' })
-
-      result.push({
-        period: monthKey,
-        label,
-        count: map[monthKey]?.count || 0,
-        umsatz: map[monthKey]?.umsatz || 0
+    let monat = start.slice(0, 7)
+    while (monat <= ende.slice(0, 7)) {
+      const tage = Object.keys(verlauf).filter(t => t.startsWith(monat) && t >= start && t <= ende)
+      ergebnis.push({
+        period: monat,
+        label: alsDatum(`${monat}-01`).toLocaleDateString('de-DE', { month: 'short', year: '2-digit', timeZone: 'UTC' }),
+        ...summiere(verlauf, tage)
       })
-
-      currentDate.setMonth(currentDate.getMonth() + 1)
+      const [j, m] = monat.split('-').map(Number)
+      monat = m === 12 ? `${j + 1}-01` : `${j}-${String(m + 1).padStart(2, '0')}`
     }
   }
-
-  return result
+  return ergebnis
 }
 
-function getWeekNumber(date) {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
-  const dayNum = d.getUTCDay() || 7
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum)
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
-  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7)
-}
-
-function parseCurrency(value) {
-  if (!value) return 0
-  if (typeof value === 'number') return value
-
-  let cleaned = String(value)
-    .replace(/[€$£¥]/g, '')
-    .replace(/\s/g, '')
-    .trim()
-
-  if (cleaned.includes(',') && cleaned.includes('.')) {
-    if (cleaned.lastIndexOf(',') < cleaned.lastIndexOf('.')) {
-      cleaned = cleaned.replace(/,/g, '')
-    } else {
-      cleaned = cleaned.replace(/\./g, '').replace(',', '.')
-    }
-  } else if (cleaned.includes(',') && !cleaned.includes('.')) {
-    const parts = cleaned.split(',')
-    if (parts[parts.length - 1].length === 2) {
-      cleaned = cleaned.replace(',', '.')
-    } else {
-      cleaned = cleaned.replace(/,/g, '')
-    }
-  }
-
-  const result = parseFloat(cleaned)
-  return isNaN(result) ? 0 : result
+function kalenderwoche(tag) {
+  const d = alsDatum(tag)
+  const wochentag = d.getUTCDay() || 7
+  d.setUTCDate(d.getUTCDate() + 4 - wochentag)
+  const jahresbeginn = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
+  return Math.ceil((((d - jahresbeginn) / 86400000) + 1) / 7)
 }

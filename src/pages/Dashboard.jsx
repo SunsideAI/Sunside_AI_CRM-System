@@ -39,7 +39,12 @@ import {
   Sparkles,
   Lightbulb,
   TrendingUp as TrendUp,
-  GitCompare
+  GitCompare,
+  CalendarCheck,
+  CalendarX,
+  Send,
+  Hourglass,
+  UserCheck
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import Verlauf from '../components/Verlauf'
@@ -129,15 +134,15 @@ function computeDateRange(rangeKey) {
       }
     case '7days':
       startDate = new Date(today)
-      startDate.setDate(startDate.getDate() - 7)
+      startDate.setDate(startDate.getDate() - 6)
       break
     case '14days':
       startDate = new Date(today)
-      startDate.setDate(startDate.getDate() - 14)
+      startDate.setDate(startDate.getDate() - 13)
       break
     case '30days':
       startDate = new Date(today)
-      startDate.setDate(startDate.getDate() - 30)
+      startDate.setDate(startDate.getDate() - 29)
       break
     case 'thisMonth':
       startDate = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -228,8 +233,13 @@ function Dashboard() {
   const isColdcaller = () => istOpener(user?.rolle)
   const isCloser = () => hasRole('Closer')
   const isAdmin = () => hasRole('Admin')
+  const isSetterNutzer = () => istSetter(user?.rolle)
 
+  // Jede Stufe sieht ihre eigene Auswertung, die Leitung alle. Wer zwei
+  // Rollen traegt, bekommt beide Reiter. Der Server prueft dasselbe noch
+  // einmal - die Reiter sind nur die Bequemlichkeit.
   const showOpeningTab = isColdcaller() || isAdmin()
+  const showSettingTab = isSetterNutzer() || isAdmin()
   const showClosingTab = isCloser() || isAdmin()
 
   return (
@@ -241,6 +251,7 @@ function Dashboard() {
           <p className="mt-2 text-body-md text-on-surface-variant">
             {activeView === 'uebersicht' && 'Hier ist dein Überblick für heute.'}
             {activeView === 'opening' && 'Opening Performance-Analyse'}
+            {activeView === 'setting' && 'Setting Performance-Analyse'}
             {activeView === 'closing' && 'Closing Performance-Analyse'}
           </p>
         </div>
@@ -274,6 +285,20 @@ function Dashboard() {
                 <Phone className="h-4 w-4" />
                 <span className="hidden sm:inline">Opening</span>
                 <span className="sm:hidden">Akquise</span>
+              </button>
+            )}
+
+            {showSettingTab && (
+              <button
+                onClick={() => setActiveView('setting')}
+                className={`umschalter-knopf gap-2 ${
+                  activeView === 'setting'
+                    ? 'aktiv'
+                    : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+                }`}
+              >
+                <CalendarCheck className="h-4 w-4" />
+                Setting
               </button>
             )}
 
@@ -312,6 +337,9 @@ function Dashboard() {
       )}
       {activeView === 'opening' && (
         <OpeningAnalytics user={user} isAdmin={isAdmin} meldeAktualisieren={meldeAktualisieren} />
+      )}
+      {activeView === 'setting' && showSettingTab && (
+        <SettingAnalytics user={user} isAdmin={isAdmin} meldeAktualisieren={meldeAktualisieren} />
       )}
       {activeView === 'closing' && (
         <ClosingAnalytics user={user} isAdmin={isAdmin} meldeAktualisieren={meldeAktualisieren} />
@@ -1272,12 +1300,12 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
   // Cache Keys
   const getCacheKey = () => {
     const userPart = isAdmin() ? `admin_${selectedUser}` : (user?.vor_nachname || 'user')
-    return `dashboard_opening_${dateRange}_${userPart}`
+    return `dashboard_v2_opening_${dateRange}_${userPart}`
   }
 
   const getCompareCacheKey = () => {
     const userPart = isAdmin() ? `admin_${selectedUser}` : (user?.vor_nachname || 'user')
-    return `dashboard_opening_compare_${compareDateRange}_${userPart}`
+    return `dashboard_v2_opening_compare_${compareDateRange}_${userPart}`
   }
 
   // Prüfen ob Zeiträume identisch sind
@@ -1322,14 +1350,9 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
       setError(null)
 
       const { startDate, endDate } = computeDateRange(dateRange)
-      const userEmail = user?.email_geschaeftlich || user?.email
-      const userName = user?.vor_nachname
 
       const params = new URLSearchParams({
-        type: 'setting',
-        admin: isAdmin().toString(),
-        ...(userEmail && !isAdmin() && { email: userEmail }),
-        ...(userName && !isAdmin() && { userName }),
+        type: 'opening',
         ...(isAdmin() && selectedUser !== 'all' && { filterUserName: selectedUser }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate })
@@ -1385,14 +1408,9 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
     setCompareLoading(true)
     try {
       const { startDate, endDate } = computeDateRange(compareDateRange)
-      const userEmail = user?.email_geschaeftlich || user?.email
-      const userName = user?.vor_nachname
 
       const params = new URLSearchParams({
-        type: 'setting',
-        admin: isAdmin().toString(),
-        ...(userEmail && !isAdmin() && { email: userEmail }),
-        ...(userName && !isAdmin() && { userName }),
+        type: 'opening',
         ...(isAdmin() && selectedUser !== 'all' && { filterUserName: selectedUser }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate })
@@ -1679,7 +1697,9 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
             />
             <Kennzahl
               label="Nicht erreicht" value={stats.summary?.nichtErreicht || 0}
-              subtitle="niemand am Apparat"
+              subtitle={(stats.summary?.ungueltig || 0) > 0
+                ? `dazu ${stats.summary.ungueltig} ungültige Nummern`
+                : 'niemand am Apparat'}
               icon={PhoneOff} color="neutral"
             />
             <Kennzahl
@@ -2116,6 +2136,384 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
 }
 
 // ==========================================
+// SETTING ANALYTICS
+// ==========================================
+//
+// Die mittlere Stufe: das Beratungsgespräch. Gezählt wird je gelegtem
+// Beratungstermin, datiert auf den Termin. Die Frage an diese Seite ist
+// nicht "wie viel Umsatz", sondern: Kommen die Leute, und wie viele davon
+// gehen weiter ins Abschlussgespräch?
+
+const SETTING_AUSGAENGE = [
+  { key: 'uebergeben', name: 'An Closing übergeben', farbe: STATUS_FARBE.gut },
+  { key: 'nachfassen', name: 'Wird nachgefasst',     farbe: REIHE[1] },
+  { key: 'gefuehrt',   name: 'Geführt, Schritt offen', farbe: REIHE[3] },
+  { key: 'verloren',   name: 'Verloren',             farbe: STATUS_FARBE.schlecht },
+  { key: 'noShow',     name: 'Nicht erschienen',     farbe: STATUS_FARBE.warnung },
+  { key: 'abgesagt',   name: 'Abgesagt',             farbe: STATUS_FARBE.neutral },
+  { key: 'ohneAusgang', name: 'Ausgang nicht eingetragen', farbe: '#C9C6D0' },
+  { key: 'anstehend',  name: 'Anstehend',            farbe: REIHE[4] }
+]
+
+const TOOLTIP_STIL = { backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }
+
+function SettingAnalytics({ user, isAdmin, meldeAktualisieren }) {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [stats, setStats] = useState(null)
+  const [dateRange, setDateRange] = useState('30days')
+  const [selectedUser, setSelectedUser] = useState('all')
+  const [setterListe, setSetterListe] = useState([])
+  const [compareMode, setCompareMode] = useState(false)
+  const [compareDateRange, setCompareDateRange] = useState('3months')
+  const [compareStats, setCompareStats] = useState(null)
+  const [compareLoading, setCompareLoading] = useState(false)
+
+  const isIdenticalPeriod = dateRange === compareDateRange
+  const wer = () => (isAdmin() ? `admin_${selectedUser}` : (user?.id || 'user'))
+
+  const laden = async (bereich, forceRefresh) => {
+    const cacheKey = `dashboard_v2_setting_${bereich}_${wer()}`
+    const cached = getCache(cacheKey)
+    if (cached && !forceRefresh) return cached
+
+    const { startDate, endDate } = computeDateRange(bereich)
+    const params = new URLSearchParams({
+      type: 'setter',
+      ...(isAdmin() && selectedUser !== 'all' && { filterUserId: selectedUser }),
+      ...(startDate && { startDate }),
+      ...(endDate && { endDate })
+    })
+    const res = await fetch(`/.netlify/functions/analytics?${params}`)
+    if (!res.ok) throw new Error('Fehler beim Laden')
+    const data = await res.json()
+    setCache(cacheKey, data)
+    return data
+  }
+
+  const loadStats = async (forceRefresh = false) => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await laden(dateRange, forceRefresh)
+      setStats(data)
+      if (isAdmin() && selectedUser === 'all') setSetterListe(data.perUser || [])
+    } catch (err) {
+      console.error('Setting Analytics Error:', err)
+      setError('Fehler beim Laden der Analytics')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadCompareStats = async (forceRefresh = false) => {
+    if (isIdenticalPeriod) { setCompareStats(null); return }
+    setCompareLoading(true)
+    try {
+      setCompareStats(await laden(compareDateRange, forceRefresh))
+    } catch (err) {
+      console.error('Compare Stats Error:', err)
+    } finally {
+      setCompareLoading(false)
+    }
+  }
+
+  useEffect(() => { loadStats() }, [dateRange, selectedUser])
+
+  useEffect(() => {
+    if (compareMode && SMART_COMPARE_DEFAULTS[dateRange]) {
+      const suggested = SMART_COMPARE_DEFAULTS[dateRange]
+      if (suggested !== compareDateRange && suggested !== dateRange) setCompareDateRange(suggested)
+    }
+  }, [dateRange])
+
+  useEffect(() => {
+    if (compareMode && !isIdenticalPeriod) loadCompareStats()
+    else setCompareStats(null)
+  }, [compareMode, compareDateRange, dateRange, selectedUser])
+
+  // Der Aktualisieren-Knopf steht in der Kopfzeile der Seite.
+  useEffect(() => {
+    meldeAktualisieren?.(() => Promise.all([
+      loadStats(true),
+      compareMode ? loadCompareStats(true) : null
+    ]))
+  })
+
+  const getComparison = (currentValue, compareValue, inverted = false) => {
+    if (!compareMode || compareStats === null || compareValue === undefined) return null
+    const diff = currentValue - compareValue
+    const percent = compareValue > 0 ? (diff / compareValue) * 100 : (currentValue > 0 ? 100 : 0)
+    return { diff, percent, inverted }
+  }
+
+  const formatPercent = (value) => `${(value || 0).toFixed(1)}%`
+  const z = stats?.summary || {}
+  const vergleich = (key, inverted = false) =>
+    <Vergleich {...(getComparison(z[key] || 0, compareStats?.summary?.[key], inverted) || {})} inverted={inverted} />
+
+  const verteilung = SETTING_AUSGAENGE
+    .map(a => ({ ...a, value: z[a.key] || 0 }))
+    .filter(a => a.value > 0)
+
+  const gewaehlterName = setterListe.find(s => s.id === selectedUser)?.name
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <p className="text-body-sm text-on-surface-variant">
+          {isAdmin()
+            ? (selectedUser === 'all' ? 'Übersicht aller Setter' : `Performance: ${gewaehlterName || 'Setter'}`)
+            : 'Deine Setting-Performance'}
+        </p>
+
+        <div className="flex flex-wrap items-center gap-3">
+          {isAdmin() && setterListe.length > 0 && (
+            <select
+              value={selectedUser}
+              onChange={(e) => setSelectedUser(e.target.value)}
+              className="select-field w-auto min-w-[160px]"
+              aria-label="Setter wählen"
+            >
+              <option value="all">Alle Setter</option>
+              {setterListe.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          )}
+
+          <select
+            value={dateRange}
+            onChange={(e) => setDateRange(e.target.value)}
+            className="select-field w-auto min-w-[140px]"
+            aria-label="Zeitraum"
+          >
+            <optgroup label="Tage">
+              <option value="today">Heute</option>
+              <option value="yesterday">Gestern</option>
+              <option value="7days">Letzte 7 Tage</option>
+              <option value="14days">Letzte 14 Tage</option>
+              <option value="30days">Letzte 30 Tage</option>
+            </optgroup>
+            <optgroup label="Wochen">
+              <option value="thisWeek">Diese Woche</option>
+              <option value="lastWeek">Letzte Woche</option>
+            </optgroup>
+            <optgroup label="Monate">
+              <option value="thisMonth">Dieser Monat</option>
+              <option value="lastMonth">Letzter Monat</option>
+              <option value="3months">Letzte 3 Monate</option>
+              <option value="year">Letztes Jahr</option>
+            </optgroup>
+            <optgroup label="Gesamt">
+              <option value="all">Gesamter Zeitraum</option>
+            </optgroup>
+          </select>
+
+          <button
+            onClick={() => setCompareMode(!compareMode)}
+            aria-label="Zeiträume vergleichen"
+            title="Zeiträume vergleichen"
+            className={`kopf-knopf kopf-knopf-symbol ${compareMode ? 'bg-primary text-white hover:bg-primary' : ''}`}
+          >
+            <GitCompare className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {compareMode && (
+        <div className={`flex flex-wrap items-center gap-3 p-4 rounded-lg border ${
+          isIdenticalPeriod ? 'bg-warning-container/30 border-warning/30' : 'bg-primary-fixed/30 border-primary/20'
+        }`}>
+          <GitCompare className={`h-5 w-5 ${isIdenticalPeriod ? 'text-warning' : 'text-primary'}`} />
+          <span className="text-label-md text-on-surface">Vergleiche mit:</span>
+          <select
+            value={compareDateRange}
+            onChange={(e) => setCompareDateRange(e.target.value)}
+            className="select-field w-auto min-w-[160px]"
+          >
+            {Object.entries(DATE_RANGE_LABELS)
+              .filter(([key]) => key !== dateRange)
+              .map(([key, label]) => <option key={key} value={key}>{label}</option>)}
+          </select>
+          {compareLoading && <Loader2 className="h-4 w-4 animate-spin text-primary" />}
+          {compareStats && !isIdenticalPeriod && (
+            <span className="text-label-sm text-outline ml-auto">
+              {DATE_RANGE_LABELS[compareDateRange]}: {compareStats.summary?.termine || 0} Beratungstermine
+            </span>
+          )}
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-error-container text-error px-4 py-3 rounded-lg">{error}</div>
+      )}
+
+      {loading && !stats ? (
+        <div className="card p-6">
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
+            <p className="text-on-surface-variant">Analytics werden geladen...</p>
+          </div>
+        </div>
+      ) : stats && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <HeroKennzahl
+              label="Beratungstermine"
+              value={z.termine || 0}
+              subtitle={DATE_RANGE_LABELS[dateRange]}
+              icon={Calendar}
+              laedt={loading}
+              vergleich={compareStats
+                ? <Vergleich hell {...(getComparison(z.termine || 0, compareStats?.summary?.termine) || {})} />
+                : null}
+            />
+            <Kennzahl
+              label="Stattgefunden" value={z.stattgefunden || 0}
+              subtitle={`Erscheinungsquote ${formatPercent(z.erscheinungsQuote)}`}
+              icon={UserCheck} color="neutral" laedt={loading}
+              vergleich={vergleich('stattgefunden')}
+            />
+            <Kennzahl
+              label="An Closing übergeben" value={z.uebergeben || 0}
+              subtitle={`${formatPercent(z.uebergabeQuote)} der Gespräche`}
+              icon={Send} color="gut" laedt={loading}
+              vergleich={vergleich('uebergeben')}
+            />
+            <Kennzahl
+              label="Nicht erschienen" value={z.noShow || 0}
+              subtitle="Kunde kam nicht"
+              icon={CalendarX} color="warnung" laedt={loading}
+              vergleich={vergleich('noShow', true)}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Kennzahl
+              label="Erscheinungsquote" value={formatPercent(z.erscheinungsQuote)}
+              subtitle="erschienen je fälligem Termin"
+              icon={TrendingUp} color="neutral" laedt={loading}
+              vergleich={vergleich('erscheinungsQuote')}
+            />
+            <Kennzahl
+              label="Übergabequote" value={formatPercent(z.uebergabeQuote)}
+              subtitle="Abschlusstermin je Gespräch"
+              icon={Target} color="neutral" laedt={loading}
+              vergleich={vergleich('uebergabeQuote')}
+            />
+            <Kennzahl
+              label="Abgesagt" value={z.abgesagt || 0}
+              subtitle="vorher abgesagt"
+              icon={XCircle} color="neutral" laedt={loading}
+              vergleich={vergleich('abgesagt', true)}
+            />
+            <Kennzahl
+              label="Ausgang fehlt" value={z.ohneAusgang || 0}
+              subtitle={`Termin vorbei, nichts eingetragen · ${z.anstehend || 0} anstehend`}
+              icon={Hourglass} color={(z.ohneAusgang || 0) > 0 ? 'warnung' : 'neutral'} laedt={loading}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <DiagrammKarte title="Beratungstermine im Zeitverlauf" subtitle="Je Termin-Datum: stattgefunden, geplatzt, offen">
+              {stats.zeitverlauf?.some(d => (d.count || 0) > 0) ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <BarChart data={stats.zeitverlauf}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#E1E2EC" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#44474F' }} />
+                    <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#44474F' }} />
+                    <Tooltip contentStyle={TOOLTIP_STIL} cursor={{ fill: 'rgba(70, 14, 116, 0.04)' }} />
+                    <Legend />
+                    <Bar dataKey="stattgefunden" name="Stattgefunden" stackId="t" fill={REIHE[0]} />
+                    <Bar dataKey="geplatzt" name="Geplatzt" stackId="t" fill={STATUS_FARBE.warnung} />
+                    <Bar dataKey="offen" name="Offen" stackId="t" fill={REIHE[3]} radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <LeerZustand icon={Calendar} message="Keine Beratungstermine im Zeitraum" hoehe="h-[250px]" />
+              )}
+            </DiagrammKarte>
+
+            <DiagrammKarte title="Wie die Gespräche ausgingen" subtitle="Jeder Beratungstermin genau einmal">
+              {verteilung.length > 0 ? (
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={verteilung} dataKey="value" nameKey="name"
+                      cx="50%" cy="50%" innerRadius={50} outerRadius={90} paddingAngle={2}
+                      label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                    >
+                      {verteilung.map(a => <Cell key={a.key} fill={a.farbe} />)}
+                    </Pie>
+                    <Tooltip contentStyle={TOOLTIP_STIL} />
+                    <Legend layout="vertical" align="right" verticalAlign="middle" iconType="circle" />
+                  </PieChart>
+                </ResponsiveContainer>
+              ) : (
+                <LeerZustand icon={Target} message="Keine Beratungstermine im Zeitraum" hoehe="h-[250px]" />
+              )}
+            </DiagrammKarte>
+          </div>
+
+          {isAdmin() && selectedUser === 'all' && (
+            <DiagrammKarte title="Performance pro Setter" subtitle="Termine je Person nach Ausgang">
+              {stats.perUser?.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={Math.max(200, Math.min(stats.perUser.length, 10) * 50)}>
+                    <BarChart data={stats.perUser.slice(0, 10)} layout="vertical">
+                      <CartesianGrid strokeDasharray="3 3" stroke="#E1E2EC" horizontal={false} />
+                      <XAxis type="number" allowDecimals={false} tick={{ fill: '#44474F' }} />
+                      <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 12, fill: '#44474F' }} />
+                      <Tooltip contentStyle={TOOLTIP_STIL} cursor={{ fill: 'rgba(70, 14, 116, 0.04)' }} />
+                      <Legend />
+                      <Bar dataKey="uebergeben" name="Übergeben" stackId="p" fill={STATUS_FARBE.gut} />
+                      <Bar dataKey="nachfassen" name="Nachfassen" stackId="p" fill={REIHE[1]} />
+                      <Bar dataKey="gefuehrt" name="Schritt offen" stackId="p" fill={REIHE[3]} />
+                      <Bar dataKey="verloren" name="Verloren" stackId="p" fill={STATUS_FARBE.schlecht} />
+                      <Bar dataKey="noShow" name="Nicht erschienen" stackId="p" fill={STATUS_FARBE.warnung} radius={[0, 4, 4, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+
+                  <div className="mt-6 overflow-x-auto">
+                    <table className="w-full text-body-sm">
+                      <thead>
+                        <tr className="text-left text-label-sm uppercase tracking-wide text-on-surface-variant border-b border-outline-variant/50">
+                          <th className="py-2 pr-4 font-medium">Setter</th>
+                          <th className="py-2 px-2 font-medium text-right">Termine</th>
+                          <th className="py-2 px-2 font-medium text-right">Stattgefunden</th>
+                          <th className="py-2 px-2 font-medium text-right">Übergeben</th>
+                          <th className="py-2 px-2 font-medium text-right">No-Show</th>
+                          <th className="py-2 px-2 font-medium text-right">Erscheinung</th>
+                          <th className="py-2 pl-2 font-medium text-right">Übergabe</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stats.perUser.map(p => (
+                          <tr key={p.id} className="border-b border-outline-variant/30 last:border-0">
+                            <td className="py-2 pr-4 text-on-surface">{p.name}</td>
+                            <td className="py-2 px-2 text-right tabular-nums">{p.termine}</td>
+                            <td className="py-2 px-2 text-right tabular-nums">{p.stattgefunden}</td>
+                            <td className="py-2 px-2 text-right tabular-nums">{p.uebergeben}</td>
+                            <td className="py-2 px-2 text-right tabular-nums">{p.noShow}</td>
+                            <td className="py-2 px-2 text-right tabular-nums">{formatPercent(p.erscheinungsQuote)}</td>
+                            <td className="py-2 pl-2 text-right tabular-nums">{formatPercent(p.uebergabeQuote)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <LeerZustand icon={Users} message="Keine Setter-Daten im Zeitraum" hoehe="h-[150px]" />
+              )}
+            </DiagrammKarte>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+// ==========================================
 // CLOSING ANALYTICS
 // ==========================================
 function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
@@ -2133,12 +2531,12 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
   // Cache Keys
   const getCacheKey = () => {
     const userPart = isAdmin() ? 'admin' : (user?.email_geschaeftlich || user?.email || 'user')
-    return `dashboard_closing_${dateRange}_${userPart}`
+    return `dashboard_v2_closing_${dateRange}_${userPart}`
   }
 
   const getCompareCacheKey = () => {
     const userPart = isAdmin() ? 'admin' : (user?.email_geschaeftlich || user?.email || 'user')
-    return `dashboard_closing_compare_${compareDateRange}_${userPart}`
+    return `dashboard_v2_closing_compare_${compareDateRange}_${userPart}`
   }
 
   // Prüfen ob Zeiträume identisch sind
@@ -2173,12 +2571,9 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
       setError(null)
 
       const { startDate, endDate } = computeDateRange(dateRange)
-      const userName = user?.vor_nachname || user?.name
 
       const params = new URLSearchParams({
         type: 'closing',
-        admin: isAdmin().toString(),
-        ...(userName && !isAdmin() && { userName }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate })
       })
@@ -2230,12 +2625,9 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
     setCompareLoading(true)
     try {
       const { startDate, endDate } = computeDateRange(compareDateRange)
-      const userName = user?.vor_nachname || user?.name
 
       const params = new URLSearchParams({
         type: 'closing',
-        admin: isAdmin().toString(),
-        ...(userName && !isAdmin() && { userName }),
         ...(startDate && { startDate }),
         ...(endDate && { endDate })
       })

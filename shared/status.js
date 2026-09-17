@@ -49,8 +49,16 @@ const ALTBESTAND = {
 /** Bringt einen beliebigen gespeicherten Wert auf die neue Liste. */
 export function normalisiere(status) {
   if (!status) return null
-  return ALTBESTAND[status] || status
+  return ALTBESTAND[status] || OHNE_GROSSSCHREIBUNG[status.trim().toLowerCase()] || status
 }
+
+// Fremdsysteme schreiben nicht immer in unserer Schreibweise: Die
+// Operations-API setzte am 15.09.2026 "abgeschlossen" klein. Der Wert fiel
+// damit aus jeder Zählung der Abschlüsse - ohne Fehler, nur ohne Treffer.
+const OHNE_GROSSSCHREIBUNG = Object.fromEntries([
+  ...Object.values(STATUS).map(w => [w.toLowerCase(), w]),
+  ...Object.entries(ALTBESTAND).map(([alt, neu]) => [alt.toLowerCase(), neu])
+])
 
 /** Normalisiert den Status in einem Hot-Lead-Objekt (oder einer Liste). */
 export function normalisiereLead(lead) {
