@@ -2549,10 +2549,24 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                 <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">
                   Alle {stats.leadsProCloser.reduce((sum, c) => sum + c.gesamt, 0)} Hot Leads im System
                 </p>
+                {(() => {
+                  // Die Leiter hat fuenf Sprossen. Wer darunter liegt, wuerde
+                  // sonst als eine von sieben gleich grauen Scheiben stehen -
+                  // ununterscheidbar. Zusammengefasst sagt der Kuchen mehr.
+                  const sortiert = stats.leadsProCloser
+                    .filter(c => c.gesamt > 0)
+                    .sort((a, b) => b.gesamt - a.gesamt)
+                  const vorne = sortiert.slice(0, REIHE.length)
+                  const rest = sortiert.slice(REIHE.length)
+                  const restSumme = rest.reduce((n, c) => n + c.gesamt, 0)
+                  const kuchen = restSumme > 0
+                    ? [...vorne, { name: `${rest.length} weitere`, gesamt: restSumme }]
+                    : vorne
+                  return (
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={stats.leadsProCloser.filter(c => c.gesamt > 0)}
+                      data={kuchen}
                       dataKey="gesamt"
                       nameKey="name"
                       cx="50%"
@@ -2567,7 +2581,7 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                           verschiedene Bedeutungen. Personen unterscheiden sich
                           aber nur in der Menge - also die Leiter aus der
                           Hausfarbe, und wer darunter liegt, wird grau. */}
-                      {stats.leadsProCloser.filter(c => c.gesamt > 0).map((entry, index) => (
+                      {kuchen.map((entry, index) => (
                         <Cell
                           key={`cell-${index}`}
                           fill={index < REIHE.length ? REIHE[index] : STATUS_FARBE.neutral}
@@ -2584,6 +2598,8 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                     />
                   </PieChart>
                 </ResponsiveContainer>
+                  )
+                })()}
               </div>
             </div>
           )}
