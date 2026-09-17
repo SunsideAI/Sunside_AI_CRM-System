@@ -410,8 +410,8 @@ function FollowUp() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-display-sm font-bold text-on-surface">Follow-Up</h1>
-          <p className="text-body-md text-on-surface-variant mt-1">
+          <h1 className="text-headline-lg font-display text-on-surface">Follow-Up</h1>
+          <p className="text-body-md text-on-surface-variant mt-2">
             {totalLeads} Leads im Follow-Up
           </p>
         </div>
@@ -443,9 +443,9 @@ function FollowUp() {
           <button
             onClick={() => loadLeads(true)}
             disabled={refreshing || loading}
-            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
+            className="kopf-knopf kopf-knopf-symbol"
           >
-            <RefreshCw className={`w-5 h-5 text-on-surface-variant ${refreshing ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
 
           <button

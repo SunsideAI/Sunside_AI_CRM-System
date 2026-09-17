@@ -383,6 +383,62 @@
            border-t border-outline-variant bg-surface;
   }
 
+  /* ============================================================
+     Der Kopf einer Seite — Titel links, Bedienelemente rechts
+     ============================================================
+
+     Gemessen am 17.09.2026 über alle Tabs: Die Umschalter waren mal 36,
+     mal 40, mal 48 Pixel hoch, der Aktualisieren-Knopf in vier Größen —
+     einmal mit Beschriftung, dreimal ohne. Beim Tabwechsel sprang die
+     Zeile darum sichtbar. Vorbild ist der Termine-Kopf, der als einziger
+     durchgehend stimmte.
+
+     Eine Höhe für alles in dieser Zeile: 2,25 rem (36 px). */
+
+  .umschalter {
+    @apply flex items-center bg-surface-container rounded-lg p-1 min-w-max;
+  }
+
+  .umschalter-knopf {
+    @apply flex items-center h-7 px-3 sm:px-4 rounded-md text-label-md whitespace-nowrap
+           transition-all duration-250 text-on-surface-variant
+           hover:text-primary hover:bg-primary-fixed/30;
+  }
+
+  .umschalter-knopf.aktiv {
+    @apply bg-gradient-primary text-white shadow-glow-primary;
+  }
+
+  .umschalter-knopf.aktiv:hover {
+    @apply text-white;
+  }
+
+  /* Die Zahl neben einer Umschaltung. Sie trug im Opening als einzige
+     Warnfarbe — der Pool ist aber keine Warnung, sondern eine Auswahl
+     wie jede andere. */
+  .umschalter-zahl {
+    @apply ml-1.5 min-w-[1.5rem] text-center px-1.5 py-0.5 text-label-sm rounded-md
+           bg-primary-fixed text-primary;
+  }
+
+  .umschalter-knopf.aktiv .umschalter-zahl {
+    @apply bg-white/20 text-white;
+  }
+
+  /* Ein einzelner Knopf in der Kopfzeile — Aktualisieren, Heute, Export.
+     Gleiche Höhe wie die Umschalter daneben. */
+  .kopf-knopf {
+    @apply flex items-center justify-center gap-2 h-9 px-3 whitespace-nowrap
+           text-label-md text-on-surface-variant bg-surface-container-lowest
+           rounded-lg shadow-ambient-sm hover:bg-surface-container
+           transition-colors disabled:opacity-50;
+  }
+
+  /* Nur ein Symbol, keine Beschriftung: quadratisch. */
+  .kopf-knopf-symbol {
+    @apply w-9 px-0;
+  }
+
   /* Status Badges */
   .badge {
     @apply px-3 py-1 rounded-md text-label-md font-medium inline-flex items-center gap-1;

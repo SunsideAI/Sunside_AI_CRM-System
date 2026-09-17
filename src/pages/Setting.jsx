@@ -199,7 +199,7 @@ function Setting() {
             {ansicht === 'pool' ? 'Setter-Pool' : 'Setting'}
             {ansicht === 'alle' && ' (alle Gespräche)'}
           </h1>
-          <p className="text-body-md text-on-surface-variant mt-1">
+          <p className="text-body-md text-on-surface-variant mt-2">
             {ansicht === 'pool'
               ? 'Beratungsgespräche, die der Opener gelegt hat — noch ohne Setter'
               : ansicht === 'alle'
@@ -209,12 +209,12 @@ function Setting() {
         </div>
 
         <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <div className="flex items-center bg-gray-100 rounded-lg p-1 min-w-max">
+          <div className="umschalter">
             <button
               onClick={() => setAnsicht('meine')}
-              className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+              className={`umschalter-knopf ${
                 ansicht === 'meine'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  ? 'aktiv'
                   : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
@@ -224,26 +224,22 @@ function Setting() {
             </button>
             <button
               onClick={() => setAnsicht('pool')}
-              className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+              className={`umschalter-knopf ${
                 ansicht === 'pool'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  ? 'aktiv'
                   : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
               <Calendar className="w-4 h-4 mr-1.5" />
               Pool
-              <span className={`ml-1.5 min-w-[24px] text-center px-1.5 py-0.5 text-label-sm rounded-md ${
-                ansicht === 'pool' ? 'bg-white/20 text-white' : 'bg-primary-fixed text-primary'
-              }`}>
-                {poolAnzahl}
-              </span>
+              <span className="umschalter-zahl">{poolAnzahl}</span>
             </button>
             {isAdmin() && (
               <button
                 onClick={() => { setAnsicht('alle'); setSeite(1) }}
-                className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                className={`umschalter-knopf ${
                   ansicht === 'alle'
-                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    ? 'aktiv'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
@@ -313,9 +309,9 @@ function Setting() {
             onClick={laden}
             disabled={laedt}
             aria-label="Neu laden"
-            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
+            className="kopf-knopf kopf-knopf-symbol"
           >
-            <RefreshCw className={`w-5 h-5 text-on-surface-variant ${laedt ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${laedt ? 'animate-spin' : ''}`} />
           </button>
         </div>
 

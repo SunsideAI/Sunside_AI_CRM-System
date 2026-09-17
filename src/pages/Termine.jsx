@@ -375,12 +375,12 @@ function Termine() {
         <div className="flex flex-wrap items-center gap-3">
           {/* View Mode Toggle - nur für Admins */}
           {isAdmin() && (
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            <div className="umschalter">
               <button
                 onClick={() => setViewMode('own')}
-                className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                className={`umschalter-knopf ${
                   viewMode === 'own'
-                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    ? 'aktiv'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
@@ -389,9 +389,9 @@ function Termine() {
               </button>
               <button
                 onClick={() => setViewMode('all')}
-                className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+                className={`umschalter-knopf ${
                   viewMode === 'all'
-                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    ? 'aktiv'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
@@ -402,12 +402,12 @@ function Termine() {
           )}
 
           {/* Calendar Mode Toggle */}
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
+          <div className="umschalter">
             <button
               onClick={() => setCalendarMode('week')}
-              className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+              className={`umschalter-knopf ${
                 calendarMode === 'week'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  ? 'aktiv'
                   : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
@@ -416,9 +416,9 @@ function Termine() {
             </button>
             <button
               onClick={() => setCalendarMode('month')}
-              className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+              className={`umschalter-knopf ${
                 calendarMode === 'month'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  ? 'aktiv'
                   : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >

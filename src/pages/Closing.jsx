@@ -1582,12 +1582,12 @@ function Closing() {
 
         {/* Toggle: Meine Leads / Pool / Alle (für Admins) - scrollable on mobile */}
         <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <div className="flex items-center bg-gray-100 rounded-lg p-1 min-w-max">
+          <div className="umschalter">
             <button
               onClick={() => { setViewMode('own'); setCurrentPage(1); }}
-              className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+              className={`umschalter-knopf ${
                 viewMode === 'own'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  ? 'aktiv'
                   : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
@@ -1597,26 +1597,22 @@ function Closing() {
             </button>
             <button
               onClick={() => { setViewMode('pool'); setCurrentPage(1); }}
-              className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+              className={`umschalter-knopf ${
                 viewMode === 'pool'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  ? 'aktiv'
                   : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
               <Calendar className="w-4 h-4 mr-1.5" />
               Pool
-              <span className={`ml-1.5 min-w-[24px] text-center px-1.5 py-0.5 text-label-sm rounded-md ${
-                viewMode === 'pool' ? 'bg-white/20 text-white' : 'bg-primary-fixed text-primary'
-              }`}>
-                {poolLeads.length}
-              </span>
+              <span className="umschalter-zahl">{poolLeads.length}</span>
             </button>
             {isAdmin() && (
               <button
                 onClick={() => { setViewMode('all'); setCurrentPage(1); }}
-                className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                className={`umschalter-knopf ${
                   viewMode === 'all'
-                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    ? 'aktiv'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
@@ -1642,7 +1638,7 @@ function Closing() {
             <button
               onClick={handleRefresh}
               disabled={refreshing || loadingPool}
-              className="flex items-center px-4 py-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
+              className="kopf-knopf kopf-knopf-symbol"
             >
               <RefreshCw className={`w-4 h-4 mr-2 text-on-surface-variant ${(refreshing || loadingPool) ? 'animate-spin' : ''}`} />
               Aktualisieren
@@ -1928,9 +1924,9 @@ function Closing() {
           <button
             onClick={handleRefresh}
             disabled={refreshing || loading}
-            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
+            className="kopf-knopf kopf-knopf-symbol"
           >
-            <RefreshCw className={`w-5 h-5 text-on-surface-variant ${(refreshing || loading) ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${(refreshing || loading) ? 'animate-spin' : ''}`} />
           </button>
         </div>
 

@@ -86,7 +86,7 @@ function Profil() {
     <div className="space-y-6 max-w-2xl">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Mein Profil</h1>
+        <h1 className="text-headline-lg font-display text-on-surface">Mein Profil</h1>
         <p className="mt-1 text-gray-500">
           Deine Kontoinformationen und Einstellungen
         </p>

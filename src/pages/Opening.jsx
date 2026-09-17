@@ -844,13 +844,13 @@ function Opening() {
 
           {/* Tab-Navigation - scrollable on mobile */}
           <div className="w-full sm:w-auto overflow-x-auto">
-            <div className="flex items-center bg-gray-100 rounded-lg p-1 min-w-max">
+            <div className="umschalter">
               {/* Meine Leads */}
               <button
                 onClick={() => { setViewMode('own'); setOffset(null); setPageHistory([]); setFilterVertriebler('all'); setLeads([]); }}
-                className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                className={`umschalter-knopf ${
                   viewMode === 'own'
-                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    ? 'aktiv'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
@@ -862,28 +862,20 @@ function Opening() {
               {/* Pool Tab */}
               <button
                 onClick={() => { setViewMode('ebook'); setOffset(null); setPageHistory([]); }}
-                className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
-                  viewMode === 'ebook'
-                    ? 'bg-warning text-white shadow-md'
-                    : 'text-on-surface-variant hover:text-warning hover:bg-warning-container/30'
-                }`}
+                className={`umschalter-knopf ${viewMode === 'ebook' ? 'aktiv' : ''}`}
               >
                 <Flame className="w-4 h-4 mr-1.5" />
                 Pool
-                <span className={`ml-1.5 min-w-[24px] text-center px-1.5 py-0.5 text-label-sm rounded-md ${
-                  viewMode === 'ebook' ? 'bg-white/20 text-white' : 'bg-warning-container text-warning'
-                }`}>
-                  {ebookCount}
-                </span>
+                <span className="umschalter-zahl">{ebookCount}</span>
               </button>
 
               {/* Alle Leads - nur für Admins */}
               {isAdmin() && (
                 <button
                   onClick={() => { setViewMode('all'); setOffset(null); setPageHistory([]); setLeads([]); }}
-                  className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                  className={`umschalter-knopf ${
                     viewMode === 'all'
-                      ? 'bg-gradient-primary text-white shadow-glow-primary'
+                      ? 'aktiv'
                       : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                   }`}
                 >
@@ -933,9 +925,9 @@ function Opening() {
           <button
             onClick={() => loadLeads()}
             disabled={loading}
-            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
+            className="kopf-knopf kopf-knopf-symbol"
           >
-            <RefreshCw className={`w-5 h-5 text-on-surface-variant ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
 
@@ -1450,7 +1442,7 @@ function Opening() {
             <button
               onClick={loadEbookLeads}
               disabled={ebookLoading}
-              className="flex items-center px-4 py-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
+              className="kopf-knopf kopf-knopf-symbol"
             >
               <RefreshCw className={`w-4 h-4 mr-2 text-on-surface-variant ${ebookLoading ? 'animate-spin' : ''}`} />
               Aktualisieren

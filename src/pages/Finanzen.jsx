@@ -120,12 +120,12 @@ export default function Finanzen() {
 
         {/* Toggle Buttons - Bubble Style */}
         <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <div className="flex items-center bg-gray-100 rounded-lg p-1 min-w-max">
+          <div className="umschalter">
             <button
               onClick={() => setActiveView('analytics')}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+              className={`umschalter-knopf gap-2 ${
                 activeView === 'analytics'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  ? 'aktiv'
                   : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
@@ -136,9 +136,9 @@ export default function Finanzen() {
 
             <button
               onClick={() => setActiveView('contracts')}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+              className={`umschalter-knopf gap-2 ${
                 activeView === 'contracts'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  ? 'aktiv'
                   : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
@@ -149,9 +149,9 @@ export default function Finanzen() {
 
             <button
               onClick={() => setActiveView('invoices')}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+              className={`umschalter-knopf gap-2 ${
                 activeView === 'invoices'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  ? 'aktiv'
                   : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >

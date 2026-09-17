@@ -47,12 +47,12 @@ function Einstellungen() {
         </div>
 
         {/* Tab Buttons */}
-        <div className="flex items-center bg-surface-container rounded-lg p-1">
+        <div className="umschalter">
           <button
             onClick={() => setActiveTab('mitarbeiter')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all ${
+            className={`umschalter-knopf gap-2 ${
               activeTab === 'mitarbeiter'
-                ? 'bg-gradient-primary text-white shadow-glow-primary'
+                ? 'aktiv'
                 : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
             }`}
           >
@@ -62,9 +62,9 @@ function Einstellungen() {
 
           <button
             onClick={() => setActiveTab('anfragen')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all ${
+            className={`umschalter-knopf gap-2 ${
               activeTab === 'anfragen'
-                ? 'bg-gradient-primary text-white shadow-glow-primary'
+                ? 'aktiv'
                 : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
             }`}
           >
@@ -74,9 +74,9 @@ function Einstellungen() {
 
           <button
             onClick={() => setActiveTab('hot-lead-bewerbungen')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all ${
+            className={`umschalter-knopf gap-2 ${
               activeTab === 'hot-lead-bewerbungen'
-                ? 'bg-gradient-primary text-white shadow-glow-primary'
+                ? 'aktiv'
                 : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
             }`}
           >
@@ -86,9 +86,9 @@ function Einstellungen() {
 
           <button
             onClick={() => setActiveTab('system')}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-label-lg transition-all ${
+            className={`umschalter-knopf gap-2 ${
               activeTab === 'system'
-                ? 'bg-gradient-primary text-white shadow-glow-primary'
+                ? 'aktiv'
                 : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
             }`}
           >

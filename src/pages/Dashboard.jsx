@@ -222,12 +222,12 @@ function Dashboard() {
 
         {/* Toggle Buttons - scrollable on mobile */}
         <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-          <div className="flex items-center bg-gray-100 rounded-lg p-1 min-w-max">
+          <div className="umschalter">
             <button
               onClick={() => setActiveView('uebersicht')}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+              className={`umschalter-knopf gap-2 ${
                 activeView === 'uebersicht'
-                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  ? 'aktiv'
                   : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
@@ -239,9 +239,9 @@ function Dashboard() {
             {showOpeningTab && (
               <button
                 onClick={() => setActiveView('opening')}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                className={`umschalter-knopf gap-2 ${
                   activeView === 'opening'
-                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    ? 'aktiv'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
@@ -254,9 +254,9 @@ function Dashboard() {
             {showClosingTab && (
               <button
                 onClick={() => setActiveView('closing')}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 sm:py-2.5 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
+                className={`umschalter-knopf gap-2 ${
                   activeView === 'closing'
-                    ? 'bg-gradient-primary text-white shadow-glow-primary'
+                    ? 'aktiv'
                     : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
                 }`}
               >
@@ -449,7 +449,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
           className="flex items-center p-2.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-all duration-250"
           title="Daten aktualisieren"
         >
-          <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
         </button>
       </div>
 
@@ -1554,7 +1554,7 @@ function OpeningAnalytics({ user, isAdmin }) {
             disabled={refreshing || loading}
             className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50 shadow-ambient-sm"
           >
-            <RefreshCw className={`h-5 w-5 text-on-surface-variant ${(refreshing || loading) ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${(refreshing || loading) ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>
@@ -2236,7 +2236,7 @@ function ClosingAnalytics({ user, isAdmin }) {
             disabled={refreshing || loading}
             className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50 shadow-ambient-sm"
           >
-            <RefreshCw className={`h-5 w-5 text-on-surface-variant ${(refreshing || loading) ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${(refreshing || loading) ? 'animate-spin' : ''}`} />
           </button>
         </div>
       </div>

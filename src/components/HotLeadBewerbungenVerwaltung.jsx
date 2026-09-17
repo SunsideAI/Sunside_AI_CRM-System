@@ -197,9 +197,9 @@ function HotLeadBewerbungenVerwaltung() {
           <button
             key={s2.wert}
             onClick={() => setStufeFilter(s2.wert)}
-            className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+            className={`umschalter-knopf ${
               stufeFilter === s2.wert
-                ? 'bg-gradient-primary text-white shadow-glow-primary'
+                ? 'aktiv'
                 : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
             }`}
             title={`Bewerbungen auf ${s2.unter}`}
