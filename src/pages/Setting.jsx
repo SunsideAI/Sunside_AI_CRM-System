@@ -6,6 +6,8 @@ import {
 import { useAuth } from '../context/AuthContext'
 import { STATUS, anzeigeName } from '../../shared/status.js'
 import LeadSchublade from '../components/LeadSchublade'
+import GeplatzteTermine from '../components/GeplatzteTermine'
+import SlideDrawer from '../components/SlideDrawer'
 import SetterUebergabe from '../components/SetterUebergabe'
 import SetterPool from '../components/SetterPool'
 import EmailComposer from '../components/EmailComposer'
@@ -54,6 +56,9 @@ function Setting() {
   const [poolAnzahl, setPoolAnzahl] = useState(0)
   const [seite, setSeite] = useState(1)
   const [hinweis, setHinweis] = useState('')
+  // Nachterminierung eines geplatzten Abschlussgespraechs
+  const [neuTerminLead, setNeuTerminLead] = useState(null)
+  const [neuladen, setNeuladen] = useState(0)
 
   // Was nach einer Speicherung passiert - und das ist der Punkt, an dem der
   // Prozess vorher abriss.
@@ -282,6 +287,18 @@ function Setting() {
         </div>
       )}
 
+      {/* Geplatzte Abschlussgespraeche - der Setter hat sie gelegt, also legt
+          er sie neu. Spiegelbild zum Opening, wo geplatzte Beratungsgespraeche
+          beim Opener liegen. */}
+      {ansicht !== 'pool' && (
+        <GeplatzteTermine
+          stufe="abschluss"
+          abfrage={`setterId=${user?.id || ''}`}
+          neuladenSignal={neuladen}
+          onNeuTerminieren={setNeuTerminLead}
+        />
+      )}
+
       {/* Pool-Ansicht: die Übergabe vom Opener. SetterPool meldet, wie viele
           es sind — sonst stünde im Umschalter eine Zahl, die niemand pflegt. */}
       {ansicht === 'pool' ? (
@@ -476,6 +493,40 @@ function Setting() {
 
       </>
       )}
+
+      {/* Neuer Termin fuer ein geplatztes Abschlussgespraech. Eigene
+          Schublade, damit der Waehler nicht in die Lead-Ansicht gequetscht
+          werden muss. */}
+      <SlideDrawer
+        isOpen={!!neuTerminLead}
+        onClose={() => setNeuTerminLead(null)}
+        title={neuTerminLead?.unternehmen || 'Neuer Termin'}
+        untertitel="Abschlussgespräch neu vereinbaren"
+      >
+        {neuTerminLead && (
+          <TerminPicker
+            zweck="abschluss"
+            lead={{
+              id: neuTerminLead.originalLeadId,
+              unternehmen: neuTerminLead.unternehmen,
+              unternehmensname: neuTerminLead.unternehmen,
+              email: neuTerminLead.email,
+              telefon: neuTerminLead.telefon,
+              ansprechpartnerVorname: neuTerminLead.ansprechpartnerVorname,
+              ansprechpartnerNachname: neuTerminLead.ansprechpartnerNachname,
+              stadt: neuTerminLead.ort
+            }}
+            hotLeadId={neuTerminLead.id}
+            onTerminBooked={() => {
+              setNeuTerminLead(null)
+              setNeuladen(n => n + 1)
+              setHinweis(`Neues Abschlussgespräch für ${neuTerminLead.unternehmen} ist gebucht.`)
+              laden()
+            }}
+            onCancel={() => setNeuTerminLead(null)}
+          />
+        )}
+      </SlideDrawer>
 
       {/* Detailansicht — Aufbau und Reihenfolge kommen aus LeadSchublade,
           damit sie in jedem Tab dieselben sind. Tab-eigen ist nur der

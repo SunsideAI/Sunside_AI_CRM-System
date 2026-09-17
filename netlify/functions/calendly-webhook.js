@@ -916,20 +916,45 @@ async function findHotLeadByEmail(email) {
 async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund, feld = FELD.BERATUNG) {
   console.log('Aktualisiere Hot Lead Absage:', { hotLeadId, originalLeadId, feld })
 
-  // Ein abgesagtes ABSCHLUSSgespraech ist etwas anderes als ein abgesagtes
-  // Beratungsgespraech. Es geht nicht an den Opener zurueck - der Closer haelt
-  // den Kontakt und legt neu. Wuerde hier setter_id geleert, verloere der
-  // Setter seine Uebergabe, ohne dass es ihn noch etwas anginge.
+  // Ein abgesagtes ABSCHLUSSgespraech geht eine Stufe zurueck - an den Setter,
+  // der es gelegt hat. Spiegelbildlich zum Beratungsgespraech, das an den
+  // Opener zurueckgeht: Wer den Termin gemacht hat, macht den neuen.
+  //
+  // Ausnahme ist der Schalter no_show_keep_in_closing: Sagt der Closer, er
+  // kuemmert sich selbst, bleibt der Kontakt bei ihm.
   if (feld === FELD.ABSCHLUSS) {
+    const { data: vorher } = await supabase
+      .from('hot_leads')
+      .select('closer_id, setter_id, status, no_show_keep_in_closing')
+      .eq('id', hotLeadId).maybeSingle()
+
+    const behaelt = vorher?.no_show_keep_in_closing === true
+
     const { error } = await supabase
       .from('hot_leads')
-      .update({ status: STATUS.TERMIN_ABGESAGT, zuletzt_geaendert_durch: 'calendly-webhook' })
+      .update({
+        status: STATUS.TERMIN_ABGESAGT,
+        ...(behaelt ? {} : { closer_id: null }),
+        zuletzt_geaendert_durch: 'calendly-webhook'
+      })
       .eq('id', hotLeadId)
 
     if (error) {
       console.error('Update Fehler (Abschluss-Absage):', error)
       return false
     }
+
+    if (!behaelt && vorher?.closer_id) {
+      await supabase.from('hot_lead_ereignisse').insert({
+        hot_lead_id: hotLeadId,
+        art: 'closer_freigestellt',
+        von_status: vorher.status,
+        nach_status: STATUS.TERMIN_ABGESAGT,
+        bemerkung: 'Abschlussgespräch abgesagt - zurück an den Setter',
+        daten: { frueherer_closer: vorher.closer_id, verbindung: 'calendly-webhook' }
+      })
+    }
+
     if (originalLeadId) {
       await updateOriginalLeadKommentar(originalLeadId, `ABSCHLUSSGESPRÄCH ABGESAGT: ${grund}`)
     }

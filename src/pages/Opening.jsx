@@ -311,13 +311,42 @@ function Opening() {
     try {
       setLoadingSetterNoShows(true)
       // Beide Status laden: "Nicht erschienen" und "Termin abgesagt"
-      const response = await fetch(`/.netlify/functions/hot-leads?setterId=${user.id}&status=Nicht%20erschienen,Termin%20abgesagt`)
-      const data = await response.json()
+      // Nach openerId, nicht nach setterId: Wer den Termin gelegt hat, legt den
+      // neuen. setter_id meint seit dem Umbau den, der das Gespraech haelt -
+      // und wird bei einer Absage ueber Calendly geleert. Mit der alten
+      // Abfrage sah der Opener seine eigenen geplatzten Termine nicht.
+      //
+      // Die zweite Abfrage ist fuer den Altbestand: Fuenf Kontakte haben gar
+      // keinen Opener, zwei davon einen Setter. Ohne sie fielen die durch.
+      const stufen = 'Nicht%20erschienen,Termin%20abgesagt'
+      const [alsOpener, alsSetter] = await Promise.all([
+        fetch(`/.netlify/functions/hot-leads?openerId=${user.id}&status=${stufen}`)
+          .then(r => r.json()).catch(() => ({ hotLeads: [] })),
+        fetch(`/.netlify/functions/hot-leads?setterId=${user.id}&status=${stufen}`)
+          .then(r => r.json()).catch(() => ({ hotLeads: [] }))
+      ])
+
+      const data = {
+        hotLeads: [
+          ...(alsOpener.hotLeads || []),
+          // Nur die ohne Opener - alles andere gehoert dem Opener, der es
+          // gelegt hat, und steht in DESSEN Kasten.
+          ...(alsSetter.hotLeads || []).filter(hl => !hl.openerId)
+        ].reduce((liste, hl) => {
+          if (!liste.find(x => x.id === hl.id)) liste.push(hl)
+          return liste
+        }, [])
+      }
+      const response = { ok: true }
 
       if (response.ok && data.hotLeads) {
         // "Im Closing behalten"-Leads gehören nicht ins Setter-Widget - der
         // Closer bearbeitet sie selbst weiter.
-        const relevant = data.hotLeads.filter(hl => !hl.no_show_keep_in_closing)
+        const relevant = data.hotLeads
+          .filter(hl => !hl.no_show_keep_in_closing)
+          // Ein geplatztes Abschlussgespraech gehoert dem Setter - es steht
+          // in dessen Kasten im Setting, nicht hier.
+          .filter(hl => !hl.termin_abschlussgespraech)
         const sorted = relevant.sort((a, b) => {
           // Nach Datum sortieren (neueste zuerst)
           const dateA = a.no_show_marked_at || a.terminDatum || ''

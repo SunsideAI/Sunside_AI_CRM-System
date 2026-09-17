@@ -942,6 +942,7 @@ export async function handler(event) {
         'prioritaet': 'prioritaet',
         'closerId': 'closer_id',
         'closerName': 'closer_id',  // Wird im Spezialcode zu closer_id aufgelöst
+        'setterId': 'setter_id',
         'reaktivierungBearbeiterId': 'reaktivierung_bearbeiter_id',
         'reaktivierungBearbeiterName': 'reaktivierung_bearbeiter_id',  // im Spezialcode aufgelöst
         'terminDatum': 'termin_beratungsgespraech',
@@ -1038,8 +1039,16 @@ export async function handler(event) {
       // PATCH-Feld. Sonst koennte sich jeder Angemeldete mit
       // {"updates":{"closerId":"<eigene ID>"}} zum Closer eines fremden Leads
       // machen und den Genehmigungsweg umgehen.
+      //
+      // ABGEBEN ist etwas anderes als NEHMEN. Der Schutz galt bisher fuer
+      // beides, und damit lief "An Pool freigeben" fuer jeden Closer ohne
+      // Admin-Rechte in ein 403 - genau wie die Rueckgabe eines geplatzten
+      // Termins an die Stufe davor. Wer eine Zuteilung loescht, verschafft
+      // sich keinen Vorteil; nur das Setzen bleibt dem Bewerbungsweg
+      // vorbehalten.
       for (const feld of ['closerId', 'setterId', 'openerId']) {
-        if (fields[fieldMap[feld]] !== undefined && !angemeldet.istAdmin) {
+        const wert = fields[fieldMap[feld]]
+        if (wert !== undefined && wert !== null && !angemeldet.istAdmin) {
           return {
             statusCode: 403,
             headers: corsHeaders,

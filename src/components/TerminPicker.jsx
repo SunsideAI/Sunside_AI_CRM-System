@@ -337,12 +337,22 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               hotLeadId: hotLeadId,
-              updates: {
-                terminDatum: selectedSlot.start,
-                status: STATUS.BERATUNG_VEREINBART, // Termin neu gelegt
-                terminart: selectedType === 'video' ? 'Video' : 'Telefonisch',
-                meetingLink: meetingLink  // Video-Link speichern
-              }
+              // Welcher Termin neu gelegt wird, sagt der Zweck. Vorher schrieb
+              // dieser Pfad immer das Beratungsgespraech - ein neu gelegtes
+              // Abschlussgespraech haette den Termin der Stufe davor
+              // ueberschrieben und den Kontakt eine Stufe zurueckgeworfen.
+              updates: zweck === 'abschluss'
+                ? {
+                    termin_abschlussgespraech: selectedSlot.start,
+                    meeting_link_abschluss: meetingLink || null,
+                    status: STATUS.ABSCHLUSS_VEREINBART
+                  }
+                : {
+                    terminDatum: selectedSlot.start,
+                    status: STATUS.BERATUNG_VEREINBART, // Termin neu gelegt
+                    terminart: selectedType === 'video' ? 'Video' : 'Telefonisch',
+                    meetingLink: meetingLink  // Video-Link speichern
+                  }
             })
           })
           

@@ -1091,7 +1091,11 @@ function Closing() {
             no_show_count: newNoShowCount,
             no_show_marked_at: new Date().toISOString(),
             no_show_marked_by: user.id,
-            no_show_keep_in_closing: noShowKeepInClosing
+            no_show_keep_in_closing: noShowKeepInClosing,
+            // Zurueck an den Setter, der den Termin gelegt hat - spiegelbildlich
+            // zum Beratungsgespraech, das an den Opener zurueckgeht. Nur wenn
+            // der Closer sagt, er kuemmert sich selbst, bleibt es bei ihm.
+            ...(noShowKeepInClosing ? {} : { closerName: '' })
           }
         })
       })
