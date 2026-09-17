@@ -273,7 +273,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
       {meldung && <p className="text-sm text-green-700">{meldung}</p>}
 
       {/* Reicht der Erstanruf nicht aus, geht der Kontakt zurück an den Opener. */}
-      <div className="pt-2">
+      <div className="pt-4 border-t border-outline-variant/50 mt-2">
         <RueckgabeKnopf hotLead={lead} onErledigt={onGespeichert} />
       </div>
     </div>
@@ -313,7 +313,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
 
       {/* Hat stattgefunden: Die Maske klappt auf, gespeichert wird unten. */}
       {ausgang === STATUS.BERATUNG_GEFUEHRT && (
-        <div className="pt-2">{dokumentation}</div>
+        <div className="pt-4 border-t border-outline-variant/50 mt-2">{dokumentation}</div>
       )}
 
       {/* Verschieben ist kein Status, sondern ein neuer Termin. Deshalb

@@ -262,13 +262,18 @@
     @apply text-primary;
   }
 
-  /* Der Abstand zwischen zwei Abschnitten.
-     Hier stand eine durchgehende Trennlinie. Bei fünf Abschnitten waren das
-     fünf waagerechte Striche in einem Blick — die Schublade sah aus wie eine
-     Einstellungsliste, nicht wie eine Übersicht. Luft gliedert genauso gut
-     und ist leiser: 2 rem trennen deutlicher als ein Haarstrich. */
-  .abschnitt + .abschnitt {
-    @apply mt-8;
+  /* Die Trennung zwischen zwei Abschnitten.
+     Erst war die Linie in voller Stärke da — bei fünf Abschnitten fünf
+     Balken in einem Blick, das las sich wie eine Einstellungsliste. Dann
+     ganz weg — und ohne sie liefen die Abschnitte ineinander, weil nicht
+     jede Überschrift ein Symbol hatte, an dem das Auge hängen bleibt.
+     Beides war falsch.
+
+     Jetzt: die Linie bleibt, aber halb so kräftig, dazu mehr Luft und ein
+     Symbol an JEDER Überschrift. Drei leise Mittel statt einem lauten. */
+  .abschnitt + .abschnitt,
+  .abschnitt-trenner {
+    @apply border-t border-outline-variant/50 pt-6 mt-6;
   }
 
   /* Nach der Überschrift etwas weniger Luft als zwischen den Zeilen des

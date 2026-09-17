@@ -33,6 +33,7 @@ function closerTermin(lead) {
 }
 import {
   Calendar,
+  ClipboardList,
   History,
   Users,
   User as UserIcon,
@@ -1778,7 +1779,10 @@ function Closing() {
 
                 {/* Kontaktdaten */}
                 <div className="space-y-3">
-                  <h3 className="abschnitt-titel">Kontaktdaten</h3>
+                  <h3 className="abschnitt-titel flex items-center gap-2">
+                    <UserIcon className="w-4 h-4" />
+                    Kontaktdaten
+                  </h3>
 
                   {(selectedPoolLead.ansprechpartnerVorname || selectedPoolLead.ansprechpartnerNachname) && (
                     <div className="flex items-center gap-3">
@@ -1813,8 +1817,11 @@ function Closing() {
                     Beratungsgespraech gelegt, der Setter hat es gehalten und
                     das Abschlussgespraech gebucht - zwei Namen, zwei Rollen. */}
                 {(selectedPoolLead.openerName || selectedPoolLead.setterName) && (
-                  <div className="space-y-3 mt-8">
-                    <h3 className="abschnitt-titel">Vorarbeit</h3>
+                  <div className="space-y-3 abschnitt-trenner">
+                    <h3 className="abschnitt-titel flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    Vorarbeit
+                  </h3>
                     <div className="flex flex-wrap items-center gap-2">
                       {selectedPoolLead.openerName && (
                         <span className="px-3 py-1.5 bg-surface-container text-on-surface-variant rounded-full text-label-sm">
@@ -1836,16 +1843,18 @@ function Closing() {
                     ausfuellen MUSS, bevor er buchen darf, standen nirgends.
                     Der Closer entschied ueber einen Termin, ohne zu wissen,
                     was im Beratungsgespraech herauskam. */}
-                <div className="space-y-3 mt-8">
-                  <h3 className="abschnitt-titel">
+                <div className="space-y-3 abschnitt-trenner">
+                  <h3 className="abschnitt-titel flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4" />
                     Aus dem Beratungsgespräch
                   </h3>
                   <Uebergabeblatt lead={selectedPoolLead} bereiche={[UEBERGABE_2]} />
                 </div>
 
                 {/* Die Zeitleiste - dieselbe wie in jeder anderen Lead-Ansicht. */}
-                <div className="space-y-3 mt-8">
-                  <h3 className="abschnitt-titel">
+                <div className="space-y-3 abschnitt-trenner">
+                  <h3 className="abschnitt-titel flex items-center gap-2">
+                    <History className="w-4 h-4" />
                     Verlauf
                   </h3>
                   <Verlauf hotLeadId={selectedPoolLead.id} leadId={selectedPoolLead.originalLeadId} />
@@ -1865,7 +1874,7 @@ function Closing() {
                 </div>
 
                 {/* Bewerben Button */}
-                <div className="mt-8">
+                <div className="abschnitt-trenner">
                   <button
                     onClick={() => {
                       setSelectedPoolLead(null)
@@ -2676,9 +2685,10 @@ function Closing() {
 
                   {/* KONTAKTDATEN Section */}
                   <div className="space-y-3">
-                    <h3 className="abschnitt-titel">
-                      Kontaktdaten
-                    </h3>
+                    <h3 className="abschnitt-titel flex items-center gap-2">
+                    <UserIcon className="w-4 h-4" />
+                    Kontaktdaten
+                  </h3>
 
                     {editMode ? (
                       /* Edit Mode: Kontaktdaten bearbeiten */
@@ -2859,10 +2869,11 @@ function Closing() {
                   </div>
 
                   {/* TERMIN Section */}
-                  <div className="space-y-3 mt-8">
-                    <h3 className="abschnitt-titel">
-                      Termin
-                    </h3>
+                  <div className="space-y-3 abschnitt-trenner">
+                    <h3 className="abschnitt-titel flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Termin
+                  </h3>
 
                     <div className="grid grid-cols-2 gap-4">
                       <div>
@@ -2938,7 +2949,7 @@ function Closing() {
                   )}
 
                   {/* WEBSITE-STATISTIKEN Section */}
-                  <div className="mt-8">
+                  <div className="abschnitt-trenner">
                     <button
                       type="button"
                       onClick={() => setShowWebsiteStats(!showWebsiteStats)}
@@ -3005,16 +3016,17 @@ function Closing() {
                       Abschlussgespraech buchen darf - angezeigt wurden sie
                       danach nirgends. Der Closer ging mit einem Termin und
                       einem Kommentarfeld ins Gespraech. */}
-                  <div className="space-y-3 mt-8">
-                    <h3 className="abschnitt-titel">
-                      Übergabe
-                    </h3>
+                  <div className="space-y-3 abschnitt-trenner">
+                    <h3 className="abschnitt-titel flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4" />
+                    Übergabe
+                  </h3>
                     <Uebergabeblatt lead={selectedLead} />
                   </div>
 
                   {/* DEAL-DETAILS Section (wenn nicht Lead-Status) */}
                   {selectedLead.status !== STATUS.BERATUNG_VEREINBART && (
-                    <div className="space-y-3 mt-8">
+                    <div className="space-y-3 abschnitt-trenner">
                       <h3 className="abschnitt-titel flex items-center gap-2">
                         <Euro className="w-4 h-4" />
                         Deal-Details
@@ -3055,7 +3067,7 @@ function Closing() {
                       ersten datierten Eintrag. Die datierten Einträge stehen
                       in der Zeitleiste; sie hier nochmals zu zeigen war
                       doppelt gemoppelt. Betrifft 588 von 7.588 Kontakten. */}
-                  <div className="mt-8">
+                  <div className="abschnitt-trenner">
                     <h3 className="abschnitt-titel mb-3 flex items-center gap-2">
                       <History className="w-4 h-4" />
                       Verlauf

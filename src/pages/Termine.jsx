@@ -702,7 +702,7 @@ function Termine() {
               {selectedEvent.source === 'beratungsgespraech' && (
                 <>
                   {/* KONTAKTDATEN Section */}
-                  <div className="space-y-3 mt-8">
+                  <div className="space-y-3 abschnitt-trenner">
                     <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
                       Kontaktdaten
                     </h3>
@@ -748,7 +748,7 @@ function Termine() {
 
                   {/* NOTIZEN Section */}
                   {selectedEvent.kommentar && (
-                    <div className="space-y-3 mt-8">
+                    <div className="space-y-3 abschnitt-trenner">
                       <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
                         Notizen
                       </h3>
@@ -814,7 +814,7 @@ function Termine() {
                     )}
 
                     {/* Status Tags */}
-                    <div className="space-y-3 mt-8">
+                    <div className="space-y-3 abschnitt-trenner">
                       <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
                         Status
                       </h3>

@@ -3,7 +3,9 @@ import { istOpener, istSetter, ROLLE } from '../../shared/rollen.js'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
+  ClipboardList,
   History,
+  User as UserIcon,
   Phone,
   Calendar,
   TrendingUp,
@@ -1059,9 +1061,10 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
             <div className="flex-1 overflow-y-auto p-6">
               {/* KONTAKTDATEN Section */}
               <div className="space-y-3">
-                <h3 className="abschnitt-titel">
-                  Kontaktdaten
-                </h3>
+                <h3 className="abschnitt-titel flex items-center gap-2">
+                    <UserIcon className="w-4 h-4" />
+                    Kontaktdaten
+                  </h3>
 
                 {/* Info Grid */}
                 <div className="grid grid-cols-2 gap-4">
@@ -1137,8 +1140,9 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
               {/* TERMIN Section */}
               {selectedLead.terminDatum && (
-                <div className="space-y-3 mt-8">
-                  <h3 className="abschnitt-titel">
+                <div className="space-y-3 abschnitt-trenner">
+                  <h3 className="abschnitt-titel flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
                     Termin
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -1152,7 +1156,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
               {/* DEAL-DETAILS Section */}
               {(selectedLead.setup > 0 || selectedLead.retainer > 0) && (
-                <div className="space-y-3 mt-8">
+                <div className="space-y-3 abschnitt-trenner">
                   <h3 className="abschnitt-titel flex items-center gap-2">
                     <DollarSign className="w-4 h-4" />
                     Deal-Details
@@ -1181,10 +1185,11 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
               )}
 
               {/* STATUS & NOTIZEN Section */}
-              <div className="space-y-3 mt-8">
-                <h3 className="abschnitt-titel">
-                  Status
-                </h3>
+              <div className="space-y-3 abschnitt-trenner">
+                <h3 className="abschnitt-titel flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4" />
+                    Status
+                  </h3>
 
                 {/* Status Badge */}
                 <div className="flex items-center gap-2">
@@ -1204,7 +1209,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                   anderen Schublade. Hier stand bis eben die dritte Kopie des
                   handgebauten Kommentar-Zerlegers; die Zeitleiste kann
                   dasselbe und mehr. */}
-              <div className="space-y-3 mt-8">
+              <div className="space-y-3 abschnitt-trenner">
                 <h3 className="abschnitt-titel flex items-center gap-2">
                   <History className="w-4 h-4" />
                   Verlauf

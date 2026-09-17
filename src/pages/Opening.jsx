@@ -20,6 +20,7 @@ import TerminPicker from '../components/TerminPicker'
 import Verlauf from '../components/Verlauf'
 import EmailComposer from '../components/EmailComposer'
 import {
+  ClipboardList,
   History,
   Search,
   Filter,
@@ -1753,9 +1754,10 @@ function Opening() {
 
               {/* KONTAKTDATEN Section */}
               <div className="space-y-3 mb-6">
-                <h3 className="abschnitt-titel">
-                  Kontaktdaten
-                </h3>
+                <h3 className="abschnitt-titel flex items-center gap-2">
+                    <UserIcon className="w-4 h-4" />
+                    Kontaktdaten
+                  </h3>
 
                 {/* Info Grid */}
                 <div className="grid grid-cols-2 gap-4">
@@ -1855,7 +1857,7 @@ function Opening() {
               </div>
 
               {/* WEBSITE-STATISTIKEN Section */}
-              <div className="space-y-3 mt-8 mb-6">
+              <div className="space-y-3 abschnitt-trenner mb-6">
                 <h3 className="abschnitt-titel flex items-center gap-2">
                   <Building2 className="w-4 h-4" />
                   Website-Statistiken
@@ -1901,10 +1903,11 @@ function Opening() {
               </div>
 
               {/* STATUS & NOTIZEN Section */}
-              <div className="space-y-4 mt-8">
-                <h3 className="abschnitt-titel">
-                  Status & Notizen
-                </h3>
+              <div className="space-y-4 abschnitt-trenner">
+                <h3 className="abschnitt-titel flex items-center gap-2">
+                    <ClipboardList className="w-4 h-4" />
+                    Status & Notizen
+                  </h3>
 
                 {editMode ? (
                   // Bearbeitungsmodus
@@ -2089,7 +2092,7 @@ function Opening() {
                   so wie in Setting, Closing und Follow-Up. Vorher hing er
                   mitten in "Status & Notizen", weshalb er in jedem Tab an
                   einer anderen Stelle auftauchte. */}
-              <div className="space-y-3 mt-8 mb-6">
+              <div className="space-y-3 abschnitt-trenner mb-6">
                 <h3 className="abschnitt-titel flex items-center gap-2">
                   <History className="w-4 h-4" />
                   Verlauf
