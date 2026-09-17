@@ -220,12 +220,18 @@ export async function handler(event) {
     }
 
     // === Pie-Chart: Status-Verteilung ===
+    // Die Farben stehen hier, weil das Diagramm sie mitgeliefert bekommt.
+    // Sie folgen derselben Regel wie im Frontend (Kennzahlen.jsx): Gruen
+    // heisst gut, Rot schlecht, Amber wartet - und alles andere ist neutral.
+    // "Offen" war blau; blau bedeutet in dieser Oberflaeche nichts, es war
+    // schlicht die fuenfte Farbe im Bild.
+    const FARBE = { gut: '#10B981', warnung: '#F59E0B', schlecht: '#EF4444', neutral: '#9A97A6' }
     const statusDistribution = [
-      { name: 'Bezahlt', value: invoices.filter(i => ['paid', 'paidoff'].includes(i.status)).length, color: '#10B981' },
-      { name: 'Offen', value: invoices.filter(i => i.status === 'open').length, color: '#3B82F6' },
-      { name: 'Überfällig', value: invoices.filter(i => i.status === 'overdue').length, color: '#EF4444' },
-      { name: 'Entwurf', value: invoices.filter(i => ['draft', 'pending'].includes(i.status)).length, color: '#8B8B9A' },
-      { name: 'Storniert', value: invoices.filter(i => i.status === 'voided').length, color: '#F59E0B' }
+      { name: 'Bezahlt', value: invoices.filter(i => ['paid', 'paidoff'].includes(i.status)).length, color: FARBE.gut },
+      { name: 'Offen', value: invoices.filter(i => i.status === 'open').length, color: FARBE.neutral },
+      { name: 'Überfällig', value: invoices.filter(i => i.status === 'overdue').length, color: FARBE.schlecht },
+      { name: 'Entwurf', value: invoices.filter(i => ['draft', 'pending'].includes(i.status)).length, color: '#C9C6D0' },
+      { name: 'Storniert', value: invoices.filter(i => i.status === 'voided').length, color: FARBE.warnung }
     ].filter(s => s.value > 0)
 
     // === Forecast: nächste 5 Wochen erwartete Eingänge ===
