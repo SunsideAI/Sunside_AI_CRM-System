@@ -92,13 +92,11 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
   }
 
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 p-4 mb-4 ${
-      alsAnsicht ? 'min-h-[600px]' : ''
-    }`}>
+    <div className={`card p-5 mb-4 ${alsAnsicht ? 'min-h-[600px]' : ''}`}>
       {!alsAnsicht && (
         <div className="flex items-center gap-2 mb-1">
           <Users className="w-5 h-5 text-primary" />
-          <h3 className="font-medium text-gray-900">
+          <h3 className="text-title-md font-medium text-on-surface">
             Beratungsgespräche ohne Setter ({termine.length})
           </h3>
         </div>

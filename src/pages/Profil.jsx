@@ -109,7 +109,7 @@ function Profil() {
       )}
 
       {/* Profile Card */}
-      <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+      <div className="card p-0 overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-sunside-secondary to-sunside-primary p-6">
           <div className="flex items-center">
@@ -183,7 +183,7 @@ function Profil() {
       </div>
 
       {/* Password Change */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
+      <div className="card">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <Key className="w-5 h-5 text-gray-400 mr-3" />

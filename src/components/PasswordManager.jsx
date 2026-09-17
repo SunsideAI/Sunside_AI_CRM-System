@@ -98,7 +98,7 @@ function PasswordManager() {
   const selectedUserData = users.find(u => u.id === selectedUser)
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-6">
+    <div className="card">
       <div className="flex items-center mb-6">
         <Key className="w-6 h-6 text-sunside-primary mr-3" />
         <h2 className="text-lg font-semibold text-on-surface">Passwort-Verwaltung</h2>

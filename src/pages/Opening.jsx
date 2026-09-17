@@ -1047,14 +1047,14 @@ function Opening() {
 
       {/* Re-Engagement Widget: Leads die neu terminiert werden müssen */}
       {setterNoShowLeads.length > 0 && viewMode !== 'ebook' && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
+        <div className="card p-5">
           <div
             className="flex items-center justify-between cursor-pointer"
             onClick={() => setReEngagementCollapsed(!reEngagementCollapsed)}
           >
-            <h3 className="font-medium text-gray-900 flex items-center gap-2">
+            <h3 className="text-title-md font-medium text-on-surface flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-primary" />
-              Lead-Termine neu vereinbaren ({setterNoShowLeads.length})
+              Setting-Termine neu vereinbaren ({setterNoShowLeads.length})
             </h3>
             <div className="flex items-center gap-2">
               <ChevronRight className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${reEngagementCollapsed ? '' : 'rotate-90'}`} />
