@@ -67,7 +67,14 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
 
   if (!isSetter() && !isAdmin()) return null
   if (laedt) {
-    return (
+    // Als Ansicht traegt der Pool die Hoehe der Seite - wie jede andere Liste
+    // auch, damit der Scrollbalken beim Umschalten nicht springt.
+    return alsAnsicht ? (
+      <div className="card-elevated min-h-[600px] flex items-center justify-center
+                      gap-2 text-on-surface-variant text-sm">
+        <Loader2 className="w-4 h-4 animate-spin" /> Pool wird geladen …
+      </div>
+    ) : (
       <div className="flex items-center gap-2 text-gray-500 text-sm p-4">
         <Loader2 className="w-4 h-4 animate-spin" /> Pool wird geladen …
       </div>
@@ -76,15 +83,18 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
   if (termine.length === 0) {
     if (!alsAnsicht) return null
     return (
-      <div className="card-elevated py-20 text-center text-on-surface-variant">
-        <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
+      <div className="card-elevated min-h-[600px] flex flex-col items-center justify-center
+                      text-center text-on-surface-variant">
+        <Users className="w-10 h-10 mb-3 opacity-40" />
         Kein Beratungsgespräch wartet auf einen Setter.
       </div>
     )
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 mb-4">
+    <div className={`bg-white rounded-xl border border-gray-200 p-4 mb-4 ${
+      alsAnsicht ? 'min-h-[600px]' : ''
+    }`}>
       {!alsAnsicht && (
         <div className="flex items-center gap-2 mb-1">
           <Users className="w-5 h-5 text-primary" />

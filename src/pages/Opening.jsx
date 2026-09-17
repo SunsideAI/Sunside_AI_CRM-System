@@ -1180,9 +1180,12 @@ function Opening() {
         </div>
       )}
 
-      {/* Normale Leads Tabelle - nur wenn nicht E-Book Pool */}
+      {/* Normale Leads Tabelle - nur wenn nicht E-Book Pool.
+          min-h wie in Closing und Setting: Die Liste reserviert ihren Platz,
+          bevor die Daten da sind. Sonst ist die Seite beim Laden kurz, danach
+          lang - und der Scrollbalken verhaelt sich in jedem Tab anders. */}
       {viewMode !== 'ebook' && (
-      <div className="card-elevated overflow-hidden">
+      <div className="card-elevated overflow-hidden min-h-[600px]">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-16">
             <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
@@ -1453,7 +1456,7 @@ function Opening() {
             </button>
           </div>
 
-          <div className="card-elevated overflow-hidden">
+          <div className="card-elevated overflow-hidden min-h-[600px]">
             {ebookLoading ? (
               <div className="flex items-center justify-center py-20">
                 <Loader2 className="w-8 h-8 animate-spin text-warning" />

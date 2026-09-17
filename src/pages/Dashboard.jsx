@@ -416,7 +416,10 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       path: '/setting',
       icon: Users,
       color: 'text-primary bg-secondary-container',
-      show: istSetterNutzer()
+      // isAdmin() fehlte als einziger der drei Schnellzugriffe: Opening und
+      // Closing standen einem Admin offen, Setting nicht. Der Tab war da, nur
+      // der Weg dorthin vom Dashboard aus nicht.
+      show: istSetterNutzer() || isAdmin()
     },
     {
       name: 'Closing vorbereiten',

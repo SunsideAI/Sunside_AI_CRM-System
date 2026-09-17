@@ -1647,7 +1647,7 @@ function Closing() {
             </button>
           </div>
 
-          <div className="card-elevated overflow-hidden">
+          <div className="card-elevated overflow-hidden min-h-[600px]">
             {loadingPool ? (
             <div className="flex items-center justify-center py-20">
               <Loader2 className="w-8 h-8 animate-spin text-secondary" />

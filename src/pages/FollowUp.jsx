@@ -534,8 +534,8 @@ function FollowUp() {
         </div>
       </div>
 
-      {/* Tabelle */}
-      <div className="card-elevated overflow-hidden">
+      {/* Tabelle. min-h wie in den anderen Tabs - siehe Opening. */}
+      <div className="card-elevated overflow-hidden min-h-[600px]">
         <table className="w-full">
           <thead>
             <tr className="bg-surface-container">
