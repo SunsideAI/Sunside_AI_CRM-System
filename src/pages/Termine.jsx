@@ -364,7 +364,7 @@ function Termine() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+      <div className="seitenkopf">
         <div>
           <h1 className="text-headline-lg font-display text-on-surface">
             {viewMode === 'all' ? 'Alle Termine' : 'Meine Termine'}

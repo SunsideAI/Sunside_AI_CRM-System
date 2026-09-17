@@ -811,7 +811,7 @@ function Opening() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="seitenkopf">
         <div>
           <h1 className="text-headline-lg font-display text-on-surface">
             {viewMode === 'ebook' ? 'E-Book Pool' : 'Opening'}

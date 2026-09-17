@@ -197,6 +197,10 @@ function setCache(key, data) {
 function Dashboard() {
   const { user, hasRole } = useAuth()
   const [activeView, setActiveView] = useState('uebersicht')
+  // Der Aktualisieren-Knopf gehoert in die Kopfzeile, die Ladefunktion in den
+  // Inhalt darunter. Der Inhalt meldet sie hier an.
+  const [aktualisieren, setAktualisieren] = useState(null)
+  const [laedt, setLaedt] = useState(false)
   
   // Opener und Coldcaller sind dieselbe Aufgabe. Ohne istOpener() waere ein
   // Opener in den Kennzahlen als Closer gezaehlt worden - stillschweigend.
@@ -210,7 +214,7 @@ function Dashboard() {
   return (
     <div className="space-y-8">
       {/* Header mit Toggle */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div className="seitenkopf">
         <div>
           <h1 className="text-headline-lg font-display text-on-surface">Dashboard</h1>
           <p className="mt-2 text-body-md text-on-surface-variant">
@@ -220,8 +224,9 @@ function Dashboard() {
           </p>
         </div>
 
-        {/* Toggle Buttons - scrollable on mobile */}
-        <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        {/* Umschalter und Aktualisieren in EINER Zeile rechts neben dem Titel. */}
+        <div className="seitenkopf-bedienung">
+          <div>
           <div className="umschalter">
             <button
               onClick={() => setActiveView('uebersicht')}
@@ -265,12 +270,26 @@ function Dashboard() {
               </button>
             )}
           </div>
+
+          {aktualisieren && (
+            <button
+              onClick={aktualisieren}
+              disabled={laedt}
+              aria-label="Aktualisieren"
+              title="Aktualisieren"
+              className="kopf-knopf kopf-knopf-symbol"
+            >
+              <RefreshCw className={`w-4 h-4 ${laedt ? 'animate-spin' : ''}`} />
+            </button>
+          )}
+          </div>
         </div>
       </div>
 
       {/* Content */}
       {activeView === 'uebersicht' && (
-        <UebersichtContent user={user} isColdcaller={isColdcaller} isCloser={isCloser} isAdmin={isAdmin} />
+        <UebersichtContent user={user} isColdcaller={isColdcaller} isCloser={isCloser} isAdmin={isAdmin}
+          meldeAktualisieren={(fn, l) => { setAktualisieren(fn); setLaedt(l) }} />
       )}
       {activeView === 'opening' && (
         <OpeningAnalytics user={user} isAdmin={isAdmin} />
@@ -285,7 +304,7 @@ function Dashboard() {
 // ==========================================
 // ÜBERSICHT CONTENT
 // ==========================================
-function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
+function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktualisieren }) {
   // Der Setter kam im Dashboard bisher gar nicht vor: Er passte in keine der
   // Bedingungen und sah deshalb genau eine Kachel in einem Raster fuer vier.
   // Die Zahlen dafuer liefert die Schnittstelle laengst mit.
@@ -307,6 +326,12 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
       loadData()
     }
   }, [user?.vor_nachname])
+
+  // Der Aktualisieren-Knopf steht im Seitenkopf, die Ladefunktion hier. Statt
+  // dafuer eine zweite Kopfzeile aufzumachen, meldet sich der Inhalt oben an.
+  useEffect(() => {
+    meldeAktualisieren?.(() => () => loadData(true), loading)
+  }, [loading])
 
   const loadData = async (forceRefresh = false) => {
     const cacheKey = `dashboard_uebersicht_${user?.vor_nachname || 'unknown'}`
@@ -437,22 +462,6 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
   return (
     <div className="space-y-8">
       {/* Begrüßung */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-headline-sm font-display text-on-surface">
-            Hallo, {user?.vorname || 'User'}!
-          </h2>
-        </div>
-        <button
-          onClick={() => loadData(true)}
-          disabled={loading}
-          className="kopf-knopf kopf-knopf-symbol"
-          title="Daten aktualisieren"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-        </button>
-      </div>
-
       {/* Statistiken - Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (

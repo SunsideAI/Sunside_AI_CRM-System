@@ -35,7 +35,7 @@ function Einstellungen() {
   return (
     <div className="space-y-6">
       {/* Header mit Tabs */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div className="seitenkopf">
         <div>
           <h1 className="text-headline-lg font-display text-on-surface">Einstellungen</h1>
           <p className="mt-2 text-body-md text-on-surface-variant">

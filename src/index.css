@@ -395,6 +395,25 @@
 
      Eine Höhe für alles in dieser Zeile: 2,25 rem (36 px). */
 
+  /* Die Kopfzeile selbst: Titel links, Bedienelemente rechts, beide auf
+     gleicher Höhe. `items-center` ist der Unterschied, den man beim
+     Tabwechsel sieht — mit `items-start` klebten die Umschalter 18 Pixel
+     weiter oben, weil sie sich am Titel ausrichteten statt am Block aus
+     Titel UND Unterzeile. */
+  .seitenkopf {
+    @apply flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4;
+  }
+
+  /* Die Bedienelemente rechts. Auf schmalen Schirmen scrollt die Reihe
+     waagerecht, statt den Titel über drei Zeilen Knöpfe zu schieben. */
+  .seitenkopf-bedienung {
+    @apply w-full lg:w-auto overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0;
+  }
+
+  .seitenkopf-bedienung > * {
+    @apply flex items-center gap-3 min-w-max;
+  }
+
   .umschalter {
     @apply flex items-center bg-surface-container rounded-lg p-1 min-w-max;
   }

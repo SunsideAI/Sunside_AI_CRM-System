@@ -193,7 +193,7 @@ function Setting() {
   return (
     <div className="space-y-8">
       {/* Kopfzeile mit Umschalter — gebaut wie im Closing. */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="seitenkopf">
         <div>
           <h1 className="text-headline-lg font-display text-on-surface">
             {ansicht === 'pool' ? 'Setter-Pool' : 'Setting'}

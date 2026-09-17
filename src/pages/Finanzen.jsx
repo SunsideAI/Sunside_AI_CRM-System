@@ -108,7 +108,7 @@ export default function Finanzen() {
   return (
     <div className="space-y-8">
       {/* Header mit Toggle Bubbles */}
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+      <div className="seitenkopf">
         <div>
           <h1 className="text-headline-lg font-display text-on-surface">Finanzen</h1>
           <p className="mt-2 text-body-md text-on-surface-variant">
@@ -118,8 +118,10 @@ export default function Finanzen() {
           </p>
         </div>
 
-        {/* Toggle Buttons - Bubble Style */}
-        <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        {/* Bedienelemente: Umschalter und Aktualisieren in EINER Zeile,
+            rechts neben dem Titel — wie in jedem anderen Tab. */}
+        <div className="seitenkopf-bedienung">
+          <div>
           <div className="umschalter">
             <button
               onClick={() => setActiveView('analytics')}
@@ -160,20 +162,18 @@ export default function Finanzen() {
               <span className="sm:hidden">RE</span>
             </button>
           </div>
-        </div>
-      </div>
 
-      {/* Refresh Button */}
-      <div className="flex justify-end">
-        <button
-          onClick={() => load(true)}
-          disabled={refreshing || loading}
-          aria-label="Aktualisieren"
-          title="Aktualisieren"
-          className="kopf-knopf kopf-knopf-symbol"
-        >
-          <RefreshCw className={`h-4 w-4 ${(refreshing || loading) ? 'animate-spin' : ''}`} />
-        </button>
+          <button
+            onClick={() => load(true)}
+            disabled={refreshing || loading}
+            aria-label="Aktualisieren"
+            title="Aktualisieren"
+            className="kopf-knopf kopf-knopf-symbol"
+          >
+            <RefreshCw className={`h-4 w-4 ${(refreshing || loading) ? 'animate-spin' : ''}`} />
+          </button>
+          </div>
+        </div>
       </div>
 
       {/* Loading State */}
