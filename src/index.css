@@ -132,14 +132,18 @@
   }
 
   /* Secondary Button */
+  /* Der zweite Knopf: gleiche Familie wie der erste, nur leiser. Vorher war
+     er blau - die letzte blaue Flaeche im ganzen CRM, und ausgerechnet neben
+     einem lila Knopf. */
   .btn-secondary {
-    @apply px-5 py-2.5 rounded-xl font-medium transition-all duration-200;
-    background-color: #3B82F6;
-    color: white;
+    @apply px-5 py-2.5 rounded-xl font-medium transition-all duration-200 border;
+    background-color: #F0DBFF;
+    border-color: rgba(70, 14, 116, 0.18);
+    color: #460E74;
   }
 
   .btn-secondary:hover {
-    background-color: #2563EB;
+    background-color: #E3C6F7;
   }
 
   /* Ghost Button */
