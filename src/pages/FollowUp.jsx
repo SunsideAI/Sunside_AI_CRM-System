@@ -451,18 +451,21 @@ function FollowUp() {
           <button
             onClick={handleExportExcel}
             disabled={exporting}
-            className="flex items-center gap-2 px-3 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 shadow-ambient-sm"
+            title="Als Excel-Datei herunterladen"
+            className="kopf-knopf"
           >
-            {exporting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+            {exporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             <span className="hidden sm:inline">Export</span>
           </button>
 
           <div className="relative">
             <button
               onClick={() => setShowColumnSettings(!showColumnSettings)}
-              className={`p-2.5 rounded-lg shadow-ambient-sm ${showColumnSettings ? 'bg-primary text-on-primary' : 'bg-surface-container-lowest hover:bg-surface-container'}`}
+              aria-label="Spalten wählen"
+              title="Spalten wählen"
+              className={`kopf-knopf kopf-knopf-symbol ${showColumnSettings ? 'bg-primary text-on-primary hover:bg-primary' : ''}`}
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-4 h-4" />
             </button>
             {showColumnSettings && (
               <>
