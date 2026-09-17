@@ -897,12 +897,14 @@ function Opening() {
               else loadLeads()
               loadSetterNoShowLeads()
             }}
-            disabled={loading || ebookLoading}
+            disabled={viewMode === 'ebook' ? ebookLoading : loading}
             aria-label="Aktualisieren"
             title="Aktualisieren"
             className="kopf-knopf kopf-knopf-symbol"
           >
-            <RefreshCw className={`w-4 h-4 ${(loading || ebookLoading) ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${
+              (viewMode === 'ebook' ? ebookLoading : loading) ? 'animate-spin' : ''
+            }`} />
           </button>
           </div>
         </div>

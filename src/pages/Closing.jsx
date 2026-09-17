@@ -1628,12 +1628,14 @@ function Closing() {
               das, was gerade zu sehen ist. */}
           <button
             onClick={handleRefresh}
-            disabled={refreshing || loading || loadingPool}
+            disabled={refreshing || (viewMode === 'pool' ? loadingPool : loading)}
             aria-label="Aktualisieren"
             title="Aktualisieren"
             className="kopf-knopf kopf-knopf-symbol"
           >
-            <RefreshCw className={`w-4 h-4 ${(refreshing || loading || loadingPool) ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`w-4 h-4 ${
+              (refreshing || (viewMode === 'pool' ? loadingPool : loading)) ? 'animate-spin' : ''
+            }`} />
           </button>
           </div>
         </div>
