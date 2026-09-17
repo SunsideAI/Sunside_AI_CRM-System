@@ -1766,10 +1766,15 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
 
           {/* KI-Analyse Section */}
           <div className="card p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5 text-primary" />
-                <h3 className="text-label-lg text-on-surface">KI-Analyse</h3>
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="min-w-0">
+                <h3 className="text-label-lg font-semibold text-on-surface flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  KI-Analyse
+                </h3>
+                <p className="text-body-sm text-on-surface-variant mt-0.5">
+                  Auffälligkeiten in den Zahlen dieses Zeitraums
+                </p>
               </div>
               <button
                 onClick={fetchAiAnalysis}
@@ -1986,9 +1991,12 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
           {/* Gestapeltes Balkendiagramm - Performance pro Vertriebler (Admin only) */}
           {isAdmin() && (
             <div className="card p-6">
-              <h3 className="text-label-lg text-on-surface mb-4">
+              <h3 className="text-label-lg font-semibold text-on-surface">
                 {selectedUser === 'all' ? 'Ergebnisse pro Vertriebler (gestapelt)' : `Ergebnisse: ${selectedUser}`}
               </h3>
+              <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">
+                Beratungsgespräch, Unterlage und Absage je Person
+              </p>
               {(() => {
                 const perUserData = stats.perUser || []
                 const chartData = selectedUser === 'all'
@@ -2051,9 +2059,12 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
           {/* Einwahlen pro Vertriebler (Admin only) */}
           {isAdmin() && (
             <div className="card p-6">
-              <h3 className="text-label-lg text-on-surface mb-4">
+              <h3 className="text-label-lg font-semibold text-on-surface">
                 {selectedUser === 'all' ? 'Einwahlen & Beratungsgespräche pro Vertriebler' : `Einwahlen & Beratungsgespräche: ${selectedUser}`}
               </h3>
+              <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">
+                Aufwand und Ertrag nebeneinander
+              </p>
               {(() => {
                 const perUserData = stats.perUser || []
                 const chartData = selectedUser === 'all'
@@ -2500,8 +2511,7 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
               {/* Balkendiagramm - Alle Leads mit Status */}
               <div className="card p-6">
                 <h3 className="text-label-lg font-semibold text-on-surface">Alle Leads pro Closer</h3>
-              <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">Komplette Verteilung nach Status</p>
-                <p className="text-body-sm text-on-surface-variant mb-4">Komplette Verteilung nach Status</p>
+                <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">Komplette Verteilung nach Status</p>
                 <ResponsiveContainer width="100%" height={Math.max(250, stats.leadsProCloser.length * 50)}>
                   <BarChart data={stats.leadsProCloser} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" stroke="#E1E2EC" />
@@ -2529,8 +2539,7 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
               {/* Kuchendiagramm - Prozentuale Verteilung ALLER Leads */}
               <div className="card p-6">
                 <h3 className="text-label-lg font-semibold text-on-surface">Verteilung aller Leads</h3>
-              <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">Alle Hot Leads im System</p>
-                <p className="text-body-sm text-on-surface-variant mb-4">
+                <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">
                   Alle {stats.leadsProCloser.reduce((sum, c) => sum + c.gesamt, 0)} Hot Leads im System
                 </p>
                 <ResponsiveContainer width="100%" height={300}>
