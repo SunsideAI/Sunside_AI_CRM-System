@@ -1,6 +1,6 @@
 import { STATUS, IST_VERLOREN } from '../../shared/status.js'
 import { istOpener, istSetter, ROLLE } from '../../shared/rollen.js'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
   History,
@@ -197,10 +197,23 @@ function setCache(key, data) {
 function Dashboard() {
   const { user, hasRole } = useAuth()
   const [activeView, setActiveView] = useState('uebersicht')
+
   // Der Aktualisieren-Knopf gehoert in die Kopfzeile, die Ladefunktion in den
-  // Inhalt darunter. Der Inhalt meldet sie hier an.
-  const [aktualisieren, setAktualisieren] = useState(null)
+  // Inhalt darunter. Der Inhalt traegt sie hier ein.
+  //
+  // Ein Ref, kein Zustand: Der erste Versuch hob dafuer `loading` des Inhalts
+  // mit hoch, und der Knopf blieb dauerhaft deaktiviert, weil der Zustand
+  // oben nicht mehr nachgezogen wurde. Der Ref loest kein Neuzeichnen aus und
+  // kann darum auch nicht veralten; ob gerade geladen wird, weiss der Knopf
+  // von seinem eigenen Aufruf.
+  const aktualisierenRef = useRef(null)
   const [laedt, setLaedt] = useState(false)
+
+  const anstossen = async () => {
+    if (!aktualisierenRef.current) return
+    setLaedt(true)
+    try { await aktualisierenRef.current() } finally { setLaedt(false) }
+  }
   
   // Opener und Coldcaller sind dieselbe Aufgabe. Ohne istOpener() waere ein
   // Opener in den Kennzahlen als Closer gezaehlt worden - stillschweigend.
@@ -271,9 +284,9 @@ function Dashboard() {
             )}
           </div>
 
-          {aktualisieren && (
+          {activeView === 'uebersicht' && (
             <button
-              onClick={aktualisieren}
+              onClick={anstossen}
               disabled={laedt}
               aria-label="Aktualisieren"
               title="Aktualisieren"
@@ -289,7 +302,7 @@ function Dashboard() {
       {/* Content */}
       {activeView === 'uebersicht' && (
         <UebersichtContent user={user} isColdcaller={isColdcaller} isCloser={isCloser} isAdmin={isAdmin}
-          meldeAktualisieren={(fn, l) => { setAktualisieren(fn); setLaedt(l) }} />
+          meldeAktualisieren={(fn) => { aktualisierenRef.current = fn }} />
       )}
       {activeView === 'opening' && (
         <OpeningAnalytics user={user} isAdmin={isAdmin} />
@@ -327,11 +340,13 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
     }
   }, [user?.vor_nachname])
 
-  // Der Aktualisieren-Knopf steht im Seitenkopf, die Ladefunktion hier. Statt
-  // dafuer eine zweite Kopfzeile aufzumachen, meldet sich der Inhalt oben an.
+  // Der Aktualisieren-Knopf steht im Seitenkopf, die Ladefunktion hier. Ohne
+  // Abhaengigkeitsliste: nach jedem Zeichnen neu eintragen, damit die Funktion
+  // nie auf einen alten Stand zeigt. Ein Ref zieht kein Neuzeichnen nach sich,
+  // eine Schleife entsteht dadurch also nicht.
   useEffect(() => {
-    meldeAktualisieren?.(() => () => loadData(true), loading)
-  }, [loading])
+    meldeAktualisieren?.(() => loadData(true))
+  })
 
   const loadData = async (forceRefresh = false) => {
     const cacheKey = `dashboard_uebersicht_${user?.vor_nachname || 'unknown'}`
