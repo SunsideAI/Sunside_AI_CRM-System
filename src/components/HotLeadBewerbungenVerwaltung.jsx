@@ -25,6 +25,11 @@ function HotLeadBewerbungenVerwaltung() {
   const [successMessage, setSuccessMessage] = useState('')
   const [processing, setProcessing] = useState(null)
   const [filterStatus, setFilterStatus] = useState('Offen')
+  // Setting und Closing sind zwei verschiedene Entscheidungen: Wer ein
+  // Beratungsgespraech haelt, muss nicht derselbe sein, der abschliesst.
+  // Sie in einer Liste zu mischen hiess, bei jeder Zeile erst nachsehen zu
+  // muessen, worueber man gerade entscheidet.
+  const [stufeFilter, setStufeFilter] = useState('Setter')
   const [expandedId, setExpandedId] = useState(null)
 
   const [editKommentar, setEditKommentar] = useState({})
@@ -128,6 +133,9 @@ function HotLeadBewerbungenVerwaltung() {
   }
 
   const offeneCount = bewerbungen.filter(b => b.status === 'Offen').length
+  const offenJeStufe = (stufe) =>
+    bewerbungen.filter(b => b.status === 'Offen' && (b.stufe || 'Closer') === stufe).length
+  const sichtbare = bewerbungen.filter(b => (b.stufe || 'Closer') === stufeFilter)
 
   return (
     <div className="space-y-6">
@@ -150,7 +158,7 @@ function HotLeadBewerbungenVerwaltung() {
       {/* Header mit Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-on-surface">Hot-Lead-Bewerbungen</h2>
+          <h2 className="text-lg font-semibold text-on-surface">Lead-Bewerbungen</h2>
           {offeneCount > 0 && (
             <span className="px-2.5 py-1 bg-amber-100 text-amber-700 rounded-full text-sm font-medium">
               {offeneCount} offen
@@ -180,6 +188,34 @@ function HotLeadBewerbungenVerwaltung() {
         </div>
       </div>
 
+      {/* Setting oder Closing — zwei getrennte Entscheidungen, zwei Listen. */}
+      <div className="flex items-center bg-gray-100 rounded-lg p-1 w-fit">
+        {[
+          { wert: 'Setter', name: 'Setting', unter: 'Beratungsgespräche' },
+          { wert: 'Closer', name: 'Closing', unter: 'Abschlussgespräche' }
+        ].map(s2 => (
+          <button
+            key={s2.wert}
+            onClick={() => setStufeFilter(s2.wert)}
+            className={`flex items-center px-4 py-2 rounded-md text-label-lg transition-all duration-250 ${
+              stufeFilter === s2.wert
+                ? 'bg-gradient-primary text-white shadow-glow-primary'
+                : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+            }`}
+            title={`Bewerbungen auf ${s2.unter}`}
+          >
+            {s2.name}
+            {offenJeStufe(s2.wert) > 0 && (
+              <span className={`ml-2 min-w-[22px] text-center px-1.5 py-0.5 text-label-sm rounded-md ${
+                stufeFilter === s2.wert ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700'
+              }`}>
+                {offenJeStufe(s2.wert)}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* Error */}
       {error && (
         <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-center gap-3 text-red-700">
@@ -196,20 +232,33 @@ function HotLeadBewerbungenVerwaltung() {
       )}
 
       {/* Keine Bewerbungen */}
-      {!loading && bewerbungen.length === 0 && (
+      {!loading && sichtbare.length === 0 && (
         <div className="text-center py-12 bg-white rounded-xl border border-outline-variant/15">
           <Clock className="w-12 h-12 text-gray-300 mx-auto mb-4" />
           <p className="text-on-surface-variant">
-            {filterStatus === 'Offen' ? 'Keine offenen Bewerbungen' : 'Keine Bewerbungen gefunden'}
+            {filterStatus === 'Offen'
+              ? `Keine offenen Bewerbungen auf ${stufeFilter === 'Setter' ? 'Beratungsgespräche' : 'Abschlussgespräche'}`
+              : 'Keine Bewerbungen in dieser Auswahl'}
           </p>
+          {/* Auf der anderen Stufe wartet vielleicht etwas — das zu
+              verschweigen wäre die schlechtere Hälfte der Trennung. */}
+          {offenJeStufe(stufeFilter === 'Setter' ? 'Closer' : 'Setter') > 0 && (
+            <button
+              onClick={() => setStufeFilter(stufeFilter === 'Setter' ? 'Closer' : 'Setter')}
+              className="mt-3 text-label-lg text-primary hover:underline"
+            >
+              {offenJeStufe(stufeFilter === 'Setter' ? 'Closer' : 'Setter')} offen
+              bei {stufeFilter === 'Setter' ? 'Closing' : 'Setting'}
+            </button>
+          )}
         </div>
       )}
 
       {/* Bewerbungen Liste */}
-      {!loading && bewerbungen.length > 0 && (
+      {!loading && sichtbare.length > 0 && (
         <div className="bg-white rounded-xl border border-outline-variant/15 overflow-hidden">
           <div className="divide-y divide-gray-200">
-            {bewerbungen.map(bewerbung => (
+            {sichtbare.map(bewerbung => (
               <div key={bewerbung.id} className="p-4">
                 {/* Bewerbung Header */}
                 <div

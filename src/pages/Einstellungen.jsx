@@ -41,7 +41,7 @@ function Einstellungen() {
           <p className="mt-2 text-body-md text-on-surface-variant">
             {activeTab === 'mitarbeiter' && 'Mitarbeiter verwalten und Onboarding'}
             {activeTab === 'anfragen' && 'Lead-Anfragen der Vertriebler bearbeiten'}
-            {activeTab === 'hot-lead-bewerbungen' && 'Hot-Lead-Bewerbungen der Closer prüfen'}
+            {activeTab === 'hot-lead-bewerbungen' && 'Bewerbungen auf Beratungs- und Abschlussgespräche prüfen'}
             {activeTab === 'system' && 'Systemkonfiguration und Verwaltung'}
           </p>
         </div>
@@ -81,7 +81,7 @@ function Einstellungen() {
             }`}
           >
             <Bell className="h-4 w-4" />
-            Hot-Leads
+            Lead-Bewerbungen
           </button>
 
           <button

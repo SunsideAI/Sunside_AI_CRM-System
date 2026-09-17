@@ -1,4 +1,4 @@
-// Hot-Lead-Bewerbungen API
+// Lead-Bewerbungen API (Setting und Closing)
 // GET: Bewerbungen laden (Admin: alle, Closer: eigene)
 // POST: Neue Bewerbung erstellen (Closer bewirbt sich auf Lead)
 // PATCH: Bewerbung bearbeiten (Admin genehmigt/ablehnt)
@@ -321,6 +321,7 @@ export async function handler(event) {
           hotLead,
           closerName,
           bewerbungId,
+          stufe,
           kommentar: kommentar || null
         })
       } catch (e) {
@@ -332,7 +333,8 @@ export async function handler(event) {
         await sendAdminInAppNotification({
           hotLead,
           closerName,
-          bewerbungId
+          bewerbungId,
+          stufe
         })
       } catch (e) {
         console.error('Admin In-App-Benachrichtigung fehlgeschlagen:', e)
@@ -478,6 +480,7 @@ export async function handler(event) {
           closerName: application.closer?.vor_nachname || 'Closer',
           unternehmen: application.hot_lead?.original_lead?.unternehmensname || 'Unbekannt',
           status,
+          stufe: application.stufe === STUFE.SETTER ? STUFE.SETTER : STUFE.CLOSER,
           adminKommentar
         })
       } catch (e) {
@@ -511,7 +514,7 @@ export async function handler(event) {
 }
 
 // E-Mail an alle Admins + contact@sunsideai.de
-async function sendAdminNotification({ hotLead, closerName, bewerbungId, kommentar }) {
+async function sendAdminNotification({ hotLead, closerName, bewerbungId, stufe, kommentar }) {
   const RESEND_API_KEY = process.env.RESEND_API_KEY
   if (!RESEND_API_KEY) {
     console.log('[Hot-Lead-Applications] RESEND_API_KEY nicht konfiguriert, überspringe E-Mail')
@@ -561,7 +564,7 @@ async function sendAdminNotification({ hotLead, closerName, bewerbungId, komment
   <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
     <div style="background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
       <div style="font-size: 48px; margin-bottom: 10px;">📋</div>
-      <h1 style="color: white; margin: 0; font-size: 24px;">Neue Hot-Lead-Bewerbung</h1>
+      <h1 style="color: white; margin: 0; font-size: 24px;">Neue Lead-Bewerbung: ${stufenWorte(stufe).bereich}</h1>
     </div>
     <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
       <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
@@ -612,7 +615,7 @@ async function sendAdminNotification({ hotLead, closerName, bewerbungId, komment
     body: JSON.stringify({
       from: ABSENDER_SYSTEM,
       to: recipients,
-      subject: `📋 Neue Hot-Lead-Bewerbung: ${closerName} → ${unternehmen}`,
+      subject: `📋 Lead-Bewerbung ${stufenWorte(stufe).bereich}: ${closerName} → ${unternehmen}`,
       html: emailHtml
     })
   })
@@ -620,8 +623,17 @@ async function sendAdminNotification({ hotLead, closerName, bewerbungId, komment
   console.log('[Hot-Lead-Applications] Admin-Benachrichtigung gesendet an', recipients.length, 'Empfänger')
 }
 
+// Wie eine Bewerbung zu benennen ist. An einer Stelle, weil Betreff, Titel
+// und Text sonst auseinanderlaufen - und weil eine Meldung, die nicht sagt
+// WORAUF sich jemand beworben hat, den Admin zwingt, erst nachzusehen.
+function stufenWorte(stufe) {
+  return stufe === STUFE.SETTER
+    ? { was: 'Beratungsgespräch', bereich: 'Setting' }
+    : { was: 'Abschlussgespräch',  bereich: 'Closing' }
+}
+
 // In-App-Benachrichtigung für alle Admins
-async function sendAdminInAppNotification({ hotLead, closerName, bewerbungId }) {
+async function sendAdminInAppNotification({ hotLead, closerName, bewerbungId, stufe }) {
   // Alle aktiven Admins laden
   const { data: admins } = await supabase
     .from('users')
@@ -635,8 +647,9 @@ async function sendAdminInAppNotification({ hotLead, closerName, bewerbungId }) 
   }
 
   const unternehmen = hotLead.original_lead?.unternehmensname || 'Unbekannt'
-  const titel = 'Neue Hot-Lead-Bewerbung'
-  const nachricht = `${closerName} hat sich auf "${unternehmen}" beworben. Bewerbungs-ID: ${bewerbungId}`
+  const { was, bereich } = stufenWorte(stufe)
+  const titel = `Neue Lead-Bewerbung: ${bereich}`
+  const nachricht = `${closerName} hat sich auf das ${was} bei "${unternehmen}" beworben. Bewerbungs-ID: ${bewerbungId}`
 
   // Für jeden Admin eine Nachricht erstellen
   const messages = admins.map(admin => ({
@@ -661,7 +674,7 @@ async function sendAdminInAppNotification({ hotLead, closerName, bewerbungId }) 
 }
 
 // E-Mail an Closer nach Genehmigung/Ablehnung
-async function sendCloserNotification({ closerEmail, closerName, unternehmen, status, adminKommentar }) {
+async function sendCloserNotification({ closerEmail, closerName, unternehmen, status, stufe, adminKommentar }) {
   const RESEND_API_KEY = process.env.RESEND_API_KEY
   if (!RESEND_API_KEY || !closerEmail) return
 
@@ -671,14 +684,14 @@ async function sendCloserNotification({ closerEmail, closerName, unternehmen, st
     statusTitle = 'Genehmigt ✓'
     statusColor = '#10B981'
     statusIcon = '✅'
-    mainMessage = `Deine Bewerbung für <strong>${unternehmen}</strong> wurde genehmigt! Der Lead wurde dir zugewiesen und ist jetzt unter "Meine Leads" verfügbar.`
-    subject = `✅ Hot-Lead-Bewerbung genehmigt: ${unternehmen}`
+    mainMessage = `Deine Bewerbung auf das ${stufenWorte(stufe).was} bei <strong>${unternehmen}</strong> wurde genehmigt! Der Kontakt ist jetzt im Bereich ${stufenWorte(stufe).bereich} unter "Meine Leads" zu finden.`
+    subject = `✅ Lead-Bewerbung genehmigt: ${unternehmen} (${stufenWorte(stufe).bereich})`
   } else {
     statusTitle = 'Abgelehnt'
     statusColor = '#EF4444'
     statusIcon = '❌'
-    mainMessage = `Deine Bewerbung für <strong>${unternehmen}</strong> wurde leider abgelehnt.`
-    subject = `❌ Hot-Lead-Bewerbung abgelehnt: ${unternehmen}`
+    mainMessage = `Deine Bewerbung auf das ${stufenWorte(stufe).was} bei <strong>${unternehmen}</strong> wurde leider abgelehnt.`
+    subject = `❌ Lead-Bewerbung abgelehnt: ${unternehmen} (${stufenWorte(stufe).bereich})`
   }
 
   const kommentarHtml = adminKommentar

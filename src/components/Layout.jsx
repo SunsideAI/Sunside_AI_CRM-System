@@ -191,7 +191,10 @@ function Layout({ children }) {
                 break
               case 'Pool Update':
                 type = 'info'
-                if (msg.titel?.includes('Hot-Lead-Bewerbung')) {
+                // 'Lead-Bewerbung' ist der neue Titel, 'Hot-Lead-Bewerbung'
+                // der alte: Bestandsnachrichten tragen ihn noch und sollen
+                // weiter irgendwohin führen.
+                if (msg.titel?.includes('Lead-Bewerbung')) {
                   link = '/einstellungen?tab=hot-lead-bewerbungen'
                 } else if (msg.titel?.includes('Lead-Anfrage')) {
                   link = '/einstellungen?tab=anfragen'
