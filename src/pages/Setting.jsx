@@ -1,19 +1,16 @@
 import { useState, useEffect } from 'react'
 import {
-  Search, Calendar, Phone, Video, Loader2, User as UserIcon, Building2, MapPin,
-  CheckCircle2, AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight,
-  History, ClipboardList
+  Search, Calendar, Phone, Video, Loader2, User as UserIcon,
+  CheckCircle2, AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { STATUS, anzeigeName } from '../../shared/status.js'
-import SlideDrawer from '../components/SlideDrawer'
+import LeadSchublade from '../components/LeadSchublade'
 import SetterUebergabe from '../components/SetterUebergabe'
 import SetterPool from '../components/SetterPool'
-import Verlauf from '../components/Verlauf'
 import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
 import Uebergabeblatt, { UEBERGABE_1 } from '../components/Uebergabeblatt'
-import { Abschnitt, Angabe, Angaben } from '../components/Formular'
 
 // Die Arbeitsfläche des Setters — aufgebaut wie Opening und Closing.
 //
@@ -480,126 +477,91 @@ function Setting() {
       </>
       )}
 
-      {/* Detailansicht */}
-      <SlideDrawer
-        isOpen={!!gewaehlt}
+      {/* Detailansicht — Aufbau und Reihenfolge kommen aus LeadSchublade,
+          damit sie in jedem Tab dieselben sind. Tab-eigen ist nur der
+          Arbeitsbereich: hier der Ausgang des Beratungsgesprächs. */}
+      <LeadSchublade
+        offen={!!gewaehlt}
         onClose={() => { setGewaehlt(null); setMailOffen(false); setTerminOffen(false) }}
-        title={gewaehlt?.unternehmen || 'Kontakt'}
-        width="max-w-2xl"
+        titel={gewaehlt?.unternehmen || 'Kontakt'}
+        kontakt={{
+          ansprechpartner: [gewaehlt?.ansprechpartnerVorname, gewaehlt?.ansprechpartnerNachname]
+            .filter(Boolean).join(' '),
+          statusFeld: gewaehlt ? anzeigeName(gewaehlt.status) : null,
+          telefon: gewaehlt?.telefon,
+          email: gewaehlt?.email,
+          website: gewaehlt?.website,
+          ort: gewaehlt?.ort,
+          rollen: [
+            { name: 'Erstanruf', wert: gewaehlt?.openerName },
+            { name: 'Setter', wert: gewaehlt?.setterName }
+          ]
+        }}
+        termin={gewaehlt ? {
+          datum: terminText(gewaehlt.terminDatum),
+          art: gewaehlt.terminart || 'Telefonisch',
+          link: gewaehlt.meeting_link
+        } : null}
+        uebergabe={gewaehlt && <Uebergabeblatt lead={gewaehlt} bereiche={[UEBERGABE_1]} />}
+        verlauf={gewaehlt && { hotLeadId: gewaehlt.id, leadId: gewaehlt.originalLeadId }}
+        arbeitsTitel="Beratungsgespräch"
+        arbeitsIcon={Users}
+        fuss={gewaehlt && (
+          <button
+            onClick={() => setMailOffen(o => !o)}
+            className="flex items-center gap-2 px-4 py-2 border border-primary-fixed-dim
+                       text-primary rounded-lg hover:bg-primary-fixed/30"
+          >
+            <Mail className="w-4 h-4" /> E-Mail an den Kontakt
+          </button>
+        )}
       >
         {gewaehlt && (
-          <div className="space-y-4">
-            {/* Kopf wie in Opening, Closing und Follow-Up: benannter Abschnitt,
-                Angaben im Zweierraster. Vorher stand hier ein namenloses
-                Raster mit eigenen Textgrössen. */}
-            <Abschnitt titel="Kontaktdaten" icon={UserIcon}>
-              <Angaben>
-                <Angabe name="Ansprechpartner">
-                  {[gewaehlt.ansprechpartnerVorname, gewaehlt.ansprechpartnerNachname]
-                    .filter(Boolean).join(' ') || null}
-                </Angabe>
-                <Angabe name="Termin">{terminText(gewaehlt.terminDatum)}</Angabe>
-                <Angabe name="Telefon">
-                  {gewaehlt.telefon
-                    ? <a href={`tel:${gewaehlt.telefon}`} className="text-primary hover:underline">
-                        {gewaehlt.telefon}
-                      </a>
-                    : null}
-                </Angabe>
-                <Angabe name="E-Mail">
-                  {gewaehlt.email
-                    ? <span className="block truncate">{gewaehlt.email}</span>
-                    : null}
-                </Angabe>
-              </Angaben>
-            </Abschnitt>
-
-            {gewaehlt.meeting_link && (
-              <a
-                href={gewaehlt.meeting_link}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center gap-2 p-3 bg-primary-fixed/30 border border-primary-fixed-dim
-                           rounded-lg text-primary hover:bg-secondary-container"
-              >
-                <Video className="w-4 h-4" /> Video-Meeting beitreten
-              </a>
+          <>
+            {mailOffen && (
+              <EmailComposer
+                hotLeadId={gewaehlt.id}
+                lead={{
+                  id: gewaehlt.originalLeadId || gewaehlt.id,
+                  unternehmensname: gewaehlt.unternehmen,
+                  email: gewaehlt.email,
+                  telefon: gewaehlt.telefon,
+                  ort: gewaehlt.ort,
+                  ansprechpartnerVorname: gewaehlt.ansprechpartnerVorname,
+                  ansprechpartnerNachname: gewaehlt.ansprechpartnerNachname
+                }}
+                user={user}
+                inline={true}
+                kategorie="Setting"
+                onClose={() => setMailOffen(false)}
+                onSent={() => setMailOffen(false)}
+              />
             )}
-
-            {/* Die Strecke des Kontakts: was wann passiert ist. */}
-            <Abschnitt titel="Verlauf" icon={History}>
-              <Verlauf hotLeadId={gewaehlt.id} leadId={gewaehlt.originalLeadId} />
-            </Abschnitt>
-
-            {/* Was der Opener aufgenommen hat — der Setter geht damit ins
-                Gespräch. Vorher standen hier drei von neun Feldern; die
-                übrigen sechs hatte der Opener umsonst ausgefüllt. */}
-            <Abschnitt titel="Aus dem Erstanruf" icon={ClipboardList}>
-              <Uebergabeblatt lead={gewaehlt} bereiche={[UEBERGABE_1]} />
-            </Abschnitt>
-
-            {/* Schreiben geht immer, unabhängig von der Stufe */}
-            <div className="border-t pt-4">
-              {mailOffen ? (
-                <EmailComposer
-                  hotLeadId={gewaehlt.id}
-                  lead={{
-                    id: gewaehlt.originalLeadId || gewaehlt.id,
-                    unternehmensname: gewaehlt.unternehmen,
-                    email: gewaehlt.email,
-                    telefon: gewaehlt.telefon,
-                    ort: gewaehlt.ort,
-                    ansprechpartnerVorname: gewaehlt.ansprechpartnerVorname,
-                    ansprechpartnerNachname: gewaehlt.ansprechpartnerNachname
-                  }}
-                  user={user}
-                  inline={true}
-                  kategorie="Setting"
-                  onClose={() => setMailOffen(false)}
-                  onSent={() => setMailOffen(false)}
-                />
-              ) : (
-                <button
-                  onClick={() => setMailOffen(true)}
-                  className="flex items-center gap-2 px-4 py-2 border border-primary-fixed-dim
-                             text-primary rounded-lg hover:bg-primary-fixed/30"
-                >
-                  <Mail className="w-4 h-4" /> E-Mail an den Kontakt
-                </button>
-              )}
-            </div>
 
             {/* Geplatzte Termine: neu legen */}
             {[STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(gewaehlt.status) && (
-              <div className="border-t pt-4">
-                {terminOffen ? (
-                  <TerminPicker
-                    zweck="beratung"
-                    lead={{ id: gewaehlt.originalLeadId, unternehmensname: gewaehlt.unternehmen }}
-                    hotLeadId={gewaehlt.id}
-                    onTerminBooked={() => { setTerminOffen(false); setGewaehlt(null); laden() }}
-                    onCancel={() => setTerminOffen(false)}
-                  />
-                ) : (
-                  <button
-                    onClick={() => setTerminOffen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white
-                               rounded-lg hover:bg-orange-600"
-                  >
-                    <Calendar className="w-4 h-4" /> Neuen Termin buchen
-                  </button>
-                )}
-              </div>
+              terminOffen ? (
+                <TerminPicker
+                  zweck="beratung"
+                  lead={{ id: gewaehlt.originalLeadId, unternehmensname: gewaehlt.unternehmen }}
+                  hotLeadId={gewaehlt.id}
+                  onTerminBooked={() => { setTerminOffen(false); setGewaehlt(null); laden() }}
+                  onCancel={() => setTerminOffen(false)}
+                />
+              ) : (
+                <button
+                  onClick={() => setTerminOffen(true)}
+                  className="btn-primary inline-flex items-center gap-2"
+                >
+                  <Calendar className="w-4 h-4" /> Neuen Termin buchen
+                </button>
+              )
             )}
 
-            {/* Termin fand statt, Übergabe an den Closer, Rückgabe */}
-            <SetterUebergabe
-              lead={gewaehlt}
-              onGespeichert={nachSpeichern}
-            />
-          </div>
+            <SetterUebergabe lead={gewaehlt} onGespeichert={nachSpeichern} />
+          </>
         )}
-      </SlideDrawer>
+      </LeadSchublade>
     </div>
   )
 }

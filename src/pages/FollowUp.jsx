@@ -2,7 +2,7 @@ import { STATUS, anzeigeName } from '../../shared/status.js'
 import { useState, useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
-import Verlauf from '../components/Verlauf'
+import LeadSchublade, { altbestand } from '../components/LeadSchublade'
 import * as XLSX from 'xlsx'
 import {
   RotateCcw,
@@ -722,170 +722,96 @@ function FollowUp() {
       </div>
 
       {/* Drawer */}
-      {selectedLead && createPortal(
-        <div className="fixed inset-0 bg-scrim/50 z-50 flex justify-end" onClick={() => setSelectedLead(null)}>
-          <div
-            className="w-full max-w-lg bg-surface h-full overflow-y-auto shadow-xl animate-slide-in-right"
-            onClick={(e) => e.stopPropagation()}
+      {/* Dieselbe Schublade wie in den anderen drei Tabs. Vorher stand hier
+          ein eigenes Portal: Kontaktdaten als Liste ohne Überschrift, der
+          Verlauf zugeklappt ganz oben, der Speichern-Knopf mittendrin. */}
+      <LeadSchublade
+        offen={!!selectedLead}
+        onClose={() => setSelectedLead(null)}
+        titel={selectedLead?.unternehmen || 'Kontakt'}
+        kontakt={{
+          ansprechpartner: [selectedLead?.ansprechpartner_vorname, selectedLead?.ansprechpartner_nachname]
+            .filter(Boolean).join(' '),
+          statusFeld: selectedLead?.follow_up_status || 'Aktiv',
+          telefon: selectedLead?.telefonnummer,
+          email: selectedLead?.mail,
+          website: selectedLead?.website,
+          ort: selectedLead?.ort,
+          rollen: [{ name: 'Closer', wert: selectedLead?.closer_name }]
+        }}
+        termin={selectedLead?.termin_beratungsgespraech ? {
+          datum: new Date(selectedLead.termin_beratungsgespraech).toLocaleString('de-DE', {
+            day: '2-digit', month: '2-digit', year: 'numeric',
+            hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
+          }) + ' Uhr',
+          art: 'Beratungsgespräch'
+        } : null}
+        verlauf={selectedLead && {
+          hotLeadId: selectedLead.id,
+          altbestand: altbestand(selectedLead.kommentar)
+        }}
+        arbeitsTitel="Follow-Up"
+        arbeitsIcon={RotateCcw}
+        fuss={selectedLead && (
+          <button
+            onClick={handleSaveLead}
+            disabled={saving}
+            className="btn-primary inline-flex items-center gap-2 disabled:opacity-50"
           >
-            {/* Header */}
-            <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between">
-              <h2 className="text-title-lg font-semibold">{selectedLead.unternehmen}</h2>
-              <button onClick={() => setSelectedLead(null)} className="p-2 rounded-lg hover:bg-surface-container">
-                <X className="h-5 w-5" />
-              </button>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Speichern
+          </button>
+        )}
+      >
+        {selectedLead && (
+          <>
+            <div>
+              <label className="feld-label">Status</label>
+              <select
+                value={editData.follow_up_status}
+                onChange={(e) => setEditData(prev => ({ ...prev, follow_up_status: e.target.value }))}
+                className="select-field"
+              >
+                {FOLLOW_UP_STATUS_OPTIONS.map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
 
-            <div className="p-6 space-y-6">
-              {/* Kontakt-Info */}
-              {/* Die Strecke des Kontakts — dieselbe Ansicht wie in Opening
-                  und Setting. */}
-              <details className="border border-outline-variant rounded-xl">
-                <summary className="px-4 py-2 cursor-pointer text-label-lg text-on-surface">
-                  Verlauf
-                </summary>
-                <div className="px-4 pb-4">
-                  <Verlauf hotLeadId={selectedLead.id} />
-                </div>
-              </details>
-
-
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-on-surface-variant">
-                  <Building2 className="w-4 h-4" />
-                  <span>{selectedLead.ansprechpartner_vorname} {selectedLead.ansprechpartner_nachname}</span>
-                </div>
-                {selectedLead.telefonnummer && (
-                  <a href={`tel:${selectedLead.telefonnummer}`} className="flex items-center gap-2 text-primary hover:underline">
-                    <Phone className="w-4 h-4" />
-                    <span>{selectedLead.telefonnummer}</span>
-                  </a>
-                )}
-                {selectedLead.mail && (
-                  <a href={`mailto:${selectedLead.mail}`} className="flex items-center gap-2 text-primary hover:underline">
-                    <Mail className="w-4 h-4" />
-                    <span>{selectedLead.mail}</span>
-                  </a>
-                )}
-                {selectedLead.website && (
-                  <a href={selectedLead.website.startsWith('http') ? selectedLead.website : `https://${selectedLead.website}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-primary hover:underline">
-                    <Globe className="w-4 h-4" />
-                    <span>Website</span>
-                  </a>
-                )}
-                {selectedLead.closer_name && (
-                  <div className="text-body-sm text-on-surface-variant">
-                    Closer: {selectedLead.closer_name}
-                  </div>
-                )}
-              </div>
-
-              {/* Follow-Up Felder */}
-              <div className="space-y-4 border-t border-outline-variant pt-6">
-                <h3 className="abschnitt-titel">
-                  Follow-Up
-                </h3>
-
-                {/* Status */}
-                <div>
-                  <label className="feld-label">Status</label>
-                  <select
-                    value={editData.follow_up_status}
-                    onChange={(e) => setEditData(prev => ({ ...prev, follow_up_status: e.target.value }))}
-                    className="select-field w-full"
-                  >
-                    {FOLLOW_UP_STATUS_OPTIONS.map(opt => (
-                      <option key={opt.value} value={opt.value}>{opt.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Nächster Schritt */}
-                <div>
-                  <label className="feld-label">Nächster Schritt</label>
-                  <textarea
-                    value={editData.follow_up_naechster_schritt}
-                    onChange={(e) => setEditData(prev => ({ ...prev, follow_up_naechster_schritt: e.target.value }))}
-                    rows={2}
-                    className="textarea-field"
-                    placeholder="Was ist als nächstes zu tun?"
-                  />
-                </div>
-
-                {/* Bis wann */}
-                <div>
-                  <label className="feld-label">Bis wann</label>
-                  <input
-                    type="date"
-                    value={editData.follow_up_datum}
-                    onChange={(e) => setEditData(prev => ({ ...prev, follow_up_datum: e.target.value }))}
-                    className="input-field w-full"
-                  />
-                </div>
-
-                {/* Neuer Kommentar */}
-                <div>
-                  <label className="feld-label">Neuer Kommentar</label>
-                  <textarea
-                    value={editData.neuerKommentar}
-                    onChange={(e) => setEditData(prev => ({ ...prev, neuerKommentar: e.target.value }))}
-                    rows={2}
-                    className="textarea-field"
-                    placeholder="Kommentar hinzufügen..."
-                  />
-                </div>
-
-                {/* Speichern */}
-                <button
-                  onClick={handleSaveLead}
-                  disabled={saving}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-primary text-on-primary rounded-lg hover:bg-primary/90 disabled:opacity-50"
-                >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                  Speichern
-                </button>
-              </div>
-
-              {/* Kommentar-Historie */}
-              <div className="space-y-4 border-t border-outline-variant pt-6">
-                <h3 className="abschnitt-titel flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Kommentare
-                </h3>
-
-                <div className="bg-surface-container-lowest rounded-lg p-4 max-h-64 overflow-y-auto">
-                  {selectedLead.kommentar ? (
-                    <div className="space-y-3">
-                      {parseKommentar(selectedLead.kommentar).map(entry => (
-                        entry.type === 'history' ? (
-                          <div key={entry.key} className="flex items-start gap-3 p-2 rounded-lg hover:bg-surface-container">
-                            <span className="text-lg">{entry.emoji}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-body-sm text-on-surface">{entry.text}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-label-sm text-outline">{entry.datum}, {entry.zeit}</span>
-                                {entry.userName && <span className="text-label-sm text-on-surface-variant">• {entry.userName}</span>}
-                              </div>
-                            </div>
-                          </div>
-                        ) : (
-                          <div key={entry.key} className="flex items-start gap-3 p-2">
-                            <span className="text-lg">📝</span>
-                            <p className="text-body-sm text-on-surface-variant">{entry.text}</p>
-                          </div>
-                        )
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-body-sm text-outline italic">Noch keine Kommentare</p>
-                  )}
-                </div>
-              </div>
+            <div>
+              <label className="feld-label">Nächster Schritt</label>
+              <textarea
+                value={editData.follow_up_naechster_schritt}
+                onChange={(e) => setEditData(prev => ({ ...prev, follow_up_naechster_schritt: e.target.value }))}
+                rows={2}
+                className="textarea-field"
+                placeholder="Was ist als nächstes zu tun?"
+              />
             </div>
-          </div>
-        </div>,
-        document.body
-      )}
+
+            <div>
+              <label className="feld-label">Bis wann</label>
+              <input
+                type="date"
+                value={editData.follow_up_datum}
+                onChange={(e) => setEditData(prev => ({ ...prev, follow_up_datum: e.target.value }))}
+                className="input-field"
+              />
+            </div>
+
+            <div>
+              <label className="feld-label">Neuer Kommentar</label>
+              <textarea
+                value={editData.neuerKommentar}
+                onChange={(e) => setEditData(prev => ({ ...prev, neuerKommentar: e.target.value }))}
+                rows={2}
+                className="textarea-field"
+                placeholder="Kommentar hinzufügen..."
+              />
+            </div>
+          </>
+        )}
+      </LeadSchublade>
     </div>
   )
 }

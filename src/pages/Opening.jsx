@@ -20,6 +20,7 @@ import TerminPicker from '../components/TerminPicker'
 import Verlauf from '../components/Verlauf'
 import EmailComposer from '../components/EmailComposer'
 import {
+  History,
   Search,
   Filter,
   Phone,
@@ -2081,37 +2082,38 @@ function Opening() {
                       </div>
                     )}
 
-                    {/* Die Zeitleiste steht offen, nicht zugeklappt: Sie ist der
-                        Verlauf. Das Kommentarfeld darunter bleibt, weil dort die
-                        undatierten Altzeilen stehen — die haben bewusst keinen
-                        Zeitstempel bekommen. */}
-                    <div className="mb-4">
-                      <Verlauf leadId={selectedLead.id} />
-                    </div>
-
-                    {/* Nur noch der Altbestand: alles, was VOR dem ersten datierten
-                        Eintrag steht. Die datierten Einträge zeigt die Zeitleiste
-                        darüber — sie hier nochmals aufzulisten war doppelt.
-                        Betrifft 588 von 7.588 Kontakten; bei allen anderen
-                        entfällt der Block ganz. */}
-                    {altbestand(selectedLead.kommentar) && (
-                      <div className="text-label-sm text-on-surface-variant mb-2">
-                        Ältere Notizen ohne Datum
-                      </div>
-                    )}
-
-                    <div className={altbestand(selectedLead.kommentar)
-                      ? 'bg-surface-container-lowest rounded-xl p-4 max-h-[200px] overflow-y-auto'
-                      : 'hidden'}>
-                      {altbestand(selectedLead.kommentar) ? (
-                        <p className="text-body-sm text-on-surface whitespace-pre-line">
-                          {altbestand(selectedLead.kommentar)}
-                        </p>
-                      ) : (
-                        <p className="text-body-sm text-outline italic">Noch keine Notizen vorhanden</p>
-                      )}
-                    </div>
                   </div>
+                )}
+              </div>
+
+              {/* Der Verlauf ist ein eigener Abschnitt und steht zuletzt -
+                  so wie in Setting, Closing und Follow-Up. Vorher hing er
+                  mitten in "Status & Notizen", weshalb er in jedem Tab an
+                  einer anderen Stelle auftauchte. */}
+              <div className="space-y-3 border-t border-outline-variant pt-6 mb-6">
+                <h3 className="abschnitt-titel flex items-center gap-2">
+                  <History className="w-4 h-4" />
+                  Verlauf
+                </h3>
+
+                <Verlauf leadId={selectedLead.id} />
+
+                {/* Nur noch der Altbestand: alles, was VOR dem ersten datierten
+                    Eintrag steht. Die datierten Einträge zeigt die Zeitleiste
+                    darüber — sie hier nochmals aufzulisten war doppelt.
+                    Betrifft 588 von 7.588 Kontakten; bei allen anderen
+                    entfällt der Block ganz. */}
+                {altbestand(selectedLead.kommentar) && (
+                  <>
+                    <div className="text-label-sm text-on-surface-variant">
+                      Ältere Notizen ohne Datum
+                    </div>
+                    <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[200px] overflow-y-auto">
+                      <p className="text-body-sm text-on-surface whitespace-pre-line">
+                        {altbestand(selectedLead.kommentar)}
+                      </p>
+                    </div>
+                  </>
                 )}
               </div>
                 </>

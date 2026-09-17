@@ -2655,48 +2655,10 @@ function Closing() {
                    NORMALE LEAD-DETAIL-ANSICHT
                    ======================================== */
                 <div className="space-y-6">
-                  {/* Action Buttons - Angebot & Unterlagen versenden */}
-                  {!editMode && (
-                    <div className="space-y-3">
-                      {/* Termin verschieben/neu buchen Button - für alle Leads mit Termin */}
-                      {selectedLead.terminDatum && selectedLead.status !== STATUS.GEWONNEN && !IST_VERLOREN.includes(selectedLead.status) && (() => {
-                        const terminDate = new Date(selectedLead.terminDatum)
-                        const now = new Date()
-                        const isInPast = terminDate < now
-                        const isAbgesagt = selectedLead.status === STATUS.TERMIN_ABGESAGT
-                        
-                        return (
-                          <button
-                            type="button"
-                            onClick={() => setShowTerminPicker(true)}
-                            className="w-full flex items-center justify-center px-4 py-3 bg-primary text-on-primary rounded-xl hover:bg-primary/90 transition-colors"
-                          >
-                            <CalendarPlus className="w-5 h-5 mr-2" />
-                            {isInPast || isAbgesagt ? 'Neuen Termin buchen' : 'Termin verschieben'}
-                          </button>
-                        )
-                      })()}
-                      
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setShowAngebotView(true)}
-                          className="btn-primary flex items-center justify-center"
-                        >
-                          <Send className="w-4 h-4 mr-2" />
-                          {selectedLead.status === STATUS.BERATUNG_VEREINBART ? 'Angebot versenden' : 'Neues Angebot'}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setShowEmailComposer(true)}
-                          className="btn-secondary flex items-center justify-center"
-                        >
-                          <Paperclip className="w-4 h-4 mr-2" />
-                          Unterlagen versenden
-                        </button>
-                      </div>
-                    </div>
-                  )}
+                  {/* Die drei Aktionen standen hier als Knopfleiste ueber allem
+                      und schoben die Kontaktdaten aus dem Bild. Sie sind jetzt
+                      in der Fussleiste - dort, wo Opening, Setting und
+                      Follow-Up ihre Aktionen auch haben. */}
 
                   {/* KONTAKTDATEN Section */}
                   <div className="space-y-3">
@@ -3352,6 +3314,41 @@ function Closing() {
               ) : (
                 /* Normal-View Footer */
                 <>
+                  {/* Termin, Angebot, Unterlagen - vorher als Knopfleiste ganz
+                      oben in der Schublade. */}
+                  {closerTermin(selectedLead) && selectedLead.status !== STATUS.GEWONNEN
+                    && !IST_VERLOREN.includes(selectedLead.status) && (
+                    <button
+                      type="button"
+                      onClick={() => setShowTerminPicker(true)}
+                      title={new Date(closerTermin(selectedLead)) < new Date()
+                        || selectedLead.status === STATUS.TERMIN_ABGESAGT
+                        ? 'Neuen Termin buchen' : 'Termin verschieben'}
+                      className="flex items-center px-4 py-2 text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors"
+                    >
+                      <CalendarPlus className="w-4 h-4 mr-2" />
+                      {new Date(closerTermin(selectedLead)) < new Date()
+                        || selectedLead.status === STATUS.TERMIN_ABGESAGT
+                        ? 'Neuer Termin' : 'Verschieben'}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setShowEmailComposer(true)}
+                    className="flex items-center px-4 py-2 text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors"
+                  >
+                    <Paperclip className="w-4 h-4 mr-2" />
+                    Unterlagen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAngebotView(true)}
+                    className="flex items-center px-4 py-2 text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors"
+                  >
+                    <Send className="w-4 h-4 mr-2" />
+                    {selectedLead.status === STATUS.BERATUNG_VEREINBART ? 'Angebot' : 'Neues Angebot'}
+                  </button>
+
                   {/* Freigabe-Button - nur wenn Lead einem Closer zugewiesen ist */}
                   {selectedLead.closerName && (
                     <button

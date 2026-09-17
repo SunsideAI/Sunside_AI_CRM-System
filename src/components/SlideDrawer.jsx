@@ -10,7 +10,7 @@ import { X } from 'lucide-react'
  * @param {React.ReactNode} children - Content to render inside the drawer
  * @param {string} width - Width class (default: 'max-w-xl')
  */
-function SlideDrawer({ isOpen, onClose, title, children, width = 'max-w-xl', headerActions }) {
+function SlideDrawer({ isOpen, onClose, title, children, width = 'max-w-xl', headerActions, fuss }) {
   if (!isOpen) return null
 
   return createPortal(
@@ -49,6 +49,15 @@ function SlideDrawer({ isOpen, onClose, title, children, width = 'max-w-xl', hea
         <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
           {children}
         </div>
+
+        {/* Fusszeile. Die Aktionen einer Schublade gehoeren immer hierher -
+            vorher lagen sie mal oben, mal mittendrin, mal gar nicht da. */}
+        {fuss && (
+          <div className="shrink-0 border-t border-outline-variant bg-surface
+                          px-4 sm:px-6 py-4 flex flex-wrap items-center justify-end gap-3">
+            {fuss}
+          </div>
+        )}
       </div>
     </div>,
     document.body
