@@ -32,6 +32,7 @@ function closerTermin(lead) {
 }
 import {
   Calendar,
+  History,
   Users,
   User as UserIcon,
   UserMinus,
@@ -2914,40 +2915,6 @@ function Closing() {
                     )}
                   </div>
 
-                  {/* DEAL-DETAILS Section (wenn nicht Lead-Status) */}
-                  {selectedLead.status !== STATUS.BERATUNG_VEREINBART && (
-                    <div className="space-y-3 border-t border-outline-variant pt-6">
-                      <h3 className="abschnitt-titel flex items-center gap-2">
-                        <Euro className="w-4 h-4" />
-                        Deal-Details
-                      </h3>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-surface-container-lowest rounded-xl border border-outline-variant">
-                        <div>
-                          <p className="text-label-sm text-on-surface-variant">Setup</p>
-                          <p className="text-title-md font-semibold text-on-surface">{formatMoney(selectedLead.setup)}</p>
-                        </div>
-                        <div>
-                          <p className="text-label-sm text-on-surface-variant">Retainer</p>
-                          <p className="text-title-md font-semibold text-on-surface">{formatMoney(selectedLead.retainer)}/Mon</p>
-                        </div>
-                        <div>
-                          <p className="text-label-sm text-on-surface-variant">Laufzeit</p>
-                          <p className="text-title-md font-semibold text-on-surface">{selectedLead.laufzeit || 12} Mon</p>
-                        </div>
-                        <div>
-                          <p className="text-label-sm text-on-surface-variant">Gesamtwert</p>
-                          <p className="text-title-md font-semibold text-success">
-                            {formatMoney(
-                              (selectedLead.setup || 0) +
-                              (selectedLead.retainer || 0) *
-                              (selectedLead.laufzeit || 12)
-                            )}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
                   {/* BILLING Section (nur bei Abgeschlossen UND nur für Geschäftsführer) */}
                   {selectedLead.status === STATUS.GEWONNEN && isGeschaeftsfuehrer() && (
                     <BillingPanel
@@ -3032,6 +2999,41 @@ function Closing() {
                     <Uebergabeblatt lead={selectedLead} />
                   </div>
 
+                  {/* DEAL-DETAILS Section (wenn nicht Lead-Status) */}
+                  {selectedLead.status !== STATUS.BERATUNG_VEREINBART && (
+                    <div className="space-y-3 border-t border-outline-variant pt-6">
+                      <h3 className="abschnitt-titel flex items-center gap-2">
+                        <Euro className="w-4 h-4" />
+                        Deal-Details
+                      </h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-surface-container-lowest rounded-xl border border-outline-variant">
+                        <div>
+                          <p className="text-label-sm text-on-surface-variant">Setup</p>
+                          <p className="text-title-md font-semibold text-on-surface">{formatMoney(selectedLead.setup)}</p>
+                        </div>
+                        <div>
+                          <p className="text-label-sm text-on-surface-variant">Retainer</p>
+                          <p className="text-title-md font-semibold text-on-surface">{formatMoney(selectedLead.retainer)}/Mon</p>
+                        </div>
+                        <div>
+                          <p className="text-label-sm text-on-surface-variant">Laufzeit</p>
+                          <p className="text-title-md font-semibold text-on-surface">{selectedLead.laufzeit || 12} Mon</p>
+                        </div>
+                        <div>
+                          <p className="text-label-sm text-on-surface-variant">Gesamtwert</p>
+                          <p className="text-title-md font-semibold text-success">
+                            {formatMoney(
+                              (selectedLead.setup || 0) +
+                              (selectedLead.retainer || 0) *
+                              (selectedLead.laufzeit || 12)
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+
                   {/* NOTIZEN & VERLAUF Section.
                       Die Zeitleiste steht hier oben, nicht als eigener Kasten
                       weiter unten — zwei Verlaufs-Abschnitte nebeneinander
@@ -3041,8 +3043,9 @@ function Closing() {
                       in der Zeitleiste; sie hier nochmals zu zeigen war
                       doppelt gemoppelt. Betrifft 588 von 7.588 Kontakten. */}
                   <div className="border-t border-outline-variant pt-6">
-                    <h3 className="abschnitt-titel mb-3">
-                      Notizen & Verlauf
+                    <h3 className="abschnitt-titel mb-3 flex items-center gap-2">
+                      <History className="w-4 h-4" />
+                      Verlauf
                     </h3>
 
                     <div className="mb-4">
