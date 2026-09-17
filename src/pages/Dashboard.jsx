@@ -211,6 +211,8 @@ function Dashboard() {
   const aktualisierenRef = useRef(null)
   const [laedt, setLaedt] = useState(false)
 
+  const meldeAktualisieren = (fn) => { aktualisierenRef.current = fn }
+
   const anstossen = async () => {
     if (!aktualisierenRef.current) return
     setLaedt(true)
@@ -286,8 +288,7 @@ function Dashboard() {
             )}
           </div>
 
-          {activeView === 'uebersicht' && (
-            <button
+          <button
               onClick={anstossen}
               disabled={laedt}
               aria-label="Aktualisieren"
@@ -296,7 +297,6 @@ function Dashboard() {
             >
               <RefreshCw className={`w-4 h-4 ${laedt ? 'animate-spin' : ''}`} />
             </button>
-          )}
           </div>
         </div>
       </div>
@@ -304,13 +304,13 @@ function Dashboard() {
       {/* Content */}
       {activeView === 'uebersicht' && (
         <UebersichtContent user={user} isColdcaller={isColdcaller} isCloser={isCloser} isAdmin={isAdmin}
-          meldeAktualisieren={(fn) => { aktualisierenRef.current = fn }} />
+          meldeAktualisieren={meldeAktualisieren} />
       )}
       {activeView === 'opening' && (
-        <OpeningAnalytics user={user} isAdmin={isAdmin} />
+        <OpeningAnalytics user={user} isAdmin={isAdmin} meldeAktualisieren={meldeAktualisieren} />
       )}
       {activeView === 'closing' && (
-        <ClosingAnalytics user={user} isAdmin={isAdmin} />
+        <ClosingAnalytics user={user} isAdmin={isAdmin} meldeAktualisieren={meldeAktualisieren} />
       )}
     </div>
   )
@@ -1255,7 +1255,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 // ==========================================
 // KALTAKQUISE ANALYTICS (ehemals Setting)
 // ==========================================
-function OpeningAnalytics({ user, isAdmin }) {
+function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [stats, setStats] = useState(null)
@@ -1357,6 +1357,10 @@ function OpeningAnalytics({ user, isAdmin }) {
       setRefreshing(false)
     }
   }
+
+  // Der Aktualisieren-Knopf steht in der Kopfzeile der Seite. Nach jedem
+  // Zeichnen eintragen, damit die Funktion nie auf einen alten Stand zeigt.
+  useEffect(() => { meldeAktualisieren?.(() => handleRefresh()) })
 
   const handleRefresh = () => {
     setRefreshing(true)
@@ -1568,23 +1572,15 @@ function OpeningAnalytics({ user, isAdmin }) {
 
           <button
             onClick={() => setCompareMode(!compareMode)}
-            className={`p-2.5 rounded-lg transition-colors shadow-ambient-sm ${
-              compareMode
-                ? 'bg-primary text-white'
-                : 'bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant'
-            }`}
+            aria-label="Zeiträume vergleichen"
             title="Zeiträume vergleichen"
+            className={`kopf-knopf kopf-knopf-symbol ${
+              compareMode ? 'bg-primary text-white hover:bg-primary' : ''
+            }`}
           >
-            <GitCompare className="h-5 w-5" />
+            <GitCompare className="w-4 h-4" />
           </button>
 
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing || loading}
-            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50 shadow-ambient-sm"
-          >
-            <RefreshCw className={`w-4 h-4 ${(refreshing || loading) ? 'animate-spin' : ''}`} />
-          </button>
         </div>
       </div>
 
@@ -2058,7 +2054,7 @@ function OpeningAnalytics({ user, isAdmin }) {
 // ==========================================
 // CLOSING ANALYTICS
 // ==========================================
-function ClosingAnalytics({ user, isAdmin }) {
+function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [stats, setStats] = useState(null)
@@ -2139,6 +2135,10 @@ function ClosingAnalytics({ user, isAdmin }) {
       setRefreshing(false)
     }
   }
+
+  // Der Aktualisieren-Knopf steht in der Kopfzeile der Seite. Nach jedem
+  // Zeichnen eintragen, damit die Funktion nie auf einen alten Stand zeigt.
+  useEffect(() => { meldeAktualisieren?.(() => handleRefresh()) })
 
   const handleRefresh = () => {
     setRefreshing(true)
@@ -2250,23 +2250,15 @@ function ClosingAnalytics({ user, isAdmin }) {
 
           <button
             onClick={() => setCompareMode(!compareMode)}
-            className={`p-2.5 rounded-lg transition-colors shadow-ambient-sm ${
-              compareMode
-                ? 'bg-primary text-white'
-                : 'bg-surface-container-lowest hover:bg-surface-container text-on-surface-variant'
-            }`}
+            aria-label="Zeiträume vergleichen"
             title="Zeiträume vergleichen"
+            className={`kopf-knopf kopf-knopf-symbol ${
+              compareMode ? 'bg-primary text-white hover:bg-primary' : ''
+            }`}
           >
-            <GitCompare className="h-5 w-5" />
+            <GitCompare className="w-4 h-4" />
           </button>
 
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing || loading}
-            className="p-2.5 bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors disabled:opacity-50 shadow-ambient-sm"
-          >
-            <RefreshCw className={`w-4 h-4 ${(refreshing || loading) ? 'animate-spin' : ''}`} />
-          </button>
         </div>
       </div>
 

@@ -1,6 +1,5 @@
 import { STATUS, anzeigeName } from '../../shared/status.js'
 import { useState, useEffect } from 'react'
-import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import LeadSchublade, { altbestand } from '../components/LeadSchublade'
 import * as XLSX from 'xlsx'
@@ -14,17 +13,8 @@ import {
   ChevronDown,
   Loader2,
   RefreshCw,
-  Phone,
-  Mail,
-  Globe,
-  Building2,
   Save,
-  Calendar,
   Download,
-  Settings,
-  Eye,
-  EyeOff,
-  MessageSquare,
   ArrowUpDown
 } from 'lucide-react'
 
@@ -50,16 +40,6 @@ const HOT_LEAD_STATUS_OPTIONS = [
 ]
 
 // Tabellen-Spalten Konfiguration
-const TABLE_COLUMNS = [
-  { id: 'unternehmen', label: 'Unternehmen', default: true, required: true },
-  { id: 'closer', label: 'Closer', default: true },
-  { id: 'termin', label: 'Beratungsgespräch', default: true },
-  { id: 'status', label: 'Status', default: true },
-  { id: 'naechsterSchritt', label: 'Nächster Schritt', default: true },
-  { id: 'bisWann', label: 'Bis wann', default: true },
-  { id: 'kommentar', label: 'Kommentar', default: true }
-]
-
 // Termin-Filter Optionen
 const TERMIN_FILTER_OPTIONS = [
   { value: 'all', label: 'Alle Termine' },
@@ -68,14 +48,6 @@ const TERMIN_FILTER_OPTIONS = [
   { value: 'week', label: 'Diese Woche' },
   { value: 'past', label: 'Vergangen' }
 ]
-
-const getDefaultVisibleColumns = () => {
-  try {
-    const saved = localStorage.getItem('followup_visible_columns_v2')
-    if (saved) return JSON.parse(saved)
-  } catch (e) {}
-  return TABLE_COLUMNS.filter(c => c.default).map(c => c.id)
-}
 
 function FollowUp() {
   const { user, isAdmin } = useAuth()
@@ -94,8 +66,6 @@ function FollowUp() {
   const [selectedLead, setSelectedLead] = useState(null)
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
-  const [visibleColumns, setVisibleColumns] = useState(getDefaultVisibleColumns)
-  const [showColumnSettings, setShowColumnSettings] = useState(false)
 
   // Sort State
   const [sortColumn, setSortColumn] = useState('termin') // Default: nach Beratungsgespräch
@@ -306,19 +276,6 @@ function FollowUp() {
   }
 
   // Spalten-Sichtbarkeit
-  const toggleColumn = (columnId) => {
-    const column = TABLE_COLUMNS.find(c => c.id === columnId)
-    if (column?.required) return
-    setVisibleColumns(prev => {
-      const newColumns = prev.includes(columnId)
-        ? prev.filter(id => id !== columnId)
-        : [...prev, columnId]
-      localStorage.setItem('followup_visible_columns_v2', JSON.stringify(newColumns))
-      return newColumns
-    })
-  }
-
-  const isColumnVisible = (columnId) => visibleColumns.includes(columnId)
 
   // Filter zurücksetzen
   const resetFilters = () => {
@@ -442,39 +399,6 @@ function FollowUp() {
             <span className="hidden sm:inline">Export</span>
           </button>
 
-          <div className="relative">
-            <button
-              onClick={() => setShowColumnSettings(!showColumnSettings)}
-              aria-label="Spalten wählen"
-              title="Spalten wählen"
-              className={`kopf-knopf kopf-knopf-symbol ${showColumnSettings ? 'bg-primary text-on-primary hover:bg-primary' : ''}`}
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-            {showColumnSettings && (
-              <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowColumnSettings(false)} />
-                <div className="absolute right-0 mt-2 w-56 bg-surface rounded-xl shadow-xl border border-outline-variant z-50">
-                  <div className="px-4 py-3 border-b border-outline-variant">
-                    <p className="text-label-lg font-medium">Spalten</p>
-                  </div>
-                  <div className="py-2">
-                    {TABLE_COLUMNS.map(col => (
-                      <button
-                        key={col.id}
-                        onClick={() => toggleColumn(col.id)}
-                        disabled={col.required}
-                        className={`w-full flex items-center gap-3 px-4 py-2.5 hover:bg-surface-container ${col.required ? 'opacity-50' : ''}`}
-                      >
-                        {isColumnVisible(col.id) ? <Eye className="w-4 h-4 text-primary" /> : <EyeOff className="w-4 h-4 text-outline" />}
-                        <span>{col.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
           </div>
         </div>
       </div>
@@ -553,8 +477,7 @@ function FollowUp() {
         <table className="w-full">
           <thead>
             <tr className="bg-surface-container">
-              {isColumnVisible('unternehmen') && (
-                <th
+                              <th
                   className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant cursor-pointer hover:bg-surface-container-high select-none"
                   onClick={() => handleSort('unternehmen')}
                 >
@@ -563,9 +486,8 @@ function FollowUp() {
                     <SortIcon column="unternehmen" />
                   </div>
                 </th>
-              )}
-              {isColumnVisible('closer') && (
-                <th
+              
+                              <th
                   className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant cursor-pointer hover:bg-surface-container-high select-none"
                   onClick={() => handleSort('closer')}
                 >
@@ -574,9 +496,8 @@ function FollowUp() {
                     <SortIcon column="closer" />
                   </div>
                 </th>
-              )}
-              {isColumnVisible('termin') && (
-                <th
+              
+                              <th
                   className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant cursor-pointer hover:bg-surface-container-high select-none"
                   onClick={() => handleSort('termin')}
                 >
@@ -585,15 +506,12 @@ function FollowUp() {
                     <SortIcon column="termin" />
                   </div>
                 </th>
-              )}
-              {isColumnVisible('status') && (
-                <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Status</th>
-              )}
-              {isColumnVisible('naechsterSchritt') && (
-                <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Nächster Schritt</th>
-              )}
-              {isColumnVisible('bisWann') && (
-                <th
+              
+                              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Status</th>
+              
+                              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Nächster Schritt</th>
+              
+                              <th
                   className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant cursor-pointer hover:bg-surface-container-high select-none"
                   onClick={() => handleSort('bisWann')}
                 >
@@ -602,23 +520,22 @@ function FollowUp() {
                     <SortIcon column="bisWann" />
                   </div>
                 </th>
-              )}
-              {isColumnVisible('kommentar') && (
-                <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Kommentar</th>
-              )}
+              
+                              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Kommentar</th>
+              
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={visibleColumns.length} className="px-4 py-16 text-center">
+                <td colSpan={7} className="px-4 py-16 text-center">
                   <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
                   <p className="text-on-surface-variant">Lädt...</p>
                 </td>
               </tr>
             ) : filteredLeads.length === 0 ? (
               <tr>
-                <td colSpan={visibleColumns.length} className="px-4 py-12 text-center">
+                <td colSpan={7} className="px-4 py-12 text-center">
                   <RotateCcw className="w-10 h-10 mx-auto mb-3 text-outline-variant" />
                   <p className="text-title-md mb-1">Keine Leads gefunden</p>
                   {hasActiveFilters && (
@@ -637,19 +554,16 @@ function FollowUp() {
                     onClick={() => handleSelectLead(lead)}
                     className={`cursor-pointer transition-colors hover:bg-primary-fixed/20 ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'} ${overdue ? 'bg-red-50/30' : ''}`}
                   >
-                    {isColumnVisible('unternehmen') && (
-                      <td className="px-4 py-4">
+                                          <td className="px-4 py-4">
                         <div className="font-medium text-on-surface">{lead.unternehmen || '-'}</div>
                         <div className="text-body-sm text-on-surface-variant">
                           {lead.ansprechpartner_vorname} {lead.ansprechpartner_nachname}
                         </div>
                       </td>
-                    )}
-                    {isColumnVisible('closer') && (
-                      <td className="px-4 py-4 text-body-md">{lead.closer_name || '-'}</td>
-                    )}
-                    {isColumnVisible('termin') && (
-                      <td className="px-4 py-4 text-body-md">
+                    
+                                          <td className="px-4 py-4 text-body-md">{lead.closer_name || '-'}</td>
+                    
+                                          <td className="px-4 py-4 text-body-md">
                         {lead.termin_beratungsgespraech ? (
                           <div>
                             <div>{formatDate(lead.termin_beratungsgespraech)}</div>
@@ -659,28 +573,24 @@ function FollowUp() {
                           </div>
                         ) : '-'}
                       </td>
-                    )}
-                    {isColumnVisible('status') && (
-                      <td className="px-4 py-4">
+                    
+                                          <td className="px-4 py-4">
                         <span className={`px-2 py-1 rounded-full text-label-sm ${FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)?.color || 'bg-gray-100 text-gray-700'}`}>
                           {FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)?.label || 'Aktiv'}
                         </span>
                       </td>
-                    )}
-                    {isColumnVisible('naechsterSchritt') && (
-                      <td className="px-4 py-4 text-body-md max-w-[200px] truncate">
+                    
+                                          <td className="px-4 py-4 text-body-md max-w-[200px] truncate">
                         {lead.follow_up_naechster_schritt || '-'}
                       </td>
-                    )}
-                    {isColumnVisible('bisWann') && (
-                      <td className="px-4 py-4">
+                    
+                                          <td className="px-4 py-4">
                         <span className={overdue ? 'text-error font-medium' : ''}>
                           {formatDate(lead.follow_up_datum)}
                         </span>
                       </td>
-                    )}
-                    {isColumnVisible('kommentar') && (
-                      <td className="px-4 py-4 max-w-[250px]">
+                    
+                                          <td className="px-4 py-4 max-w-[250px]">
                         {(() => {
                           if (!lead.kommentar) return <span className="text-body-sm text-outline">-</span>
                           const entries = parseKommentar(lead.kommentar)
@@ -701,7 +611,7 @@ function FollowUp() {
                           )
                         })()}
                       </td>
-                    )}
+                    
                   </tr>
                 )
               })
