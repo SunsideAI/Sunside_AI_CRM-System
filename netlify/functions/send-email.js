@@ -51,17 +51,26 @@ export async function handler(event) {
         }
       }
 
-      // Alle aktiven Closer/Admins laden (mit ID für System Messages)
+      // Wer ein frisch gebuchtes Beratungsgespraech uebernehmen kann, sind die
+      // SETTER - nicht die Closer. Der Aufruf heisst aus der Zeit vor dem
+      // OSC-Umbau noch 'notify-closers'; der Name bleibt, damit nichts
+      // anderes bricht, die Empfaenger stimmen jetzt.
+      //
+      // Admins bleiben dabei: Sie entscheiden ueber die Bewerbungen und
+      // muessen wissen, dass etwas wartet.
       const { data: users } = await supabase
         .from('users')
         .select('id, email_geschaeftlich, rollen')
         .eq('status', true)
 
       const closerUsers = (users || [])
-        .filter(u => (u.rollen || []).some(r => r.toLowerCase().includes('closer') || r.toLowerCase() === 'admin'))
+        .filter(u => (u.rollen || []).some(r => {
+          const rolle = r.toLowerCase()
+          return rolle.includes('setter') || rolle === 'admin' || rolle === 'geschäftsführer'
+        }))
 
       if (closerUsers.length === 0) {
-        return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true, message: 'Keine Closer' }) }
+        return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true, message: 'Keine Setter' }) }
       }
 
       // System Messages für alle Closer erstellen (In-App-Benachrichtigungen)

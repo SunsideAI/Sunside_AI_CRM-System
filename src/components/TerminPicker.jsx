@@ -1,6 +1,6 @@
 import { STATUS } from '../../shared/status.js'
 import { UEBERGABE_1 } from '../../shared/felder.js'
-import { istSetter, istCloser, istLeitung } from '../../shared/rollen.js'
+import { istSetter, istLeitung } from '../../shared/rollen.js'
 import UebergabeFelder from './UebergabeFelder'
 import { useState, useEffect } from 'react'
 import { Calendar, Clock, Loader2, Check, ChevronLeft, ChevronRight, Mail, Phone, Video, Users, User } from 'lucide-react'
@@ -59,8 +59,12 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
   const [ansprechpartnerVorname, setAnsprechpartnerVorname] = useState(lead?.ansprechpartnerVorname || '')
   const [ansprechpartnerNachname, setAnsprechpartnerNachname] = useState(lead?.ansprechpartnerNachname || '')
   const [unternehmensname, setUnternehmensname] = useState(lead?.unternehmensname || lead?.unternehmen || '')
-  const [taetigkeit, setTaetigkeit] = useState('Immobilienmakler')
-  const [problemstellung, setProblemstellung] = useState('')
+  // Taetigkeit und Problemstellung wurden hier frueher eigens abgefragt -
+  // und weiter unten in der Uebergabe an den Setter noch einmal, als
+  // Berufsgruppe, Ziel und Schmerzpunkt. Zweimal dieselbe Frage, zwei
+  // Antworten, die auseinanderlaufen koennen. Die Uebergabe gewinnt: Sie ist
+  // praeziser (drei Werte statt zwei, Ziel und Schmerzpunkt getrennt) und
+  // steuert Mail, Video und SMS. Hier wird nur noch abgeleitet.
   // Übergabe 1: was der Opener im Erstanruf aufnimmt. Ohne diese Angaben
   // nimmt das Backend die Buchung nicht an - sie steuern Mail, Video und SMS.
   const [uebergabe1, setUebergabe1] = useState({
@@ -68,9 +72,22 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
   })
   const [uebergabeOffen, setUebergabeOffen] = useState([])
 
+  // 'Makler' heisst in der Lead-Kategorie seit jeher 'Immobilienmakler'.
+  const taetigkeit = uebergabe1.berufsgruppe === 'Sachverständiger'
+    ? 'Sachverständiger'
+    : uebergabe1.berufsgruppe === 'andere'
+      ? 'Sonstige'
+      : 'Immobilienmakler'
+
+  // Was frueher in einem Freitextfeld stand, steht jetzt in zwei Feldern.
+  // Zusammengesetzt ergibt es denselben Satz fuer Kommentar und Calendly.
+  const problemstellung = [
+    uebergabe1.ziel && `Ziel: ${uebergabe1.ziel}`,
+    uebergabe1.schmerzpunkt_wortlaut && `„${uebergabe1.schmerzpunkt_wortlaut}"`
+  ].filter(Boolean).join(' — ')
+
   // Prüfen ob User selbst Closer sein kann
   const userRoles = user?.rolle || []
-  const canSelfClose = istCloser(userRoles) || istLeitung(userRoles)
 
   // Wer den Termin legt, ist im neuen Prozess der Opener - nicht automatisch
   // auch der Setter. Nur wer die Setter-Rolle trägt, kann das Gespräch selbst
@@ -207,7 +224,19 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
     }
   }
 
-  const bookTermin = async (assignToPool) => {
+  // Kein `assignToPool` mehr. Im alten Modell buchte der Coldcaller und
+  // entschied dabei, ob er das Closing selbst uebernimmt - der Closer stand
+  // also schon vor dem ersten Gespraech fest.
+  //
+  // Im OSC-Prozess gibt es an dieser Stelle gar keine Closer-Entscheidung:
+  // Das Beratungsgespraech haelt der SETTER, und der Closer wird erst nach
+  // dessen Uebergabe aus dem Closer-Pool besetzt. Wer hier einen Closer
+  // eintraegt, ueberspringt Pool, Bewerbung und Uebergabe 2.
+  //
+  // Bleibt eine Frage: Haelt der Buchende das Gespraech selbst (wenn er die
+  // Setter-Rolle hat), oder geht es in den Setter-Pool? Die beantwortet das
+  // Haekchen darueber.
+  const bookTermin = async () => {
     // Validierung mit visuellen Errors
     const errors = {}
     
@@ -223,9 +252,10 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
     if (!unternehmensname) {
       errors.unternehmen = true
     }
-    if (!problemstellung) {
-      errors.problemstellung = true
-    }
+    // Ziel und Schmerzpunkt werden hier NICHT geprueft: Sie sind Gate-Felder
+    // der Uebergabe, das Backend weist die Buchung ohne sie ab und benennt
+    // sie einzeln. Eine zweite Pruefung erzeugte nur eine zweite, andere
+    // Fehlermeldung fuer denselben Mangel.
     if (!selectedSlot) {
       errors.slot = true
     }
@@ -265,9 +295,11 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             problemstellung: problemstellung,
             terminart: selectedType,
             // Closer-Info
-            assignToPool: assignToPool,
-            closerName: assignToPool ? null : user?.vor_nachname,
-            closerEmail: assignToPool ? null : (user?.email_geschaeftlich || user?.email),
+            // Der Closer steht hier noch nicht fest - er kommt nach der
+            // Uebergabe des Setters aus dem Closer-Pool.
+            assignToPool: true,
+            closerName: null,
+            closerEmail: null,
             setterName: (kannSelbstSetten && setzeSelbst) ? user?.vor_nachname : null,
             openerName: user?.vor_nachname,
             setterEmail: user?.email_geschaeftlich || user?.email
@@ -369,7 +401,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
               // will - sonst füllte sich der Pool nie.
               setterName: (kannSelbstSetten && setzeSelbst) ? user?.vor_nachname : null,
               openerName: user?.vor_nachname,
-              closerName: assignToPool ? null : user?.vor_nachname, // Leer = Pool
+              closerName: null, // Der Closer wird erst nach Uebergabe 2 besetzt
               unternehmen: unternehmensname,
               terminDatum: selectedSlot.start,
               terminart: selectedType === 'video' ? 'Video' : 'Telefonisch',
@@ -541,8 +573,9 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
         }
       }
 
-      // Bei "An Closer vergeben": Benachrichtigung an alle Closer senden (Email + In-App)
-      if (assignToPool && !isReschedule) {
+      // Geht der Termin in den Setter-Pool, sollen die Setter davon erfahren.
+      // Haelt der Buchende das Gespraech selbst, gibt es nichts zu verteilen.
+      if (!isReschedule && !(kannSelbstSetten && setzeSelbst)) {
         try {
           await fetch('/.netlify/functions/send-email', {
             method: 'POST',
@@ -588,7 +621,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
           onTerminBooked({
             slot: selectedSlot,
             type: selectedType,
-            assignedToPool: assignToPool,
+            assignedToPool: !(kannSelbstSetten && setzeSelbst),
             meetingLink: meetingLink
           })
         }
@@ -928,57 +961,11 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             </div>
           </div>
 
-          {/* Tätigkeit */}
-          <div>
-            <label className="block text-xs text-gray-500 mb-1">Tätigkeit</label>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setTaetigkeit('Immobilienmakler')}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                  taetigkeit === 'Immobilienmakler'
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-100 hover:bg-gray-200'
-                }`}
-              >
-                Immobilienmakler
-              </button>
-              <button
-                onClick={() => setTaetigkeit('Sachverständiger')}
-                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                  taetigkeit === 'Sachverständiger'
-                    ? 'bg-primary text-white'
-                    : 'bg-gray-100 hover:bg-gray-200'
-                }`}
-              >
-                Sachverständiger
-              </button>
-            </div>
-          </div>
-
-          {/* Problemstellung */}
-          <div>
-            <label className={`block text-xs mb-1 ${validationErrors.problemstellung ? 'text-red-500 font-medium' : 'text-gray-500'}`}>
-              Problemstellung & Ziele *
-            </label>
-            <textarea
-              value={problemstellung}
-              onChange={(e) => {
-                setProblemstellung(e.target.value)
-                if (validationErrors.problemstellung) {
-                  setValidationErrors(prev => ({ ...prev, problemstellung: false }))
-                }
-              }}
-              rows={3}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent resize-none ${
-                validationErrors.problemstellung ? 'border-red-500 bg-red-50' : ''
-              }`}
-              placeholder="Was sind die Herausforderungen und Ziele des Maklers?"
-            />
-          </div>
-
           {/* Übergabe an den Setter */}
           <div className="border-t pt-4">
-            <h4 className="font-medium text-gray-900 mb-1">5. Übergabe an den Setter</h4>
+            <h4 className="font-medium text-gray-900 mb-1">
+              {eventTypes.length > 1 ? '5. Übergabe an den Setter' : 'Übergabe an den Setter'}
+            </h4>
             <p className="text-xs text-gray-500 mb-4">
               Diese Angaben steuern, welche Mail und welches Video der Kunde bekommt
               und ob die Erinnerung vor dem Termin zugestellt werden kann.
@@ -1035,42 +1022,24 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
               )}
             </button>
           ) : (
-            /* Normale Buchung: Zwei Buttons */
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* An Closer vergeben - für alle */}
-              <button
-                onClick={() => bookTermin(true)}
-                disabled={booking}
-                className={`flex items-center justify-center px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors ${!canSelfClose ? 'col-span-2' : ''}`}
-              >
-                {booking ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>
-                    <Users className="w-5 h-5 mr-2" />
-                    An Closer vergeben
-                  </>
-                )}
-              </button>
-              
-              {/* Selbst übernehmen - nur für Closer sichtbar */}
-              {canSelfClose && (
-                <button
-                  onClick={() => bookTermin(false)}
-                  disabled={booking}
-                  className="flex items-center justify-center px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-container disabled:opacity-50 transition-colors"
-                >
-                  {booking ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <>
-                      <User className="w-5 h-5 mr-2" />
-                      Ich übernehme das Closing
-                    </>
-                  )}
-                </button>
+            /* Ein Knopf. Die Frage "wer haelt das Gespraech" beantwortet das
+               Haekchen darueber; eine Closer-Frage gibt es hier nicht mehr. */
+            <button
+              onClick={() => bookTermin()}
+              disabled={booking}
+              className="w-full flex items-center justify-center px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-container disabled:opacity-50 transition-colors"
+            >
+              {booking ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <Calendar className="w-5 h-5 mr-2" />
+                  {(kannSelbstSetten && setzeSelbst)
+                    ? 'Termin buchen und selbst übernehmen'
+                    : 'Termin buchen und an den Setter-Pool geben'}
+                </>
               )}
-            </div>
+            </button>
           )}
           
           <button
