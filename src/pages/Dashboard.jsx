@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext'
 import {
   ClipboardList,
   History,
+  PhoneOff,
   User as UserIcon,
   Phone,
   Calendar,
@@ -42,6 +43,9 @@ import {
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import Verlauf from '../components/Verlauf'
+import {
+  HeroKennzahl, Kennzahl, Vergleich, DiagrammKarte, LeerZustand
+} from '../components/Kennzahlen'
 import { altbestand } from '../components/LeadSchublade'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -410,29 +414,33 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
     {
       name: 'Zugewiesene Leads',
       value: initialLoading ? '...' : data.zugewiesenLeads.toLocaleString('de-DE'),
+      subtitle: 'in deiner Liste',
       icon: Users,
-      color: 'bg-blue-500',
+      color: 'blue',
       show: isColdcaller() || isAdmin()
     },
     {
       name: 'Calls heute',
       value: initialLoading ? '...' : data.callsHeute.toLocaleString('de-DE'),
+      subtitle: 'seit Mitternacht',
       icon: Phone,
-      color: 'bg-green-500',
+      color: 'green',
       show: isColdcaller() || isAdmin()
     },
     {
       name: 'Termine diese Woche',
       value: initialLoading ? '...' : data.termineWoche.toLocaleString('de-DE'),
+      subtitle: 'Montag bis Sonntag',
       icon: Calendar,
-      color: 'bg-secondary',
+      color: 'blue',
       show: true
     },
     {
       name: 'Meine Beratungsgespräche',
       value: initialLoading ? '...' : data.meineHotLeads.toLocaleString('de-DE'),
+      subtitle: 'offen im Setting',
       icon: Users,
-      color: 'bg-primary',
+      color: 'amber',
       show: istSetterNutzer()
     },
     {
@@ -440,8 +448,9 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
       // als Setter haengt - die Zahl stimmt fuer beide Rollen.
       name: 'Abschlüsse Monat',
       value: initialLoading ? '...' : data.abschluesseMonat.toLocaleString('de-DE'),
+      subtitle: 'gewonnen in diesem Monat',
       icon: TrendingUp,
-      color: 'bg-orange-500',
+      color: 'green',
       show: isCloser() || istSetterNutzer() || isAdmin()
     }
   ].filter(stat => stat.show)
@@ -479,41 +488,27 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
   return (
     <div className="space-y-8">
       {/* Begrüßung */}
-      {/* Statistiken - Metric Cards */}
+      {/* Kennzahlen - dieselben Kacheln wie in Finanzen, Opening und Closing */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
-          <div
-            key={stat.name}
-            className={`relative overflow-hidden rounded-xl p-6 transition-all duration-250 ${
-              index === 0
-                ? 'metric-card-primary'
-                : 'metric-card hover:shadow-card-hover'
-            }`}
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <p className={`text-label-md ${index === 0 ? 'text-white/80' : 'text-on-surface-variant'}`}>
-                  {stat.name}
-                </p>
-                <p className={`mt-2 text-display-sm font-display ${index === 0 ? 'text-white' : 'text-on-surface'}`}>
-                  {initialLoading ? (
-                    <span className="inline-block w-8 h-8">
-                      <Loader2 className={`w-6 h-6 animate-spin ${index === 0 ? 'text-white/50' : 'text-primary/30'}`} />
-                    </span>
-                  ) : (
-                    stat.value
-                  )}
-                </p>
-              </div>
-              <div className={`p-3 rounded-lg ${index === 0 ? 'bg-white/20' : 'bg-secondary-container'}`}>
-                <stat.icon className={`w-5 h-5 ${index === 0 ? 'text-white' : 'text-primary'}`} />
-              </div>
-            </div>
-            {/* Decorative gradient overlay for hero card */}
-            {index === 0 && (
-              <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-white/10 blur-xl" />
-            )}
-          </div>
+          index === 0 ? (
+            <HeroKennzahl
+              key={stat.name}
+              label={stat.name}
+              value={stat.value}
+              subtitle={stat.subtitle}
+              icon={stat.icon}
+            />
+          ) : (
+            <Kennzahl
+              key={stat.name}
+              label={stat.name}
+              value={stat.value}
+              subtitle={stat.subtitle}
+              icon={stat.icon}
+              color={stat.color}
+            />
+          )
         ))}
       </div>
 
@@ -1635,20 +1630,69 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
         </div>
       ) : stats && (
         <>
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <KPICard title="Einwahlen" value={stats.summary?.einwahlen || 0} icon={Phone} color="purple" comparison={getComparison(stats.summary?.einwahlen || 0, compareStats?.summary?.einwahlen)} />
-            <KPICard title="Erreicht" value={stats.summary?.erreicht || 0} icon={Users} color="blue" subtitle={formatPercent(stats.summary?.erreichQuote || 0)} comparison={getComparison(stats.summary?.erreicht || 0, compareStats?.summary?.erreicht)} />
-            <KPICard title="Beratungsgespräch" value={stats.summary?.beratungsgespraech || 0} icon={Calendar} color="green" subtitle={formatPercent(stats.summary?.beratungsgespraechQuote || 0)} comparison={getComparison(stats.summary?.beratungsgespraech || 0, compareStats?.summary?.beratungsgespraech)} />
-            <KPICard title="Unterlage/WV" value={stats.summary?.unterlagen || 0} icon={Target} color="yellow" subtitle={formatPercent(stats.summary?.unterlagenQuote || 0)} comparison={getComparison(stats.summary?.unterlagen || 0, compareStats?.summary?.unterlagen)} />
-            <KPICard title="Kein Interesse" value={stats.summary?.keinInteresse || 0} icon={XCircle} color="red" subtitle={formatPercent(stats.summary?.keinInteresseQuote || 0)} comparison={getComparison(stats.summary?.keinInteresse || 0, compareStats?.summary?.keinInteresse, true)} />
+          {/* Kennzahlen im selben Raster wie im Finanzen-Dashboard: vier je
+              Reihe, die wichtigste gefuellt. Vorher lagen fuenf gequetschte
+              Kacheln in einer Zeile, mit abgeschnittenen Beschriftungen. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <HeroKennzahl
+              label="Einwahlen"
+              value={stats.summary?.einwahlen || 0}
+              subtitle={DATE_RANGE_LABELS[dateRange]}
+              icon={Phone}
+              vergleich={compareStats
+                ? <Vergleich hell {...(getComparison(stats.summary?.einwahlen || 0, compareStats?.summary?.einwahlen) || {})} />
+                : null}
+            />
+            <Kennzahl
+              label="Erreicht" value={stats.summary?.erreicht || 0}
+              subtitle={`${formatPercent(stats.summary?.erreichQuote || 0)} der Einwahlen`}
+              icon={Users} color="blue"
+              vergleich={<Vergleich {...(getComparison(stats.summary?.erreicht || 0, compareStats?.summary?.erreicht) || {})} />}
+            />
+            <Kennzahl
+              label="Beratungsgespräch" value={stats.summary?.beratungsgespraech || 0}
+              subtitle={`${formatPercent(stats.summary?.beratungsgespraechQuote || 0)} der Erreichten`}
+              icon={Calendar} color="green"
+              vergleich={<Vergleich {...(getComparison(stats.summary?.beratungsgespraech || 0, compareStats?.summary?.beratungsgespraech) || {})} />}
+            />
+            <Kennzahl
+              label="Unterlage/WV" value={stats.summary?.unterlagen || 0}
+              subtitle={`${formatPercent(stats.summary?.unterlagenQuote || 0)} der Erreichten`}
+              icon={Target} color="amber"
+              vergleich={<Vergleich {...(getComparison(stats.summary?.unterlagen || 0, compareStats?.summary?.unterlagen) || {})} />}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Kennzahl
+              label="Kein Interesse" value={stats.summary?.keinInteresse || 0}
+              subtitle={`${formatPercent(stats.summary?.keinInteresseQuote || 0)} der Erreichten`}
+              icon={XCircle} color="red"
+              vergleich={<Vergleich inverted {...(getComparison(stats.summary?.keinInteresse || 0, compareStats?.summary?.keinInteresse, true) || {})} />}
+            />
+            <Kennzahl
+              label="Nicht erreicht" value={stats.summary?.nichtErreicht || 0}
+              subtitle="niemand am Apparat"
+              icon={PhoneOff} color="neutral"
+            />
+            <Kennzahl
+              label="Erreichquote" value={formatPercent(stats.summary?.erreichQuote || 0)}
+              subtitle="Erreichte je Einwahl"
+              icon={TrendingUp} color="blue"
+            />
+            <Kennzahl
+              label="Terminquote" value={formatPercent(stats.summary?.beratungsgespraechQuote || 0)}
+              subtitle="Gespräche je Erreichtem"
+              icon={Target} color="green"
+            />
           </div>
 
           {/* Charts Row 1 */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Conversion Funnel */}
             <div className="card p-6">
-              <h3 className="text-label-lg text-on-surface mb-4">Ergebnisse in Zahlen</h3>
+              <h3 className="text-label-lg font-semibold text-on-surface">Ergebnisse in Zahlen</h3>
+              <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">Von der Einwahl bis zum Termin</p>
               {(stats.summary?.einwahlen || 0) > 0 ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart
@@ -1684,7 +1728,8 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
 
             {/* Ergebnis Verteilung Pie */}
             <div className="card p-6">
-              <h3 className="text-label-lg text-on-surface mb-4">Prozentuale Ergebnisse</h3>
+              <h3 className="text-label-lg font-semibold text-on-surface">Prozentuale Ergebnisse</h3>
+              <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">Anteile der erreichten Kontakte</p>
               {(() => {
                 const pieData = [
                   { name: 'Beratungsgespräch', value: stats.summary?.beratungsgespraech || 0, color: CHART_COLORS.beratungsgespraech },
@@ -1915,7 +1960,8 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
 
           {/* Aktivität Zeitverlauf */}
           <div className="card p-6">
-            <h3 className="text-label-lg text-on-surface mb-4">Einwahlen im Zeitverlauf</h3>
+            <h3 className="text-label-lg font-semibold text-on-surface">Einwahlen im Zeitverlauf</h3>
+              <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">Anrufe je Tag im gewählten Zeitraum</p>
             {stats.zeitverlauf?.length > 0 && stats.zeitverlauf.some(z => (z.count || 0) > 0) ? (
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={stats.zeitverlauf}>
@@ -2313,22 +2359,70 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
         </div>
       ) : stats && (
         <>
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-            <KPICard title="Closing Quote" value={formatPercent(stats.summary?.closingQuote || 0)} icon={TrendingUp} color="purple" subtitle={`${stats.summary?.gewonnen || 0} von ${(stats.summary?.gewonnen || 0) + (stats.summary?.verloren || 0)}`} comparison={getComparison(stats.summary?.closingQuote || 0, compareStats?.summary?.closingQuote)} />
-            <KPICard title="Umsatz Gesamt" value={formatCurrency(stats.summary?.umsatzGesamt || 0)} icon={DollarSign} color="green" comparison={getComparison(stats.summary?.umsatzGesamt || 0, compareStats?.summary?.umsatzGesamt)} />
-            <KPICard title="Ø Umsatz" value={formatCurrency(stats.summary?.umsatzDurchschnitt || 0)} icon={BarChart3} color="blue" comparison={getComparison(stats.summary?.umsatzDurchschnitt || 0, compareStats?.summary?.umsatzDurchschnitt)} />
-            <KPICard title="Gewonnen" value={stats.summary?.gewonnen || 0} icon={Award} color="green" comparison={getComparison(stats.summary?.gewonnen || 0, compareStats?.summary?.gewonnen)} />
-            <KPICard title="Verloren" value={stats.summary?.verloren || 0} icon={XCircle} color="red" comparison={getComparison(stats.summary?.verloren || 0, compareStats?.summary?.verloren, true)} />
-            <KPICard title="No-Show" value={stats.summary?.noShow || 0} icon={Clock} color="yellow" comparison={getComparison(stats.summary?.noShow || 0, compareStats?.summary?.noShow, true)} />
-            <KPICard title="Offen" value={stats.summary?.offen || 0} icon={Target} color="gray" comparison={getComparison(stats.summary?.offen || 0, compareStats?.summary?.offen)} />
+          {/* Vier je Reihe wie im Finanzen-Dashboard. Sieben Kacheln in einer
+              Zeile liessen aus "Umsatz Gesamt" ein "Umsatz Ges…" werden. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <HeroKennzahl
+              label="Umsatz gesamt"
+              value={formatCurrency(stats.summary?.umsatzGesamt || 0)}
+              subtitle={DATE_RANGE_LABELS[dateRange]}
+              icon={DollarSign}
+              vergleich={compareStats
+                ? <Vergleich hell {...(getComparison(stats.summary?.umsatzGesamt || 0, compareStats?.summary?.umsatzGesamt) || {})} />
+                : null}
+            />
+            <Kennzahl
+              label="Closing-Quote" value={formatPercent(stats.summary?.closingQuote || 0)}
+              subtitle={`${stats.summary?.gewonnen || 0} von ${(stats.summary?.gewonnen || 0) + (stats.summary?.verloren || 0)} entschieden`}
+              icon={TrendingUp} color="blue"
+              vergleich={<Vergleich {...(getComparison(stats.summary?.closingQuote || 0, compareStats?.summary?.closingQuote) || {})} />}
+            />
+            <Kennzahl
+              label="Ø Umsatz" value={formatCurrency(stats.summary?.umsatzDurchschnitt || 0)}
+              subtitle="je Abschluss"
+              icon={BarChart3} color="green"
+              vergleich={<Vergleich {...(getComparison(stats.summary?.umsatzDurchschnitt || 0, compareStats?.summary?.umsatzDurchschnitt) || {})} />}
+            />
+            <Kennzahl
+              label="Gewonnen" value={stats.summary?.gewonnen || 0}
+              subtitle="Abschlüsse im Zeitraum"
+              icon={Award} color="green"
+              vergleich={<Vergleich {...(getComparison(stats.summary?.gewonnen || 0, compareStats?.summary?.gewonnen) || {})} />}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Kennzahl
+              label="Verloren" value={stats.summary?.verloren || 0}
+              subtitle="endgültig abgesagt"
+              icon={XCircle} color="red"
+              vergleich={<Vergleich inverted {...(getComparison(stats.summary?.verloren || 0, compareStats?.summary?.verloren, true) || {})} />}
+            />
+            <Kennzahl
+              label="No-Show" value={stats.summary?.noShow || 0}
+              subtitle="nicht erschienen"
+              icon={Clock} color="amber"
+              vergleich={<Vergleich inverted {...(getComparison(stats.summary?.noShow || 0, compareStats?.summary?.noShow, true) || {})} />}
+            />
+            <Kennzahl
+              label="Offen" value={stats.summary?.offen || 0}
+              subtitle="noch in Arbeit"
+              icon={Target} color="neutral"
+              vergleich={<Vergleich {...(getComparison(stats.summary?.offen || 0, compareStats?.summary?.offen) || {})} />}
+            />
+            <Kennzahl
+              label="Entschieden" value={(stats.summary?.gewonnen || 0) + (stats.summary?.verloren || 0)}
+              subtitle="gewonnen oder verloren"
+              icon={CheckCircle} color="blue"
+            />
           </div>
 
           {/* Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Umsatz Zeitverlauf */}
             <div className="card p-6">
-              <h3 className="text-label-lg text-on-surface mb-4">Umsatz & Closings im Zeitverlauf</h3>
+              <h3 className="text-label-lg font-semibold text-on-surface">Umsatz & Closings im Zeitverlauf</h3>
+              <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">Abschlüsse und Umsatz je Tag</p>
               {stats.zeitverlauf?.length > 0 && stats.zeitverlauf.some(d => (d.umsatz || 0) > 0 || (d.count || 0) > 0) ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <BarChart data={stats.zeitverlauf}>
@@ -2362,7 +2456,8 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
 
             {/* Status Verteilung */}
             <div className="card p-6">
-              <h3 className="text-label-lg text-on-surface mb-4">Status Verteilung</h3>
+              <h3 className="text-label-lg font-semibold text-on-surface">Status Verteilung</h3>
+              <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">Alle Kontakte im Closing nach Stand</p>
               {((stats.summary?.gewonnen || 0) > 0 || (stats.summary?.verloren || 0) > 0 || (stats.summary?.offen || 0) > 0) ? (
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
@@ -2404,7 +2499,8 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Balkendiagramm - Alle Leads mit Status */}
               <div className="card p-6">
-                <h3 className="text-label-lg text-on-surface mb-4">Alle Leads pro Closer</h3>
+                <h3 className="text-label-lg font-semibold text-on-surface">Alle Leads pro Closer</h3>
+              <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">Komplette Verteilung nach Status</p>
                 <p className="text-body-sm text-on-surface-variant mb-4">Komplette Verteilung nach Status</p>
                 <ResponsiveContainer width="100%" height={Math.max(250, stats.leadsProCloser.length * 50)}>
                   <BarChart data={stats.leadsProCloser} layout="vertical">
@@ -2432,7 +2528,8 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
 
               {/* Kuchendiagramm - Prozentuale Verteilung ALLER Leads */}
               <div className="card p-6">
-                <h3 className="text-label-lg text-on-surface mb-4">Verteilung aller Leads</h3>
+                <h3 className="text-label-lg font-semibold text-on-surface">Verteilung aller Leads</h3>
+              <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">Alle Hot Leads im System</p>
                 <p className="text-body-sm text-on-surface-variant mb-4">
                   Alle {stats.leadsProCloser.reduce((sum, c) => sum + c.gesamt, 0)} Hot Leads im System
                 </p>
@@ -2472,7 +2569,8 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
           {/* Per Closer Stats (Admin only) */}
           {isAdmin() && (
             <div className="card p-6">
-              <h3 className="text-label-lg text-on-surface mb-4">Performance pro Closer</h3>
+              <h3 className="text-label-lg font-semibold text-on-surface">Performance pro Closer</h3>
+              <p className="text-body-sm text-on-surface-variant mt-0.5 mb-4">Offen, gewonnen und verloren je Person</p>
               {stats.perUser && stats.perUser.length > 0 ? (
                 <ResponsiveContainer width="100%" height={Math.max(200, stats.perUser.length * 50)}>
                   <BarChart data={stats.perUser.slice(0, 10)} layout="vertical">
@@ -2526,48 +2624,5 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
 // ==========================================
 // KPI Card Component
 // ==========================================
-function KPICard({ title, value, icon: Icon, color, subtitle, comparison }) {
-  const colorClasses = {
-    purple: 'bg-primary-fixed text-primary',
-    green: 'bg-success-container text-success',
-    blue: 'bg-secondary-container text-secondary',
-    red: 'bg-error-container text-error',
-    yellow: 'bg-warning-container text-warning',
-    gray: 'bg-surface-container text-on-surface-variant'
-  }
-
-  const getComparisonDisplay = () => {
-    if (!comparison || comparison.diff === undefined || comparison.diff === null) return null
-    const { diff, percent, inverted } = comparison
-    const isPositive = inverted ? diff < 0 : diff > 0
-    const isNegative = inverted ? diff > 0 : diff < 0
-    const arrow = diff > 0 ? '↑' : diff < 0 ? '↓' : '→'
-    const colorClass = isPositive ? 'text-success' : isNegative ? 'text-error' : 'text-outline'
-    const displayPercent = percent !== undefined ? `${percent > 0 ? '+' : ''}${percent.toFixed(1)}%` : `${diff > 0 ? '+' : ''}${diff}`
-    return (
-      <span className={`text-label-sm font-medium ${colorClass}`}>
-        {arrow} {displayPercent}
-      </span>
-    )
-  }
-
-  return (
-    <div className="metric-card p-4">
-      <div className="flex items-center gap-3">
-        <div className={`p-2.5 rounded-xl ${colorClasses[color]} flex-shrink-0`}>
-          <Icon className="h-5 w-5" />
-        </div>
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <p className="text-label-sm text-on-surface-variant leading-tight truncate">{title}</p>
-          <div className="flex items-center gap-2">
-            <p className="text-title-md font-display text-on-surface truncate">{value}</p>
-            {getComparisonDisplay()}
-          </div>
-          {subtitle && <p className="text-label-sm text-outline truncate">{subtitle}</p>}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 export default Dashboard

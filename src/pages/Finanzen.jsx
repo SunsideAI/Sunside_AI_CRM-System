@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
+import { HeroKennzahl, Kennzahl, DiagrammKarte, LeerZustand } from '../components/Kennzahlen'
 import {
   ExternalLink, RefreshCw, TrendingUp, TrendingDown, AlertCircle,
   Users, Euro, FileText, Clock, CheckCircle2, PieChart as PieIcon, BarChart3,
@@ -212,27 +213,27 @@ function AnalyticsTab({ data }) {
     <div className="space-y-6">
       {/* TOP-ROW: 4 Primary KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <HeroKPI
+        <HeroKennzahl
           label="MRR (brutto)"
           value={formatEUR(k.mrr_gross)}
           change={k.mrr_change_pct}
           icon={TrendingUp}
         />
-        <StandardKPI
+        <Kennzahl
           label="Umsatz Monat"
           value={formatEUR(k.umsatz_monat)}
           subtitle={new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}
           icon={Euro}
           color="green"
         />
-        <StandardKPI
+        <Kennzahl
           label="Umsatz YTD"
           value={formatEUR(k.umsatz_ytd)}
           subtitle={`Jahr ${new Date().getFullYear()}`}
           icon={TrendingUp}
           color="green"
         />
-        <StandardKPI
+        <Kennzahl
           label="Aktive Kunden"
           value={k.aktive_kunden || 0}
           subtitle="aktuell"
@@ -243,28 +244,28 @@ function AnalyticsTab({ data }) {
 
       {/* BOTTOM-ROW: 4 Operations KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StandardKPI
+        <Kennzahl
           label="Offener Betrag"
           value={formatEUR(k.offener_betrag)}
           subtitle={`${k.offene_rechnungen_count || 0} Rechnungen`}
           icon={Clock}
           color="amber"
         />
-        <StandardKPI
+        <Kennzahl
           label="Überfällig"
           value={k.ueberfaellig_count || 0}
           subtitle={k.ueberfaellig_count > 0 ? 'sofort prüfen' : 'alles gut'}
           icon={AlertCircle}
           color={k.ueberfaellig_count > 0 ? 'red' : 'neutral'}
         />
-        <StandardKPI
+        <Kennzahl
           label="Ø Tage bis Zahlung"
           value={k.avg_days_to_payment !== null ? `${k.avg_days_to_payment} Tage` : '–'}
           subtitle="letzte 30 Tage"
           icon={Clock}
           color="neutral"
         />
-        <StandardKPI
+        <Kennzahl
           label="MRR-Wachstum"
           value={k.mrr_change_pct !== undefined ? (k.mrr_change_pct >= 0 ? `+${k.mrr_change_pct}%` : `${k.mrr_change_pct}%`) : '–'}
           subtitle="vs. Vormonat"
@@ -276,7 +277,7 @@ function AnalyticsTab({ data }) {
       {/* CHARTS-ROW 1 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* MRR-Entwicklung */}
-        <ChartCard title="MRR-Entwicklung" subtitle="Letzte 12 Monate, netto">
+        <DiagrammKarte title="MRR-Entwicklung" subtitle="Letzte 12 Monate, netto">
           {(a.mrr_history || []).length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={a.mrr_history}>
@@ -304,12 +305,12 @@ function AnalyticsTab({ data }) {
               </AreaChart>
             </ResponsiveContainer>
           ) : (
-            <EmptyState icon={BarChart3} message="Noch keine MRR-Daten" />
+            <LeerZustand icon={BarChart3} message="Noch keine MRR-Daten" />
           )}
-        </ChartCard>
+        </DiagrammKarte>
 
         {/* Umsatz pro Monat (stacked) */}
-        <ChartCard title="Umsatz pro Monat" subtitle="Letzte 12 Monate, brutto (ohne Reminder/Provision)">
+        <DiagrammKarte title="Umsatz pro Monat" subtitle="Letzte 12 Monate, brutto (ohne Reminder/Provision)">
           {(a.revenue_history || []).some(r => r.total > 0) ? (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={a.revenue_history}>
@@ -327,15 +328,15 @@ function AnalyticsTab({ data }) {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <EmptyState icon={BarChart3} message="Noch keine Zahlungen" />
+            <LeerZustand icon={BarChart3} message="Noch keine Zahlungen" />
           )}
-        </ChartCard>
+        </DiagrammKarte>
       </div>
 
       {/* CHARTS-ROW 2 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Status-Verteilung */}
-        <ChartCard title="Rechnungs-Status" subtitle={`${data.invoices?.length || 0} Rechnungen gesamt`}>
+        <DiagrammKarte title="Rechnungs-Status" subtitle={`${data.invoices?.length || 0} Rechnungen gesamt`}>
           {(a.status_distribution || []).length > 0 ? (
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
@@ -360,12 +361,12 @@ function AnalyticsTab({ data }) {
               </PieChart>
             </ResponsiveContainer>
           ) : (
-            <EmptyState icon={PieIcon} message="Noch keine Rechnungen" />
+            <LeerZustand icon={PieIcon} message="Noch keine Rechnungen" />
           )}
-        </ChartCard>
+        </DiagrammKarte>
 
         {/* Forecast nächste 5 Wochen */}
-        <ChartCard title="Forecast" subtitle="Erwartete Eingänge nächste 5 Wochen, brutto">
+        <DiagrammKarte title="Forecast" subtitle="Erwartete Eingänge nächste 5 Wochen, brutto">
           {(a.forecast || []).some(f => f.expected > 0) ? (
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={a.forecast}>
@@ -380,80 +381,17 @@ function AnalyticsTab({ data }) {
               </BarChart>
             </ResponsiveContainer>
           ) : (
-            <EmptyState icon={BarChart3} message="Keine geplanten Rechnungen" />
+            <LeerZustand icon={BarChart3} message="Keine geplanten Rechnungen" />
           )}
-        </ChartCard>
+        </DiagrammKarte>
       </div>
     </div>
   )
 }
 
-function HeroKPI({ label, value, change, icon: Icon }) {
-  return (
-    <div className="relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-primary to-primary-container text-white">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-xs uppercase tracking-wide text-white/80">{label}</p>
-          <p className="mt-2 text-3xl font-bold">{value}</p>
-          {change !== undefined && change !== null && (
-            <p className="mt-1 text-sm text-white/80">
-              {change >= 0 ? '↑' : '↓'} {Math.abs(change)}% vs. Vormonat
-            </p>
-          )}
-        </div>
-        <div className="p-3 rounded-lg bg-white/20">
-          <Icon className="w-5 h-5 text-white" />
-        </div>
-      </div>
-      <div className="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-white/10 blur-xl" />
-    </div>
-  )
-}
 
-function StandardKPI({ label, value, subtitle, icon: Icon, color = 'neutral' }) {
-  const colorClasses = {
-    green: 'bg-success/10 text-success',
-    blue: 'bg-primary/10 text-primary',
-    amber: 'bg-warning/10 text-warning',
-    red: 'bg-error/10 text-error',
-    neutral: 'bg-on-surface/10 text-on-surface-variant'
-  }
-  return (
-    <div className="metric-card hover:shadow-card-hover transition-shadow">
-      <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-label-sm uppercase tracking-wide text-on-surface-variant">{label}</p>
-          <p className="mt-2 text-headline-md font-bold text-on-surface">{value}</p>
-          {subtitle && <p className="mt-1 text-body-sm text-on-surface-variant">{subtitle}</p>}
-        </div>
-        <div className={`p-2.5 rounded-lg ${colorClasses[color]}`}>
-          <Icon className="w-4 h-4" />
-        </div>
-      </div>
-    </div>
-  )
-}
 
-function ChartCard({ title, subtitle, children }) {
-  return (
-    <div className="card p-6">
-      <div className="mb-4">
-        <h3 className="text-label-lg font-semibold text-on-surface">{title}</h3>
-        {subtitle && <p className="text-body-sm text-on-surface-variant mt-0.5">{subtitle}</p>}
-      </div>
-      {children}
-    </div>
-  )
-}
 
-function EmptyState({ icon: Icon, message }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-[280px] text-on-surface-variant">
-      <Icon className="w-12 h-12 mb-2 opacity-50" />
-      <p className="text-body-md">{message}</p>
-    </div>
-  )
-}
 
 function ContractsTable({ contracts }) {
   if (contracts.length === 0) {
