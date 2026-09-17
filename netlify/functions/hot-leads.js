@@ -1091,14 +1091,46 @@ export async function handler(event) {
         }
 
         // Dieselbe Regel wie beim Calendly-Webhook, damit sie unabhängig vom
-        // Weg gilt: Wird ein Beratungsgespräch abgesagt oder ist niemand
-        // erschienen, ist es keine Aufgabe des Setters mehr. Der Kontakt geht
-        // an den Opener zurück, der neu terminieren kann.
+        // Weg gilt: Wer den geplatzten Termin gelegt hat, legt den neuen.
+        //
+        //   Beratungsgespräch geplatzt  -> zurück an den Opener (Setter weg)
+        //   Abschlussgespräch geplatzt  -> zurück an den Setter (Closer weg)
+        //
+        // Vorher kannte dieser Zweig nur den ersten Fall. Setzte ein Closer
+        // "nicht erschienen", schickte die Oberfläche den Closer weg UND der
+        // Server den Setter - der Kontakt gehörte danach niemandem.
+        //
+        // Welcher Termin geplatzt ist, sagt das Abschlussgespräch: Gibt es
+        // eines, liegt das Beratungsgespräch schon hinter uns.
         if (fields.status === STATUS.TERMIN_ABGESAGT || fields.status === STATUS.NICHT_ERSCHIENEN) {
           const { data: stand } = await supabase
-            .from('hot_leads').select('setter_id, status').eq('id', hotLeadId).maybeSingle()
+            .from('hot_leads')
+            .select('setter_id, closer_id, status, termin_abschlussgespraech, no_show_keep_in_closing')
+            .eq('id', hotLeadId).maybeSingle()
 
-          if (stand?.setter_id) {
+          const abschlussGeplatzt = !!stand?.termin_abschlussgespraech
+
+          if (abschlussGeplatzt) {
+            // Der Closer darf ihn behalten, wenn er das beim No-Show ausdrücklich
+            // sagt - derselbe Schalter, den der Webhook auch beachtet.
+            const behaelt = (fields.no_show_keep_in_closing ?? stand?.no_show_keep_in_closing) === true
+            if (!behaelt && stand?.closer_id) {
+              fields.closer_id = null
+              await supabase.from('hot_lead_ereignisse').insert({
+                hot_lead_id: hotLeadId,
+                art: 'closer_freigestellt',
+                von_status: normalisiere(stand.status),
+                nach_status: fields.status,
+                akteur_id: angemeldet.id,
+                bemerkung: fields.status === STATUS.NICHT_ERSCHIENEN
+                  ? 'Nicht erschienen - zurück an den Setter'
+                  : 'Abschlussgespräch abgesagt - zurück an den Setter',
+                daten: { frueherer_closer: stand.closer_id }
+              })
+            }
+            // Der Setter bleibt, wo er ist - er terminiert neu.
+            delete fields.setter_id
+          } else if (stand?.setter_id) {
             fields.setter_id = null
             await supabase.from('hot_lead_ereignisse').insert({
               hot_lead_id: hotLeadId,

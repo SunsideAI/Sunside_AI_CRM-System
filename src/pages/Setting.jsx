@@ -590,8 +590,25 @@ function Setting() {
               />
             )}
 
-            {/* Geplatzte Termine: neu legen */}
-            {[STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(gewaehlt.status) && (
+            {/* Geplatzte Termine: neu legen.
+                Welcher Termin geplatzt ist, entscheidet, was gebucht wird.
+                Beim Setter landen fast nur geplatzte ABSCHLUSSgespräche -
+                ein geplatztes Beratungsgespräch geht an den Opener zurück.
+                Vorher buchte dieser Knopf trotzdem immer ein
+                Beratungsgespräch, im Telefon-Kalender, und die Schublade fürs
+                Abschlussgespräch wurde nirgends geöffnet. */}
+            {[STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(gewaehlt.status)
+              && gewaehlt.termin_abschlussgespraech && (
+              <button
+                onClick={() => { setNeuTerminLead(gewaehlt); setGewaehlt(null) }}
+                className="btn-primary inline-flex items-center gap-2"
+              >
+                <Calendar className="w-4 h-4" /> Abschlussgespräch neu buchen
+              </button>
+            )}
+
+            {[STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(gewaehlt.status)
+              && !gewaehlt.termin_abschlussgespraech && (
               terminOffen ? (
                 <TerminPicker
                   zweck="beratung"
@@ -605,7 +622,7 @@ function Setting() {
                   onClick={() => setTerminOffen(true)}
                   className="btn-primary inline-flex items-center gap-2"
                 >
-                  <Calendar className="w-4 h-4" /> Neuen Termin buchen
+                  <Calendar className="w-4 h-4" /> Beratungsgespräch neu buchen
                 </button>
               )
             )}
