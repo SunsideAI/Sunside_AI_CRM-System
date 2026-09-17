@@ -1759,17 +1759,26 @@ function Opening() {
                     Kontaktdaten
                   </h3>
 
-                {/* Info Grid */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-body-sm text-on-surface-variant">Kategorie</p>
-                    <p className="text-body-md text-on-surface">{selectedLead.kategorie || '-'}</p>
+                {/* Erst wer, dann was — dieselbe Reihenfolge wie in den anderen
+                    Schubladen. Vorher stand der Ansprechpartner weiter unten
+                    unter "Status & Notizen". */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+                  <div className="min-w-0">
+                    <p className="angabe-label">Ansprechpartner</p>
+                    <p className="angabe-wert">
+                      {[selectedLead.ansprechpartnerVorname, selectedLead.ansprechpartnerNachname]
+                        .filter(Boolean).join(' ') || '–'}
+                    </p>
                   </div>
-                  <div>
-                    <p className="text-body-sm text-on-surface-variant">Standort</p>
-                    <p className="text-body-md text-on-surface flex items-center gap-1">
+                  <div className="min-w-0">
+                    <p className="angabe-label">Kategorie</p>
+                    <p className="angabe-wert">{selectedLead.kategorie || '–'}</p>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="angabe-label">Standort</p>
+                    <p className="angabe-wert flex items-center gap-1">
                       {selectedLead.land && <span title={selectedLead.land}>{getLandFlag(selectedLead.land)}</span>}
-                      {selectedLead.stadt || '-'}
+                      {selectedLead.stadt || '–'}
                     </p>
                   </div>
                 </div>
@@ -2071,15 +2080,6 @@ function Opening() {
                         <Clock className="w-5 h-5 text-gray-400 mr-2" />
                         <span className={`px-2.5 py-1 rounded-full text-sm font-medium ${getErgebnisColor(selectedLead.ergebnis)}`}>
                           {selectedLead.ergebnis}
-                        </span>
-                      </div>
-                    )}
-
-                    {(selectedLead.ansprechpartnerVorname || selectedLead.ansprechpartnerNachname) && (
-                      <div className="flex items-center">
-                        <UserIcon className="w-5 h-5 text-on-surface-variant mr-2" />
-                        <span className="text-on-surface">
-                          {[selectedLead.ansprechpartnerVorname, selectedLead.ansprechpartnerNachname].filter(Boolean).join(' ')}
                         </span>
                       </div>
                     )}

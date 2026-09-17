@@ -201,6 +201,7 @@ export async function handler(event) {
           .from('hot_leads')
           .select(`
             id, lead_id, unternehmen, ansprechpartner_vorname, ansprechpartner_nachname,
+            kategorie, ort,
             telefonnummer, mail, website, status, termin_beratungsgespraech,
             follow_up_status, follow_up_naechster_schritt, follow_up_datum,
             setter_id, closer_id, created_at
@@ -273,6 +274,8 @@ export async function handler(event) {
           unternehmen,
           ansprechpartner_vorname,
           ansprechpartner_nachname,
+          kategorie,
+          ort,
           telefonnummer,
           mail,
           website,
