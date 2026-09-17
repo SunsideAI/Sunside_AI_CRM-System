@@ -69,6 +69,23 @@
     overflow-x: hidden;
   }
 
+  /* Die Seite ist von der ersten Zeichnung an so hoch wie das Fenster.
+     Ohne das hing die Hoehe daran, wie schnell die Daten kamen: leere Seite
+     kurz, geladene Seite lang - und der Scrollbalken verhielt sich in jedem
+     Tab anders. Die Listen reservieren ihren Platz selbst (min-h-[600px]),
+     das hier faengt die kurzen Seiten ab: Profil, Einstellungen, Finanzen.
+
+     4rem ist die Kopfzeile (h-16), die als sticky darueber steht.
+
+     Zwei Zeilen, nicht eine: 100vh meint auf dem Telefon das Fenster MIT
+     ausgefahrener Adressleiste - die Seite waere dann dauerhaft um deren
+     Hoehe scrollbar, also genau der Fehler, den wir beheben. 100dvh meint
+     das sichtbare Fenster. Wer dvh nicht kennt, behaelt die erste Zeile. */
+  main {
+    min-height: calc(100vh - 4rem);
+    min-height: calc(100dvh - 4rem);
+  }
+
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     background-color: #F9F9FF;

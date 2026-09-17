@@ -720,15 +720,9 @@ function Layout({ children }) {
 
       {/* Kein pt-16 mehr: Der sticky Kopf steht im Fluss und nimmt seine
           Hoehe selbst ein. */}
-      {/* Die Seite ist von der ersten Zeichnung an so hoch wie das Fenster.
-          Ohne das hing die Hoehe daran, wie schnell die Daten kamen: leere
-          Seite kurz, geladene Seite lang - und der Scrollbalken sprang
-          zwischen den Tabs mal an, mal nicht. Der Balken selbst ist schon
-          ueber html { overflow-y: scroll } dauerhaft reserviert; hier geht es
-          um die Hoehe darunter.
-
-          4rem ist die Kopfzeile (h-16), die als sticky darueber steht. */}
-      <main className="min-h-[calc(100vh-4rem)]">
+      {/* Die Mindesthoehe steht in index.css - sie braucht einen Rueckfall
+          von dvh auf vh, und den kann eine Tailwind-Klasse nicht geben. */}
+      <main>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {children || <Outlet />}
         </div>
