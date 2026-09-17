@@ -446,7 +446,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin }) {
         <button
           onClick={() => loadData(true)}
           disabled={loading}
-          className="flex items-center p-2.5 text-on-surface-variant hover:text-primary hover:bg-surface-container rounded-lg transition-all duration-250"
+          className="kopf-knopf kopf-knopf-symbol"
           title="Daten aktualisieren"
         >
           <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

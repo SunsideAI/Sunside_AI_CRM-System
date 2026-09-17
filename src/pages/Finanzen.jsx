@@ -168,10 +168,11 @@ export default function Finanzen() {
         <button
           onClick={() => load(true)}
           disabled={refreshing || loading}
-          className="flex items-center gap-2 px-3 py-1.5 text-sm text-on-surface-variant hover:text-primary hover:bg-primary-fixed/20 rounded-lg transition-colors disabled:opacity-50"
+          aria-label="Aktualisieren"
+          title="Aktualisieren"
+          className="kopf-knopf kopf-knopf-symbol"
         >
           <RefreshCw className={`h-4 w-4 ${(refreshing || loading) ? 'animate-spin' : ''}`} />
-          Aktualisieren
         </button>
       </div>
 

@@ -431,24 +431,30 @@ function Termine() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setCurrentDate(new Date())}
-              className="px-3 py-2 text-label-md bg-surface-container-lowest rounded-lg hover:bg-surface-container transition-colors shadow-ambient-sm"
+              className="kopf-knopf"
             >
               Heute
             </button>
-            <div className="flex items-center bg-surface-container-lowest rounded-lg shadow-ambient-sm">
-              <button onClick={() => navigate(-1)} className="p-2 hover:bg-surface-container rounded-l-lg transition-colors">
-                <ChevronLeft className="w-5 h-5 text-on-surface-variant" />
+            {/* Vor und zurueck teilen sich eine Huelle - sie gehoeren zusammen.
+                Die Hoehe ist dieselbe wie bei allem anderen in dieser Zeile. */}
+            <div className="flex items-center h-9 bg-surface-container-lowest rounded-lg shadow-ambient-sm">
+              <button onClick={() => navigate(-1)} aria-label="Zurück"
+                      className="flex items-center justify-center w-9 h-9 hover:bg-surface-container rounded-l-lg transition-colors">
+                <ChevronLeft className="w-4 h-4 text-on-surface-variant" />
               </button>
-              <button onClick={() => navigate(1)} className="p-2 hover:bg-surface-container rounded-r-lg transition-colors">
-                <ChevronRight className="w-5 h-5 text-on-surface-variant" />
+              <button onClick={() => navigate(1)} aria-label="Weiter"
+                      className="flex items-center justify-center w-9 h-9 hover:bg-surface-container rounded-r-lg transition-colors">
+                <ChevronRight className="w-4 h-4 text-on-surface-variant" />
               </button>
             </div>
             <button
               onClick={loadTermine}
               disabled={loading}
-              className="p-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors"
+              aria-label="Aktualisieren"
+              title="Aktualisieren"
+              className="kopf-knopf kopf-knopf-symbol"
             >
-              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
         </div>
