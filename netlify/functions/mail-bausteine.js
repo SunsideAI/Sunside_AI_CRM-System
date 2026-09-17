@@ -180,7 +180,9 @@ const REGELN = `Regeln:
 - Zitiere den Kunden wörtlich, wenn seine Worte in der Grundlage stehen.
 - Genau eine Aufforderung in der ganzen Mail. Eine Adresse, die du nicht kennst, schreibst du als [LINK].
 - Keine Anrede und keine Grußformel: Die setzt das CRM.
-- Keine Preise nennen, wenn sie nicht in der Grundlage stehen.`
+- Keine Preise nennen, wenn sie nicht in der Grundlage stehen.
+- Jede Zahl behält ihre Bedeutung: Aufträge bleiben Aufträge, Anfragen bleiben Anfragen, eine Quote bleibt eine Quote. Nichts umdeuten und nichts hochrechnen.
+- Bewertungen wie "nur" oder "immerhin" gehören nicht zu den Zahlen des Kunden.`
 
 function eingabeBauen({ anlass, grundlage, hinweis, absender }) {
   const a = ANLAESSE[anlass]
