@@ -310,6 +310,31 @@
     background-color: #FEF2F2;
   }
 
+  /* Ein Feld mit Symbol davor. Die Hülle trägt hier den Rahmen, nicht das
+     <input> darin — sonst sässe der Fokusring um das halbe Feld. Sieht aus
+     wie .input-field, weil es eines ist. */
+  .input-field-icon {
+    @apply w-full flex items-center gap-2 px-4 py-3 rounded-md transition-all duration-250;
+    background-color: #F0F3FF;
+    border: 1px solid rgba(202, 196, 208, 0.15);
+    color: #151C27;
+  }
+
+  .input-field-icon:focus-within {
+    background-color: #FFFFFF;
+    border-color: rgba(70, 14, 116, 0.25);
+  }
+
+  .input-field-icon > input,
+  .input-field-icon > select {
+    @apply flex-1 min-w-0 bg-transparent outline-none text-body-md;
+  }
+
+  .input-field-icon.fehlt {
+    border-color: #DC2626;
+    background-color: #FEF2F2;
+  }
+
   /* Die Fußleiste einer Schublade: Abbrechen links, Speichern rechts,
      immer sichtbar. */
   .formular-fuss {

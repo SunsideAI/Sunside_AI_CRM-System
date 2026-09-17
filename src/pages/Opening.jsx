@@ -1775,20 +1775,17 @@ function Opening() {
                 {/* Contact Buttons (Pill Style) - Edit mode inline */}
                 {editMode ? (
                   <div className="grid grid-cols-1 gap-3">
-                    <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg">
+                    <div className="input-field-icon">
                       <Phone className="h-4 w-4 text-primary flex-shrink-0" />
                       <input
                         type="tel"
                         value={editForm.telefon}
                         onChange={(e) => setEditForm(prev => ({ ...prev, telefon: e.target.value }))}
                         placeholder="Telefonnummer eingeben..."
-                        className="flex-1 bg-transparent outline-none text-body-sm"
                       />
                     </div>
-                    <div className={`flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border rounded-lg ${
-                      editForm.emailValidation && !editForm.email?.trim()
-                        ? 'border-red-500 border-2'
-                        : 'border-outline-variant'
+                    <div className={`input-field-icon${
+                      editForm.emailValidation && !editForm.email?.trim() ? ' fehlt' : ''
                     }`}>
                       <Mail className={`h-4 w-4 flex-shrink-0 ${
                         editForm.emailValidation && !editForm.email?.trim() ? 'text-red-500' : 'text-primary'
@@ -1798,20 +1795,18 @@ function Opening() {
                         value={editForm.email}
                         onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value, emailValidation: false }))}
                         placeholder="E-Mail eingeben... *"
-                        className="flex-1 bg-transparent outline-none text-body-sm"
                       />
                     </div>
                     {editForm.emailValidation && !editForm.email?.trim() && (
                       <p className="text-xs text-red-500 -mt-1">E-Mail ist Pflichtfeld für Terminbuchung</p>
                     )}
-                    <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg">
+                    <div className="input-field-icon">
                       <Globe className="h-4 w-4 text-primary flex-shrink-0" />
                       <input
                         type="url"
                         value={editForm.website}
                         onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
                         placeholder="Website eingeben..."
-                        className="flex-1 bg-transparent outline-none text-body-sm"
                       />
                     </div>
                   </div>
@@ -1978,10 +1973,8 @@ function Opening() {
                             setEditForm(prev => ({ ...prev, ansprechpartnerValidation: false }))
                           }}
                           placeholder="Vorname *"
-                          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none ${
-                            editForm.ansprechpartnerValidation && !editForm.ansprechpartnerVorname 
-                              ? 'border-red-500 bg-red-50' 
-                              : 'border-gray-300'
+                          className={`input-field${
+                            editForm.ansprechpartnerValidation && !editForm.ansprechpartnerVorname ? ' fehlt' : ''
                           }`}
                         />
                         <input
@@ -1992,10 +1985,8 @@ function Opening() {
                             setEditForm(prev => ({ ...prev, ansprechpartnerValidation: false }))
                           }}
                           placeholder="Nachname *"
-                          className={`w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none ${
-                            editForm.ansprechpartnerValidation && !editForm.ansprechpartnerNachname 
-                              ? 'border-red-500 bg-red-50' 
-                              : 'border-gray-300'
+                          className={`input-field${
+                            editForm.ansprechpartnerValidation && !editForm.ansprechpartnerNachname ? ' fehlt' : ''
                           }`}
                         />
                       </div>
