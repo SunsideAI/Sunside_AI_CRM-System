@@ -2001,7 +2001,7 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
                   <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#44474F' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#44474F' }} />
                   <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
-                  <Legend />
+                  <Legend formatter={legendeText} />
                   <Line type="monotone" dataKey="count" name="Einwahlen" stroke="#460E74" strokeWidth={2} dot={{ r: 4, fill: '#460E74' }} activeDot={{ r: 6, fill: '#5E2C8C' }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -2105,7 +2105,7 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
                       <XAxis type="number" tick={{ fill: '#44474F' }} />
                       <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 12, fill: '#44474F' }} />
                       <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
-                      <Legend />
+                      <Legend formatter={legendeText} />
                       <Bar dataKey="einwahlen" name="Einwahlen" fill="#460E74" radius={[0, 4, 4, 0]} />
                       <Bar dataKey="beratungsgespraech" name="Beratungsgespräch" fill={STATUS_FARBE.gut} radius={[0, 4, 4, 0]} />
                     </BarChart>
@@ -2154,6 +2154,10 @@ const SETTING_AUSGAENGE = [
   { key: 'ohneAusgang', name: 'Ausgang nicht eingetragen', farbe: '#C9C6D0' },
   { key: 'anstehend',  name: 'Anstehend',            farbe: REIHE[4] }
 ]
+
+// Legenden-Text in Schriftfarbe: Die Farbe traegt schon das Kaestchen davor.
+// In der Reihenfarbe waren helle Eintraege wie "Anstehend" kaum lesbar.
+const legendeText = (wert) => <span style={{ color: '#44474F' }}>{wert}</span>
 
 const TOOLTIP_STIL = { backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }
 
@@ -2408,7 +2412,7 @@ function SettingAnalytics({ user, isAdmin, meldeAktualisieren }) {
             />
             <Kennzahl
               label="Ausgang fehlt" value={z.ohneAusgang || 0}
-              subtitle={`Termin vorbei, nichts eingetragen · ${z.anstehend || 0} anstehend`}
+              subtitle="Termin vorbei, kein Eintrag"
               icon={Hourglass} color={(z.ohneAusgang || 0) > 0 ? 'warnung' : 'neutral'} laedt={loading}
             />
           </div>
@@ -2422,7 +2426,7 @@ function SettingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                     <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#44474F' }} />
                     <YAxis allowDecimals={false} tick={{ fontSize: 12, fill: '#44474F' }} />
                     <Tooltip contentStyle={TOOLTIP_STIL} cursor={{ fill: 'rgba(70, 14, 116, 0.04)' }} />
-                    <Legend />
+                    <Legend formatter={legendeText} />
                     <Bar dataKey="stattgefunden" name="Stattgefunden" stackId="t" fill={REIHE[0]} />
                     <Bar dataKey="geplatzt" name="Geplatzt" stackId="t" fill={STATUS_FARBE.warnung} />
                     <Bar dataKey="offen" name="Offen" stackId="t" fill={REIHE[3]} radius={[4, 4, 0, 0]} />
@@ -2445,7 +2449,7 @@ function SettingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                       {verteilung.map(a => <Cell key={a.key} fill={a.farbe} />)}
                     </Pie>
                     <Tooltip contentStyle={TOOLTIP_STIL} />
-                    <Legend layout="vertical" align="right" verticalAlign="middle" iconType="circle" />
+                    <Legend layout="vertical" align="right" verticalAlign="middle" iconType="circle" formatter={legendeText} />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
@@ -2464,7 +2468,7 @@ function SettingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                       <XAxis type="number" allowDecimals={false} tick={{ fill: '#44474F' }} />
                       <YAxis dataKey="name" type="category" width={140} tick={{ fontSize: 12, fill: '#44474F' }} />
                       <Tooltip contentStyle={TOOLTIP_STIL} cursor={{ fill: 'rgba(70, 14, 116, 0.04)' }} />
-                      <Legend />
+                      <Legend formatter={legendeText} />
                       <Bar dataKey="uebergeben" name="Übergeben" stackId="p" fill={STATUS_FARBE.gut} />
                       <Bar dataKey="nachfassen" name="Nachfassen" stackId="p" fill={REIHE[1]} />
                       <Bar dataKey="gefuehrt" name="Schritt offen" stackId="p" fill={REIHE[3]} />
@@ -2849,7 +2853,7 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                         return [value, 'Abschlüsse']
                       }}
                     />
-                    <Legend />
+                    <Legend formatter={legendeText} />
                     <Bar yAxisId="left" dataKey="umsatz" name="Umsatz" fill="#460E74" radius={[8, 8, 0, 0]} />
                     <Bar yAxisId="right" dataKey="count" name="Abschlüsse" fill={STATUS_FARBE.gut} radius={[8, 8, 0, 0]} />
                   </BarChart>
@@ -2927,7 +2931,7 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                         return [value, labels[name] || name]
                       }}
                     />
-                    <Legend />
+                    <Legend formatter={legendeText} />
                     <Bar dataKey="aktiv" name="Aktiv" fill="#460E74" stackId="a" />
                     <Bar dataKey="abgeschlossen" name="Abgeschlossen" fill={STATUS_FARBE.gut} stackId="a" />
                     <Bar dataKey="verloren" name="Verloren" fill={STATUS_FARBE.schlecht} stackId="a" radius={[0, 4, 4, 0]} />
@@ -3021,7 +3025,7 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                         return [displayValue, label]
                       }}
                     />
-                    <Legend />
+                    <Legend formatter={legendeText} />
                     <Bar dataKey="offen" name="Offen" fill={STATUS_FARBE.neutral} stackId="a" radius={[0, 0, 0, 0]} />
                     <Bar dataKey="gewonnen" name="Gewonnen" fill={STATUS_FARBE.gut} stackId="a" radius={[0, 0, 0, 0]} />
                     <Bar dataKey="verloren" name="Verloren" fill={STATUS_FARBE.schlecht} stackId="a" radius={[0, 4, 4, 0]} />

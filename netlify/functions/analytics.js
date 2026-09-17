@@ -464,11 +464,10 @@ function formatZeitverlauf(verlauf, { von, bis }) {
   const heute = berlinTag(new Date().toISOString())
   const vorhandene = Object.keys(verlauf).sort()
   const ende = bis || heute
-  // Ohne Startdatum ("Gesamt") ab dem ersten Eintrag - höchstens zwei Jahre,
-  // sonst wird der Monatsverlauf unlesbar.
-  const zweiJahre = tagPlus(ende, -730)
-  let start = von || vorhandene[0] || tagPlus(ende, -180)
-  if (!von && start < zweiJahre) start = zweiJahre
+  // Ohne Startdatum ("Gesamt") ab dem ersten Eintrag. Eine Obergrenze
+  // hatte hier Abschlüsse abgeschnitten: Der Verlauf summierte dann weniger
+  // Umsatz als die Kachel darüber.
+  const start = von || vorhandene[0] || tagPlus(ende, -180)
   if (start > ende) return []
 
   const tageZwischen = (a, b) => {
