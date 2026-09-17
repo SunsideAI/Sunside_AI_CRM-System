@@ -5,9 +5,10 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { systemMailSenden } from './utils/mailLayout.js'
+import { neueBewerbung, bewerbungEntschieden } from './utils/mails.js'
 import { darf, verboten } from './utils/zugriff.js'
 import { normalisiere } from '../../shared/status.js'
-import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 // Die beiden Stufen, auf die man sich bewerben kann.
 const STUFE = { SETTER: 'Setter', CLOSER: 'Closer' }
@@ -170,6 +171,7 @@ export async function handler(event) {
           setter_id,
           opener_id,
           termin_beratungsgespraech,
+          termin_abschlussgespraech,
           original_lead:leads!hot_leads_lead_id_fkey(unternehmensname, ansprechpartner_vorname, ansprechpartner_nachname)
         `)
         .eq('id', hotLeadId)
@@ -550,83 +552,22 @@ async function sendAdminNotification({ hotLead, closerName, bewerbungId, stufe, 
 
   const unternehmen = hotLead.original_lead?.unternehmensname || 'Unbekannt'
   const ansprechpartner = [hotLead.original_lead?.ansprechpartner_vorname, hotLead.original_lead?.ansprechpartner_nachname].filter(Boolean).join(' ') || ''
-  const terminDatum = hotLead.termin_beratungsgespraech
-    ? new Date(hotLead.termin_beratungsgespraech).toLocaleString('de-DE', {
-        weekday: 'long',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      })
+  // Der Termin, um den es geht: Bei einer Closer-Bewerbung das
+  // Abschlussgespraech. Vorher stand dort immer das Beratungsgespraech.
+  const terminWert = stufe === STUFE.SETTER
+    ? hotLead.termin_beratungsgespraech
+    : (hotLead.termin_abschlussgespraech || hotLead.termin_beratungsgespraech)
+  const termin = terminWert
+    ? new Date(terminWert).toLocaleString('de-DE', {
+        weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
+      }) + ' Uhr'
     : 'Nicht festgelegt'
 
-  const kommentarHtml = kommentar
-    ? `<tr><td style="padding: 8px 0; color: #6B7280;">Kommentar:</td><td style="padding: 8px 0; color: #111827;">${kommentar}</td></tr>`
-    : ''
-
-  const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 10px;">📋</div>
-      <h1 style="color: white; margin: 0; font-size: 24px;">Neue Lead-Bewerbung: ${stufenWorte(stufe).bereich}</h1>
-    </div>
-    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
-        <strong>${closerName}</strong> hat sich auf folgenden Hot Lead beworben:
-      </p>
-
-      <div style="background: #F5F3FF; border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid #8B5CF6;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280; width: 40%;">Unternehmen:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600;">${unternehmen}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280;">Ansprechpartner:</td>
-            <td style="padding: 8px 0; color: #111827;">${ansprechpartner || '-'}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280;">Termin:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600;">${terminDatum}</td>
-          </tr>
-          ${kommentarHtml}
-        </table>
-      </div>
-
-      <p style="color: #6B7280; font-size: 14px;">
-        Bewerbungs-ID: ${bewerbungId}
-      </p>
-
-      <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crmsunsideai.netlify.app/einstellungen?tab=hot-lead-bewerbungen" style="display: inline-block; background: linear-gradient(135deg, #8B5CF6 0%, #6D28D9 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-          Bewerbung prüfen
-        </a>
-      </div>
-    </div>
-    <p style="text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 20px;">
-      Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
-    </p>
-  </div>
-</body>
-</html>`
-
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      from: ABSENDER_SYSTEM,
-      to: recipients,
-      subject: `📋 Lead-Bewerbung ${stufenWorte(stufe).bereich}: ${closerName} → ${unternehmen}`,
-      html: emailHtml
-    })
+  const { betreff, mail } = neueBewerbung({
+    bewerber: closerName, stufe, unternehmen, ansprechpartner, termin, kommentar, bewerbungId
   })
+  await systemMailSenden({ an: recipients, betreff, mail })
 
   console.log('[Hot-Lead-Applications] Admin-Benachrichtigung gesendet an', recipients.length, 'Empfänger')
 }
@@ -686,72 +627,13 @@ async function sendCloserNotification({ closerEmail, closerName, unternehmen, st
   const RESEND_API_KEY = process.env.RESEND_API_KEY
   if (!RESEND_API_KEY || !closerEmail) return
 
-  let statusTitle, statusColor, statusIcon, mainMessage, subject
-
-  if (status === 'Genehmigt') {
-    statusTitle = 'Genehmigt ✓'
-    statusColor = '#10B981'
-    statusIcon = '✅'
-    mainMessage = `Deine Bewerbung auf das ${stufenWorte(stufe).was} bei <strong>${unternehmen}</strong> wurde genehmigt! Der Kontakt ist jetzt im Bereich ${stufenWorte(stufe).bereich} unter "Meine Leads" zu finden.`
-    subject = `✅ Lead-Bewerbung genehmigt: ${unternehmen} (${stufenWorte(stufe).bereich})`
-  } else {
-    statusTitle = 'Abgelehnt'
-    statusColor = '#EF4444'
-    statusIcon = '❌'
-    mainMessage = `Deine Bewerbung auf das ${stufenWorte(stufe).was} bei <strong>${unternehmen}</strong> wurde leider abgelehnt.`
-    subject = `❌ Lead-Bewerbung abgelehnt: ${unternehmen} (${stufenWorte(stufe).bereich})`
-  }
-
-  const kommentarHtml = adminKommentar
-    ? `<div style="background-color: #F3F4F6; padding: 15px; border-radius: 8px; margin-top: 20px;">
-        <strong style="color: #374151;">Kommentar vom Admin:</strong>
-        <p style="color: #4B5563; margin: 8px 0 0 0;">${adminKommentar}</p>
-      </div>`
-    : ''
-
-  const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 10px;">${statusIcon}</div>
-      <h1 style="color: white; margin: 0; font-size: 24px;">Bewerbung ${statusTitle}</h1>
-    </div>
-    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
-        Hallo ${closerName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        ${mainMessage}
-      </p>
-      ${kommentarHtml}
-      <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crmsunsideai.netlify.app/closing" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-          Zum Closing
-        </a>
-      </div>
-    </div>
-    <p style="text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 20px;">
-      Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
-    </p>
-  </div>
-</body>
-</html>`
-
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${RESEND_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      from: ABSENDER_SYSTEM,
-      to: [closerEmail],
-      subject,
-      html: emailHtml
-    })
+  const { betreff, mail } = bewerbungEntschieden({
+    angenommen: status === 'Genehmigt',
+    stufe,
+    unternehmen,
+    kommentar: adminKommentar
   })
+  await systemMailSenden({ an: closerEmail, betreff, mail })
 
   console.log('[Hot-Lead-Applications] Closer-Benachrichtigung gesendet an', closerEmail)
 }

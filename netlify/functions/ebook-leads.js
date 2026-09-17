@@ -2,8 +2,9 @@
 // Empfängt Leads vom E-Book Funnel und verwaltet den E-Book Pool
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { systemMailSenden } from './utils/mailLayout.js'
+import { neuerEbookLead } from './utils/mails.js'
 import { darf, verboten } from './utils/zugriff.js'
-import { ABSENDER_SYSTEM } from './utils/mail.js'
 import { istOpener, istSetter, istLeitung } from '../../shared/rollen.js'
 
 const supabase = createClient(
@@ -70,66 +71,12 @@ async function notifyVertrieblers(vertriebler, leadData) {
 
   const emailAddresses = vertriebler.map(v => v.email)
 
-  const htmlContent = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 10px;">📚</div>
-      <h1 style="color: white; margin: 0; font-size: 24px;">Neuer E-Book Lead!</h1>
-    </div>
-    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
-        Ein neuer Lead hat sich ueber das E-Book angemeldet:
-      </p>
-      <div style="background: linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 100%); border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid #F59E0B;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px; width: 120px;">Name:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${leadData.vorname} ${leadData.nachname}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Unternehmen:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${leadData.unternehmen || '-'}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">E-Mail:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${leadData.email}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Telefon:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${leadData.telefon || '-'}</td>
-          </tr>
-        </table>
-      </div>
-      <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crmsunsideai.netlify.app/opening" style="display: inline-block; background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-          Jetzt im E-Book Pool uebernehmen
-        </a>
-      </div>
-      <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 30px; margin-bottom: 0;">
-        Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
-      </p>
-    </div>
-  </div>
-</body>
-</html>`
+  // Die Angaben stammen aus dem oeffentlichen Formular - der Baustein
+  // maskiert sie. Vorher gingen sie ungeprueft ins HTML.
+  const { betreff, mail } = neuerEbookLead(leadData)
 
   try {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: ABSENDER_SYSTEM,
-        to: emailAddresses,
-        subject: `Neuer E-Book Lead: ${leadData.vorname} ${leadData.nachname} - ${leadData.unternehmen || 'Unbekannt'}`,
-        html: htmlContent
-      })
-    })
+    await systemMailSenden({ an: emailAddresses, betreff, mail })
     console.log('Vertriebler-Benachrichtigung gesendet')
   } catch (err) {
     console.error('Fehler beim Senden der Benachrichtigung:', err)

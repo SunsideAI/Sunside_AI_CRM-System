@@ -4,7 +4,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { hotLeadVerlangen, verboten } from './utils/zugriff.js'
-import { ABSENDER_SYSTEM } from './utils/mail.js'
+import { systemMailSenden } from './utils/mailLayout.js'
+import { nichtErschienen } from './utils/mails.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -121,84 +122,28 @@ export const handler = async (event) => {
     const setterEmail = setter.email_geschaeftlich || setter.email
 
     if (RESEND_API_KEY && setterEmail) {
-      const setterVorname = setter.vor_nachname?.split(' ')[0] || 'Hallo'
       const terminFormatted = terminDatum
         ? new Date(terminDatum).toLocaleString('de-DE', {
+            weekday: 'short',
             day: '2-digit',
             month: '2-digit',
             year: 'numeric',
             hour: '2-digit',
             minute: '2-digit',
             timeZone: 'Europe/Berlin'
-          })
-        : 'Nicht bekannt'
+          }) + ' Uhr'
+        : null
 
-      const emailHtml = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="utf-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        </head>
-        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #1f2937; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="background: linear-gradient(135deg, #F43F5E 0%, #E11D48 100%); border-radius: 16px 16px 0 0; padding: 32px; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 24px;">🔴 Lead nicht erschienen</h1>
-          </div>
-
-          <div style="background: white; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 16px 16px; padding: 32px;">
-            <p style="font-size: 16px; margin-bottom: 24px;">
-              Hallo ${setterVorname},
-            </p>
-
-            <p style="font-size: 16px; margin-bottom: 24px;">
-              <strong>${closerName || 'Der Closer'}</strong> hat soeben gemeldet, dass
-              <strong>${ansprechpartner || 'der Ansprechpartner'}</strong> von
-              <strong>${unternehmen}</strong> nicht zum Beratungstermin erschienen ist.
-            </p>
-
-            <div style="background: #FEF2F2; border: 1px solid #FECACA; border-radius: 12px; padding: 20px; margin-bottom: 24px;">
-              <p style="margin: 0 0 8px 0; font-size: 14px; color: #991B1B;">
-                <strong>Geplanter Termin:</strong> ${terminFormatted}
-              </p>
-              <p style="margin: 0; font-size: 14px; color: #991B1B;">
-                <strong>No-Show-Anzahl:</strong> ${noShowCount || 1}
-              </p>
-            </div>
-
-            <p style="font-size: 16px; margin-bottom: 24px;">
-              Bitte vereinbare einen neuen Termin oder setze den Lead auf "Verloren",
-              falls keine Reaktion mehr erfolgt.
-            </p>
-
-            <div style="text-align: center; margin-top: 32px;">
-              <a href="https://crmsunsideai.netlify.app/closing"
-                 style="display: inline-block; background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); color: white; text-decoration: none; padding: 14px 32px; border-radius: 12px; font-weight: 600; font-size: 16px;">
-                Lead öffnen
-              </a>
-            </div>
-          </div>
-
-          <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 24px;">
-            Sunside AI CRM
-          </p>
-        </body>
-        </html>
-      `
+      const { betreff, mail } = nichtErschienen({
+        gemeldetVon: closerName,
+        unternehmen,
+        ansprechpartner,
+        termin: terminFormatted,
+        anzahl: noShowCount
+      })
 
       try {
-        const emailResponse = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${RESEND_API_KEY}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            from: ABSENDER_SYSTEM,
-            to: setterEmail,
-            subject: `🔴 No-Show: ${unternehmen} - bitte neuen Termin vereinbaren`,
-            html: emailHtml
-          })
-        })
+        const emailResponse = await systemMailSenden({ an: setterEmail, betreff, mail })
 
         if (emailResponse.ok) {
           console.log('[notify-no-show] E-Mail gesendet an:', setterEmail)

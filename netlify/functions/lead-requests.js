@@ -5,8 +5,9 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { systemMailSenden } from './utils/mailLayout.js'
+import { leadAnfrageEntschieden } from './utils/mails.js'
 import { darf, verboten } from './utils/zugriff.js'
-import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -399,88 +400,16 @@ async function sendUserNotification({ userId, status, genehmigteAnzahl, angefrag
   const userEmail = user?.email_geschaeftlich || user?.email
   if (!userEmail) return
 
-  const userName = user.vor_nachname || 'Vertriebler'
-
-  // Status-spezifische Texte
-  let statusTitle, statusColor, statusIcon, mainMessage, subject
-  if (status === 'Genehmigt') {
-    statusTitle = 'Genehmigt ✓'
-    statusColor = '#10B981'
-    statusIcon = '✅'
-    mainMessage = `Deine Anfrage über ${angefragt} Leads wurde genehmigt. ${zugewieseneLeads > 0 ? `${zugewieseneLeads} Leads wurden dir zugewiesen.` : ''}`
-    subject = `✅ Deine Lead-Anfrage wurde genehmigt (${zugewieseneLeads} Leads)`
-  } else if (status === 'Teilweise_Genehmigt') {
-    statusTitle = 'Teilweise Genehmigt'
-    statusColor = '#F59E0B'
-    statusIcon = '⚠️'
-    mainMessage = `Deine Anfrage wurde teilweise genehmigt. ${genehmigteAnzahl} von ${angefragt} Leads wurden dir zugewiesen.`
-    subject = `⚠️ Lead-Anfrage teilweise genehmigt (${genehmigteAnzahl}/${angefragt})`
-  } else if (status === 'Abgelehnt') {
-    statusTitle = 'Abgelehnt'
-    statusColor = '#EF4444'
-    statusIcon = '❌'
-    mainMessage = `Deine Anfrage über ${angefragt} Leads wurde leider abgelehnt.`
-    subject = `❌ Deine Lead-Anfrage wurde abgelehnt`
-  } else {
-    return
-  }
-
-  // HTML Template
-  const emailBody = buildUserNotificationHtml({
-    userName, statusTitle, statusColor, statusIcon,
-    mainMessage, adminKommentar
+  const inhalt = leadAnfrageEntschieden({
+    status,
+    angefragt,
+    zugewiesen: status === 'Teilweise_Genehmigt' ? genehmigteAnzahl : zugewieseneLeads,
+    kommentar: adminKommentar
   })
+  if (!inhalt) return
 
-  await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: { 'Authorization': `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      from: ABSENDER_SYSTEM,
-      to: [userEmail],
-      subject,
-      html: emailBody
-    })
-  })
+  await systemMailSenden({ an: userEmail, betreff: inhalt.betreff, mail: inhalt.mail })
 
   console.log(`[Lead-Requests] User-Benachrichtigung gesendet an ${userEmail}`)
 }
 
-// HTML-Template für User-Benachrichtigung
-function buildUserNotificationHtml({ userName, statusTitle, statusColor, statusIcon, mainMessage, adminKommentar }) {
-  const kommentarSection = adminKommentar
-    ? `<div style="background-color: #F3F4F6; padding: 15px; border-radius: 8px; margin-top: 20px;">
-        <strong style="color: #374151;">Kommentar vom Admin:</strong>
-        <p style="color: #4B5563; margin: 8px 0 0 0;">${adminKommentar}</p>
-      </div>`
-    : ''
-
-  return `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 10px;">${statusIcon}</div>
-      <h1 style="color: white; margin: 0; font-size: 24px;">Lead-Anfrage ${statusTitle}</h1>
-    </div>
-    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
-        Hallo ${userName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        ${mainMessage}
-      </p>
-      ${kommentarSection}
-      <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crmsunsideai.netlify.app/opening" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-          Zum CRM
-        </a>
-      </div>
-    </div>
-    <p style="text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 20px;">
-      Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
-    </p>
-  </div>
-</body>
-</html>`
-}

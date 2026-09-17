@@ -6,7 +6,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { hotLeadVerlangen, verboten } from './utils/zugriff.js'
-import { ABSENDER_SYSTEM } from './utils/mail.js'
+import { systemMailSenden } from './utils/mailLayout.js'
+import { crmNachricht } from './utils/mails.js'
 
 // Die Typen aus dem message_type-Enum der Datenbank. Ein freier String liesse
 // sich als Ueberschrift in die Mail schreiben.
@@ -14,11 +15,6 @@ const ERLAUBTE_TYPEN = [
   'Termin abgesagt', 'Termin verschoben', 'Lead gewonnen', 'Lead verloren',
   'Pool Update', 'Direktbuchung', 'termin_rescheduled', 'Info'
 ]
-
-/** Maskiert Text, der in HTML landet. */
-const maskieren = (t) => String(t ?? '')
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-  .replace(/"/g, '&quot;')
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -181,74 +177,9 @@ export async function handler(event) {
             .single()
 
           if (userData?.email) {
-            const userName = userData.vor_nachname || 'User'
             const userEmail = userData.email
-
-            const icons = {
-              'Termin abgesagt': '❌',
-              'Termin verschoben': '🔄',
-              'Lead gewonnen': '🎉',
-              'Lead verloren': '😔',
-              'Pool Update': '📢'
-            }
-            const icon = icons[typ] || '📬'
-
-            const colors = {
-              'Termin abgesagt': { bg: '#FEE2E2', text: '#991B1B', gradient: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)' },
-              'Termin verschoben': { bg: '#FEF3C7', text: '#92400E', gradient: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)' },
-              'Lead gewonnen': { bg: '#D1FAE5', text: '#065F46', gradient: 'linear-gradient(135deg, #10B981 0%, #059669 100%)' },
-              'Lead verloren': { bg: '#FEE2E2', text: '#991B1B', gradient: 'linear-gradient(135deg, #6B7280 0%, #4B5563 100%)' },
-              'Pool Update': { bg: '#DBEAFE', text: '#1E40AF', gradient: 'linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%)' }
-            }
-            const color = colors[typ] || colors['Pool Update']
-
-            const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: ${color.gradient}; padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-      <h1 style="color: white; margin: 0; font-size: 24px;">${icon} ${maskieren(titel)}</h1>
-    </div>
-    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
-        Hallo ${userName},
-      </p>
-      ${nachricht ? `
-      <div style="background: ${color.bg}; border-radius: 12px; padding: 20px; margin: 20px 0;">
-        <p style="color: ${color.text}; margin: 0; font-size: 15px; line-height: 1.6;">
-          ${maskieren(nachricht)}
-        </p>
-      </div>
-      ` : ''}
-      <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crmsunsideai.netlify.app/${typ.includes('Termin') ? 'closing' : typ.includes('Lead') ? 'dashboard' : ''}"
-           style="display: inline-block; background: ${color.gradient}; color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-          Im CRM ansehen →
-        </a>
-      </div>
-      <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 30px; margin-bottom: 0;">
-        Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
-      </p>
-    </div>
-  </div>
-</body>
-</html>`
-
-            await fetch('https://api.resend.com/emails', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${RESEND_API_KEY}`,
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                from: ABSENDER_SYSTEM,
-                to: userEmail,
-                subject: `${icon} ${titel}`,
-                html: emailHtml
-              })
-            })
+            const { betreff, mail } = crmNachricht({ typ, titel, nachricht })
+            await systemMailSenden({ an: userEmail, betreff, mail })
 
             console.log('Email sent to:', userEmail)
           }

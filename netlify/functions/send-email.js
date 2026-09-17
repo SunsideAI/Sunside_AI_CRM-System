@@ -2,7 +2,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { darf, verboten, leadBeteiligt, hotLeadBeteiligt } from './utils/zugriff.js'
-import { ABSENDER_KUNDE } from './utils/mail.js'
+import { systemMailSenden } from './utils/mailLayout.js'
+import { neuerTerminImPool, terminWiederFrei } from './utils/mails.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -102,65 +103,14 @@ export async function handler(event) {
       if (RESEND_API_KEY) {
         const closerEmails = closerUsers.map(u => u.email_geschaeftlich).filter(Boolean)
         if (closerEmails.length > 0) {
-          const terminArtIcon = termin.art === 'video' ? '📹' : '📞'
-          const terminArtLabel = termin.art === 'video' ? 'Video-Call' : 'Telefon'
-
-          const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 10px;">📅</div>
-      <h1 style="color: white; margin: 0; font-size: 24px;">Neues Beratungsgespraech</h1>
-    </div>
-    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
-        <strong>${termin.setter}</strong> hat ein neues Beratungsgespraech gebucht:
-      </p>
-      <div style="background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid #10B981;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px; width: 120px;">Unternehmen:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${termin.unternehmen}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Ansprechpartner:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${termin.ansprechpartner || '-'}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Termin:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${termin.datum}</td>
-          </tr>
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Terminart:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${terminArtIcon} ${terminArtLabel}</td>
-          </tr>
-        </table>
-      </div>
-      <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crmsunsideai.netlify.app/closing" style="display: inline-block; background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-          Termin uebernehmen
-        </a>
-      </div>
-      <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 30px; margin-bottom: 0;">
-        Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
-      </p>
-    </div>
-  </div>
-</body>
-</html>`
-
-          await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: { 'Authorization': 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              from: ABSENDER_KUNDE,
-              to: closerEmails,
-              subject: '📅 Neues Beratungsgespraech: ' + termin.unternehmen,
-              html: emailHtml
-            })
+          const { betreff, mail } = neuerTerminImPool({
+            gebuchtVon: termin.setter,
+            unternehmen: termin.unternehmen,
+            ansprechpartner: termin.ansprechpartner,
+            datum: termin.datum,
+            art: termin.art
           })
+          await systemMailSenden({ an: closerEmails, betreff, mail })
         }
       }
 
@@ -179,65 +129,14 @@ export async function handler(event) {
       const closerEmails = (users || []).filter(u => (u.rollen || []).some(r => r.toLowerCase().includes('closer') || r.toLowerCase() === 'admin')).map(u => u.email_geschaeftlich).filter(Boolean)
 
       if (closerEmails.length > 0) {
-        const terminArtIcon = termin.art === 'video' ? '📹' : '📞'
-        const terminArtLabel = termin.art === 'video' ? 'Video-Call' : 'Telefon'
-
-        const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 10px;">🔓</div>
-      <h1 style="color: white; margin: 0; font-size: 24px;">Termin freigegeben</h1>
-    </div>
-    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
-        Ein Beratungsgespraech wurde zurueck in den Pool gegeben und ist jetzt verfuegbar:
-      </p>
-      <div style="background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%); border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid #3B82F6;">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px; width: 120px;">Unternehmen:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${termin.unternehmen || '-'}</td>
-          </tr>
-          ${termin.ansprechpartner ? `<tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Ansprechpartner:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${termin.ansprechpartner}</td>
-          </tr>` : ''}
-          ${termin.datum ? `<tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Termin:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${termin.datum}</td>
-          </tr>` : ''}
-          ${termin.art ? `<tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Terminart:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${terminArtIcon} ${terminArtLabel}</td>
-          </tr>` : ''}
-        </table>
-      </div>
-      <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crmsunsideai.netlify.app/closing" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-          Zum Closer-Pool
-        </a>
-      </div>
-      <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 30px; margin-bottom: 0;">
-        Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
-      </p>
-    </div>
-  </div>
-</body>
-</html>`
-
-        await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: { 'Authorization': 'Bearer ' + RESEND_API_KEY, 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            from: ABSENDER_KUNDE,
-            to: closerEmails,
-            subject: '🔓 Termin freigegeben: ' + termin.unternehmen,
-            html: emailHtml
-          })
+        const { betreff, mail } = terminWiederFrei({
+          freigegebenVon: angemeldet.name,
+          unternehmen: termin.unternehmen,
+          ansprechpartner: termin.ansprechpartner,
+          datum: termin.datum,
+          art: termin.art
         })
+        await systemMailSenden({ an: closerEmails, betreff, mail })
       }
       return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ success: true }) }
     }

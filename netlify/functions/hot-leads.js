@@ -7,7 +7,8 @@ import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { STATUS, normalisiere, uebergangErlaubt, anzeigeName, ruecknahmeZiel, beideSchreibweisen } from '../../shared/status.js'
 import { FELDER, uebergabePruefen, grenzenPruefen, UEBERGABE_1, UEBERGABE_2 } from '../../shared/felder.js'
-import { ABSENDER_SYSTEM } from './utils/mail.js'
+import { systemMailSenden } from './utils/mailLayout.js'
+import { termineZurueckImPool } from './utils/mails.js'
 import { darf, verboten, hotLeadVerlangen, leadBeteiligt, UUID } from './utils/zugriff.js'
 
 const supabase = createClient(
@@ -601,47 +602,11 @@ export async function handler(event) {
             })
 
             for (const closer of closerUsers) {
-              const emailHtml = `
-<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 10px;">🔄</div>
-      <h1 style="color: white; margin: 0; font-size: 24px;">Neue Leads im Pool</h1>
-    </div>
-    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
-        <strong>${targetCloserName}</strong> wurde deaktiviert.
-        <strong style="color: #3B82F6;">${closerLeads.length} Beratungsgespraeche</strong> sind jetzt im Closer-Pool verfuegbar.
-      </p>
-      <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crmsunsideai.netlify.app/closing" style="display: inline-block; background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-          Zum Closer-Pool
-        </a>
-      </div>
-    </div>
-    <p style="text-align: center; color: #9CA3AF; font-size: 12px; margin-top: 20px;">
-      Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
-    </p>
-  </div>
-</body>
-</html>`
-
-              await fetch('https://api.resend.com/emails', {
-                method: 'POST',
-                headers: {
-                  'Authorization': `Bearer ${process.env.RESEND_API_KEY}`,
-                  'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                  from: ABSENDER_SYSTEM,
-                  to: closer.email,
-                  subject: `${closerLeads.length} neue Leads im Closer-Pool`,
-                  html: emailHtml
-                })
+              const { betreff, mail } = termineZurueckImPool({
+                closerName: targetCloserName,
+                anzahl: closerLeads.length
               })
+              await systemMailSenden({ an: closer.email, betreff, mail })
             }
           } catch (emailError) {
             console.error('Email-Benachrichtigung fehlgeschlagen:', emailError)

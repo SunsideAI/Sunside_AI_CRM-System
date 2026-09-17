@@ -1,7 +1,8 @@
 // Forgot Password Function - Generiert temporäres Passwort und sendet E-Mail - Supabase Version
 import bcrypt from 'bcryptjs'
 import { createClient } from '@supabase/supabase-js'
-import { ABSENDER_SYSTEM } from './utils/mail.js'
+import { systemMailSenden } from './utils/mailLayout.js'
+import { neuesPasswort } from './utils/mails.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -99,7 +100,6 @@ export async function handler(event) {
       userEmail = businessEmail || privateEmail
     }
 
-    const userName = user.vorname || 'User'
 
     // E-Mail validieren
     if (!userEmail || !userEmail.includes('@')) {
@@ -129,56 +129,11 @@ export async function handler(event) {
 
     // E-Mail senden
     if (RESEND_API_KEY) {
-      const emailResponse = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${RESEND_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          from: ABSENDER_SYSTEM,
-          to: [userEmail],
-          subject: 'Dein neues Passwort - Sunside CRM',
-          html: `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 10px;">🔐</div>
-      <h1 style="color: white; margin: 0; font-size: 24px;">Neues Passwort</h1>
-    </div>
-    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
-        Hallo ${userName},
-      </p>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Du hast ein neues Passwort fuer dein Sunside CRM Konto angefordert.
-      </p>
-      <div style="background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%); border-radius: 12px; padding: 25px; margin: 25px 0; text-align: center; border-left: 4px solid #7C3AED;">
-        <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Dein neues Passwort:</p>
-        <p style="color: #1F2937; font-size: 28px; font-weight: bold; margin: 0; letter-spacing: 3px; font-family: monospace;">${tempPassword}</p>
-      </div>
-      <p style="color: #374151; font-size: 16px; line-height: 1.6;">
-        Bitte aendere dein Passwort nach dem Login in deinen Profileinstellungen.
-      </p>
-      <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crmsunsideai.netlify.app/login" style="display: inline-block; background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-          Zum Login
-        </a>
-      </div>
-      <p style="color: #9CA3AF; font-size: 13px; margin-top: 30px; line-height: 1.5;">
-        Falls du kein neues Passwort angefordert hast, kontaktiere bitte deinen Admin.
-      </p>
-      <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 20px; margin-bottom: 0;">
-        Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
-      </p>
-    </div>
-  </div>
-</body>
-</html>`
-        })
+      const { betreff, mail } = neuesPasswort({
+        vorname: user.vorname,
+        passwort: tempPassword
       })
+      const emailResponse = await systemMailSenden({ an: userEmail, betreff, mail })
 
       if (!emailResponse.ok) {
         const errorData = await emailResponse.json()

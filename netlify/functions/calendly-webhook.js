@@ -4,7 +4,8 @@
 import { createClient } from '@supabase/supabase-js'
 import { calendlyEcht } from './utils/session.js'
 import { STATUS, normalisiere } from '../../shared/status.js'
-import { ABSENDER_SYSTEM } from './utils/mail.js'
+import { systemMailSenden } from './utils/mailLayout.js'
+import { terminGeaendert } from './utils/mails.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -1069,8 +1070,6 @@ async function sendNotifications(hotLead, eventType, details) {
   let nachricht = ''
   let typ = 'Info'
   let titel = ''
-  let emailIcon = '📬'
-  let emailColor = '#3B82F6'
 
   // Welches Gespraech - sonst steht bei einem Kontakt mit zwei Terminen nur
   // "Termin abgesagt" da, und der Empfaenger muss raten, welcher.
@@ -1080,14 +1079,10 @@ async function sendNotifications(hotLead, eventType, details) {
     titel = `${was} abgesagt`
     nachricht = `${was} abgesagt: ${unternehmen}\n${details.grund || 'Kein Grund angegeben'}`
     typ = 'Termin abgesagt'
-    emailIcon = '❌'
-    emailColor = '#EF4444'
   } else if (eventType === 'verschiebung') {
     titel = `${was} verschoben`
     nachricht = `${was} verschoben: ${unternehmen}\nNeuer Termin: ${formatDate(details.neuerTermin)}`
     typ = 'Termin verschoben'
-    emailIcon = '🔄'
-    emailColor = '#F59E0B'
   }
 
   // User-Daten laden für E-Mail-Versand
@@ -1115,7 +1110,7 @@ async function sendNotifications(hotLead, eventType, details) {
     const setterUser = usersData.find(u => u.id === setterId)
     if (setterUser) {
       console.log('Setter gefunden:', setterUser.vor_nachname, setterUser.email_geschaeftlich || setterUser.email)
-      await sendNotificationEmail(setterUser, titel, nachricht, typ, emailIcon, emailColor, details, unternehmen)
+      await sendNotificationEmail(setterUser, titel, nachricht, typ, details, unternehmen)
     } else {
       console.error('Setter nicht in usersData gefunden:', setterId)
     }
@@ -1130,7 +1125,7 @@ async function sendNotifications(hotLead, eventType, details) {
     const closerUser = usersData.find(u => u.id === closerId)
     if (closerUser) {
       console.log('Closer gefunden:', closerUser.vor_nachname, closerUser.email_geschaeftlich || closerUser.email)
-      await sendNotificationEmail(closerUser, titel, nachricht, typ, emailIcon, emailColor, details, unternehmen)
+      await sendNotificationEmail(closerUser, titel, nachricht, typ, details, unternehmen)
     } else {
       console.error('Closer nicht in usersData gefunden:', closerId)
     }
@@ -1144,7 +1139,7 @@ async function sendNotifications(hotLead, eventType, details) {
 }
 
 // E-Mail-Benachrichtigung senden
-async function sendNotificationEmail(user, titel, nachricht, typ, icon, color, details, unternehmen) {
+async function sendNotificationEmail(user, titel, nachricht, typ, details, unternehmen) {
   const RESEND_API_KEY = process.env.RESEND_API_KEY
   if (!RESEND_API_KEY) {
     console.log('RESEND_API_KEY nicht konfiguriert - keine E-Mail gesendet')
@@ -1157,77 +1152,17 @@ async function sendNotificationEmail(user, titel, nachricht, typ, icon, color, d
     return
   }
 
-  const userName = user.vor_nachname || 'User'
-
-  // Details für E-Mail aufbereiten
-  let detailsHtml = ''
-  if (typ === 'Termin verschoben' && details.neuerTermin) {
-    detailsHtml = `
-      <tr>
-        <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Alter Termin:</td>
-        <td style="padding: 8px 0; color: #111827; font-size: 15px; text-decoration: line-through;">${formatDate(details.alterTermin)}</td>
-      </tr>
-      <tr>
-        <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Neuer Termin:</td>
-        <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${formatDate(details.neuerTermin)}</td>
-      </tr>`
-  } else if (typ === 'Termin abgesagt' && details.grund) {
-    detailsHtml = `
-      <tr>
-        <td style="padding: 8px 0; color: #6B7280; font-size: 14px;">Grund:</td>
-        <td style="padding: 8px 0; color: #111827; font-size: 15px;">${details.grund}</td>
-      </tr>`
-  }
-
-  const emailHtml = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
-  <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, ${color} 0%, ${color}dd 100%); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-      <div style="font-size: 48px; margin-bottom: 10px;">${icon}</div>
-      <h1 style="color: white; margin: 0; font-size: 24px;">${titel}</h1>
-    </div>
-    <div style="background: white; padding: 30px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      <p style="color: #374151; font-size: 16px; line-height: 1.6; margin-top: 0;">
-        Hallo ${userName},
-      </p>
-      <div style="background: ${color}15; border-radius: 12px; padding: 20px; margin: 20px 0; border-left: 4px solid ${color};">
-        <table style="width: 100%; border-collapse: collapse;">
-          <tr>
-            <td style="padding: 8px 0; color: #6B7280; font-size: 14px; width: 120px;">Unternehmen:</td>
-            <td style="padding: 8px 0; color: #111827; font-weight: 600; font-size: 15px;">${unternehmen}</td>
-          </tr>
-          ${detailsHtml}
-        </table>
-      </div>
-      <div style="text-align: center; margin-top: 25px;">
-        <a href="https://crmsunsideai.netlify.app/closing" style="display: inline-block; background: linear-gradient(135deg, ${color} 0%, ${color}dd 100%); color: white; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-weight: 600; font-size: 16px;">
-          Im CRM ansehen
-        </a>
-      </div>
-      <p style="color: #9CA3AF; font-size: 12px; text-align: center; margin-top: 30px; margin-bottom: 0;">
-        Sunside AI GbR | Schiefer Berg 3 | 38124 Braunschweig
-      </p>
-    </div>
-  </div>
-</body>
-</html>`
+  const { betreff, mail } = terminGeaendert({
+    art: typ === 'Termin abgesagt' ? 'absage' : typ === 'Termin verschoben' ? 'verschiebung' : 'sonstiges',
+    gespraech: details.feld === FELD.ABSCHLUSS ? 'Abschlussgespräch' : 'Beratungsgespräch',
+    unternehmen,
+    grund: details.grund,
+    alterTermin: details.alterTermin ? formatDate(details.alterTermin) : null,
+    neuerTermin: details.neuerTermin ? formatDate(details.neuerTermin) : null
+  })
 
   try {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${RESEND_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: ABSENDER_SYSTEM,
-        to: userEmail,
-        subject: `${icon} ${titel}: ${unternehmen}`,
-        html: emailHtml
-      })
-    })
+    await systemMailSenden({ an: userEmail, betreff, mail })
     console.log('E-Mail gesendet an:', userEmail)
   } catch (err) {
     console.error('E-Mail-Fehler:', err)
