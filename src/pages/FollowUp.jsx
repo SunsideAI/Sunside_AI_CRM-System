@@ -425,6 +425,8 @@ function FollowUp() {
           <button
             onClick={() => loadLeads(true)}
             disabled={refreshing || loading}
+            aria-label="Aktualisieren"
+            title="Aktualisieren"
             className="kopf-knopf kopf-knopf-symbol"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
