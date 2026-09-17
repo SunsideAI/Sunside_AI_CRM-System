@@ -69,8 +69,11 @@ export default function MailBausteine({ hotLeadId, onBetreff, onEinfuegen, onEnt
         </h4>
       </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex-1 min-w-[200px]">
+      {/* Zwei Felder nebeneinander, der Knopf in eigener Zeile: In der
+          Schublade sind knapp 600 Pixel, und drei Elemente in einer Reihe
+          schoben den Knopf über den Rand. */}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="min-w-0">
           <span className="feld-label">Anlass</span>
           <select
             value={anlass}
@@ -80,7 +83,7 @@ export default function MailBausteine({ hotLeadId, onBetreff, onEinfuegen, onEnt
             {ANLAESSE.map(([wert, name]) => <option key={wert} value={wert}>{name}</option>)}
           </select>
         </label>
-        <label className="flex-[2] min-w-[220px]">
+        <label className="min-w-0">
           <span className="feld-label">Eigener Hinweis (optional)</span>
           <input
             type="text"
@@ -91,16 +94,17 @@ export default function MailBausteine({ hotLeadId, onBetreff, onEinfuegen, onEnt
             maxLength={500}
           />
         </label>
-        <button
-          type="button"
-          onClick={holen}
-          disabled={laedt}
-          className="btn-primary whitespace-nowrap"
-        >
-          {laedt ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-          {laedt ? 'Schreibt…' : 'Vorschläge holen'}
-        </button>
       </div>
+
+      <button
+        type="button"
+        onClick={holen}
+        disabled={laedt}
+        className="btn-primary w-full sm:w-auto"
+      >
+        {laedt ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+        {laedt ? 'Schreibt…' : 'Vorschläge holen'}
+      </button>
 
       {fehler && (
         <p className="text-body-sm text-error">{fehler}</p>
