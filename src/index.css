@@ -56,6 +56,17 @@
        Balken nichts wegnimmt (macOS mit Trackpad), aendert es nichts. */
     overflow-y: scroll;
     scrollbar-gutter: stable;
+
+    /* Waagerecht wird nie gescrollt. Eine Seite, die sich seitlich schieben
+       laesst, ist in diesem CRM immer ein Fehler - ein Element, das zu breit
+       ist, nicht eine Absicht. Sichtbar wurde es an einem Hilfetext, der als
+       feste 288-px-Box ueber den rechten Rand ragte.
+
+       Das ist ein Riegel, keine Heilung: Wo etwas zu breit ist, gehoert es
+       schmaler gemacht. Aber es soll nie wieder das ganze Fenster
+       verschieben, waehrend jemand tippt. Tabellen und Diagramme scrollen
+       weiterhin in ihrem eigenen Kasten. */
+    overflow-x: hidden;
   }
 
   body {

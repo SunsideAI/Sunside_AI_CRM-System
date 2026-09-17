@@ -12,23 +12,34 @@ import { FELDER, uebergabePruefen } from '../../shared/felder.js'
 function Hilfe({ text }) {
   const [offen, setOffen] = useState(false)
   return (
-    <span className="relative inline-block align-middle ml-1">
+    <>
       <button
         type="button"
         onClick={() => setOffen(o => !o)}
-        onBlur={() => setOffen(false)}
-        className="text-gray-400 hover:text-primary"
+        className="text-gray-400 hover:text-primary align-middle ml-1"
         aria-label="Hilfe zu diesem Feld"
       >
         <HelpCircle className="w-4 h-4" />
       </button>
+
+      {/* Der Hilfetext saß vorher als 288 px breite Box absolut am Symbol.
+          Steht das Symbol rechts in der schmalen Schublade, ragte die Box
+          über den Rand — und machte damit das ganze Fenster waagerecht
+          scrollbar.
+
+          Jetzt ist es keine schwebende Box mehr, sondern eine Zeile unter
+          dem Feldnamen: Sie nimmt die Breite, die da ist, und kann per
+          Bauart nirgends überstehen. Dass sie die Felder darunter
+          verschiebt, ist der Preis — und der richtige: Ein Hilfetext wird
+          gelesen und wieder zugeklappt, ein waagerechter Scrollbalken
+          bleibt. */}
       {offen && (
-        <span className="absolute z-50 left-0 top-6 w-72 p-3 text-xs leading-relaxed
-                         bg-gray-900 text-white rounded-lg shadow-lg">
+        <span className="block mt-1 mb-1 p-2.5 text-xs leading-relaxed font-normal
+                         bg-gray-900 text-white rounded-lg">
           {text}
         </span>
       )}
-    </span>
+    </>
   )
 }
 
