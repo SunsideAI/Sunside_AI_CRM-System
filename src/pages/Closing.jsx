@@ -1736,7 +1736,16 @@ function Closing() {
             >
               {/* Header */}
               <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between z-10">
-                <h2 className="text-title-lg font-semibold truncate">{selectedPoolLead.unternehmen || 'Lead Details'}</h2>
+                <div className="min-w-0 pr-4">
+                  <h2 className="text-title-lg font-semibold text-on-surface truncate">
+                    {selectedPoolLead.unternehmen || 'Lead Details'}
+                  </h2>
+                  {[selectedPoolLead.kategorie, selectedPoolLead.ort].filter(Boolean).length > 0 && (
+                    <p className="text-body-sm text-on-surface-variant truncate mt-0.5">
+                      {[selectedPoolLead.kategorie, selectedPoolLead.ort].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                </div>
                 <button onClick={() => setSelectedPoolLead(null)} className="p-2 rounded-lg hover:bg-surface-container flex-shrink-0">
                   <X className="h-5 w-5" />
                 </button>
@@ -2194,9 +2203,16 @@ function Closing() {
           <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-surface shadow-xl flex flex-col overflow-hidden">
             {/* Header */}
             <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
-              <h2 className="text-title-lg font-semibold text-on-surface truncate">
-                {safeString(selectedLead.unternehmen) || 'Lead Details'}
-              </h2>
+              <div className="min-w-0 pr-4">
+                <h2 className="text-title-lg font-semibold text-on-surface truncate">
+                  {safeString(selectedLead.unternehmen) || 'Lead Details'}
+                </h2>
+                {[selectedLead.kategorie, selectedLead.ort].filter(Boolean).length > 0 && (
+                  <p className="text-body-sm text-on-surface-variant truncate mt-0.5">
+                    {[selectedLead.kategorie, selectedLead.ort].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+              </div>
               <button
                 type="button"
                 onClick={closeModal}
