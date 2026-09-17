@@ -53,8 +53,7 @@ function SlideDrawer({ isOpen, onClose, title, children, width = 'max-w-xl', hea
         {/* Fusszeile. Die Aktionen einer Schublade gehoeren immer hierher -
             vorher lagen sie mal oben, mal mittendrin, mal gar nicht da. */}
         {fuss && (
-          <div className="shrink-0 border-t border-outline-variant bg-surface
-                          px-4 sm:px-6 py-4 flex flex-wrap items-center justify-end gap-3">
+          <div className="schublade-fuss">
             {fuss}
           </div>
         )}

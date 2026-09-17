@@ -1559,7 +1559,7 @@ function Opening() {
             className="fixed inset-0 bg-scrim/50"
             onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
           />
-          <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-surface shadow-xl flex flex-col overflow-hidden">
+          <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-surface shadow-xl flex flex-col overflow-hidden">
             {/* Drawer Header */}
             <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
               <h2 className="text-title-lg font-semibold text-on-surface truncate">{selectedLead.unternehmensname}</h2>
@@ -2122,7 +2122,7 @@ function Opening() {
 
             {/* Modal Footer - nur zeigen wenn weder TerminPicker noch EmailComposer */}
             {!showTerminPicker && !showEmailComposer && (
-            <div className="pt-4 border-t border-outline-variant/15 flex-shrink-0 rounded-b-2xl">
+            <div className="schublade-fuss">
                 {kommentarOnlyMode ? (
                   /* Kommentar-Only Modus für gesperrte Leads */
                   <div className="px-6 py-4 space-y-3">

@@ -335,8 +335,21 @@
     background-color: #FEF2F2;
   }
 
-  /* Die Fußleiste einer Schublade: Abbrechen links, Speichern rechts,
-     immer sichtbar. */
+  /* Die Fußleiste einer Schublade. Die Aktionen stehen rechts, Nebensachen
+     links davon. `whitespace-nowrap` auf den Knöpfen ist hier kein Detail:
+     In einer 500 px breiten Schublade brach sonst „An Pool freigeben" mitten
+     im Wort um, und die Knöpfe schoben sich ineinander. */
+  .schublade-fuss {
+    @apply shrink-0 flex flex-wrap items-center justify-end gap-3
+           px-4 sm:px-6 py-4 border-t border-outline-variant bg-surface;
+  }
+
+  .schublade-fuss button,
+  .schublade-fuss a {
+    @apply whitespace-nowrap;
+  }
+
+  /* Alter Name, gleiche Sache. */
   .formular-fuss {
     @apply sticky bottom-0 flex items-center justify-end gap-3 px-6 py-4
            border-t border-outline-variant bg-surface;

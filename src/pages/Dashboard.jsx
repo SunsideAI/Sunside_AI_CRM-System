@@ -3,6 +3,7 @@ import { istOpener, istSetter, ROLLE } from '../../shared/rollen.js'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import {
+  History,
   Phone,
   Calendar,
   TrendingUp,
@@ -38,6 +39,8 @@ import {
   GitCompare
 } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import Verlauf from '../components/Verlauf'
+import { altbestand } from '../components/LeadSchublade'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, PieChart, Pie, Cell
@@ -1009,7 +1012,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
           />
 
           {/* Drawer Content */}
-          <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-surface shadow-xl flex flex-col overflow-hidden">
+          <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-surface shadow-xl flex flex-col overflow-hidden">
             {/* Drawer Header */}
             <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
               <h2 className="text-title-lg font-semibold text-on-surface truncate">{selectedLead.unternehmen || 'Lead Details'}</h2>
@@ -1148,8 +1151,8 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
               {/* STATUS & NOTIZEN Section */}
               <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
-                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
-                  Status & Notizen
+                <h3 className="abschnitt-titel">
+                  Status
                 </h3>
 
                 {/* Status Badge */}
@@ -1164,77 +1167,47 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                   )}
                 </div>
 
-                {/* Notizen */}
-                <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[200px] overflow-y-auto">
-                  {selectedLead.kommentar ? (
-                    <div className="space-y-3">
-                      {(() => {
-                        const lines = selectedLead.kommentar.split('\n').filter(line => line.trim())
-                        const groups = []
-                        let currentPlainGroup = []
-
-                        lines.forEach((line) => {
-                          const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
-
-                          if (historyMatch) {
-                            if (currentPlainGroup.length > 0) {
-                              groups.push({ type: 'plain', lines: currentPlainGroup })
-                              currentPlainGroup = []
-                            }
-                            groups.push({ type: 'history', match: historyMatch, line })
-                          } else {
-                            currentPlainGroup.push(line)
-                          }
-                        })
-
-                        if (currentPlainGroup.length > 0) {
-                          groups.push({ type: 'plain', lines: currentPlainGroup })
-                        }
-
-                        return groups.map((group, index) => {
-                          if (group.type === 'history') {
-                            const [, datum, zeit, rest] = group.match
-                            const emojiMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬|🎯|📞|❌|✉️|📄)\s*(.+)$/)
-                            const emoji = emojiMatch ? emojiMatch[1] : '📋'
-                            let text = emojiMatch ? emojiMatch[2] : rest
-                            const userMatch = text.match(/\(([^)]+)\)$/)
-                            const userName = userMatch ? userMatch[1] : null
-                            if (userMatch) text = text.replace(/\s*\([^)]+\)$/, '')
-
-                            return (
-                              <div key={index} className="flex items-start gap-3 p-2 rounded-lg hover:bg-surface-container transition-colors">
-                                <span className="text-lg flex-shrink-0">{emoji}</span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-body-sm text-on-surface">{text}</p>
-                                  <div className="flex items-center gap-2 mt-1">
-                                    <span className="text-label-sm text-outline">{datum}, {zeit}</span>
-                                    {userName && (
-                                      <span className="text-label-sm text-on-surface-variant">• {userName}</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            )
-                          } else {
-                            return (
-                              <div key={index} className="flex items-start gap-3 p-2">
-                                <span className="text-lg flex-shrink-0">💬</span>
-                                <div className="text-body-sm text-on-surface space-y-1">
-                                  {group.lines.map((line, lineIdx) => (
-                                    <p key={lineIdx}>{line}</p>
-                                  ))}
-                                </div>
-                              </div>
-                            )
-                          }
-                        })
-                      })()}
-                    </div>
-                  ) : (
-                    <p className="text-body-sm text-outline italic">Noch keine Notizen vorhanden</p>
-                  )}
-                </div>
               </div>
+
+              {/* Der Verlauf als eigener Abschnitt, zuletzt - wie in jeder
+                  anderen Schublade. Hier stand bis eben die dritte Kopie des
+                  handgebauten Kommentar-Zerlegers; die Zeitleiste kann
+                  dasselbe und mehr. */}
+              <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
+                <h3 className="abschnitt-titel flex items-center gap-2">
+                  <History className="w-4 h-4" />
+                  Verlauf
+                </h3>
+
+                <Verlauf hotLeadId={selectedLead.id} leadId={selectedLead.originalLeadId} />
+
+                {altbestand(selectedLead.kommentar) && (
+                  <>
+                    <div className="text-label-sm text-on-surface-variant">
+                      Ältere Notizen ohne Datum
+                    </div>
+                    <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[200px] overflow-y-auto">
+                      <p className="text-body-sm text-on-surface whitespace-pre-line">
+                        {altbestand(selectedLead.kommentar)}
+                      </p>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Fussleiste wie in jeder anderen Schublade. Von hier ging es
+                bisher gar nicht weiter - man musste schliessen und im
+                richtigen Tab neu suchen. */}
+            <div className="schublade-fuss">
+              <Link
+                to="/closing"
+                state={{ openLeadId: selectedLead.id }}
+                onClick={closeModal}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-on-primary rounded-xl hover:bg-primary/90 transition-colors"
+              >
+                <Target className="w-4 h-4" /> Im Closing öffnen
+              </Link>
             </div>
           </div>
         </div>

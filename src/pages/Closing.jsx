@@ -19,6 +19,7 @@ function altbestand(kommentar) {
 }
 import Verlauf from '../components/Verlauf'
 import Uebergabeblatt, { UEBERGABE_2 } from '../components/Uebergabeblatt'
+import Aktionsmenue from '../components/Aktionsmenue'
 import Gespraechsausgang from '../components/Gespraechsausgang'
 
 // Der Termin, der den Closer angeht.
@@ -1730,7 +1731,7 @@ function Closing() {
         {selectedPoolLead && createPortal(
           <div className="fixed inset-0 bg-scrim/50 z-50 flex justify-end" onClick={() => setSelectedPoolLead(null)}>
             <div
-              className="w-full max-w-lg bg-surface h-full overflow-y-auto shadow-xl animate-slide-in-right"
+              className="w-full max-w-2xl bg-surface h-full overflow-y-auto shadow-xl animate-slide-in-right"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -3241,7 +3242,7 @@ function Closing() {
 
             {/* Footer - unterschiedlich je nach View (nicht bei Success, EmailComposer, TerminPicker oder AbschlussForm) */}
             {!angebotSuccess && !showEmailComposer && !showTerminPicker && !showAbschlussForm && (
-              <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
+              <div className="schublade-fuss">
                 {showAngebotView ? (
                   /* Angebot-View Footer */
                   <>
@@ -3317,56 +3318,35 @@ function Closing() {
               ) : (
                 /* Normal-View Footer */
                 <>
-                  {/* Termin, Angebot, Unterlagen - vorher als Knopfleiste ganz
-                      oben in der Schublade. */}
-                  {closerTermin(selectedLead) && selectedLead.status !== STATUS.GEWONNEN
-                    && !IST_VERLOREN.includes(selectedLead.status) && (
-                    <button
-                      type="button"
-                      onClick={() => setShowTerminPicker(true)}
-                      title={new Date(closerTermin(selectedLead)) < new Date()
-                        || selectedLead.status === STATUS.TERMIN_ABGESAGT
-                        ? 'Neuen Termin buchen' : 'Termin verschieben'}
-                      className="flex items-center px-4 py-2 text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors"
-                    >
-                      <CalendarPlus className="w-4 h-4 mr-2" />
-                      {new Date(closerTermin(selectedLead)) < new Date()
-                        || selectedLead.status === STATUS.TERMIN_ABGESAGT
-                        ? 'Neuer Termin' : 'Verschieben'}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setShowEmailComposer(true)}
-                    className="flex items-center px-4 py-2 text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors"
-                  >
-                    <Paperclip className="w-4 h-4 mr-2" />
-                    Unterlagen
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setShowAngebotView(true)}
-                    className="flex items-center px-4 py-2 text-on-surface-variant border border-outline-variant rounded-xl hover:bg-surface-container transition-colors"
-                  >
-                    <Send className="w-4 h-4 mr-2" />
-                    {selectedLead.status === STATUS.BERATUNG_VEREINBART ? 'Angebot' : 'Neues Angebot'}
-                  </button>
+                  {/* Vier Nebenaktionen unter einem Knopf. Vorher standen sie
+                      als fuenf gleich grosse Knoepfe nebeneinander - bei der
+                      Breite der Schublade brachen zwei mitten im Wort um. */}
+                  <Aktionsmenue
+                    eintraege={[
+                      closerTermin(selectedLead) && selectedLead.status !== STATUS.GEWONNEN
+                        && !IST_VERLOREN.includes(selectedLead.status) && {
+                          name: new Date(closerTermin(selectedLead)) < new Date()
+                            || selectedLead.status === STATUS.TERMIN_ABGESAGT
+                            ? 'Neuen Termin buchen' : 'Termin verschieben',
+                          icon: CalendarPlus,
+                          onClick: () => setShowTerminPicker(true)
+                        },
+                      { name: 'Unterlagen versenden', icon: Paperclip,
+                        onClick: () => setShowEmailComposer(true) },
+                      { name: selectedLead.status === STATUS.BERATUNG_VEREINBART
+                          ? 'Angebot versenden' : 'Neues Angebot',
+                        icon: Send, onClick: () => setShowAngebotView(true) },
+                      selectedLead.closerName && {
+                        name: 'An Pool freigeben', icon: UserMinus, warnung: true,
+                        onClick: () => setShowReleaseConfirm(true) }
+                    ]}
+                  />
 
-                  {/* Freigabe-Button - nur wenn Lead einem Closer zugewiesen ist */}
-                  {selectedLead.closerName && (
-                    <button
-                      type="button"
-                      onClick={() => setShowReleaseConfirm(true)}
-                      className="flex items-center px-4 py-2 text-warning border border-warning/30 rounded-xl hover:bg-warning-container transition-colors"
-                    >
-                      <UserMinus className="w-4 h-4 mr-2" />
-                      An Pool freigeben
-                    </button>
-                  )}
                   <button
                     type="button"
                     onClick={() => setEditMode(true)}
-                    className="flex items-center px-4 py-2 bg-primary text-on-primary rounded-xl hover:bg-primary/90 transition-colors"
+                    className="flex items-center px-4 py-2 whitespace-nowrap bg-primary text-on-primary
+                               rounded-xl hover:bg-primary/90 transition-colors"
                   >
                     <Edit3 className="w-4 h-4 mr-2" />
                     Bearbeiten

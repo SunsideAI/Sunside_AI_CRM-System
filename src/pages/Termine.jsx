@@ -633,7 +633,7 @@ function Termine() {
       {selectedEvent && (
         <div className="fixed inset-0 z-50">
           <div className="fixed inset-0 bg-scrim/50" onClick={() => setSelectedEvent(null)} />
-          <div className="fixed right-0 top-0 h-full w-full max-w-md bg-surface shadow-xl flex flex-col overflow-hidden">
+          <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-surface shadow-xl flex flex-col overflow-hidden">
             {/* Header */}
             <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
               <h2 className="text-title-lg font-semibold text-on-surface truncate">{selectedEvent.title}</h2>

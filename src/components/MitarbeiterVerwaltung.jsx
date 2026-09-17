@@ -59,7 +59,7 @@ function Modal({ isOpen, onClose, children }) {
         onClick={onClose}
       />
       {/* Drawer Content */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-lg bg-surface shadow-xl overflow-y-auto">
+      <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-surface shadow-xl overflow-y-auto">
         {children}
       </div>
     </div>,
