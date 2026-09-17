@@ -9,6 +9,38 @@
 // Hier stehen sie einmal, damit alle vier Auswertungen dieselbe Sprache
 // sprechen.
 
+// ============================================================
+// Die Farben der Auswertungen
+// ============================================================
+//
+// Gezählt am 17.09.2026 über die vier Dashboards: sieben Farbtöne gleichzeitig
+// — Lila, Blau, Grün, Amber, Rot, Grau und im Closing sogar Pink. Bunt heisst
+// hier nicht fröhlich, sondern bedeutungslos: Wenn "Erreicht" blau ist und
+// "Ø Umsatz" grün, dann sagt die Farbe nichts, sie lenkt nur ab.
+//
+// Zwei Regeln:
+//
+//   1. Was eine REIHE ist, bekommt eine Leiter aus der Hausfarbe — hell nach
+//      dunkel. Ein Trichter von der Einwahl zum Termin ist eine Reihe, keine
+//      Sammlung von Kategorien.
+//
+//   2. Statusfarben sind RESERVIERT. Grün heisst gewonnen, Rot verloren,
+//      Amber wartet. Sie stehen nie für "die dritte Zahl", sondern nur dort,
+//      wo die Kategorie selbst ein Ausgang ist.
+//
+// Alles andere ist neutral. Eine Zahl braucht keine Farbe, um lesbar zu sein.
+
+/** Eine Leiter aus der Hausfarbe, dunkel nach hell. Für zusammengehörige Reihen. */
+export const REIHE = ['#460E74', '#6B3A97', '#9370BA', '#BFA9D7', '#E3D9EE']
+
+/** Reserviert: Nur wo die Kategorie ein Ausgang ist. */
+export const STATUS_FARBE = {
+  gut:      '#10B981',
+  warnung:  '#F59E0B',
+  schlecht: '#EF4444',
+  neutral:  '#9A97A6'
+}
+
 /** Während geladen wird, steht dort ein Platzhalter — kein „…", das sich
     wie ein Wert liest. */
 function Platzhalter({ hell = false }) {
@@ -45,15 +77,22 @@ export function HeroKennzahl({ label, value, subtitle, icon: Icon, vergleich, la
   )
 }
 
+// Die Symbolfelder der Kacheln. `neutral` ist die Voreinstellung und der
+// Normalfall — eine Zahl ist kein Status.
 const FARBEN = {
-  green:   'bg-success/10 text-success',
-  blue:    'bg-primary/10 text-primary',
-  purple:  'bg-primary/10 text-primary',
-  amber:   'bg-warning/10 text-warning',
-  yellow:  'bg-warning/10 text-warning',
-  red:     'bg-error/10 text-error',
-  neutral: 'bg-on-surface/10 text-on-surface-variant',
-  gray:    'bg-on-surface/10 text-on-surface-variant'
+  marke:    'bg-primary/10 text-primary',
+  gut:      'bg-success/10 text-success',
+  warnung:  'bg-warning/10 text-warning',
+  schlecht: 'bg-error/10 text-error',
+  neutral:  'bg-on-surface/[0.06] text-on-surface-variant',
+  // Alte Namen, damit nichts unbemerkt farblos wird
+  green: 'bg-success/10 text-success',
+  red:   'bg-error/10 text-error',
+  amber: 'bg-warning/10 text-warning',
+  yellow:'bg-warning/10 text-warning',
+  blue:  'bg-primary/10 text-primary',
+  purple:'bg-primary/10 text-primary',
+  gray:  'bg-on-surface/[0.06] text-on-surface-variant'
 }
 
 /** Eine Kennzahl: Beschriftung klein darüber, Zahl gross, Symbol rechts. */

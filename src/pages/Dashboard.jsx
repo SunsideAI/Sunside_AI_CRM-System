@@ -44,7 +44,7 @@ import {
 import { Link } from 'react-router-dom'
 import Verlauf from '../components/Verlauf'
 import {
-  HeroKennzahl, Kennzahl, Vergleich, DiagrammKarte, LeerZustand
+  HeroKennzahl, Kennzahl, Vergleich, DiagrammKarte, LeerZustand, REIHE, STATUS_FARBE
 } from '../components/Kennzahlen'
 import { altbestand } from '../components/LeadSchublade'
 import {
@@ -416,7 +416,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
       value: data.zugewiesenLeads.toLocaleString('de-DE'),
       subtitle: 'in deiner Liste',
       icon: Users,
-      color: 'blue',
+      color: 'neutral',
       show: isColdcaller() || isAdmin()
     },
     {
@@ -424,7 +424,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
       value: data.callsHeute.toLocaleString('de-DE'),
       subtitle: 'seit Mitternacht',
       icon: Phone,
-      color: 'green',
+      color: 'neutral',
       show: isColdcaller() || isAdmin()
     },
     {
@@ -432,7 +432,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
       value: data.termineWoche.toLocaleString('de-DE'),
       subtitle: 'Montag bis Sonntag',
       icon: Calendar,
-      color: 'blue',
+      color: 'neutral',
       show: true
     },
     {
@@ -440,7 +440,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
       value: data.meineHotLeads.toLocaleString('de-DE'),
       subtitle: 'offen im Setting',
       icon: Users,
-      color: 'amber',
+      color: 'neutral',
       show: istSetterNutzer()
     },
     {
@@ -450,7 +450,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
       value: data.abschluesseMonat.toLocaleString('de-DE'),
       subtitle: 'gewonnen in diesem Monat',
       icon: TrendingUp,
-      color: 'green',
+      color: 'neutral',
       show: isCloser() || istSetterNutzer() || isAdmin()
     }
   ].filter(stat => stat.show)
@@ -1494,24 +1494,29 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
 
   // Chart-Farben = exakt gleich wie KPICard Icon-Bubbles
   // Damit man die Zuordnung sofort erkennt
+  // Der Trichter ist eine REIHE: Einwahl → erreicht → Termin → Unterlage.
+  // Eine Leiter aus der Hausfarbe zeigt das Gefaelle; vier verschiedene
+  // Farbtoene behaupteten vier gleichrangige Kategorien.
+  //
+  // Die Ergebnisse dagegen SIND Ausgaenge, also duerfen sie Statusfarben
+  // tragen - aber nur sie.
   const CHART_COLORS = {
-    // Funnel (Bar Chart)
-    einwahlen: '#460E74',          // Markenfarbe, wie KPICard color="purple"
-    erreicht: '#3B82F6',           // Blue - wie KPICard color="blue"
-
-    // Ergebnisse (Pie Chart)
-    beratungsgespraech: '#10B981', // Green - wie KPICard color="green"
-    unterlagen: '#F59E0B',         // Yellow/Amber - wie KPICard color="yellow"
-    keinInteresse: '#EF4444',      // Red - wie KPICard color="red"
-    nichtErreicht: '#8B8B9A',      // Gray - neutral
+    einwahlen:          REIHE[0],
+    erreicht:           REIHE[1],
+    beratungsgespraech: STATUS_FARBE.gut,
+    unterlagen:         STATUS_FARBE.warnung,
+    keinInteresse:      STATUS_FARBE.schlecht,
+    nichtErreicht:      STATUS_FARBE.neutral
   }
 
   // Closing Farben
+  // Verloren war Pink - die siebte Farbe im Bild, und ausgerechnet fuer den
+  // schlechtesten Ausgang eine Farbe, die nichts davon sagt.
   const CLOSING_COLORS = {
-    gewonnen: '#10B981',   // Emerald - Erfolg
-    verloren: '#EC4899',   // Pink - komplementär zu Lila
-    offen: '#8B8B9A',      // Neutral
-    noShow: '#F59E0B'      // Amber - Warnung
+    gewonnen: STATUS_FARBE.gut,
+    verloren: STATUS_FARBE.schlecht,
+    offen:    STATUS_FARBE.neutral,
+    noShow:   STATUS_FARBE.warnung
   }
 
   return (
@@ -1648,19 +1653,19 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
             <Kennzahl
               label="Erreicht" value={stats.summary?.erreicht || 0}
               subtitle={`${formatPercent(stats.summary?.erreichQuote || 0)} der Einwahlen`}
-              icon={Users} color="blue"
+              icon={Users} color="neutral"
               vergleich={<Vergleich {...(getComparison(stats.summary?.erreicht || 0, compareStats?.summary?.erreicht) || {})} />}
             />
             <Kennzahl
               label="Beratungsgespräch" value={stats.summary?.beratungsgespraech || 0}
               subtitle={`${formatPercent(stats.summary?.beratungsgespraechQuote || 0)} der Erreichten`}
-              icon={Calendar} color="green"
+              icon={Calendar} color="gut"
               vergleich={<Vergleich {...(getComparison(stats.summary?.beratungsgespraech || 0, compareStats?.summary?.beratungsgespraech) || {})} />}
             />
             <Kennzahl
               label="Unterlage/WV" value={stats.summary?.unterlagen || 0}
               subtitle={`${formatPercent(stats.summary?.unterlagenQuote || 0)} der Erreichten`}
-              icon={Target} color="amber"
+              icon={Target} color="neutral"
               vergleich={<Vergleich {...(getComparison(stats.summary?.unterlagen || 0, compareStats?.summary?.unterlagen) || {})} />}
             />
           </div>
@@ -1669,7 +1674,7 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
             <Kennzahl
               label="Kein Interesse" value={stats.summary?.keinInteresse || 0}
               subtitle={`${formatPercent(stats.summary?.keinInteresseQuote || 0)} der Erreichten`}
-              icon={XCircle} color="red"
+              icon={XCircle} color="schlecht"
               vergleich={<Vergleich inverted {...(getComparison(stats.summary?.keinInteresse || 0, compareStats?.summary?.keinInteresse, true) || {})} />}
             />
             <Kennzahl
@@ -1680,12 +1685,12 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
             <Kennzahl
               label="Erreichquote" value={formatPercent(stats.summary?.erreichQuote || 0)}
               subtitle="Erreichte je Einwahl"
-              icon={TrendingUp} color="blue"
+              icon={TrendingUp} color="neutral"
             />
             <Kennzahl
               label="Terminquote" value={formatPercent(stats.summary?.beratungsgespraechQuote || 0)}
               subtitle="Gespräche je Erreichtem"
-              icon={Target} color="green"
+              icon={Target} color="neutral"
             />
           </div>
 
@@ -2082,7 +2087,7 @@ function OpeningAnalytics({ user, isAdmin, meldeAktualisieren }) {
                       <Tooltip contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }} />
                       <Legend />
                       <Bar dataKey="einwahlen" name="Einwahlen" fill="#460E74" radius={[0, 4, 4, 0]} />
-                      <Bar dataKey="beratungsgespraech" name="Beratungsgespräch" fill="#10B981" radius={[0, 4, 4, 0]} />
+                      <Bar dataKey="beratungsgespraech" name="Beratungsgespräch" fill={STATUS_FARBE.gut} radius={[0, 4, 4, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -2278,10 +2283,10 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
 
   // Closing Chart-Farben = exakt gleich wie KPICard Icon-Bubbles
   const CLOSING_COLOR_MAP = {
-    'Gewonnen': '#10B981',  // Green - wie KPICard color="green"
-    'Verloren': '#EF4444',  // Red - wie KPICard color="red"
-    'No-Show': '#F59E0B',   // Yellow - wie KPICard color="yellow"
-    'Offen': '#9CA3AF'      // Gray - wie KPICard color="gray"
+    'Gewonnen': STATUS_FARBE.gut,
+    'Verloren': STATUS_FARBE.schlecht,
+    'No-Show':  STATUS_FARBE.warnung,
+    'Offen':    STATUS_FARBE.neutral
   }
 
   return (
@@ -2387,19 +2392,19 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
             <Kennzahl
               label="Closing-Quote" value={formatPercent(stats.summary?.closingQuote || 0)}
               subtitle={`${stats.summary?.gewonnen || 0} von ${(stats.summary?.gewonnen || 0) + (stats.summary?.verloren || 0)} entschieden`}
-              icon={TrendingUp} color="blue"
+              icon={TrendingUp} color="neutral"
               vergleich={<Vergleich {...(getComparison(stats.summary?.closingQuote || 0, compareStats?.summary?.closingQuote) || {})} />}
             />
             <Kennzahl
               label="Ø Umsatz" value={formatCurrency(stats.summary?.umsatzDurchschnitt || 0)}
               subtitle="je Abschluss"
-              icon={BarChart3} color="green"
+              icon={BarChart3} color="neutral"
               vergleich={<Vergleich {...(getComparison(stats.summary?.umsatzDurchschnitt || 0, compareStats?.summary?.umsatzDurchschnitt) || {})} />}
             />
             <Kennzahl
               label="Gewonnen" value={stats.summary?.gewonnen || 0}
               subtitle="Abschlüsse im Zeitraum"
-              icon={Award} color="green"
+              icon={Award} color="gut"
               vergleich={<Vergleich {...(getComparison(stats.summary?.gewonnen || 0, compareStats?.summary?.gewonnen) || {})} />}
             />
           </div>
@@ -2408,13 +2413,13 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
             <Kennzahl
               label="Verloren" value={stats.summary?.verloren || 0}
               subtitle="endgültig abgesagt"
-              icon={XCircle} color="red"
+              icon={XCircle} color="schlecht"
               vergleich={<Vergleich inverted {...(getComparison(stats.summary?.verloren || 0, compareStats?.summary?.verloren, true) || {})} />}
             />
             <Kennzahl
               label="No-Show" value={stats.summary?.noShow || 0}
               subtitle="nicht erschienen"
-              icon={Clock} color="amber"
+              icon={Clock} color="warnung"
               vergleich={<Vergleich inverted {...(getComparison(stats.summary?.noShow || 0, compareStats?.summary?.noShow, true) || {})} />}
             />
             <Kennzahl
@@ -2426,7 +2431,7 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
             <Kennzahl
               label="Entschieden" value={(stats.summary?.gewonnen || 0) + (stats.summary?.verloren || 0)}
               subtitle="gewonnen oder verloren"
-              icon={CheckCircle} color="blue"
+              icon={CheckCircle} color="neutral"
             />
           </div>
 
@@ -2454,7 +2459,7 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                     />
                     <Legend />
                     <Bar yAxisId="left" dataKey="umsatz" name="Umsatz" fill="#460E74" radius={[8, 8, 0, 0]} />
-                    <Bar yAxisId="right" dataKey="count" name="Abschlüsse" fill="#10B981" radius={[8, 8, 0, 0]} />
+                    <Bar yAxisId="right" dataKey="count" name="Abschlüsse" fill={STATUS_FARBE.gut} radius={[8, 8, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
@@ -2532,8 +2537,8 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                     />
                     <Legend />
                     <Bar dataKey="aktiv" name="Aktiv" fill="#460E74" stackId="a" />
-                    <Bar dataKey="abgeschlossen" name="Abgeschlossen" fill="#10B981" stackId="a" />
-                    <Bar dataKey="verloren" name="Verloren" fill="#EF4444" stackId="a" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="abgeschlossen" name="Abgeschlossen" fill={STATUS_FARBE.gut} stackId="a" />
+                    <Bar dataKey="verloren" name="Verloren" fill={STATUS_FARBE.schlecht} stackId="a" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -2558,10 +2563,16 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                       label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
                       labelLine={{ stroke: '#44474F', strokeWidth: 1 }}
                     >
-                      {stats.leadsProCloser.filter(c => c.gesamt > 0).map((entry, index) => {
-                        const colors = ['#460E74', '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#EC4899', '#6366F1', '#14B8A6', '#F97316', '#84CC16']
-                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
-                      })}
+                      {/* Zehn frei erfundene Farbtoene behaupteten zehn
+                          verschiedene Bedeutungen. Personen unterscheiden sich
+                          aber nur in der Menge - also die Leiter aus der
+                          Hausfarbe, und wer darunter liegt, wird grau. */}
+                      {stats.leadsProCloser.filter(c => c.gesamt > 0).map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={index < REIHE.length ? REIHE[index] : STATUS_FARBE.neutral}
+                        />
+                      ))}
                     </Pie>
                     <Tooltip
                       contentStyle={{ backgroundColor: '#FFFFFF', border: 'none', borderRadius: '12px', boxShadow: '0 8px 40px rgba(21, 28, 39, 0.1)' }}
@@ -2603,9 +2614,9 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
                       }}
                     />
                     <Legend />
-                    <Bar dataKey="offen" name="Offen" fill="#9CA3AF" stackId="a" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="gewonnen" name="Gewonnen" fill="#10B981" stackId="a" radius={[0, 0, 0, 0]} />
-                    <Bar dataKey="verloren" name="Verloren" fill="#EF4444" stackId="a" radius={[0, 4, 4, 0]} />
+                    <Bar dataKey="offen" name="Offen" fill={STATUS_FARBE.neutral} stackId="a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="gewonnen" name="Gewonnen" fill={STATUS_FARBE.gut} stackId="a" radius={[0, 0, 0, 0]} />
+                    <Bar dataKey="verloren" name="Verloren" fill={STATUS_FARBE.schlecht} stackId="a" radius={[0, 4, 4, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
               ) : (

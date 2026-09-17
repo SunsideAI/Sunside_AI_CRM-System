@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
-import { HeroKennzahl, Kennzahl, DiagrammKarte, LeerZustand } from '../components/Kennzahlen'
+import {
+  HeroKennzahl, Kennzahl, DiagrammKarte, LeerZustand, REIHE, STATUS_FARBE
+} from '../components/Kennzahlen'
 import {
   ExternalLink, RefreshCw, TrendingUp, TrendingDown, AlertCircle,
   Users, Euro, FileText, Clock, CheckCircle2, PieChart as PieIcon, BarChart3,
@@ -15,13 +17,16 @@ import {
 const LEXWARE_INVOICE_URL = 'https://app.lexware.de/permalink/invoices/view'
 
 const CHART_COLORS = {
-  primary: '#460E74',
-  primaryLight: '#8127CF',
-  blue: '#3B82F6',
-  green: '#10B981',
-  amber: '#F59E0B',
-  red: '#EF4444',
-  neutral: '#8B8B9A'
+  primary: REIHE[0],
+  primaryLight: REIHE[1],
+  // Erstrechnung, Retainer und Einmalig sind Umsatz-ARTEN, kein Status -
+  // also eine Leiter, keine Ampel. Vorher standen sie in Lila, Blau und Gruen
+  // nebeneinander, als waere eine davon "gut".
+  reihe: REIHE,
+  green: STATUS_FARBE.gut,
+  amber: STATUS_FARBE.warnung,
+  red: STATUS_FARBE.schlecht,
+  neutral: STATUS_FARBE.neutral
 }
 
 function formatEUR(n) {
@@ -224,21 +229,21 @@ function AnalyticsTab({ data }) {
           value={formatEUR(k.umsatz_monat)}
           subtitle={new Date().toLocaleDateString('de-DE', { month: 'long', year: 'numeric' })}
           icon={Euro}
-          color="green"
+          color="neutral"
         />
         <Kennzahl
           label="Umsatz YTD"
           value={formatEUR(k.umsatz_ytd)}
           subtitle={`Jahr ${new Date().getFullYear()}`}
           icon={TrendingUp}
-          color="green"
+          color="neutral"
         />
         <Kennzahl
           label="Aktive Kunden"
           value={k.aktive_kunden || 0}
           subtitle="aktuell"
           icon={Users}
-          color="blue"
+          color="neutral"
         />
       </div>
 
@@ -249,7 +254,7 @@ function AnalyticsTab({ data }) {
           value={formatEUR(k.offener_betrag)}
           subtitle={`${k.offene_rechnungen_count || 0} Rechnungen`}
           icon={Clock}
-          color="amber"
+          color="neutral"
         />
         <Kennzahl
           label="Überfällig"
@@ -323,8 +328,8 @@ function AnalyticsTab({ data }) {
                 />
                 <Legend wrapperStyle={{ fontSize: 12 }} />
                 <Bar dataKey="erstrechnung" stackId="a" fill={CHART_COLORS.primary} name="Erstrechnung" />
-                <Bar dataKey="retainer" stackId="a" fill={CHART_COLORS.blue} name="Retainer" />
-                <Bar dataKey="one_time" stackId="a" fill={CHART_COLORS.green} name="Einmalig" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="retainer" stackId="a" fill={REIHE[1]} name="Retainer" />
+                <Bar dataKey="one_time" stackId="a" fill={REIHE[2]} name="Einmalig" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           ) : (
