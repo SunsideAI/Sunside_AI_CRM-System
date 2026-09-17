@@ -3,7 +3,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { calendlyEcht } from './utils/session.js'
-import { STATUS } from '../../shared/status.js'
+import { STATUS, normalisiere } from '../../shared/status.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 const supabase = createClient(
@@ -20,6 +20,82 @@ const corsHeaders = {
 // Simple in-memory cache for webhook deduplication (prevents duplicate events)
 const processedEvents = new Map()
 const EVENT_CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+// Seit dem OSC-Umbau haengen ZWEI Calendly-Termine an einem Kontakt: das
+// Beratungsgespraech des Setters und das Abschlussgespraech des Closers. Eine
+// Absage oder Verschiebung aus Calendly muss also zuerst sagen koennen, WELCHER
+// der beiden gemeint ist. Vorher kannte diese Datei nur den ersten - eine
+// verschobene Abschlussbuchung haette die Uhrzeit des Beratungsgespraechs
+// ueberschrieben und damit beide Termine verloren.
+const FELD = {
+  BERATUNG: 'termin_beratungsgespraech',
+  ABSCHLUSS: 'termin_abschlussgespraech'
+}
+
+const FENSTER_MS = 10 * 60 * 1000
+
+/**
+ * Welcher der beiden Termine ist gemeint?
+ *
+ * Zuerst ueber die Uhrzeit: Calendly nennt den Zeitpunkt, der abgesagt oder
+ * verschoben wird, und der steht in genau einer der beiden Spalten. Findet
+ * sich nichts (die Fallbacks ueber E-Mail und Unternehmen haben keine Zeit im
+ * Gepaeck), entscheidet, welche Spalte ueberhaupt gefuellt ist - und zuletzt
+ * der Status.
+ */
+function welcherTermin(record, zeitpunkt) {
+  const beratung = record?.termin_beratungsgespraech
+  const abschluss = record?.termin_abschlussgespraech
+
+  if (zeitpunkt) {
+    const ziel = new Date(zeitpunkt).getTime()
+    const abstand = (t) => (t ? Math.abs(new Date(t).getTime() - ziel) : Infinity)
+    const dB = abstand(beratung)
+    const dA = abstand(abschluss)
+    if (dB < FENSTER_MS || dA < FENSTER_MS) {
+      return dA < dB ? FELD.ABSCHLUSS : FELD.BERATUNG
+    }
+  }
+
+  if (abschluss && !beratung) return FELD.ABSCHLUSS
+  if (beratung && !abschluss) return FELD.BERATUNG
+
+  // Beide gesetzt, keine Zeit zum Vergleichen: Ab dem Abschlussgespraech ist
+  // der zweite Termin der aktuelle.
+  const nachSetting = [
+    STATUS.ABSCHLUSS_VEREINBART, STATUS.IM_ABSCHLUSS,
+    STATUS.ANGEBOT_ANGEFORDERT, STATUS.ANGEBOT_VERSCHICKT, STATUS.WIRD_NACHGEFASST
+  ]
+  return nachSetting.includes(normalisiere(record?.status)) ? FELD.ABSCHLUSS : FELD.BERATUNG
+}
+
+// Calendly selbst sagt, WOZU ein Termin dient - ueber die Terminart. Die
+// Zuordnung steht in den Einstellungen (Ticket 7) und ist dieselbe, nach der
+// der Terminwaehler im CRM auswaehlt. Das ist ungleich verlaesslicher als aus
+// der Uhrzeit zu raten, und es ist die einzige Auskunft, die schon vorliegt,
+// BEVOR das CRM den Termin gespeichert hat.
+let zuordnungStand = { karte: null, geholt: 0 }
+const ZUORDNUNG_TTL = 5 * 60 * 1000
+
+async function zweckDerTerminart(eventTypeUri) {
+  if (!eventTypeUri) return null
+
+  if (!zuordnungStand.karte || Date.now() - zuordnungStand.geholt > ZUORDNUNG_TTL) {
+    const { data } = await supabase
+      .from('einstellungen').select('wert')
+      .eq('schluessel', 'calendly_terminart_zuordnung').maybeSingle()
+    try { zuordnungStand = { karte: JSON.parse(data?.wert || '{}') || {}, geholt: Date.now() } }
+    catch { zuordnungStand = { karte: {}, geholt: Date.now() } }
+  }
+
+  return zuordnungStand.karte[eventTypeUri] || null
+}
+
+function feldAusZweck(zweck) {
+  if (zweck === 'abschluss') return FELD.ABSCHLUSS
+  if (zweck === 'beratung') return FELD.BERATUNG
+  return null
+}
 
 // Datum formatieren
 function formatDate(isoString) {
@@ -142,8 +218,14 @@ export async function handler(event) {
           ? `Abgesagt von ${canceledBy}: ${cancellationReason}`
           : `Abgesagt von ${canceledBy}`
 
-        await updateHotLeadAbsage(hotLead.id, hotLead.originalLeadId, grund)
-        await sendNotifications(hotLead, 'absage', { grund })
+        // Die Terminart aus Calendly sticht die Schaetzung ueber die Uhrzeit:
+        // Sie sagt geradeheraus, ob ein Beratungs- oder ein Abschlussgespraech
+        // abgesagt wurde.
+        const feld = feldAusZweck(await zweckDerTerminart(data.scheduled_event?.event_type))
+          || hotLead.feld
+
+        await updateHotLeadAbsage(hotLead.id, hotLead.originalLeadId, grund, feld)
+        await sendNotifications(hotLead, 'absage', { grund, feld })
         console.log('Hot Lead Status auf abgesagt geaendert:', hotLead.id)
       }
 
@@ -215,8 +297,18 @@ export async function handler(event) {
             setterId: hotLead.setterId,
             closerId: hotLead.closerId
           })
-          await updateHotLeadTermin(hotLead.id, newScheduledTime, hotLead.originalLeadId, hotLead.termin)
-          await sendNotifications(hotLead, 'verschiebung', { neuerTermin: newScheduledTime, alterTermin: hotLead.termin })
+          // Der Finder hat ueber die ALTE Uhrzeit entschieden, welcher der
+          // beiden Termine gemeint ist - genau die richtige Frage bei einer
+          // Verschiebung. Die Terminart aus Calendly hat trotzdem Vorrang.
+          const feld = feldAusZweck(await zweckDerTerminart(data.scheduled_event?.event_type))
+            || hotLead.feld
+          const alterTermin = feld === FELD.ABSCHLUSS
+            ? (hotLead.terminAbschluss || hotLead.termin)
+            : (hotLead.terminBeratung || hotLead.termin)
+
+          await updateHotLeadTermin(hotLead.id, newScheduledTime, hotLead.originalLeadId,
+            alterTermin, feld)
+          await sendNotifications(hotLead, 'verschiebung', { neuerTermin: newScheduledTime, alterTermin, feld })
           console.log('Hot Lead Termin aktualisiert und Benachrichtigungen gesendet:', hotLead.id)
         } else {
           console.error('WARNUNG: Kein Hot Lead gefunden für Verschiebung!', {
@@ -262,9 +354,35 @@ export async function handler(event) {
         //     schon einen Hot Lead (z.B. aus einer früheren Absage). Behandeln
         //     wie eine Verschiebung: Hot Lead auf den neuen Slot patchen und
         //     Setter/Closer benachrichtigen.
-        const existingMs = existingHotLead.termin ? new Date(existingHotLead.termin).getTime() : 0
+        // Welcher der beiden Termine ist gemeint? Hier ist die Frage
+        // besonders scharf: Bucht der Setter das Abschlussgespraech ueber das
+        // CRM, trifft dieser Webhook ein, BEVOR der Uebergabe-PATCH die Spalte
+        // termin_abschlussgespraech fuellt. Ohne die Terminart verglichen wir
+        // die neue Uhrzeit mit dem Beratungstermin, faenden "anderer Slot" -
+        // und schoeben das Beratungsgespraech auf die Zeit des
+        // Abschlussgespraechs. Beide Termine waeren damit verloren.
+        const zweck = await zweckDerTerminart(data.scheduled_event?.event_type)
+        const feld = feldAusZweck(zweck) || existingHotLead.feld
+        const bestehend = feld === FELD.ABSCHLUSS
+          ? existingHotLead.terminAbschluss
+          : existingHotLead.terminBeratung
+
+        if (feld === FELD.ABSCHLUSS && !bestehend) {
+          // Das CRM ist mitten in der Uebergabe. Es schreibt den Termin gleich
+          // selbst - und zwar erst, wenn die Pflichtfelder vollstaendig sind.
+          // Hier vorzugreifen hiesse, den Kontakt ohne Uebergabe in den
+          // Closer-Pool zu stellen; genau das soll das Gate verhindern.
+          console.log('Abschlussgespraech gebucht, CRM traegt es selbst nach:', existingHotLead.id)
+          return {
+            statusCode: 200,
+            headers: corsHeaders,
+            body: JSON.stringify({ success: true, message: 'Abschlussgespräch - CRM schreibt den Termin', hotLeadId: existingHotLead.id })
+          }
+        }
+
+        const existingMs = bestehend ? new Date(bestehend).getTime() : 0
         const newMs = new Date(newScheduledTime).getTime()
-        const sameSlot = existingMs > 0 && Math.abs(newMs - existingMs) < 10 * 60 * 1000
+        const sameSlot = existingMs > 0 && Math.abs(newMs - existingMs) < FENSTER_MS
 
         if (sameSlot) {
           console.log('Hot Lead existiert für denselben Slot (CRM-Buchung):', existingHotLead.id, existingHotLead.unternehmen)
@@ -277,13 +395,16 @@ export async function handler(event) {
 
         console.log('Neuer Termin für bestehenden Hot Lead – Termin wird aktualisiert:', {
           hotLeadId: existingHotLead.id,
-          alterTermin: existingHotLead.termin,
+          feld,
+          alterTermin: bestehend,
           neuerTermin: newScheduledTime
         })
-        await updateHotLeadTermin(existingHotLead.id, newScheduledTime, existingHotLead.originalLeadId, existingHotLead.termin)
+        await updateHotLeadTermin(existingHotLead.id, newScheduledTime, existingHotLead.originalLeadId,
+          bestehend, feld)
         await sendNotifications(existingHotLead, 'verschiebung', {
           neuerTermin: newScheduledTime,
-          alterTermin: existingHotLead.termin
+          alterTermin: bestehend,
+          feld
         })
 
         return {
@@ -543,7 +664,7 @@ async function findHotLeadByUnternehmenAndTermin(unternehmen, terminDatum) {
 
   const { data: hotLeads, error } = await supabase
     .from('hot_leads')
-    .select('id, unternehmen, mail, termin_beratungsgespraech, setter_id, closer_id, lead_id, status')
+    .select('id, unternehmen, mail, termin_beratungsgespraech, termin_abschlussgespraech, status, setter_id, closer_id, lead_id')
     .not('status', 'in', '(Abgeschlossen,Verloren,Abgesagt)')
     .not('termin_beratungsgespraech', 'is', null)
 
@@ -574,7 +695,11 @@ async function findHotLeadByUnternehmenAndTermin(unternehmen, terminDatum) {
   return {
     id: winner.id,
     unternehmen: winner.unternehmen,
+    feld: welcherTermin(winner, terminDatum),
     termin: winner.termin_beratungsgespraech,
+    terminBeratung: winner.termin_beratungsgespraech,
+    terminAbschluss: winner.termin_abschlussgespraech,
+    status: winner.status,
     setterId: winner.setter_id,
     closerId: winner.closer_id,
     originalLeadId: winner.lead_id
@@ -589,7 +714,7 @@ async function findHotLeadByUnternehmen(unternehmen) {
 
   const { data: hotLeads, error } = await supabase
     .from('hot_leads')
-    .select('id, unternehmen, termin_beratungsgespraech, setter_id, closer_id, lead_id')
+    .select('id, unternehmen, termin_beratungsgespraech, termin_abschlussgespraech, status, setter_id, closer_id, lead_id')
     .neq('status', 'Abgesagt')
     .not('termin_beratungsgespraech', 'is', null)
 
@@ -606,7 +731,11 @@ async function findHotLeadByUnternehmen(unternehmen) {
       return {
         id: record.id,
         unternehmen: record.unternehmen,
+        feld: welcherTermin(record, null),
         termin: record.termin_beratungsgespraech,
+        terminBeratung: record.termin_beratungsgespraech,
+        terminAbschluss: record.termin_abschlussgespraech,
+        status: record.status,
         setterId: record.setter_id,
         closerId: record.closer_id,
         originalLeadId: record.lead_id
@@ -630,11 +759,15 @@ async function findHotLeadByTermin(terminDatum, email) {
   const { data: hotLeads, error } = await supabase
     .from('hot_leads')
     .select(`
-      id, unternehmen, termin_beratungsgespraech, setter_id, closer_id, lead_id, mail,
+      id, unternehmen, termin_beratungsgespraech, termin_abschlussgespraech,
+      status, setter_id, closer_id, lead_id, mail,
       original_lead:leads!hot_leads_lead_id_fkey(mail)
     `)
     .neq('status', 'Abgesagt')
-    .not('termin_beratungsgespraech', 'is', null)
+    // Kein Null-Filter mehr: Er muesste jetzt zwei Spalten mit ODER verknuepfen,
+    // und eine Abfrage, die im Fehlerfall einfach nichts findet, waere hier
+    // teuer - dann bliebe eine Absage unbemerkt. Die Schleife unten ueberspringt
+    // leere Spalten ohnehin.
 
   if (error) {
     console.error('findHotLeadByTermin DB-Fehler:', error)
@@ -643,14 +776,18 @@ async function findHotLeadByTermin(terminDatum, email) {
   if (!hotLeads) return null
 
   const targetTime = new Date(terminDatum).getTime()
-  const WINDOW_MS = 10 * 60 * 1000
 
-  const candidates = hotLeads
-    .map(record => ({
-      record,
-      timeDiff: Math.abs(new Date(record.termin_beratungsgespraech).getTime() - targetTime)
-    }))
-    .filter(c => c.timeDiff < WINDOW_MS)
+  // Jeder Kontakt tritt mit beiden Terminen an. Passt einer davon ins Fenster,
+  // ist er der Kandidat - und wir wissen damit auch gleich, welcher der beiden
+  // Termine gemeint ist.
+  const candidates = []
+  for (const record of hotLeads) {
+    for (const feld of [FELD.BERATUNG, FELD.ABSCHLUSS]) {
+      if (!record[feld]) continue
+      const timeDiff = Math.abs(new Date(record[feld]).getTime() - targetTime)
+      if (timeDiff < FENSTER_MS) candidates.push({ record, feld, timeDiff })
+    }
+  }
 
   if (candidates.length === 0) return null
 
@@ -666,7 +803,7 @@ async function findHotLeadByTermin(terminDatum, email) {
     if (emailMatches.length > 0) {
       // Bei mehreren Email-Matches: kleinster Zeit-Abstand
       winner = emailMatches.reduce((best, curr) => curr.timeDiff < best.timeDiff ? curr : best)
-      console.log('Match via Email + Termin:', winner.record.unternehmen)
+      console.log('Match via Email + Termin:', winner.record.unternehmen, winner.feld)
     }
   }
 
@@ -677,18 +814,22 @@ async function findHotLeadByTermin(terminDatum, email) {
       console.warn(
         `[findHotLeadByTermin] WARNUNG: ${candidates.length} Kandidaten im 10-Min-Fenster ohne Email-Match.`,
         'Wähle kürzeste Zeit-Diff:', winner.record.unternehmen,
-        '(', winner.timeDiff, 'ms)',
-        'Alle Kandidaten:', candidates.map(c => ({ id: c.record.id, unternehmen: c.record.unternehmen, diff: c.timeDiff }))
+        '(', winner.timeDiff, 'ms,', winner.feld, ')',
+        'Alle Kandidaten:', candidates.map(c => ({ id: c.record.id, unternehmen: c.record.unternehmen, feld: c.feld, diff: c.timeDiff }))
       )
     } else {
-      console.log('Match via Termin:', winner.record.unternehmen)
+      console.log('Match via Termin:', winner.record.unternehmen, winner.feld)
     }
   }
 
   return {
     id: winner.record.id,
     unternehmen: winner.record.unternehmen,
-    termin: winner.record.termin_beratungsgespraech,
+    feld: winner.feld,
+    termin: winner.record[winner.feld],
+    terminBeratung: winner.record.termin_beratungsgespraech,
+    terminAbschluss: winner.record.termin_abschlussgespraech,
+    status: winner.record.status,
     setterId: winner.record.setter_id,
     closerId: winner.record.closer_id,
     originalLeadId: winner.record.lead_id
@@ -704,7 +845,7 @@ async function findHotLeadByEmail(email) {
   // Erst in hot_leads.mail suchen
   const { data: directMatch, error: directError } = await supabase
     .from('hot_leads')
-    .select('id, lead_id, unternehmen, mail, termin_beratungsgespraech, status, setter_id, closer_id')
+    .select('id, lead_id, unternehmen, mail, termin_beratungsgespraech, termin_abschlussgespraech, status, setter_id, closer_id')
     .eq('mail', email)
     .not('status', 'in', '(Abgeschlossen,Verloren)')
     .order('termin_beratungsgespraech', { ascending: false })
@@ -720,7 +861,11 @@ async function findHotLeadByEmail(email) {
     return {
       id: directMatch.id,
       unternehmen: directMatch.unternehmen,
+      feld: welcherTermin(directMatch, null),
       termin: directMatch.termin_beratungsgespraech,
+      terminBeratung: directMatch.termin_beratungsgespraech,
+      terminAbschluss: directMatch.termin_abschlussgespraech,
+      status: directMatch.status,
       setterId: directMatch.setter_id,
       closerId: directMatch.closer_id,
       originalLeadId: directMatch.lead_id
@@ -731,7 +876,7 @@ async function findHotLeadByEmail(email) {
   const { data: joinMatch, error: joinError } = await supabase
     .from('hot_leads')
     .select(`
-      id, lead_id, unternehmen, termin_beratungsgespraech, status, setter_id, closer_id,
+      id, lead_id, unternehmen, termin_beratungsgespraech, termin_abschlussgespraech, status, setter_id, closer_id,
       original_lead:leads!hot_leads_lead_id_fkey(mail)
     `)
     .not('status', 'in', '(Abgeschlossen,Verloren)')
@@ -752,7 +897,11 @@ async function findHotLeadByEmail(email) {
     return {
       id: matchingLead.id,
       unternehmen: matchingLead.unternehmen,
+      feld: welcherTermin(matchingLead, null),
       termin: matchingLead.termin_beratungsgespraech,
+      terminBeratung: matchingLead.termin_beratungsgespraech,
+      terminAbschluss: matchingLead.termin_abschlussgespraech,
+      status: matchingLead.status,
       setterId: matchingLead.setter_id,
       closerId: matchingLead.closer_id,
       originalLeadId: matchingLead.lead_id
@@ -764,8 +913,28 @@ async function findHotLeadByEmail(email) {
 }
 
 // Hot Lead bei Absage aktualisieren - Termin behalten für Referenz
-async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
-  console.log('Aktualisiere Hot Lead Absage:', { hotLeadId, originalLeadId })
+async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund, feld = FELD.BERATUNG) {
+  console.log('Aktualisiere Hot Lead Absage:', { hotLeadId, originalLeadId, feld })
+
+  // Ein abgesagtes ABSCHLUSSgespraech ist etwas anderes als ein abgesagtes
+  // Beratungsgespraech. Es geht nicht an den Opener zurueck - der Closer haelt
+  // den Kontakt und legt neu. Wuerde hier setter_id geleert, verloere der
+  // Setter seine Uebergabe, ohne dass es ihn noch etwas anginge.
+  if (feld === FELD.ABSCHLUSS) {
+    const { error } = await supabase
+      .from('hot_leads')
+      .update({ status: STATUS.TERMIN_ABGESAGT, zuletzt_geaendert_durch: 'calendly-webhook' })
+      .eq('id', hotLeadId)
+
+    if (error) {
+      console.error('Update Fehler (Abschluss-Absage):', error)
+      return false
+    }
+    if (originalLeadId) {
+      await updateOriginalLeadKommentar(originalLeadId, `ABSCHLUSSGESPRÄCH ABGESAGT: ${grund}`)
+    }
+    return true
+  }
 
   // Ein abgesagter Termin ist keine Aufgabe des Setters mehr. Blieb setter_id
   // stehen, hing der Kontakt bei jemandem, für den es nichts zu tun gab - und
@@ -812,14 +981,17 @@ async function updateHotLeadAbsage(hotLeadId, originalLeadId, grund) {
 }
 
 // Hot Lead Termin aktualisieren
-async function updateHotLeadTermin(hotLeadId, neuerTermin, originalLeadId, alterTermin) {
-  console.log('Aktualisiere Hot Lead Termin:', { hotLeadId, neuerTermin })
+async function updateHotLeadTermin(hotLeadId, neuerTermin, originalLeadId, alterTermin, feld = FELD.BERATUNG) {
+  console.log('Aktualisiere Hot Lead Termin:', { hotLeadId, neuerTermin, feld })
 
+  // Geschrieben wird die Spalte, die verschoben wurde - und der Status gehoert
+  // dazu. Ein verschobenes Abschlussgespraech auf "Beratungsgespraech
+  // vereinbart" zu setzen, warfe den Kontakt eine ganze Stufe zurueck.
   const { error } = await supabase
     .from('hot_leads')
     .update({
-      termin_beratungsgespraech: neuerTermin,
-      status: STATUS.BERATUNG_VEREINBART,
+      [feld]: neuerTermin,
+      status: feld === FELD.ABSCHLUSS ? STATUS.ABSCHLUSS_VEREINBART : STATUS.BERATUNG_VEREINBART,
       zuletzt_geaendert_durch: 'calendly-webhook'
     })
     .eq('id', hotLeadId)
@@ -830,7 +1002,8 @@ async function updateHotLeadTermin(hotLeadId, neuerTermin, originalLeadId, alter
   }
 
   if (originalLeadId) {
-    const kommentar = `TERMIN VERSCHOBEN: ${formatDate(alterTermin)} → ${formatDate(neuerTermin)}`
+    const was = feld === FELD.ABSCHLUSS ? 'ABSCHLUSSGESPRÄCH' : 'TERMIN'
+    const kommentar = `${was} VERSCHOBEN: ${formatDate(alterTermin)} → ${formatDate(neuerTermin)}`
     await updateOriginalLeadKommentar(originalLeadId, kommentar)
   }
 
@@ -874,15 +1047,19 @@ async function sendNotifications(hotLead, eventType, details) {
   let emailIcon = '📬'
   let emailColor = '#3B82F6'
 
+  // Welches Gespraech - sonst steht bei einem Kontakt mit zwei Terminen nur
+  // "Termin abgesagt" da, und der Empfaenger muss raten, welcher.
+  const was = details.feld === FELD.ABSCHLUSS ? 'Abschlussgespräch' : 'Beratungsgespräch'
+
   if (eventType === 'absage') {
-    titel = 'Termin abgesagt'
-    nachricht = `Termin abgesagt: ${unternehmen}\n${details.grund || 'Kein Grund angegeben'}`
+    titel = `${was} abgesagt`
+    nachricht = `${was} abgesagt: ${unternehmen}\n${details.grund || 'Kein Grund angegeben'}`
     typ = 'Termin abgesagt'
     emailIcon = '❌'
     emailColor = '#EF4444'
   } else if (eventType === 'verschiebung') {
-    titel = 'Termin verschoben'
-    nachricht = `Termin verschoben: ${unternehmen}\nNeuer Termin: ${formatDate(details.neuerTermin)}`
+    titel = `${was} verschoben`
+    nachricht = `${was} verschoben: ${unternehmen}\nNeuer Termin: ${formatDate(details.neuerTermin)}`
     typ = 'Termin verschoben'
     emailIcon = '🔄'
     emailColor = '#F59E0B'

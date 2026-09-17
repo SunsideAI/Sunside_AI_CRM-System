@@ -132,8 +132,23 @@ export default function UebergabeFelder({ bereich, werte, onChange, offen = [] }
                 type="number"
                 inputMode="decimal"
                 disabled={abgeschaltet}
+                min={feld.min}
+                max={feld.max}
+                step={feld.art === 'betrag' ? '0.01' : '1'}
                 value={wert ?? ''}
-                onChange={e => setzen(schluessel, e.target.value === '' ? null : Number(e.target.value))}
+                /* min/max sind nur ein Hinweis an die Pfeiltasten - tippen
+                   laesst sich trotzdem alles. Hier stand "-3 gewuenschte
+                   Auftraege pro Jahr", und die Bedarfsrechnung machte daraus
+                   negative Anfragen pro Monat. Deshalb wird der Wert beim
+                   Eintippen in die Spanne gezogen. */
+                onChange={e => {
+                  if (e.target.value === '') return setzen(schluessel, null)
+                  let zahl = Number(e.target.value)
+                  if (Number.isNaN(zahl)) return
+                  if (feld.min !== undefined) zahl = Math.max(feld.min, zahl)
+                  if (feld.max !== undefined) zahl = Math.min(feld.max, zahl)
+                  setzen(schluessel, zahl)
+                }}
                 className={rahmen(schluessel)}
               />
             )}

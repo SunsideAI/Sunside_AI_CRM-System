@@ -6,7 +6,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { STATUS, normalisiere, uebergangErlaubt, anzeigeName, ruecknahmeZiel, beideSchreibweisen } from '../../shared/status.js'
-import { FELDER, uebergabePruefen, UEBERGABE_1, UEBERGABE_2 } from '../../shared/felder.js'
+import { FELDER, uebergabePruefen, grenzenPruefen, UEBERGABE_1, UEBERGABE_2 } from '../../shared/felder.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 const supabase = createClient(
@@ -1094,6 +1094,25 @@ export async function handler(event) {
               daten: { frueherer_setter: stand.setter_id }
             })
           }
+        }
+      }
+
+      // Unmoegliche Zahlen werden gar nicht erst gespeichert. Das Formular
+      // zieht sie beim Tippen in die Spanne; wer an der Maske vorbei schreibt,
+      // faellt hier auf. Eine negative Wunschzahl kippt sonst die
+      // Bedarfsrechnung, und die steht spaeter im Strategiepapier.
+      const ausserhalb = grenzenPruefen(fields)
+      if (ausserhalb.length > 0) {
+        return {
+          statusCode: 422,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            error: 'wert_ausserhalb_der_spanne',
+            message: ausserhalb
+              .map(v => `${v.name}: ${v.grenze}`)
+              .join(', '),
+            felder: ausserhalb
+          })
         }
       }
 

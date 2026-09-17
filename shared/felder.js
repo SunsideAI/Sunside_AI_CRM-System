@@ -97,12 +97,14 @@ export const FELDER = {
 
   // ---- Übergabe 2: der Setter gibt an den Closer ab ----
   zuwachs_auftraege: {
-    bereich: UEBERGABE_2, pflicht: true, art: 'zahl',
+    bereich: UEBERGABE_2, pflicht: true, art: 'zahl', min: 0,
     name: 'Gewünschte zusätzliche Aufträge pro Jahr',
     hilfe: 'Die Antwort auf die Frage, wo der Kunde hinwill.'
   },
   abschlussquote: {
-    bereich: UEBERGABE_2, pflicht: true, art: 'zahl',
+    // Aufträge aus zehn Anfragen - mehr als zehn kann es nicht sein, und
+    // die Zahl geht als Nenner in die Bedarfsrechnung ein.
+    bereich: UEBERGABE_2, pflicht: true, art: 'zahl', min: 0, max: 10,
     name: 'Abschlussquote: Aufträge aus 10 Anfragen',
     hilfe: 'Wie viele von 10 Anfragen werden bei ihm ein Auftrag? Bitte kennzeichnen, ob die Zahl vom Kunden kommt oder geschätzt ist.'
   },
@@ -112,7 +114,7 @@ export const FELDER = {
     hilfe: 'Vom Kunden genannt oder geschätzt.'
   },
   ist_auftraege: {
-    bereich: UEBERGABE_2, pflicht: false, art: 'zahl',
+    bereich: UEBERGABE_2, pflicht: false, art: 'zahl', min: 0,
     name: 'Aufträge im letzten Jahr',
     hilfe: 'Nur eintragen, wenn die Zahl im Gespräch fiel.'
   },
@@ -127,7 +129,7 @@ export const FELDER = {
     hilfe: 'Beides stammt aus einem Moment im Gespräch. Die Messlatte wörtlich notieren, sie kommt ins Strategiepapier.'
   },
   investitionsrahmen: {
-    bereich: UEBERGABE_2, pflicht: false, art: 'betrag',
+    bereich: UEBERGABE_2, pflicht: false, art: 'betrag', min: 0,
     name: 'Investitionsrahmen',
     hilfe: 'Der Rahmen aus der Budget-Frage. Ausweichen ist ein dokumentiertes Ergebnis, kein Fehler.'
   },
@@ -181,6 +183,32 @@ const felderIn = (bereich) =>
  *                weitergebucht.
  *   warnungen  - Felder, deren Fehlen auffällt, aber nichts blockiert.
  */
+/**
+ * Werte ausserhalb der erlaubten Spanne.
+ *
+ * Getrennt von uebergabePruefen(): Ein fehlendes Feld und ein unmoegliches
+ * Feld sind zwei verschiedene Fehler. "-3 gewuenschte Auftraege" ist nicht
+ * unvollstaendig, es ist falsch - und ging bisher glatt durch, weil ein
+ * Zahlenfeld ohne min alles annimmt, was sich tippen laesst. Die
+ * Bedarfsrechnung lieferte daraufhin negative Anfragen pro Monat.
+ */
+export function grenzenPruefen(werte) {
+  const verstoesse = []
+  for (const [schluessel, feld] of Object.entries(FELDER)) {
+    if (feld.min === undefined && feld.max === undefined) continue
+    const wert = werte?.[schluessel]
+    if (wert === null || wert === undefined || wert === '') continue
+    const zahl = Number(wert)
+    if (Number.isNaN(zahl)) continue
+    if (feld.min !== undefined && zahl < feld.min) {
+      verstoesse.push({ schluessel, name: feld.name, grenze: `mindestens ${feld.min}` })
+    } else if (feld.max !== undefined && zahl > feld.max) {
+      verstoesse.push({ schluessel, name: feld.name, grenze: `höchstens ${feld.max}` })
+    }
+  }
+  return verstoesse
+}
+
 export function uebergabePruefen(lead, bereich) {
   const leer = (wert, art) => {
     // Eine nicht angehakte Checkbox ist eine Antwort, keine Luecke. Wuerde sie

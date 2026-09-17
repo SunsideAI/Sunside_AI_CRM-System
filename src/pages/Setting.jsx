@@ -78,9 +78,25 @@ function Setting() {
       return
     }
 
+    const name = gewaehlt?.unternehmen || 'Der Kontakt'
+
     if (updates?.status === STATUS.ABSCHLUSS_VEREINBART) {
-      const name = gewaehlt?.unternehmen || 'Der Kontakt'
       setHinweis(`${name} ist an den Closer übergeben. Das Abschlussgespräch steht im Closer-Pool.`)
+    }
+
+    // Geplatzt: Der Kontakt wechselt in einen Filter, den man gerade nicht
+    // ansieht. Ohne den Wechsel waere er wieder einfach weg - derselbe Fehler
+    // wie nach "hat stattgefunden", nur eine Abzweigung weiter.
+    if ([STATUS.NICHT_ERSCHIENEN, STATUS.TERMIN_ABGESAGT].includes(updates?.status)) {
+      setFilter('geplatzt')
+      setSeite(1)
+      setHinweis(updates.status === STATUS.NICHT_ERSCHIENEN
+        ? `${name} ist nicht erschienen und steht jetzt unter „Geplatzt".`
+        : `Die Absage für ${name} ist festgehalten. Der Kontakt steht unter „Geplatzt".`)
+    }
+
+    if (updates?.verschoben) {
+      setHinweis(`Der Termin mit ${name} ist neu gelegt.`)
     }
 
     setGewaehlt(null)

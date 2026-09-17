@@ -10,6 +10,38 @@ import TerminPicker from './TerminPicker'
 // legen. Sie hängt am Termin und nicht in der Closing-Ansicht, weil der Setter
 // dort keinen Zugang hat (Rolle Closer/Admin).
 
+// Verschieben ist kein Zielstatus, sondern ein neuer Termin - der Wert
+// existiert nur in diesem Auswahlfeld und wird nie gespeichert.
+const VERSCHOBEN = 'verschoben'
+
+// Deckungsgleich mit UEBERGAENGE[BERATUNG_VEREINBART] in shared/status.js.
+const AUSGAENGE = [
+  { wert: '', name: 'Noch offen — Ausgang wählen' },
+  {
+    wert: STATUS.BERATUNG_GEFUEHRT,
+    name: 'Hat stattgefunden',
+    knopf: 'Gespräch dokumentieren',
+    hinweis: 'Danach öffnet sich hier die Übergabe an den Closer.'
+  },
+  {
+    wert: STATUS.NICHT_ERSCHIENEN,
+    name: 'Kunde nicht erschienen',
+    knopf: 'Als nicht erschienen festhalten',
+    hinweis: 'Der Kontakt landet unter „Geplatzt". Von dort lässt sich ein neuer Termin legen.'
+  },
+  {
+    wert: STATUS.TERMIN_ABGESAGT,
+    name: 'Termin abgesagt',
+    knopf: 'Absage festhalten',
+    hinweis: 'Sagt der Kunde über Calendly ab, trägt das System es selbst ein — hier nur für Absagen am Telefon.'
+  },
+  {
+    wert: VERSCHOBEN,
+    name: 'Termin verschoben',
+    hinweis: 'Der neue Termin wird gleich hier gebucht; der Status bleibt „vereinbart".'
+  }
+]
+
 const FELDER_2 = [
   'zuwachs_auftraege', 'abschlussquote', 'quote_art', 'ist_auftraege',
   'keine_zahlen', 'entscheider_messlatte', 'investitionsrahmen',
@@ -27,6 +59,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
           terminart: 'Video' }
       : null)
   const [waehlerOffen, setWaehlerOffen] = useState(false)
+  const [ausgang, setAusgang] = useState('')
   const [laeuft, setLaeuft] = useState(false)
   const [offen, setOffen] = useState([])
   const [meldung, setMeldung] = useState('')
@@ -67,26 +100,78 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
     }
   }
 
-  // Stufe 1: der Termin hat stattgefunden
+  // Stufe 1: der Ausgang des Beratungsgespraechs.
+  //
+  // Vorher stand hier ein einzelner Knopf "Termin fand statt". Der konnte nur
+  // den einen Fall - und fuer die anderen drei (nicht erschienen, abgesagt,
+  // verschoben) gab es in der Setter-Ansicht ueberhaupt keinen Weg. Jetzt ist
+  // es ein Auswahlfeld wie das Ergebnis im Opening.
+  //
+  // Die Liste kommt aus AUSGAENGE und deckt sich mit der Uebergangsmatrix in
+  // shared/status.js, die auch die Datenbank durchsetzt: Was hier waehlbar
+  // ist, laesst sich auch speichern.
   if (status === STATUS.BERATUNG_VEREINBART) {
+    const gewaehlt = AUSGAENGE.find(a => a.wert === ausgang)
+
     return (
-      <div className="border-t pt-4 mt-4">
-        <h4 className="font-medium text-gray-900 mb-1">Nach dem Gespräch</h4>
-        <p className="text-xs text-gray-500 mb-3">
-          Direkt nach dem Gespräch anklicken. Nur so zählen Erscheinungsquote und
-          Termin-Vergütung. Kein Klick und kein Nicht-erschienen heißt: offen.
-          Danach öffnet sich hier die Übergabe an den Closer.
-        </p>
-        <button
-          onClick={() => senden({ status: STATUS.BERATUNG_GEFUEHRT })}
-          disabled={laeuft}
-          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg
-                     hover:bg-primary-container disabled:opacity-50"
+      <div className="border-t pt-4 mt-4 space-y-3">
+        <div>
+          <h4 className="font-medium text-gray-900">Ausgang des Beratungsgesprächs</h4>
+          <p className="text-xs text-gray-500 mt-1">
+            Direkt nach dem Termin festhalten. Nur so zählen Erscheinungsquote
+            und Termin-Vergütung — nichts auszuwählen heißt: offen.
+          </p>
+        </div>
+
+        <select
+          value={ausgang}
+          onChange={e => { setAusgang(e.target.value); setFehler('') }}
+          className="w-full px-4 py-2.5 border border-outline-variant/30 rounded-lg
+                     focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
         >
-          {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-          Beratungsgespräch hat stattgefunden
-        </button>
-        {fehler && <p className="mt-2 text-sm text-red-600">{fehler}</p>}
+          {AUSGAENGE.map(a => (
+            <option key={a.wert || 'offen'} value={a.wert}>{a.name}</option>
+          ))}
+        </select>
+
+        {gewaehlt?.hinweis && (
+          <p className="text-xs text-gray-500">{gewaehlt.hinweis}</p>
+        )}
+
+        {/* Verschieben ist kein Status, sondern ein neuer Termin. Deshalb
+            oeffnet sich hier der Terminwaehler statt eines Speichern-Knopfes:
+            Der alte Termin faellt in Calendly weg, der neue steht danach in
+            derselben Zeile. */}
+        {ausgang === VERSCHOBEN ? (
+          <TerminPicker
+            zweck="beratung"
+            lead={{
+              id: lead?.originalLeadId || lead?.lead_id,
+              unternehmen: lead?.unternehmen,
+              unternehmensname: lead?.unternehmen,
+              email: lead?.email,
+              telefon: lead?.telefon,
+              ansprechpartnerVorname: lead?.ansprechpartnerVorname,
+              ansprechpartnerNachname: lead?.ansprechpartnerNachname,
+              stadt: lead?.ort
+            }}
+            hotLeadId={lead?.id}
+            onTerminBooked={() => { setAusgang(''); onGespeichert?.({ verschoben: true }) }}
+            onCancel={() => setAusgang('')}
+          />
+        ) : ausgang ? (
+          <button
+            onClick={() => senden({ status: ausgang })}
+            disabled={laeuft}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg
+                       hover:bg-primary-container disabled:opacity-50"
+          >
+            {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            {gewaehlt?.knopf || 'Speichern'}
+          </button>
+        ) : null}
+
+        {fehler && <p className="text-sm text-red-600">{fehler}</p>}
       </div>
     )
   }
