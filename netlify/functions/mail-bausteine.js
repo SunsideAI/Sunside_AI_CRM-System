@@ -182,7 +182,8 @@ const REGELN = `Regeln:
 - Keine Anrede und keine Grußformel: Die setzt das CRM.
 - Keine Preise nennen, wenn sie nicht in der Grundlage stehen.
 - Jede Zahl behält ihre Bedeutung: Aufträge bleiben Aufträge, Anfragen bleiben Anfragen, eine Quote bleibt eine Quote. Nichts umdeuten und nichts hochrechnen.
-- Bewertungen wie "nur" oder "immerhin" gehören nicht zu den Zahlen des Kunden.`
+- Bewertungen wie "nur" oder "immerhin" gehören nicht zu den Zahlen des Kunden.
+- Diese Angaben sind interne Notizen und werden dem Kunden NICHT zurückgespiegelt: Investitionsrahmen, Bewusstseinsstufe, Tiefe, Entscheider-Messlatte, ob der Kunde Zahlen nennen wollte, ob er dem Rahmen ausgewichen ist. Sie bestimmen nur den Ton.`
 
 function eingabeBauen({ anlass, grundlage, hinweis, absender }) {
   const a = ANLAESSE[anlass]
