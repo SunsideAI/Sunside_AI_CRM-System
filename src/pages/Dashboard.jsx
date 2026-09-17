@@ -413,7 +413,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
   const stats = [
     {
       name: 'Zugewiesene Leads',
-      value: initialLoading ? '...' : data.zugewiesenLeads.toLocaleString('de-DE'),
+      value: data.zugewiesenLeads.toLocaleString('de-DE'),
       subtitle: 'in deiner Liste',
       icon: Users,
       color: 'blue',
@@ -421,7 +421,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
     },
     {
       name: 'Calls heute',
-      value: initialLoading ? '...' : data.callsHeute.toLocaleString('de-DE'),
+      value: data.callsHeute.toLocaleString('de-DE'),
       subtitle: 'seit Mitternacht',
       icon: Phone,
       color: 'green',
@@ -429,7 +429,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
     },
     {
       name: 'Termine diese Woche',
-      value: initialLoading ? '...' : data.termineWoche.toLocaleString('de-DE'),
+      value: data.termineWoche.toLocaleString('de-DE'),
       subtitle: 'Montag bis Sonntag',
       icon: Calendar,
       color: 'blue',
@@ -437,7 +437,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
     },
     {
       name: 'Meine Beratungsgespräche',
-      value: initialLoading ? '...' : data.meineHotLeads.toLocaleString('de-DE'),
+      value: data.meineHotLeads.toLocaleString('de-DE'),
       subtitle: 'offen im Setting',
       icon: Users,
       color: 'amber',
@@ -447,7 +447,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
       // Die Schnittstelle zaehlt Gewonnene, an denen man als Closer ODER
       // als Setter haengt - die Zahl stimmt fuer beide Rollen.
       name: 'Abschlüsse Monat',
-      value: initialLoading ? '...' : data.abschluesseMonat.toLocaleString('de-DE'),
+      value: data.abschluesseMonat.toLocaleString('de-DE'),
       subtitle: 'gewonnen in diesem Monat',
       icon: TrendingUp,
       color: 'green',
@@ -498,6 +498,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
               value={stat.value}
               subtitle={stat.subtitle}
               icon={stat.icon}
+              laedt={initialLoading}
             />
           ) : (
             <Kennzahl
@@ -507,6 +508,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
               subtitle={stat.subtitle}
               icon={stat.icon}
               color={stat.color}
+              laedt={initialLoading}
             />
           )
         ))}

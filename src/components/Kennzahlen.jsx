@@ -9,14 +9,24 @@
 // Hier stehen sie einmal, damit alle vier Auswertungen dieselbe Sprache
 // sprechen.
 
+/** Während geladen wird, steht dort ein Platzhalter — kein „…", das sich
+    wie ein Wert liest. */
+function Platzhalter({ hell = false }) {
+  return (
+    <span className={`inline-block h-8 w-24 rounded-md animate-pulse align-middle ${
+      hell ? 'bg-white/25' : 'bg-on-surface/10'
+    }`} />
+  )
+}
+
 /** Die eine Zahl, auf die es ankommt. Gefüllt, damit das Auge dort startet. */
-export function HeroKennzahl({ label, value, subtitle, icon: Icon, vergleich }) {
+export function HeroKennzahl({ label, value, subtitle, icon: Icon, vergleich, laedt = false }) {
   return (
     <div className="relative overflow-hidden rounded-xl p-6 bg-gradient-to-br from-primary to-primary-container text-white">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <p className="text-xs uppercase tracking-wide text-white/80 truncate">{label}</p>
-          <p className="mt-2 text-3xl font-bold">{value}</p>
+          <p className="mt-2 text-3xl font-bold">{laedt ? <Platzhalter hell /> : value}</p>
           {(vergleich || subtitle) && (
             <p className="mt-1 text-sm text-white/80 truncate">
               {vergleich ?? subtitle}
@@ -47,7 +57,7 @@ const FARBEN = {
 }
 
 /** Eine Kennzahl: Beschriftung klein darüber, Zahl gross, Symbol rechts. */
-export function Kennzahl({ label, value, subtitle, icon: Icon, color = 'neutral', vergleich }) {
+export function Kennzahl({ label, value, subtitle, icon: Icon, color = 'neutral', vergleich, laedt = false }) {
   return (
     <div className="metric-card hover:shadow-card-hover transition-shadow">
       <div className="flex items-start justify-between gap-3">
@@ -56,7 +66,7 @@ export function Kennzahl({ label, value, subtitle, icon: Icon, color = 'neutral'
             {label}
           </p>
           <div className="mt-2 flex items-baseline gap-2 flex-wrap">
-            <p className="text-headline-md font-bold text-on-surface">{value}</p>
+            <p className="text-headline-md font-bold text-on-surface">{laedt ? <Platzhalter /> : value}</p>
             {vergleich}
           </div>
           {subtitle && <p className="mt-1 text-body-sm text-on-surface-variant truncate">{subtitle}</p>}
