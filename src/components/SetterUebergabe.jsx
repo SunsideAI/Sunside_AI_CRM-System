@@ -181,7 +181,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
     <div className="space-y-4">
       <div>
         <h4 className="abschnitt-titel">Übergabe an den Closer</h4>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="feld-hinweis">
           Der Closer baut sein Strategiepapier aus diesen Angaben. Was hier fehlt,
           fehlt ihm im Gespräch.
         </p>
@@ -290,13 +290,12 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
 
   return (
     <div className="border-t pt-4 mt-4 space-y-3">
-      <div>
-        <h4 className="abschnitt-titel">Ausgang des Beratungsgesprächs</h4>
-        <p className="text-xs text-gray-500 mt-1">
-          Direkt nach dem Termin festhalten. Nur so zählen Erscheinungsquote
-          und Termin-Vergütung — nichts auszuwählen heißt: offen.
-        </p>
-      </div>
+      {/* Keine eigene Ueberschrift: Der Abschnitt der Schublade heisst
+          bereits "Beratungsgespraech". */}
+      <p className="feld-hinweis mt-0">
+        Direkt nach dem Termin festhalten. Nur so zählen Erscheinungsquote
+        und Termin-Vergütung — nichts auszuwählen heißt: offen.
+      </p>
 
       <select
         value={ausgang}

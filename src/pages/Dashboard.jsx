@@ -1028,7 +1028,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
             <div className="flex-1 overflow-y-auto p-6">
               {/* KONTAKTDATEN Section */}
               <div className="space-y-3">
-                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                <h3 className="abschnitt-titel">
                   Kontaktdaten
                 </h3>
 
@@ -1107,7 +1107,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
               {/* TERMIN Section */}
               {selectedLead.terminDatum && (
                 <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
-                  <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                  <h3 className="abschnitt-titel">
                     Termin
                   </h3>
                   <div className="grid grid-cols-2 gap-4">
@@ -1122,7 +1122,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
               {/* DEAL-DETAILS Section */}
               {(selectedLead.setup > 0 || selectedLead.retainer > 0) && (
                 <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
-                  <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide flex items-center gap-2">
+                  <h3 className="abschnitt-titel flex items-center gap-2">
                     <DollarSign className="w-4 h-4" />
                     Deal-Details
                   </h3>
