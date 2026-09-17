@@ -1,14 +1,20 @@
 import { useState } from 'react'
-import { CheckCircle2, CalendarPlus, Loader2, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, CalendarPlus, Loader2, AlertTriangle, Save } from 'lucide-react'
 import { STATUS } from '../../shared/status.js'
 import { UEBERGABE_2 } from '../../shared/felder.js'
 import UebergabeFelder, { AnfragenBedarf } from './UebergabeFelder'
 import RueckgabeKnopf from './RueckgabeKnopf'
 import TerminPicker from './TerminPicker'
 
-// Die Ansicht des Setters: Termin bestätigen, dokumentieren, Abschlussgespräch
+// Die Ansicht des Setters: Ausgang festhalten, dokumentieren, Abschlussgespräch
 // legen. Sie hängt am Termin und nicht in der Closing-Ansicht, weil der Setter
 // dort keinen Zugang hat (Rolle Closer/Admin).
+//
+// Ein Formular, ein Speichern. Vorher schrieb der Knopf sofort den Status und
+// zeigte ERST DANACH die Felder — der Kontakt stand also auf „geführt", bevor
+// irgendetwas dokumentiert war. Wer dann abbrach, hinterliess einen Stand, den
+// niemand mehr als offen erkannte. Jetzt wird erst eingetragen und am Ende in
+// einem Zug gespeichert.
 
 // Verschieben ist kein Zielstatus, sondern ein neuer Termin - der Wert
 // existiert nur in diesem Auswahlfeld und wird nie gespeichert.
@@ -20,8 +26,7 @@ const AUSGAENGE = [
   {
     wert: STATUS.BERATUNG_GEFUEHRT,
     name: 'Hat stattgefunden',
-    knopf: 'Gespräch dokumentieren',
-    hinweis: 'Danach öffnet sich hier die Übergabe an den Closer.'
+    hinweis: 'Unten eintragen, was im Gespräch herauskam. Gespeichert wird erst am Ende.'
   },
   {
     wert: STATUS.NICHT_ERSCHIENEN,
@@ -50,6 +55,8 @@ const FELDER_2 = [
 ]
 
 export default function SetterUebergabe({ lead, onGespeichert }) {
+  const status = lead?.status
+
   const [werte, setWerte] = useState(() =>
     Object.fromEntries(FELDER_2.map(k => [k, lead?.[k] ?? null])))
   // Der gebuchte Termin, wie ihn der Terminwähler zurückgibt.
@@ -59,15 +66,25 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
           terminart: 'Video' }
       : null)
   const [waehlerOffen, setWaehlerOffen] = useState(false)
-  const [ausgang, setAusgang] = useState('')
+  // Steht der Kontakt schon auf „geführt", ist der Ausgang entschieden — dann
+  // beginnt die Maske direkt bei der Dokumentation.
+  const [ausgang, setAusgang] = useState(
+    status === STATUS.BERATUNG_GEFUEHRT ? STATUS.BERATUNG_GEFUEHRT : '')
+  // Ob der Statuswechsel auf „geführt" schon geschrieben ist. Nur nötig, weil
+  // die Übergangsmatrix den Sprung von „vereinbart" direkt auf
+  // „Abschlussgespräch vereinbart" nicht zulässt — zu Recht, das Gespräch hat
+  // ja stattgefunden. Ein Knopfdruck, zwei Schreibvorgänge.
+  const [gefuehrtGeschrieben, setGefuehrtGeschrieben] = useState(
+    status === STATUS.BERATUNG_GEFUEHRT)
   const [laeuft, setLaeuft] = useState(false)
   const [offen, setOffen] = useState([])
   const [meldung, setMeldung] = useState('')
   const [fehler, setFehler] = useState('')
 
-  const status = lead?.status
-
-  const senden = async (updates) => {
+  // `still` heisst: speichern, aber den Aufrufer nicht benachrichtigen. Sonst
+  // schlösse die Schublade mitten im Zug — nach dem ersten von zwei Schreib-
+  // vorgängen oder nach einem Zwischenstand.
+  const senden = async (updates, { still = false } = {}) => {
     setLaeuft(true); setFehler(''); setMeldung(''); setOffen([])
     try {
       const antwort = await fetch('/.netlify/functions/hot-leads', {
@@ -81,6 +98,9 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
         if (antwort.status === 422 && daten.error === 'uebergabe_unvollstaendig') {
           setOffen(daten.offen || [])
           setFehler(daten.message)
+        } else if (antwort.status === 422 && daten.error === 'wert_ausserhalb_der_spanne') {
+          setOffen(daten.felder || [])
+          setFehler('Diese Angaben liegen ausserhalb des Möglichen: ' + daten.message)
         } else if (antwort.status === 409) {
           setFehler(daten.error)
         } else {
@@ -89,8 +109,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
         return false
       }
 
-      setMeldung('Gespeichert')
-      onGespeichert?.(updates)
+      if (!still) onGespeichert?.(updates)
       return true
     } catch (e) {
       setFehler('Netzwerkfehler: ' + e.message)
@@ -100,93 +119,35 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
     }
   }
 
-  // Stufe 1: der Ausgang des Beratungsgespraechs.
-  //
-  // Vorher stand hier ein einzelner Knopf "Termin fand statt". Der konnte nur
-  // den einen Fall - und fuer die anderen drei (nicht erschienen, abgesagt,
-  // verschoben) gab es in der Setter-Ansicht ueberhaupt keinen Weg. Jetzt ist
-  // es ein Auswahlfeld wie das Ergebnis im Opening.
-  //
-  // Die Liste kommt aus AUSGAENGE und deckt sich mit der Uebergangsmatrix in
-  // shared/status.js, die auch die Datenbank durchsetzt: Was hier waehlbar
-  // ist, laesst sich auch speichern.
-  if (status === STATUS.BERATUNG_VEREINBART) {
-    const gewaehlt = AUSGAENGE.find(a => a.wert === ausgang)
-
-    return (
-      <div className="border-t pt-4 mt-4 space-y-3">
-        <div>
-          <h4 className="font-medium text-gray-900">Ausgang des Beratungsgesprächs</h4>
-          <p className="text-xs text-gray-500 mt-1">
-            Direkt nach dem Termin festhalten. Nur so zählen Erscheinungsquote
-            und Termin-Vergütung — nichts auszuwählen heißt: offen.
-          </p>
-        </div>
-
-        <select
-          value={ausgang}
-          onChange={e => { setAusgang(e.target.value); setFehler('') }}
-          className="w-full px-4 py-2.5 border border-outline-variant/30 rounded-lg
-                     focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
-        >
-          {AUSGAENGE.map(a => (
-            <option key={a.wert || 'offen'} value={a.wert}>{a.name}</option>
-          ))}
-        </select>
-
-        {gewaehlt?.hinweis && (
-          <p className="text-xs text-gray-500">{gewaehlt.hinweis}</p>
-        )}
-
-        {/* Verschieben ist kein Status, sondern ein neuer Termin. Deshalb
-            oeffnet sich hier der Terminwaehler statt eines Speichern-Knopfes:
-            Der alte Termin faellt in Calendly weg, der neue steht danach in
-            derselben Zeile. */}
-        {ausgang === VERSCHOBEN ? (
-          <TerminPicker
-            zweck="beratung"
-            lead={{
-              id: lead?.originalLeadId || lead?.lead_id,
-              unternehmen: lead?.unternehmen,
-              unternehmensname: lead?.unternehmen,
-              email: lead?.email,
-              telefon: lead?.telefon,
-              ansprechpartnerVorname: lead?.ansprechpartnerVorname,
-              ansprechpartnerNachname: lead?.ansprechpartnerNachname,
-              stadt: lead?.ort
-            }}
-            hotLeadId={lead?.id}
-            onTerminBooked={() => { setAusgang(''); onGespeichert?.({ verschoben: true }) }}
-            onCancel={() => setAusgang('')}
-          />
-        ) : ausgang ? (
-          <button
-            onClick={() => senden({ status: ausgang })}
-            disabled={laeuft}
-            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg
-                       hover:bg-primary-container disabled:opacity-50"
-          >
-            {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-            {gewaehlt?.knopf || 'Speichern'}
-          </button>
-        ) : null}
-
-        {fehler && <p className="text-sm text-red-600">{fehler}</p>}
-      </div>
-    )
+  const leadFuerPicker = {
+    id: lead?.originalLeadId || lead?.lead_id,
+    unternehmen: lead?.unternehmen,
+    unternehmensname: lead?.unternehmen,
+    email: lead?.email,
+    telefon: lead?.telefon || lead?.telefonnummer,
+    ansprechpartnerVorname: lead?.ansprechpartnerVorname,
+    ansprechpartnerNachname: lead?.ansprechpartnerNachname,
+    stadt: lead?.ort
   }
 
-  // Stufe 2: dokumentieren und das Abschlussgespräch legen
-  if (status !== STATUS.BERATUNG_GEFUEHRT) return null
-
-  // Erst wenn der Termin steht, geht alles zusammen raus: die zwölf Felder,
-  // der Termin und der Statuswechsel. Ein Zug, ein Gate — sonst bliebe bei
-  // fehlenden Feldern ein gebuchter Termin ohne Übergabe zurück.
-  const buchen = async () => {
+  // Der eine Zug am Ende: Dokumentation, Termin und beide Statuswechsel.
+  const uebergeben = async () => {
     if (!termin?.start) {
       setFehler('Bitte zuerst einen Termin für das Abschlussgespräch buchen.')
       return
     }
+
+    // Schritt 1 — das Gespräch hat stattgefunden, samt allem Eingetragenen.
+    // Entfällt, wenn der Kontakt schon auf „geführt" steht.
+    if (!gefuehrtGeschrieben) {
+      const ok = await senden({ ...werte, status: STATUS.BERATUNG_GEFUEHRT }, { still: true })
+      if (!ok) return
+      setGefuehrtGeschrieben(true)
+    }
+
+    // Schritt 2 — die Übergabe. Hier greift das Gate im Backend: Fehlt ein
+    // Pflichtfeld, bleibt der Kontakt auf „geführt" und die Eingaben sind
+    // gespeichert. Nachtragen und erneut drücken genügt.
     await senden({
       ...werte,
       termin_abschlussgespraech: new Date(termin.start).toISOString(),
@@ -195,8 +156,29 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
     })
   }
 
-  return (
-    <div className="border-t pt-4 mt-4 space-y-4">
+  const zwischenstand = async () => {
+    const ok = await senden({ ...werte }, { still: true })
+    if (ok) setMeldung('Zwischenstand gespeichert. Der Status bleibt unverändert.')
+  }
+
+  const fehlerKasten = fehler && (
+    <div className="flex gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+      <div>
+        <p>{fehler}</p>
+        {offen.length > 0 && (
+          <ul className="mt-1 list-disc list-inside">
+            {offen.map(o => <li key={o.schluessel}>{o.name || o.schluessel}</li>)}
+          </ul>
+        )}
+      </div>
+    </div>
+  )
+
+  // Die Dokumentation — dieselbe Maske, ob der Ausgang gerade gewählt wurde
+  // oder der Kontakt schon auf „geführt" steht.
+  const dokumentation = (
+    <div className="space-y-4">
       <div>
         <h4 className="font-medium text-gray-900">Übergabe an den Closer</h4>
         <p className="text-xs text-gray-500 mt-1">
@@ -238,16 +220,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
           </div>
         ) : waehlerOffen ? (
           <TerminPicker
-            lead={{
-              id: lead?.originalLeadId || lead?.lead_id,
-              unternehmen: lead?.unternehmen,
-              unternehmensname: lead?.unternehmen,
-              email: lead?.email,
-              telefon: lead?.telefonnummer,
-              ansprechpartnerVorname: lead?.ansprechpartnerVorname,
-              ansprechpartnerNachname: lead?.ansprechpartnerNachname,
-              stadt: lead?.ort
-            }}
+            lead={leadFuerPicker}
             zweck="abschluss"
             nurBuchen
             onTerminBooked={(t) => { setTermin(t); setWaehlerOffen(false); setFehler('') }}
@@ -269,39 +242,114 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
         </p>
       </div>
 
-      <button
-        onClick={buchen}
-        disabled={laeuft}
-        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg
-                   hover:bg-primary-container disabled:opacity-50"
-      >
-        {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-        An den Closer übergeben
-      </button>
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          onClick={uebergeben}
+          disabled={laeuft}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg
+                     hover:bg-primary-container disabled:opacity-50"
+        >
+          {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+          Speichern und an den Closer übergeben
+        </button>
+
+        {/* Für den, der mitten im Ausfüllen unterbrochen wird. Schreibt nur die
+            Felder — der Ausgang bleibt offen, der Kontakt bleibt in der Liste. */}
+        <button
+          onClick={zwischenstand}
+          disabled={laeuft}
+          className="flex items-center gap-2 px-3 py-2 text-label-lg text-primary
+                     hover:bg-primary-fixed/30 rounded-lg disabled:opacity-50"
+        >
+          <Save className="w-4 h-4" /> Zwischenstand speichern
+        </button>
+      </div>
       <p className="-mt-2 text-xs text-gray-500">
-        Der Termin steht dann in Calendly und im Closer-Pool. Der Kontakt
-        verlässt damit deine Liste.
+        Erst mit dem Übergeben wandert der Kontakt weiter: Der Termin steht dann
+        in Calendly und im Closer-Pool, und deine Liste ist ihn los.
       </p>
 
-      {fehler && (
-        <div className="flex gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
-          <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
-          <div>
-            <p>{fehler}</p>
-            {offen.length > 0 && (
-              <ul className="mt-1 list-disc list-inside">
-                {offen.map(o => <li key={o.schluessel}>{o.name}</li>)}
-              </ul>
-            )}
-          </div>
-        </div>
-      )}
+      {fehlerKasten}
       {meldung && <p className="text-sm text-green-700">{meldung}</p>}
 
       {/* Reicht der Erstanruf nicht aus, geht der Kontakt zurück an den Opener. */}
       <div className="pt-2 border-t">
         <RueckgabeKnopf hotLead={lead} onErledigt={onGespeichert} />
       </div>
+    </div>
+  )
+
+  // Schon dokumentiert: kein Auswahlfeld mehr, der Ausgang steht fest.
+  if (status === STATUS.BERATUNG_GEFUEHRT) {
+    return <div className="border-t pt-4 mt-4">{dokumentation}</div>
+  }
+
+  if (status !== STATUS.BERATUNG_VEREINBART) return null
+
+  const gewaehlt = AUSGAENGE.find(a => a.wert === ausgang)
+
+  return (
+    <div className="border-t pt-4 mt-4 space-y-3">
+      <div>
+        <h4 className="font-medium text-gray-900">Ausgang des Beratungsgesprächs</h4>
+        <p className="text-xs text-gray-500 mt-1">
+          Direkt nach dem Termin festhalten. Nur so zählen Erscheinungsquote
+          und Termin-Vergütung — nichts auszuwählen heißt: offen.
+        </p>
+      </div>
+
+      <select
+        value={ausgang}
+        onChange={e => { setAusgang(e.target.value); setFehler(''); setMeldung('') }}
+        className="w-full px-4 py-2.5 border border-outline-variant/30 rounded-lg
+                   focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+      >
+        {AUSGAENGE.map(a => (
+          <option key={a.wert || 'offen'} value={a.wert}>{a.name}</option>
+        ))}
+      </select>
+
+      {gewaehlt?.hinweis && (
+        <p className="text-xs text-gray-500">{gewaehlt.hinweis}</p>
+      )}
+
+      {/* Hat stattgefunden: Die Maske klappt auf, gespeichert wird unten. */}
+      {ausgang === STATUS.BERATUNG_GEFUEHRT && (
+        <div className="pt-2">{dokumentation}</div>
+      )}
+
+      {/* Verschieben ist kein Status, sondern ein neuer Termin. Deshalb
+          oeffnet sich hier der Terminwaehler statt eines Speichern-Knopfes:
+          Der alte Termin faellt in Calendly weg, der neue steht danach in
+          derselben Zeile. */}
+      {ausgang === VERSCHOBEN && (
+        <TerminPicker
+          zweck="beratung"
+          lead={leadFuerPicker}
+          hotLeadId={lead?.id}
+          onTerminBooked={() => { setAusgang(''); onGespeichert?.({ verschoben: true }) }}
+          onCancel={() => setAusgang('')}
+        />
+      )}
+
+      {/* Nicht erschienen und abgesagt: Es gibt nichts weiter einzutragen,
+          also ist der eine Knopf hier schon der ganze Zug. */}
+      {[STATUS.NICHT_ERSCHIENEN, STATUS.TERMIN_ABGESAGT].includes(ausgang) && (
+        <>
+          <button
+            onClick={() => senden({ status: ausgang })}
+            disabled={laeuft}
+            className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg
+                       hover:bg-primary-container disabled:opacity-50"
+          >
+            {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+            {gewaehlt?.knopf}
+          </button>
+          {fehlerKasten}
+        </>
+      )}
+
+      {!ausgang && fehlerKasten}
     </div>
   )
 }
