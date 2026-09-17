@@ -1771,7 +1771,7 @@ function Closing() {
 
                 {/* Kontaktdaten */}
                 <div className="space-y-3">
-                  <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">Kontaktdaten</h3>
+                  <h3 className="abschnitt-titel">Kontaktdaten</h3>
 
                   {(selectedPoolLead.ansprechpartnerVorname || selectedPoolLead.ansprechpartnerNachname) && (
                     <div className="flex items-center gap-3">
@@ -1807,7 +1807,7 @@ function Closing() {
                     das Abschlussgespraech gebucht - zwei Namen, zwei Rollen. */}
                 {(selectedPoolLead.openerName || selectedPoolLead.setterName) && (
                   <div className="space-y-3 border-t border-outline-variant pt-6">
-                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">Vorarbeit</h3>
+                    <h3 className="abschnitt-titel">Vorarbeit</h3>
                     <div className="flex flex-wrap items-center gap-2">
                       {selectedPoolLead.openerName && (
                         <span className="px-3 py-1.5 bg-surface-container text-on-surface-variant rounded-full text-label-sm">
@@ -1830,7 +1830,7 @@ function Closing() {
                     Der Closer entschied ueber einen Termin, ohne zu wissen,
                     was im Beratungsgespraech herauskam. */}
                 <div className="space-y-3 border-t border-outline-variant pt-6">
-                  <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                  <h3 className="abschnitt-titel">
                     Aus dem Beratungsgespräch
                   </h3>
                   <Uebergabeblatt lead={selectedPoolLead} bereiche={[UEBERGABE_2]} />
@@ -1838,7 +1838,7 @@ function Closing() {
 
                 {/* Die Zeitleiste - dieselbe wie in jeder anderen Lead-Ansicht. */}
                 <div className="space-y-3 border-t border-outline-variant pt-6">
-                  <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                  <h3 className="abschnitt-titel">
                     Verlauf
                   </h3>
                   <Verlauf hotLeadId={selectedPoolLead.id} leadId={selectedPoolLead.originalLeadId} />
@@ -2309,7 +2309,7 @@ function Closing() {
                   <div className="space-y-5">
                     {/* Produkt-Auswahl Dropdown */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="feld-label">
                         Produkt <span className="text-red-500">*</span>
                       </label>
                       <select
@@ -2336,7 +2336,7 @@ function Closing() {
                     {/* Setup & Retainer */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="feld-label">
                           Setup (netto) <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
@@ -2345,13 +2345,13 @@ function Closing() {
                             value={angebotData.setup}
                             onChange={(e) => setAngebotData(prev => ({ ...prev, setup: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
                             placeholder="z.B. 2500"
-                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                            className="input-field pr-12"
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
                         </div>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="feld-label">
                           Retainer (netto) <span className="text-red-500">*</span>
                         </label>
                         <div className="relative">
@@ -2360,7 +2360,7 @@ function Closing() {
                             value={angebotData.retainer}
                             onChange={(e) => setAngebotData(prev => ({ ...prev, retainer: e.target.value === '' ? '' : parseFloat(e.target.value) }))}
                             placeholder="z.B. 400"
-                            className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                            className="input-field pr-12"
                           />
                           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
                         </div>
@@ -2372,7 +2372,7 @@ function Closing() {
                       <div className="bg-primary-fixed/30 rounded-xl p-5">
                         <h4 className="font-medium text-primary mb-4">Website-Komponente</h4>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="feld-label">
                             Website Setup-Gebühr (netto)
                           </label>
                           <div className="relative">
@@ -2381,7 +2381,7 @@ function Closing() {
                               value={angebotData.websiteSetup}
                               onChange={(e) => setAngebotData(prev => ({ ...prev, websiteSetup: e.target.value }))}
                               placeholder="z.B. 2500"
-                              className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                              className="input-field pr-12"
                             />
                             <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 font-medium">€</span>
                           </div>
@@ -2392,7 +2392,7 @@ function Closing() {
 
                     {/* Laufzeit */}
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="feld-label">
                         Laufzeit <span className="text-red-500">*</span>
                       </label>
                       <div className="flex items-center gap-2">
@@ -2406,7 +2406,7 @@ function Closing() {
                           }}
                           min="0"
                           max="32"
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                          className="input-field"
                         />
                         <span className="text-gray-500 whitespace-nowrap">
                           {parseInt(angebotData.laufzeit) === 0 ? 'Einmalzahlung' : 'Monate'}
@@ -2435,7 +2435,7 @@ function Closing() {
                       <>
                         {/* Paketname */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                          <label className="feld-label">
                             Paketname <span className="text-red-500">*</span>
                           </label>
                           <input
@@ -2443,13 +2443,13 @@ function Closing() {
                             value={angebotData.paketname}
                             onChange={(e) => setAngebotData(prev => ({ ...prev, paketname: e.target.value }))}
                             placeholder="z.B. KI-Chatbot, WhatsApp-Assistent"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                            className="input-field"
                           />
                         </div>
 
                         {/* Kurzbeschreibung */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="feld-label">
                             Kurzbeschreibung der Leistung <span className="text-red-500">*</span>
                           </label>
                           <p className="text-xs text-gray-500 mb-2">
@@ -2460,13 +2460,13 @@ function Closing() {
                             value={angebotData.kurzbeschreibung}
                             onChange={(e) => setAngebotData(prev => ({ ...prev, kurzbeschreibung: e.target.value }))}
                             placeholder="z.B. Aufbau & Betrieb Ihrer individuellen KI-Vertriebsassistenz"
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none"
+                            className="input-field"
                           />
                         </div>
 
                         {/* Leistungsbeschreibung */}
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="feld-label">
                             Leistungsbeschreibung <span className="text-red-500">*</span>
                           </label>
                           <p className="text-xs text-gray-500 mb-2">
@@ -2476,7 +2476,7 @@ function Closing() {
                             value={angebotData.leistungsbeschreibung}
                             onChange={(e) => setAngebotData(prev => ({ ...prev, leistungsbeschreibung: e.target.value }))}
                             rows={5}
-                            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-y min-h-[120px]"
+                            className="textarea-field min-h-[120px]"
                           />
                           <div className="mt-2 bg-gray-50 border border-gray-200 rounded-lg p-3 text-xs text-gray-600">
                             <p className="font-medium mb-1">Format-Beispiel:</p>
@@ -2491,7 +2491,7 @@ function Closing() {
                   {angebotData.produkt && (
                     <div className="space-y-4">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="feld-label">
                           Individuelle Vertragsbestandteile
                         </label>
                         <p className="text-xs text-gray-500 mb-2">
@@ -2501,7 +2501,7 @@ function Closing() {
                           value={angebotData.vertragsbestandteile}
                           onChange={(e) => setAngebotData(prev => ({ ...prev, vertragsbestandteile: e.target.value }))}
                           rows={4}
-                          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none resize-y min-h-[100px] text-sm"
+                          className="textarea-field min-h-[100px]"
                         />
                       </div>
 
@@ -2700,7 +2700,7 @@ function Closing() {
 
                   {/* KONTAKTDATEN Section */}
                   <div className="space-y-3">
-                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                    <h3 className="abschnitt-titel">
                       Kontaktdaten
                     </h3>
 
@@ -2709,28 +2709,28 @@ function Closing() {
                       <div className="space-y-3">
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-body-sm text-on-surface-variant mb-1">Vorname</label>
+                            <label className="feld-label">Vorname</label>
                             <input
                               type="text"
                               value={editData.ansprechpartnerVorname}
                               onChange={(e) => handleEditChange('ansprechpartnerVorname', e.target.value)}
                               placeholder="Vorname..."
-                              className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none text-body-md"
+                              className="input-field"
                             />
                           </div>
                           <div>
-                            <label className="block text-body-sm text-on-surface-variant mb-1">Nachname</label>
+                            <label className="feld-label">Nachname</label>
                             <input
                               type="text"
                               value={editData.ansprechpartnerNachname}
                               onChange={(e) => handleEditChange('ansprechpartnerNachname', e.target.value)}
                               placeholder="Nachname..."
-                              className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary focus:ring-1 focus:ring-primary outline-none text-body-md"
+                              className="input-field"
                             />
                           </div>
                         </div>
                         <div>
-                          <label className="block text-body-sm text-on-surface-variant mb-1">E-Mail</label>
+                          <label className="feld-label">E-Mail</label>
                           <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                             <Mail className="h-4 w-4 text-primary flex-shrink-0" />
                             <input
@@ -2743,7 +2743,7 @@ function Closing() {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-body-sm text-on-surface-variant mb-1">Telefon</label>
+                          <label className="feld-label">Telefon</label>
                           <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                             <Phone className="h-4 w-4 text-primary flex-shrink-0" />
                             <input
@@ -2756,7 +2756,7 @@ function Closing() {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-body-sm text-on-surface-variant mb-1">Website</label>
+                          <label className="feld-label">Website</label>
                           <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                             <Globe className="h-4 w-4 text-primary flex-shrink-0" />
                             <input
@@ -2769,7 +2769,7 @@ function Closing() {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-body-sm text-on-surface-variant mb-1">Ort</label>
+                          <label className="feld-label">Ort</label>
                           <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
                             <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
                             <input
@@ -2782,11 +2782,11 @@ function Closing() {
                           </div>
                         </div>
                         <div>
-                          <label className="block text-body-sm text-on-surface-variant mb-1">Status</label>
+                          <label className="feld-label">Status</label>
                           <select
                             value={editData.status}
                             onChange={(e) => handleEditChange('status', e.target.value)}
-                            className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary text-body-md"
+                            className="input-field"
                           >
                             <option value="">Status beibehalten ({selectedLead.status})</option>
                             {SELECTABLE_STATUS_OPTIONS.map(opt => (
@@ -2884,7 +2884,7 @@ function Closing() {
 
                   {/* TERMIN Section */}
                   <div className="space-y-3 border-t border-outline-variant pt-6">
-                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                    <h3 className="abschnitt-titel">
                       Termin
                     </h3>
 
@@ -2897,7 +2897,7 @@ function Closing() {
                               type="datetime-local"
                               value={editData.terminDatum ? new Date(new Date(editData.terminDatum).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''}
                               onChange={(e) => handleEditChange('terminDatum', e.target.value ? new Date(e.target.value).toISOString() : '')}
-                              className="w-full px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus:border-primary"
+                              className="input-field"
                             />
                             <p className="text-label-sm text-warning mt-1">Nur CRM-Kalender, Calendly bleibt unverändert</p>
                           </div>
@@ -2955,7 +2955,7 @@ function Closing() {
                   {/* DEAL-DETAILS Section (wenn nicht Lead-Status) */}
                   {selectedLead.status !== STATUS.BERATUNG_VEREINBART && (
                     <div className="space-y-3 border-t border-outline-variant pt-6">
-                      <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide flex items-center gap-2">
+                      <h3 className="abschnitt-titel flex items-center gap-2">
                         <Euro className="w-4 h-4" />
                         Deal-Details
                       </h3>
@@ -3002,7 +3002,7 @@ function Closing() {
                       onClick={() => setShowWebsiteStats(!showWebsiteStats)}
                       className="w-full flex items-center justify-between py-2"
                     >
-                      <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide flex items-center gap-2">
+                      <h3 className="abschnitt-titel flex items-center gap-2">
                         <BarChart3 className="w-4 h-4" />
                         Website-Statistiken
                       </h3>
@@ -3064,7 +3064,7 @@ function Closing() {
                       danach nirgends. Der Closer ging mit einem Termin und
                       einem Kommentarfeld ins Gespraech. */}
                   <div className="space-y-3 border-t border-outline-variant pt-6">
-                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                    <h3 className="abschnitt-titel">
                       Übergabe
                     </h3>
                     <Uebergabeblatt lead={selectedLead} />
@@ -3079,7 +3079,7 @@ function Closing() {
                       in der Zeitleiste; sie hier nochmals zu zeigen war
                       doppelt gemoppelt. Betrifft 588 von 7.588 Kontakten. */}
                   <div className="border-t border-outline-variant pt-6">
-                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide mb-3">
+                    <h3 className="abschnitt-titel mb-3">
                       Notizen & Verlauf
                     </h3>
 
@@ -3108,13 +3108,13 @@ function Closing() {
                   {/* Neuer Kommentar hinzufügen - nur im Edit-Mode */}
                   {editMode && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Neuer Kommentar hinzufügen</label>
+                      <label className="feld-label">Neuer Kommentar hinzufügen</label>
                       <textarea
                         value={editData.neuerKommentar || ''}
                         onChange={(e) => handleEditChange('neuerKommentar', e.target.value)}
                         rows={3}
                         placeholder="Notiz hinzufügen..."
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
+                        className="textarea-field"
                       />
                     </div>
                   )}
@@ -3395,7 +3395,7 @@ function Closing() {
                   </p>
                   
                   <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="feld-label">
                       Grund (optional)
                     </label>
                     <textarea
@@ -3403,7 +3403,7 @@ function Closing() {
                       onChange={(e) => setReleaseReason(e.target.value)}
                       rows={2}
                       placeholder="z.B. Urlaub, Krankheit, Kapazität..."
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warning focus:border-transparent outline-none resize-none"
+                      className="textarea-field"
                     />
                   </div>
                   
@@ -3461,7 +3461,7 @@ function Closing() {
               </p>
 
               <div>
-                <label className="block text-sm font-medium text-on-surface mb-1">
+                <label className="feld-label">
                   Kommentar (optional)
                 </label>
                 <textarea
@@ -3469,7 +3469,7 @@ function Closing() {
                   onChange={(e) => setApplyKommentar(e.target.value)}
                   placeholder="Warum möchtest du diesen Lead übernehmen?"
                   rows={3}
-                  className="w-full px-3 py-2 border border-outline-variant rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
+                  className="textarea-field"
                 />
               </div>
 

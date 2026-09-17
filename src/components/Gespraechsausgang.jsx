@@ -61,7 +61,7 @@ export default function Gespraechsausgang({ lead, onGespeichert }) {
 
   return (
     <div className="border-t border-outline-variant pt-6">
-      <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide mb-3">
+      <h3 className="abschnitt-titel mb-3">
         Ausgang des Abschlussgesprächs
       </h3>
 
@@ -78,7 +78,7 @@ export default function Gespraechsausgang({ lead, onGespeichert }) {
 
       <div className="space-y-4">
         <div>
-          <label className="block text-body-sm font-medium text-on-surface mb-2">
+          <label className="feld-label">
             Wie ist das Gespräch ausgegangen?
           </label>
           <div className="flex flex-wrap gap-2">
@@ -101,7 +101,7 @@ export default function Gespraechsausgang({ lead, onGespeichert }) {
 
         {ausgang && ausgang !== 'Auftrag' && (
           <div>
-            <label className="block text-body-sm font-medium text-on-surface mb-1">
+            <label className="feld-label">
               Was wurde zugesagt? <span className="text-on-surface-variant font-normal">(wörtlich)</span>
             </label>
             <input
@@ -116,7 +116,7 @@ export default function Gespraechsausgang({ lead, onGespeichert }) {
 
         {brauchtDiagnose && (
           <div>
-            <label className="block text-body-sm font-medium text-on-surface mb-2">
+            <label className="feld-label">
               Diagnose <span className="text-error">*</span>
             </label>
             <div className="flex flex-col gap-2">

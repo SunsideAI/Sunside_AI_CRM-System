@@ -442,14 +442,14 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
 
         {/* Template Auswahl */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
+          <label className="feld-label">
             Vorlage auswählen
           </label>
           <select
             value={selectedTemplate}
             onChange={(e) => handleTemplateSelect(e.target.value)}
             disabled={loading}
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none bg-white"
+            className="input-field"
           >
             <option value="">-- Keine Vorlage (Freitext) --</option>
             {templates.map(template => (
@@ -463,31 +463,31 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
 
         {/* Empfänger */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">An</label>
+          <label className="feld-label">An</label>
           <input
             type="email"
             value={empfaenger}
             onChange={(e) => setEmpfaenger(e.target.value)}
             placeholder="empfaenger@email.de"
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+            className="input-field"
           />
         </div>
 
         {/* Betreff */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Betreff</label>
+          <label className="feld-label">Betreff</label>
           <input
             type="text"
             value={betreff}
             onChange={(e) => setBetreff(e.target.value)}
             placeholder="Betreff der E-Mail"
-            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none"
+            className="input-field"
           />
         </div>
 
         {/* Inhalt - WYSIWYG Editor */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Nachricht</label>
+          <label className="feld-label">Nachricht</label>
           
           {/* Formatierungs-Toolbar */}
           <div className="flex items-center gap-1 p-1.5 bg-gray-50 rounded-t-lg border border-b-0 border-gray-300">
@@ -528,7 +528,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
                       value={linkText}
                       onChange={(e) => setLinkText(e.target.value)}
                       placeholder="Anzeigename"
-                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-sunside-primary outline-none"
+                      className="input-field"
                       autoFocus
                     />
                     <input
@@ -536,7 +536,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
                       value={linkUrl}
                       onChange={(e) => setLinkUrl(e.target.value)}
                       placeholder="https://..."
-                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-sunside-primary outline-none"
+                      className="input-field"
                     />
                     <div className="flex justify-end gap-2">
                       <button
@@ -569,7 +569,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
             ref={editorRef}
             contentEditable
             onInput={handleEditorInput}
-            className="w-full px-4 py-3 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none min-h-[144px] max-h-[200px] overflow-y-auto"
+            className="textarea-field rounded-b-lg min-h-[144px] max-h-[200px] overflow-y-auto"
             style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', lineHeight: '1.4' }}
             data-placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
           />
@@ -638,7 +638,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
         {/* Attachments */}
         {attachments.length > 0 && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="feld-label">
               Anhänge ({selectedAttachments.length} ausgewählt)
             </label>
             <div className="space-y-2">
@@ -726,7 +726,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
 
           {/* Template Auswahl */}
           <div>
-            <label className="block text-label-md font-medium text-on-surface mb-2">
+            <label className="feld-label">
               <FileText className="w-4 h-4 inline mr-1" />
               Vorlage auswählen
             </label>
@@ -748,7 +748,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
 
           {/* Empfänger */}
           <div>
-            <label className="block text-label-md font-medium text-on-surface mb-2">
+            <label className="feld-label">
               An
             </label>
             <input
@@ -762,7 +762,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
 
           {/* Betreff */}
           <div>
-            <label className="block text-label-md font-medium text-on-surface mb-2">
+            <label className="feld-label">
               Betreff
             </label>
             <input
@@ -776,7 +776,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
 
           {/* Inhalt - WYSIWYG Editor */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="feld-label">
               Nachricht
             </label>
             
@@ -819,7 +819,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
                         value={linkText}
                         onChange={(e) => setLinkText(e.target.value)}
                         placeholder="Anzeigename"
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-sunside-primary outline-none"
+                        className="input-field"
                         autoFocus
                       />
                       <input
@@ -827,7 +827,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
                         value={linkUrl}
                         onChange={(e) => setLinkUrl(e.target.value)}
                         placeholder="https://..."
-                        className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-sunside-primary outline-none"
+                        className="input-field"
                       />
                       <div className="flex justify-end gap-2">
                         <button
@@ -860,7 +860,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
               ref={modalEditorRef}
               contentEditable
               onInput={handleEditorInput}
-              className="w-full px-4 py-3 border border-gray-300 rounded-b-lg focus:ring-2 focus:ring-sunside-primary focus:border-transparent outline-none min-h-[240px] max-h-[300px] overflow-y-auto"
+              className="textarea-field rounded-b-lg min-h-[240px] max-h-[300px] overflow-y-auto"
               style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', lineHeight: '1.4' }}
               data-placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
             />
@@ -872,7 +872,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
           {/* Attachments */}
           {attachments.length > 0 && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="feld-label">
                 <Paperclip className="w-4 h-4 inline mr-1" />
                 Anhänge ({selectedAttachments.length} von {attachments.length} ausgewählt)
               </label>

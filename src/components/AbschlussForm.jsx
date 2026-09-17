@@ -146,7 +146,9 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
     })
   }
 
-  const inputClass = "w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent outline-none bg-white"
+  // Der gruene Fokusring stammte aus der Zeit vor der Farbpalette - er war
+  // die einzige Stelle im CRM, die beim Hineinklicken gruen leuchtete.
+  const inputClass = "input-field"
   const inputErrorClass = "w-full px-4 py-3 border border-red-400 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-white"
   const labelClass = "block text-sm font-medium text-gray-700 mb-1"
   const errorTextClass = "text-red-500 text-xs mt-1"
@@ -206,7 +208,7 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
 
       {/* Sektion 1: Rechnungsempfänger */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Rechnungsempfänger</h3>
+        <h3 className="abschnitt-titel">Rechnungsempfänger</h3>
 
         {/* Anrede */}
         <div>
@@ -285,7 +287,7 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
 
       {/* Sektion 2: Rechnungsadresse */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Rechnungsadresse</h3>
+        <h3 className="abschnitt-titel">Rechnungsadresse</h3>
 
         {/* Strasse */}
         <div>
@@ -393,7 +395,7 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
 
       {/* Sektion 4: Vertrag */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Vertragsdaten</h3>
+        <h3 className="abschnitt-titel">Vertragsdaten</h3>
 
         <div className="grid grid-cols-3 gap-4">
           <div>
@@ -473,7 +475,7 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
 
       {/* Sektion 5: Billing-Notiz */}
       <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-900 border-b pb-2">Interne Notiz</h3>
+        <h3 className="abschnitt-titel">Interne Notiz</h3>
         <div>
           <label className={labelClass}>Billing-Notiz (intern, nicht auf Rechnung)</label>
           <textarea

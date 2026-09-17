@@ -782,13 +782,13 @@ function FollowUp() {
 
               {/* Follow-Up Felder */}
               <div className="space-y-4 border-t border-outline-variant pt-6">
-                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                <h3 className="abschnitt-titel">
                   Follow-Up
                 </h3>
 
                 {/* Status */}
                 <div>
-                  <label className="block text-body-sm text-on-surface-variant mb-1">Status</label>
+                  <label className="feld-label">Status</label>
                   <select
                     value={editData.follow_up_status}
                     onChange={(e) => setEditData(prev => ({ ...prev, follow_up_status: e.target.value }))}
@@ -802,19 +802,19 @@ function FollowUp() {
 
                 {/* Nächster Schritt */}
                 <div>
-                  <label className="block text-body-sm text-on-surface-variant mb-1">Nächster Schritt</label>
+                  <label className="feld-label">Nächster Schritt</label>
                   <textarea
                     value={editData.follow_up_naechster_schritt}
                     onChange={(e) => setEditData(prev => ({ ...prev, follow_up_naechster_schritt: e.target.value }))}
                     rows={2}
-                    className="input-field w-full resize-none"
+                    className="textarea-field"
                     placeholder="Was ist als nächstes zu tun?"
                   />
                 </div>
 
                 {/* Bis wann */}
                 <div>
-                  <label className="block text-body-sm text-on-surface-variant mb-1">Bis wann</label>
+                  <label className="feld-label">Bis wann</label>
                   <input
                     type="date"
                     value={editData.follow_up_datum}
@@ -825,12 +825,12 @@ function FollowUp() {
 
                 {/* Neuer Kommentar */}
                 <div>
-                  <label className="block text-body-sm text-on-surface-variant mb-1">Neuer Kommentar</label>
+                  <label className="feld-label">Neuer Kommentar</label>
                   <textarea
                     value={editData.neuerKommentar}
                     onChange={(e) => setEditData(prev => ({ ...prev, neuerKommentar: e.target.value }))}
                     rows={2}
-                    className="input-field w-full resize-none"
+                    className="textarea-field"
                     placeholder="Kommentar hinzufügen..."
                   />
                 </div>
@@ -848,7 +848,7 @@ function FollowUp() {
 
               {/* Kommentar-Historie */}
               <div className="space-y-4 border-t border-outline-variant pt-6">
-                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide flex items-center gap-2">
+                <h3 className="abschnitt-titel flex items-center gap-2">
                   <MessageSquare className="w-4 h-4" />
                   Kommentare
                 </h3>

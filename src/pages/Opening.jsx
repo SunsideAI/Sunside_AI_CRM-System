@@ -1753,7 +1753,7 @@ function Opening() {
 
               {/* KONTAKTDATEN Section */}
               <div className="space-y-3 mb-6">
-                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                <h3 className="abschnitt-titel">
                   Kontaktdaten
                 </h3>
 
@@ -1861,7 +1861,7 @@ function Opening() {
 
               {/* WEBSITE-STATISTIKEN Section */}
               <div className="space-y-3 border-t border-outline-variant pt-6 mb-6">
-                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide flex items-center gap-2">
+                <h3 className="abschnitt-titel flex items-center gap-2">
                   <Building2 className="w-4 h-4" />
                   Website-Statistiken
                 </h3>
@@ -1907,7 +1907,7 @@ function Opening() {
 
               {/* STATUS & NOTIZEN Section */}
               <div className="space-y-4 border-t border-outline-variant pt-6">
-                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                <h3 className="abschnitt-titel">
                   Status & Notizen
                 </h3>
 
@@ -1916,7 +1916,7 @@ function Opening() {
                   <div className="space-y-4">
                     {/* Ergebnis - setzt automatisch kontaktiert: true (außer bei Ungültiger Lead) */}
                     <div>
-                      <label className="block text-label-md text-on-surface-variant mb-1">Ergebnis</label>
+                      <label className="feld-label">Ergebnis</label>
                       <select
                         value={editForm.ergebnis}
                         onChange={(e) => {
@@ -1933,7 +1933,7 @@ function Opening() {
                             wiedervorlageDatum: neuesErgebnis === 'Wiedervorlage' ? prev.wiedervorlageDatum : ''
                           }))
                         }}
-                        className="w-full px-4 py-2.5 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                        className="input-field"
                       >
                         {ERGEBNIS_OPTIONEN.map(option => (
                           <option key={option.value} value={option.value}>{option.label}</option>
@@ -1943,7 +1943,7 @@ function Opening() {
                       {/* Wiedervorlage DateTime-Picker */}
                       {editForm.ergebnis === 'Wiedervorlage' && (
                         <div className="mt-3">
-                          <label className="block text-label-md text-on-surface-variant mb-1">
+                          <label className="feld-label">
                             Wiedervorlage am <span className="text-red-500">*</span>
                           </label>
                           <input
@@ -1951,7 +1951,7 @@ function Opening() {
                             value={editForm.wiedervorlageDatum || ''}
                             onChange={(e) => setEditForm(prev => ({ ...prev, wiedervorlageDatum: e.target.value }))}
                             min={toLocalDateTimeString(new Date())}
-                            className="w-full px-4 py-2.5 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+                            className="input-field"
                           />
                           <p className="text-xs text-gray-500 mt-1">Wann soll der Lead erneut kontaktiert werden?</p>
                         </div>
@@ -1960,7 +1960,7 @@ function Opening() {
 
                     {/* Ansprechpartner - PFLICHTFELD (vor den Buttons!) */}
                     <div>
-                      <label className="block text-label-md text-on-surface-variant mb-1">
+                      <label className="feld-label">
                         Ansprechpartner <span className="text-red-500">*</span>
                         {autoSaving && (
                           <span className="ml-2 text-xs text-gray-400 font-normal">
@@ -2043,13 +2043,13 @@ function Opening() {
 
                     {/* Neuer Kommentar */}
                     <div>
-                      <label className="block text-label-md text-on-surface-variant mb-1">Neuer Kommentar hinzufügen</label>
+                      <label className="feld-label">Neuer Kommentar hinzufügen</label>
                       <textarea
                         value={editForm.neuerKommentar}
                         onChange={(e) => setEditForm(prev => ({ ...prev, neuerKommentar: e.target.value }))}
                         rows={2}
                         placeholder="Notiz hinzufügen..."
-                        className="w-full px-4 py-2.5 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
+                        className="textarea-field"
                       />
                     </div>
                   </div>
@@ -2134,14 +2134,14 @@ function Opening() {
                   /* Kommentar-Only Modus für gesperrte Leads */
                   <div className="px-6 py-4 space-y-3">
                     <div>
-                      <label className="block text-label-md text-on-surface-variant mb-1">Kommentar hinzufügen</label>
+                      <label className="feld-label">Kommentar hinzufügen</label>
                       <textarea
                         value={editForm.neuerKommentar}
                         onChange={(e) => setEditForm(prev => ({ ...prev, neuerKommentar: e.target.value }))}
                         rows={3}
                         autoFocus
                         placeholder="Notiz hinzufügen..."
-                        className="w-full px-4 py-2.5 border border-outline-variant/30 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent outline-none resize-none"
+                        className="textarea-field"
                       />
                     </div>
                     <div className="flex items-center justify-end gap-3">
@@ -2270,7 +2270,7 @@ function Opening() {
             {/* Form */}
             <div className="space-y-4">
               <div>
-                <label className="block text-label-md font-medium text-on-surface mb-2">
+                <label className="feld-label">
                   Anzahl Leads
                 </label>
                 <input
@@ -2285,7 +2285,7 @@ function Opening() {
               </div>
 
               <div>
-                <label className="block text-label-md font-medium text-on-surface mb-2">
+                <label className="feld-label">
                   Nachricht (optional)
                 </label>
                 <textarea

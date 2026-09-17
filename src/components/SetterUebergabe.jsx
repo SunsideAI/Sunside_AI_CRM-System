@@ -180,7 +180,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
   const dokumentation = (
     <div className="space-y-4">
       <div>
-        <h4 className="font-medium text-gray-900">Übergabe an den Closer</h4>
+        <h4 className="abschnitt-titel">Übergabe an den Closer</h4>
         <p className="text-xs text-gray-500 mt-1">
           Der Closer baut sein Strategiepapier aus diesen Angaben. Was hier fehlt,
           fehlt ihm im Gespräch.
@@ -197,7 +197,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
       <AnfragenBedarf werte={werte} />
 
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="feld-label">
           Abschlussgespräch <span className="text-red-500">*</span>
         </label>
 
@@ -291,7 +291,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
   return (
     <div className="border-t pt-4 mt-4 space-y-3">
       <div>
-        <h4 className="font-medium text-gray-900">Ausgang des Beratungsgesprächs</h4>
+        <h4 className="abschnitt-titel">Ausgang des Beratungsgesprächs</h4>
         <p className="text-xs text-gray-500 mt-1">
           Direkt nach dem Termin festhalten. Nur so zählen Erscheinungsquote
           und Termin-Vergütung — nichts auszuwählen heißt: offen.
@@ -301,8 +301,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
       <select
         value={ausgang}
         onChange={e => { setAusgang(e.target.value); setFehler(''); setMeldung('') }}
-        className="w-full px-4 py-2.5 border border-outline-variant/30 rounded-lg
-                   focus:ring-2 focus:ring-primary focus:border-transparent outline-none"
+        className="input-field"
       >
         {AUSGAENGE.map(a => (
           <option key={a.wert || 'offen'} value={a.wert}>{a.name}</option>

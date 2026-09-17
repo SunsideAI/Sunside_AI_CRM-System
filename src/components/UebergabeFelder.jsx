@@ -49,10 +49,11 @@ export default function UebergabeFelder({ bereich, werte, onChange, offen = [] }
 
   const setzen = (schluessel, wert) => onChange({ ...werte, [schluessel]: wert })
 
-  const rahmen = (schluessel) =>
-    `w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent ${
-      fehlt.has(schluessel) ? 'border-red-400 bg-red-50' : ''
-    }`
+  // Dieselbe Hülle wie in jedem anderen Tab. `fehlt` markiert, was der Server
+  // bemängelt hat - die Farbe dafür steht bei den Formular-Bausteinen, nicht
+  // hier, sonst hätte jedes Formular seine eigene Fehlerfarbe.
+  const rahmen = (schluessel, mehrzeilig = false) =>
+    `${mehrzeilig ? 'textarea-field' : 'input-field'}${fehlt.has(schluessel) ? ' fehlt' : ''}`
 
   return (
     <div className="space-y-4">
@@ -66,7 +67,7 @@ export default function UebergabeFelder({ bereich, werte, onChange, offen = [] }
 
         return (
           <div key={schluessel} className={abgeschaltet ? 'opacity-40' : ''}>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="feld-label">
               {feld.name}
               {feld.pflicht && <span className="text-red-500 ml-0.5">*</span>}
               <Hilfe text={feld.hilfe} />
@@ -77,7 +78,7 @@ export default function UebergabeFelder({ bereich, werte, onChange, offen = [] }
                 value={wert ?? ''}
                 disabled={abgeschaltet}
                 onChange={e => setzen(schluessel, e.target.value || null)}
-                className={rahmen(schluessel)}
+                className={`select-field${fehlt.has(schluessel) ? ' fehlt' : ''}`}
               >
                 <option value="">Bitte wählen</option>
                 {feld.optionen.map(o => <option key={o} value={o}>{o}</option>)}
@@ -122,7 +123,7 @@ export default function UebergabeFelder({ bereich, werte, onChange, offen = [] }
                 rows={2}
                 value={wert ?? ''}
                 onChange={e => setzen(schluessel, e.target.value)}
-                className={rahmen(schluessel)}
+                className={rahmen(schluessel, true)}
                 placeholder="Wörtlich, nicht zusammengefasst"
               />
             )}

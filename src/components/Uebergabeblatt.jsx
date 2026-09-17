@@ -50,7 +50,7 @@ function Block({ titel, bereich, lead }) {
 
   return (
     <div className="space-y-2">
-      <div className="text-label-sm font-medium text-on-surface-variant uppercase tracking-wide">
+      <div className="abschnitt-titel">
         {titel}
       </div>
       <dl className="space-y-2">

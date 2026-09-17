@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import {
   Search, Calendar, Phone, Video, Loader2, User as UserIcon, Building2, MapPin,
-  CheckCircle2, AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight
+  CheckCircle2, AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight,
+  History, ClipboardList
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { STATUS, anzeigeName } from '../../shared/status.js'
@@ -12,6 +13,7 @@ import Verlauf from '../components/Verlauf'
 import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
 import Uebergabeblatt, { UEBERGABE_1 } from '../components/Uebergabeblatt'
+import { Abschnitt, Angabe, Angaben } from '../components/Formular'
 
 // Die Arbeitsfläche des Setters — aufgebaut wie Opening und Closing.
 //
@@ -487,33 +489,30 @@ function Setting() {
       >
         {gewaehlt && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-body-md">
-              <div>
-                <p className="text-body-sm text-on-surface-variant">Ansprechpartner</p>
-                <p className="text-on-surface">
+            {/* Kopf wie in Opening, Closing und Follow-Up: benannter Abschnitt,
+                Angaben im Zweierraster. Vorher stand hier ein namenloses
+                Raster mit eigenen Textgrössen. */}
+            <Abschnitt titel="Kontaktdaten" icon={UserIcon}>
+              <Angaben>
+                <Angabe name="Ansprechpartner">
                   {[gewaehlt.ansprechpartnerVorname, gewaehlt.ansprechpartnerNachname]
-                    .filter(Boolean).join(' ') || '–'}
-                </p>
-              </div>
-              <div>
-                <p className="text-body-sm text-on-surface-variant">Termin</p>
-                <p className="text-on-surface">{terminText(gewaehlt.terminDatum)}</p>
-              </div>
-              {gewaehlt.telefon && (
-                <div>
-                  <p className="text-body-sm text-on-surface-variant">Telefon</p>
-                  <a href={`tel:${gewaehlt.telefon}`} className="text-primary hover:underline">
-                    {gewaehlt.telefon}
-                  </a>
-                </div>
-              )}
-              {gewaehlt.email && (
-                <div className="min-w-0">
-                  <p className="text-body-sm text-on-surface-variant">E-Mail</p>
-                  <p className="text-on-surface truncate">{gewaehlt.email}</p>
-                </div>
-              )}
-            </div>
+                    .filter(Boolean).join(' ') || null}
+                </Angabe>
+                <Angabe name="Termin">{terminText(gewaehlt.terminDatum)}</Angabe>
+                <Angabe name="Telefon">
+                  {gewaehlt.telefon
+                    ? <a href={`tel:${gewaehlt.telefon}`} className="text-primary hover:underline">
+                        {gewaehlt.telefon}
+                      </a>
+                    : null}
+                </Angabe>
+                <Angabe name="E-Mail">
+                  {gewaehlt.email
+                    ? <span className="block truncate">{gewaehlt.email}</span>
+                    : null}
+                </Angabe>
+              </Angaben>
+            </Abschnitt>
 
             {gewaehlt.meeting_link && (
               <a
@@ -528,21 +527,16 @@ function Setting() {
             )}
 
             {/* Die Strecke des Kontakts: was wann passiert ist. */}
-            <details className="border border-outline-variant rounded-lg">
-              <summary className="px-3 py-2 cursor-pointer text-label-lg text-on-surface">
-                Verlauf
-              </summary>
-              <div className="px-3 pb-3">
-                <Verlauf hotLeadId={gewaehlt.id} leadId={gewaehlt.originalLeadId} />
-              </div>
-            </details>
+            <Abschnitt titel="Verlauf" icon={History}>
+              <Verlauf hotLeadId={gewaehlt.id} leadId={gewaehlt.originalLeadId} />
+            </Abschnitt>
 
             {/* Was der Opener aufgenommen hat — der Setter geht damit ins
                 Gespräch. Vorher standen hier drei von neun Feldern; die
                 übrigen sechs hatte der Opener umsonst ausgefüllt. */}
-            <div className="p-3 bg-surface-container rounded-lg">
+            <Abschnitt titel="Aus dem Erstanruf" icon={ClipboardList}>
               <Uebergabeblatt lead={gewaehlt} bereiche={[UEBERGABE_1]} />
-            </div>
+            </Abschnitt>
 
             {/* Schreiben geht immer, unabhängig von der Stufe */}
             <div className="border-t pt-4">
