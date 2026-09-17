@@ -18,7 +18,18 @@ function altbestand(kommentar) {
   return (k.split(/\n(?=\[\d{2}\.\d{2}\.\d{4})/)[0] || '').trim()
 }
 import Verlauf from '../components/Verlauf'
+import Uebergabeblatt, { UEBERGABE_2 } from '../components/Uebergabeblatt'
 import Gespraechsausgang from '../components/Gespraechsausgang'
+
+// Der Termin, der den Closer angeht.
+//
+// Seit dem Umbau gibt es zwei: das Beratungsgespraech des Setters und das
+// Abschlussgespraech. Im Closing zaehlt das zweite. Bestandsdaten von vor dem
+// Umbau haben nur das erste - dort war es der Termin des Closers, also gilt
+// es weiter. Deshalb Abschluss zuerst, Beratung als Rueckfall.
+function closerTermin(lead) {
+  return lead?.termin_abschlussgespraech || lead?.terminDatum || null
+}
 import {
   Calendar,
   Users,
@@ -723,8 +734,8 @@ function Closing() {
       if (response.ok && data.hotLeads) {
         // Sortieren: Nächste Termine zuerst
         const sortedLeads = data.hotLeads.sort((a, b) => {
-          const dateA = a.terminDatum ? new Date(a.terminDatum) : new Date(0)
-          const dateB = b.terminDatum ? new Date(b.terminDatum) : new Date(0)
+          const dateA = closerTermin(a) ? new Date(closerTermin(a)) : new Date(0)
+          const dateB = closerTermin(b) ? new Date(closerTermin(b)) : new Date(0)
           return dateA - dateB // Aufsteigend - nächste Termine zuerst
         })
         setPoolLeads(sortedLeads)
@@ -964,7 +975,7 @@ function Closing() {
       laufzeit: lead.laufzeit || 6,
       kommentar: lead.kommentar || '',
       neuerKommentar: '',  // Für neuen manuellen Kommentar
-      terminDatum: lead.terminDatum || '',  // Für manuelles Verschieben im CRM
+      terminDatum: closerTermin(lead) || '',  // Für manuelles Verschieben im CRM
       // Kontaktdaten (editierbar)
       ansprechpartnerVorname: lead.ansprechpartnerVorname || '',
       ansprechpartnerNachname: lead.ansprechpartnerNachname || '',
@@ -1011,7 +1022,7 @@ function Closing() {
     // Status ist optional - Kommentare können auch ohne Status-Änderung gespeichert werden
     const hasStatusChange = editData.status && editData.status !== selectedLead.status
     const hasNeuerKommentar = editData.neuerKommentar && editData.neuerKommentar.trim()
-    const hasTerminChange = editData.terminDatum && editData.terminDatum !== selectedLead.terminDatum
+    const hasTerminChange = editData.terminDatum && editData.terminDatum !== closerTermin(selectedLead)
 
     // Kontaktdaten-Änderungen prüfen
     const hasContactChange =
@@ -1176,7 +1187,7 @@ function Closing() {
 
     const hasStatusChange = data.status && data.status !== selectedLead.status
     const hasNeuerKommentar = data.neuerKommentar && data.neuerKommentar.trim()
-    const hasTerminChange = data.terminDatum && data.terminDatum !== selectedLead.terminDatum
+    const hasTerminChange = data.terminDatum && data.terminDatum !== closerTermin(selectedLead)
     const hasBillingData = data.rechnung_firma || data.rechnung_strasse
 
     try {
@@ -1185,7 +1196,13 @@ function Closing() {
       // Hot Lead Updates sammeln (inkl. Billing-Daten bei Abschluss)
       const hotLeadUpdates = {}
       if (hasStatusChange) hotLeadUpdates.status = data.status
-      if (hasTerminChange) hotLeadUpdates.terminDatum = data.terminDatum
+      if (hasTerminChange) {
+        if (selectedLead.termin_abschlussgespraech) {
+          hotLeadUpdates.termin_abschlussgespraech = data.terminDatum
+        } else {
+          hotLeadUpdates.terminDatum = data.terminDatum
+        }
+      }
 
       // Kontaktdaten-Updates - immer mitsenden wenn im Edit-Mode
       if (data.ansprechpartnerVorname !== undefined) {
@@ -1466,7 +1483,10 @@ function Closing() {
               ...l,
               status: hasStatusChange ? data.status : l.status,
               kommentar: updatedKommentar,
-              terminDatum: hasTerminChange ? data.terminDatum : l.terminDatum,
+              terminDatum: (hasTerminChange && !selectedLead.termin_abschlussgespraech)
+                ? data.terminDatum : l.terminDatum,
+              termin_abschlussgespraech: (hasTerminChange && selectedLead.termin_abschlussgespraech)
+                ? data.terminDatum : l.termin_abschlussgespraech,
               // Kontaktdaten
               ansprechpartnerVorname: data.ansprechpartnerVorname ?? l.ansprechpartnerVorname,
               ansprechpartnerNachname: data.ansprechpartnerNachname ?? l.ansprechpartnerNachname,
@@ -1481,7 +1501,10 @@ function Closing() {
         ...prev,
         status: hasStatusChange ? data.status : prev.status,
         kommentar: updatedKommentar,
-        terminDatum: hasTerminChange ? data.terminDatum : prev.terminDatum,
+        terminDatum: (hasTerminChange && !prev.termin_abschlussgespraech)
+          ? data.terminDatum : prev.terminDatum,
+        termin_abschlussgespraech: (hasTerminChange && prev.termin_abschlussgespraech)
+          ? data.terminDatum : prev.termin_abschlussgespraech,
         // Kontaktdaten
         ansprechpartnerVorname: data.ansprechpartnerVorname ?? prev.ansprechpartnerVorname,
         ansprechpartnerNachname: data.ansprechpartnerNachname ?? prev.ansprechpartnerNachname,
@@ -1633,8 +1656,10 @@ function Closing() {
           ) : poolLeads.length === 0 ? (
             <div className="p-12 text-center">
               <Calendar className="w-16 h-16 text-outline-variant mx-auto mb-4" />
-              <p className="text-on-surface-variant text-title-md">Keine offenen Termine im Pool</p>
-              <p className="text-outline mt-1">Alle Beratungsgespräche wurden bereits übernommen</p>
+              <p className="text-on-surface-variant text-title-md">Kein Abschlussgespräch wartet auf einen Closer</p>
+              <p className="text-outline mt-1">
+                Hier erscheinen Abschlussgespräche, die ein Setter gebucht hat — sobald eines übergeben wird
+              </p>
             </div>
           ) : (
             <table className="w-full">
@@ -1650,7 +1675,7 @@ function Closing() {
               </thead>
               <tbody>
                 {poolLeads.map((lead, index) => {
-                  const terminDate = lead.terminDatum ? new Date(lead.terminDatum) : null
+                  const terminDate = closerTermin(lead) ? new Date(closerTermin(lead)) : null
                   const isPast = terminDate && terminDate < new Date()
                   return (
                     <tr
@@ -1684,8 +1709,12 @@ function Closing() {
                         {isPast && <div className="text-label-sm text-error">Verpasst</div>}
                       </td>
                       <td className="px-4 py-4 hidden sm:table-cell">
-                        <span className={`badge ${lead.terminart === 'Video' ? 'badge-secondary' : 'badge-primary'}`}>
-                          {lead.terminart === 'Video' ? 'Video' : 'Telefon'}
+                        {/* Das Abschlussgespraech ist immer ein Videotermin -
+                            so ist die Terminart in Calendly angelegt. Die
+                            Spalte terminart beschreibt den Telefontermin des
+                            Setters und gilt hier nicht. */}
+                        <span className={`badge ${lead.termin_abschlussgespraech ? 'badge-secondary' : 'badge-primary'}`}>
+                          {lead.termin_abschlussgespraech ? 'Video' : (lead.terminart === 'Video' ? 'Video' : 'Telefon')}
                         </span>
                       </td>
                     </tr>
@@ -1714,8 +1743,10 @@ function Closing() {
               <div className="p-6 space-y-6">
                 {/* Termin-Badge */}
                 {(() => {
-                  const terminDate = selectedPoolLead.terminDatum ? new Date(selectedPoolLead.terminDatum) : null
+                  const terminDate = closerTermin(selectedPoolLead) ? new Date(closerTermin(selectedPoolLead)) : null
                   const isPast = terminDate && terminDate < new Date()
+                  const istVideo = !!selectedPoolLead.termin_abschlussgespraech
+                    || selectedPoolLead.terminart === 'Video'
                   return terminDate && (
                     <div className={`text-center p-4 rounded-xl ${isPast ? 'bg-error-container' : 'bg-secondary-container'}`}>
                       <div className={`text-label-sm font-medium uppercase ${isPast ? 'text-error' : 'text-secondary'}`}>
@@ -1728,14 +1759,12 @@ function Closing() {
                         {terminDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr
                       </div>
                       {isPast && <div className="text-error font-medium mt-1">Termin verpasst</div>}
-                      {selectedPoolLead.terminart && (
-                        <div className={`inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-label-sm ${
-                          selectedPoolLead.terminart === 'Video' ? 'bg-white/50 text-secondary' : 'bg-white/50 text-primary'
-                        }`}>
-                          {selectedPoolLead.terminart === 'Video' ? <Video className="w-3 h-3" /> : <Phone className="w-3 h-3" />}
-                          {selectedPoolLead.terminart}
-                        </div>
-                      )}
+                      <div className={`inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-label-sm bg-white/50 ${
+                        istVideo ? 'text-secondary' : 'text-primary'
+                      }`}>
+                        {istVideo ? <Video className="w-3 h-3" /> : <Phone className="w-3 h-3" />}
+                        {selectedPoolLead.termin_abschlussgespraech ? 'Abschlussgespräch' : 'Beratungsgespräch'}
+                      </div>
                     </div>
                   )
                 })()}
@@ -1773,79 +1802,60 @@ function Closing() {
                   )}
                 </div>
 
-                {/* Setter Info */}
-                {selectedPoolLead.setterName && (
+                {/* Wer bis hierher gearbeitet hat. Der Opener hat das
+                    Beratungsgespraech gelegt, der Setter hat es gehalten und
+                    das Abschlussgespraech gebucht - zwei Namen, zwei Rollen. */}
+                {(selectedPoolLead.openerName || selectedPoolLead.setterName) && (
                   <div className="space-y-3 border-t border-outline-variant pt-6">
-                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">Gebucht von</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1.5 bg-blue-100 text-blue-700 rounded-full text-label-sm font-medium">
-                        {selectedPoolLead.setterName}
-                      </span>
+                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">Vorarbeit</h3>
+                    <div className="flex flex-wrap items-center gap-2">
+                      {selectedPoolLead.openerName && (
+                        <span className="px-3 py-1.5 bg-surface-container text-on-surface-variant rounded-full text-label-sm">
+                          Erstanruf: {selectedPoolLead.openerName}
+                        </span>
+                      )}
+                      {selectedPoolLead.setterName && (
+                        <span className="px-3 py-1.5 bg-primary-fixed text-primary rounded-full text-label-sm font-medium">
+                          Beratung: {selectedPoolLead.setterName}
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}
 
-                {/* Notizen / Kommentar */}
-                {selectedPoolLead.kommentar && (
-                  <div className="space-y-3 border-t border-outline-variant pt-6">
-                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">Notizen</h3>
-                    <div className="bg-surface-container rounded-lg p-4 max-h-[200px] overflow-y-auto">
-                      <div className="space-y-2">
-                        {(() => {
-                          const lines = selectedPoolLead.kommentar.split('\n').filter(line => line.trim())
-                          const groups = []
-                          let currentPlainGroup = []
-                          lines.forEach((line) => {
-                            const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
-                            if (historyMatch) {
-                              if (currentPlainGroup.length > 0) {
-                                groups.push({ type: 'plain', lines: currentPlainGroup })
-                                currentPlainGroup = []
-                              }
-                              groups.push({ type: 'history', match: historyMatch })
-                            } else {
-                              currentPlainGroup.push(line)
-                            }
-                          })
-                          if (currentPlainGroup.length > 0) {
-                            groups.push({ type: 'plain', lines: currentPlainGroup })
-                          }
-                          return groups.map((group, index) => {
-                            if (group.type === 'history') {
-                              const [, datum, zeit, rest] = group.match
-                              const emojiMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬|🎯|📞|❌|✉️|📄|⭐)\s*(.+)$/)
-                              const emoji = emojiMatch ? emojiMatch[1] : '📋'
-                              let text = emojiMatch ? emojiMatch[2] : rest
-                              const userMatch = text.match(/\(([^)]+)\)$/)
-                              const userName = userMatch ? userMatch[1] : null
-                              if (userMatch) text = text.replace(/\s*\([^)]+\)$/, '')
-                              return (
-                                <div key={index} className="flex items-start gap-2 text-sm">
-                                  <span className="flex-shrink-0">{emoji}</span>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-on-surface">{text}</p>
-                                    <p className="text-xs text-outline mt-0.5">
-                                      {datum}, {zeit}{userName && ` • ${userName}`}
-                                    </p>
-                                  </div>
-                                </div>
-                              )
-                            } else {
-                              return (
-                                <div key={index} className="flex items-start gap-2 text-sm">
-                                  <span className="flex-shrink-0">💬</span>
-                                  <div className="text-on-surface">
-                                    {group.lines.map((line, i) => <p key={i}>{line}</p>)}
-                                  </div>
-                                </div>
-                              )
-                            }
-                          })
-                        })()}
+                {/* Worauf man sich bewirbt.
+                    Vorher stand hier das rohe Kommentarfeld, Zeile fuer Zeile
+                    selbst zerlegt - und die zwoelf Felder, die der Setter
+                    ausfuellen MUSS, bevor er buchen darf, standen nirgends.
+                    Der Closer entschied ueber einen Termin, ohne zu wissen,
+                    was im Beratungsgespraech herauskam. */}
+                <div className="space-y-3 border-t border-outline-variant pt-6">
+                  <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                    Aus dem Beratungsgespräch
+                  </h3>
+                  <Uebergabeblatt lead={selectedPoolLead} bereiche={[UEBERGABE_2]} />
+                </div>
+
+                {/* Die Zeitleiste - dieselbe wie in jeder anderen Lead-Ansicht. */}
+                <div className="space-y-3 border-t border-outline-variant pt-6">
+                  <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                    Verlauf
+                  </h3>
+                  <Verlauf hotLeadId={selectedPoolLead.id} leadId={selectedPoolLead.originalLeadId} />
+
+                  {altbestand(selectedPoolLead.kommentar) && (
+                    <>
+                      <div className="text-label-sm text-on-surface-variant">
+                        Ältere Notizen ohne Datum
                       </div>
-                    </div>
-                  </div>
-                )}
+                      <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[200px] overflow-y-auto">
+                        <p className="text-body-sm text-on-surface whitespace-pre-line">
+                          {altbestand(selectedPoolLead.kommentar)}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
 
                 {/* Bewerben Button */}
                 <div className="border-t border-outline-variant pt-6">
@@ -1986,10 +1996,10 @@ function Closing() {
                         {lead.status || 'Neu'}
                       </span>
                     </div>
-                    {lead.terminDatum && (
+                    {closerTermin(lead) && (
                       <div className="flex items-center gap-1 mt-2 text-body-sm text-on-surface-variant">
                         <Calendar className="w-3.5 h-3.5" />
-                        {formatDate(lead.terminDatum)}
+                        {formatDate(closerTermin(lead))}
                       </div>
                     )}
                   </div>
@@ -2080,7 +2090,7 @@ function Closing() {
                       <td className="px-4 py-4 hidden lg:table-cell">
                         <div className="flex items-center text-on-surface-variant">
                           <Calendar className="w-4 h-4 mr-1.5 text-outline" />
-                          {formatDate(lead.terminDatum)}
+                          {formatDate(closerTermin(lead))}
                         </div>
                       </td>
 
@@ -2892,19 +2902,39 @@ function Closing() {
                             <p className="text-label-sm text-warning mt-1">Nur CRM-Kalender, Calendly bleibt unverändert</p>
                           </div>
                         ) : (
-                          <p className="text-body-md text-on-surface">{formatDate(selectedLead.terminDatum)}</p>
+                          <p className="text-body-md text-on-surface">{formatDate(closerTermin(selectedLead))}</p>
                         )}
                       </div>
                       <div>
                         <p className="text-body-sm text-on-surface-variant">Terminart</p>
-                        <p className="text-body-md text-on-surface">{selectedLead.terminart || 'Video'}</p>
+                        {/* Das Abschlussgespraech ist in Calendly als Videotermin
+                            angelegt. selectedLead.terminart beschreibt den
+                            Telefontermin des Setters - fuer das Closing waere es
+                            schlicht die falsche Auskunft. */}
+                        <p className="text-body-md text-on-surface">
+                          {selectedLead.termin_abschlussgespraech
+                            ? 'Video'
+                            : (selectedLead.terminart || 'Video')}
+                        </p>
                       </div>
                     </div>
 
-                    {/* Video-Link */}
-                    {selectedLead.terminart === 'Video' && selectedLead.meetingLink && (
+                    {/* Steht davor ein Beratungsgespraech, gehoert es sichtbar
+                        dazu: Der Closer sieht damit, was der Kunde schon hinter
+                        sich hat - und verwechselt die beiden Termine nicht. */}
+                    {selectedLead.termin_abschlussgespraech && selectedLead.terminDatum && (
+                      <p className="text-body-sm text-on-surface-variant">
+                        Beratungsgespräch war am {formatDate(selectedLead.terminDatum)}
+                        {selectedLead.setterName && <> mit {selectedLead.setterName}</>}
+                      </p>
+                    )}
+
+                    {/* Video-Link. Beim Abschlussgespraech ist es der eigene
+                        Link - meeting_link zeigt auf den Setting-Termin. */}
+                    {(selectedLead.meeting_link_abschluss
+                      || (selectedLead.terminart === 'Video' && selectedLead.meetingLink)) && (
                       <a
-                        href={selectedLead.meetingLink}
+                        href={selectedLead.meeting_link_abschluss || selectedLead.meetingLink}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
@@ -2916,7 +2946,7 @@ function Closing() {
                         </div>
                         <div className="flex-1 min-w-0">
                           <span className="text-body-sm font-medium text-blue-700">Video-Meeting beitreten</span>
-                          <p className="text-label-sm text-blue-500 truncate">{selectedLead.meetingLink}</p>
+                          <p className="text-label-sm text-blue-500 truncate">{selectedLead.meeting_link_abschluss || selectedLead.meetingLink}</p>
                         </div>
                       </a>
                     )}
@@ -3027,6 +3057,18 @@ function Closing() {
                       onGespeichert={() => loadLeads()}
                     />
                   )}
+
+                  {/* Was Opener und Setter aufgenommen haben.
+                      Der Setter fuellt zwoelf Pflichtfelder aus, bevor er das
+                      Abschlussgespraech buchen darf - angezeigt wurden sie
+                      danach nirgends. Der Closer ging mit einem Termin und
+                      einem Kommentarfeld ins Gespraech. */}
+                  <div className="space-y-3 border-t border-outline-variant pt-6">
+                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
+                      Übergabe
+                    </h3>
+                    <Uebergabeblatt lead={selectedLead} />
+                  </div>
 
                   {/* NOTIZEN & VERLAUF Section.
                       Die Zeitleiste steht hier oben, nicht als eigener Kasten
@@ -3436,8 +3478,8 @@ function Closing() {
                 <div className="flex justify-between">
                   <span className="text-on-surface-variant">Termin:</span>
                   <span className="font-medium">
-                    {applyingLead.terminDatum
-                      ? new Date(applyingLead.terminDatum).toLocaleString('de-DE', {
+                    {closerTermin(applyingLead)
+                      ? new Date(closerTermin(applyingLead)).toLocaleString('de-DE', {
                           day: '2-digit',
                           month: '2-digit',
                           year: 'numeric',
@@ -3548,8 +3590,8 @@ function Closing() {
                 <div className="flex justify-between">
                   <span className="text-on-surface-variant">Geplanter Termin:</span>
                   <span className="font-medium">
-                    {selectedLead.terminDatum
-                      ? new Date(selectedLead.terminDatum).toLocaleString('de-DE', {
+                    {closerTermin(selectedLead)
+                      ? new Date(closerTermin(selectedLead)).toLocaleString('de-DE', {
                           day: '2-digit',
                           month: '2-digit',
                           year: 'numeric',

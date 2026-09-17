@@ -266,6 +266,18 @@ export async function handler(event) {
           query = query.in('status', beideSchreibweisen(STATUS.BERATUNG_VEREINBART))
         } else if (pool === 'true' || pool === 'closer') {
           query = query.is('closer_id', null)
+          // Seit dem OSC-Umbau reicht "kein Closer" nicht mehr aus.
+          //
+          // Vorher gab es eine Uebergabe: Wer den Termin legte, gab ihn an den
+          // Closer weiter - "ohne Closer" hiess also "wartet auf einen Closer".
+          // Jetzt liegt das Setting dazwischen. Ein frisch gelegtes
+          // Beratungsgespraech hat ebenfalls keinen Closer, gehoert aber dem
+          // Setter-Pool. Ohne diese Zeile standen 39 Setting-Termine im
+          // Closer-Pool und boten sich Closern zur Bewerbung an.
+          //
+          // Der Closer-Pool ist genau das: ein gebuchtes Abschlussgespraech,
+          // fuer das noch niemand eingeteilt ist.
+          query = query.not('termin_abschlussgespraech', 'is', null)
         }
 
         // Setter-Filter

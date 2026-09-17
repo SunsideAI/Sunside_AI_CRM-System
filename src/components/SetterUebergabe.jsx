@@ -24,7 +24,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
   const [termin, setTermin] = useState(
     lead?.termin_abschlussgespraech
       ? { start: lead.termin_abschlussgespraech, meetingLink: lead.meeting_link_abschluss || null,
-          terminart: lead.terminart_abschluss || null }
+          terminart: 'Video' }
       : null)
   const [waehlerOffen, setWaehlerOffen] = useState(false)
   const [laeuft, setLaeuft] = useState(false)
@@ -57,7 +57,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
       }
 
       setMeldung('Gespeichert')
-      onGespeichert?.()
+      onGespeichert?.(updates)
       return true
     } catch (e) {
       setFehler('Netzwerkfehler: ' + e.message)
@@ -75,6 +75,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
         <p className="text-xs text-gray-500 mb-3">
           Direkt nach dem Gespräch anklicken. Nur so zählen Erscheinungsquote und
           Termin-Vergütung. Kein Klick und kein Nicht-erschienen heißt: offen.
+          Danach öffnet sich hier die Übergabe an den Closer.
         </p>
         <button
           onClick={() => senden({ status: STATUS.BERATUNG_GEFUEHRT })}
@@ -83,7 +84,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
                      hover:bg-primary-container disabled:opacity-50"
         >
           {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-          Termin fand statt
+          Beratungsgespräch hat stattgefunden
         </button>
         {fehler && <p className="mt-2 text-sm text-red-600">{fehler}</p>}
       </div>
@@ -189,9 +190,13 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
         className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg
                    hover:bg-primary-container disabled:opacity-50"
       >
-        {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarPlus className="w-4 h-4" />}
-        Abschlussgespräch buchen
+        {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+        An den Closer übergeben
       </button>
+      <p className="-mt-2 text-xs text-gray-500">
+        Der Termin steht dann in Calendly und im Closer-Pool. Der Kontakt
+        verlässt damit deine Liste.
+      </p>
 
       {fehler && (
         <div className="flex gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">

@@ -11,6 +11,7 @@ import SetterPool from '../components/SetterPool'
 import Verlauf from '../components/Verlauf'
 import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
+import Uebergabeblatt, { UEBERGABE_1 } from '../components/Uebergabeblatt'
 
 // Die Arbeitsfläche des Setters — aufgebaut wie Opening und Closing.
 //
@@ -53,6 +54,37 @@ function Setting() {
   const [ansicht, setAnsicht] = useState('meine')
   const [poolAnzahl, setPoolAnzahl] = useState(0)
   const [seite, setSeite] = useState(1)
+  const [hinweis, setHinweis] = useState('')
+
+  // Was nach einer Speicherung passiert - und das ist der Punkt, an dem der
+  // Prozess vorher abriss.
+  //
+  // Nach "Beratungsgespräch hat stattgefunden" wurde die Schublade geschlossen
+  // und die Liste neu geladen. Der Kontakt stand danach auf "geführt", der
+  // Filter aber auf "Anstehend" - er war schlicht weg. Die Übergabemaske mit
+  // den zwölf Feldern und der Terminbuchung lag hinter einem Filter, von dem
+  // niemand wusste, dass er ihn jetzt braucht.
+  //
+  // Jetzt bleibt die Schublade offen und zeigt den nächsten Schritt: Der Setter
+  // kommt aus dem Telefonat und schreibt weiter, ohne zu suchen.
+  const nachSpeichern = (updates) => {
+    laden(); poolZaehlen()
+
+    if (updates?.status === STATUS.BERATUNG_GEFUEHRT) {
+      setGewaehlt(g => (g ? { ...g, ...updates } : g))
+      setFilter('zu_tun')
+      setSeite(1)
+      setHinweis('')
+      return
+    }
+
+    if (updates?.status === STATUS.ABSCHLUSS_VEREINBART) {
+      const name = gewaehlt?.unternehmen || 'Der Kontakt'
+      setHinweis(`${name} ist an den Closer übergeben. Das Abschlussgespräch steht im Closer-Pool.`)
+    }
+
+    setGewaehlt(null)
+  }
 
   // Wie im Closing: zehn je Seite. Vorher standen alle Zeilen auf einmal da —
   // bei 312 Gesprächen ist das keine Liste mehr, sondern eine Wand.
@@ -210,6 +242,21 @@ function Setting() {
 
       {fehler && (
         <div className="bg-error-container rounded-xl p-4 text-error">{fehler}</div>
+      )}
+
+      {hinweis && (
+        <div className="flex items-start gap-3 bg-success-container rounded-xl p-4">
+          <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
+          <p className="text-body-md text-on-surface flex-1">{hinweis}</p>
+          <button
+            type="button"
+            onClick={() => setHinweis('')}
+            aria-label="Meldung schließen"
+            className="text-on-surface-variant hover:text-on-surface shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
       )}
 
       {/* Pool-Ansicht: die Übergabe vom Opener. SetterPool meldet, wie viele
@@ -474,27 +521,12 @@ function Setting() {
               </div>
             </details>
 
-            {/* Was der Opener aufgenommen hat — der Setter geht damit ins Gespräch */}
-            {(gewaehlt.schmerzpunkt_wortlaut || gewaehlt.ziel) && (
-              <div className="p-3 bg-surface-container rounded-lg space-y-2">
-                <p className="text-label-lg text-on-surface">Aus dem Erstanruf</p>
-                {gewaehlt.ziel && (
-                  <p className="text-body-sm text-on-surface-variant">
-                    <span className="text-on-surface">Ziel:</span> {gewaehlt.ziel}
-                  </p>
-                )}
-                {gewaehlt.schmerzpunkt_wortlaut && (
-                  <p className="text-body-sm text-on-surface-variant">
-                    <span className="text-on-surface">Größtes Problem:</span> „{gewaehlt.schmerzpunkt_wortlaut}"
-                  </p>
-                )}
-                {gewaehlt.berufsgruppe && (
-                  <p className="text-body-sm text-on-surface-variant">
-                    <span className="text-on-surface">Berufsgruppe:</span> {gewaehlt.berufsgruppe}
-                  </p>
-                )}
-              </div>
-            )}
+            {/* Was der Opener aufgenommen hat — der Setter geht damit ins
+                Gespräch. Vorher standen hier drei von neun Feldern; die
+                übrigen sechs hatte der Opener umsonst ausgefüllt. */}
+            <div className="p-3 bg-surface-container rounded-lg">
+              <Uebergabeblatt lead={gewaehlt} bereiche={[UEBERGABE_1]} />
+            </div>
 
             {/* Schreiben geht immer, unabhängig von der Stufe */}
             <div className="border-t pt-4">
@@ -553,7 +585,7 @@ function Setting() {
             {/* Termin fand statt, Übergabe an den Closer, Rückgabe */}
             <SetterUebergabe
               lead={gewaehlt}
-              onGespeichert={() => { setGewaehlt(null); laden() }}
+              onGespeichert={nachSpeichern}
             />
           </div>
         )}
