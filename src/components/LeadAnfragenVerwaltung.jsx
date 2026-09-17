@@ -14,7 +14,7 @@ import {
   CheckCircle
 } from 'lucide-react'
 
-function LeadAnfragenVerwaltung() {
+function LeadAnfragenVerwaltung({ meldeAktualisieren }) {
   const { user } = useAuth()
   const [anfragen, setAnfragen] = useState([])
   const [loading, setLoading] = useState(true)
@@ -54,6 +54,11 @@ function LeadAnfragenVerwaltung() {
       setLoading(false)
     }
   }
+
+  // Der Aktualisieren-Knopf steht in der Kopfzeile der Seite, die
+  // Ladefunktion hier. Nach jedem Zeichnen neu eintragen, damit sie nie auf
+  // einen alten Stand zeigt; ein Ref oben loest kein Neuzeichnen aus.
+  useEffect(() => { meldeAktualisieren?.(() => loadAnfragen()) })
 
   useEffect(() => {
     loadAnfragen()
@@ -180,14 +185,7 @@ function LeadAnfragenVerwaltung() {
             <option value="Genehmigt">Genehmigt</option>
             <option value="Abgelehnt">Abgelehnt</option>
           </select>
-          
-          <button
-            onClick={loadAnfragen}
-            disabled={loading}
-            className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+
         </div>
       </div>
 

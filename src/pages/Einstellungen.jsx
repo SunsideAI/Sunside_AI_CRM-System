@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { 
@@ -8,7 +8,8 @@ import {
   Shield,
   Settings,
   UserCog,
-  Inbox
+  Inbox,
+  RefreshCw
 } from 'lucide-react'
 import PasswordManager from '../components/PasswordManager'
 import VertriebsEinstellungen from '../components/VertriebsEinstellungen'
@@ -32,6 +33,20 @@ function Einstellungen() {
     }
   }, [searchParams])
 
+  // Ein Aktualisieren-Knopf fuer alle vier Bereiche: Der sichtbare traegt
+  // seine Ladefunktion hier ein. Vorher hatte jeder Bereich einen eigenen
+  // Knopf ueber seiner Tabelle.
+  const aktualisierenRef = useRef(null)
+  const [laedt, setLaedt] = useState(false)
+
+  const anstossen = async () => {
+    if (!aktualisierenRef.current) return
+    setLaedt(true)
+    try { await aktualisierenRef.current() } finally { setLaedt(false) }
+  }
+
+  const meldeAktualisieren = (fn) => { aktualisierenRef.current = fn }
+
   return (
     <div className="space-y-8">
       {/* Header mit Tabs */}
@@ -47,7 +62,9 @@ function Einstellungen() {
         </div>
 
         {/* Tab Buttons */}
-        <div className="umschalter">
+        <div className="seitenkopf-bedienung">
+          <div>
+          <div className="umschalter">
           <button
             onClick={() => setActiveTab('mitarbeiter')}
             className={`umschalter-knopf gap-2 ${
@@ -95,20 +112,34 @@ function Einstellungen() {
             <Settings className="h-4 w-4" />
             System
           </button>
+          </div>
+
+          {activeTab !== 'system' && (
+            <button
+              onClick={anstossen}
+              disabled={laedt}
+              aria-label="Aktualisieren"
+              title="Aktualisieren"
+              className="kopf-knopf kopf-knopf-symbol"
+            >
+              <RefreshCw className={`w-4 h-4 ${laedt ? 'animate-spin' : ''}`} />
+            </button>
+          )}
+          </div>
         </div>
       </div>
 
       {/* Tab Content */}
       {activeTab === 'mitarbeiter' && (
-        <MitarbeiterVerwaltung />
+        <MitarbeiterVerwaltung meldeAktualisieren={meldeAktualisieren} />
       )}
 
       {activeTab === 'anfragen' && (
-        <LeadAnfragenVerwaltung />
+        <LeadAnfragenVerwaltung meldeAktualisieren={meldeAktualisieren} />
       )}
 
       {activeTab === 'hot-lead-bewerbungen' && (
-        <HotLeadBewerbungenVerwaltung />
+        <HotLeadBewerbungenVerwaltung meldeAktualisieren={meldeAktualisieren} />
       )}
 
       {activeTab === 'system' && (

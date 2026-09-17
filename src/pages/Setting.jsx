@@ -208,7 +208,8 @@ function Setting() {
           </p>
         </div>
 
-        <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="seitenkopf-bedienung">
+          <div>
           <div className="umschalter">
             <button
               onClick={() => setAnsicht('meine')}
@@ -247,6 +248,17 @@ function Setting() {
                 Alle
               </button>
             )}
+          </div>
+
+          <button
+            onClick={laden}
+            disabled={laedt}
+            aria-label="Aktualisieren"
+            title="Aktualisieren"
+            className="kopf-knopf kopf-knopf-symbol"
+          >
+            <RefreshCw className={`w-4 h-4 ${laedt ? 'animate-spin' : ''}`} />
+          </button>
           </div>
         </div>
       </div>
@@ -305,14 +317,6 @@ function Setting() {
             )}
           </div>
 
-          <button
-            onClick={laden}
-            disabled={laedt}
-            aria-label="Neu laden"
-            className="kopf-knopf kopf-knopf-symbol"
-          >
-            <RefreshCw className={`w-4 h-4 ${laedt ? 'animate-spin' : ''}`} />
-          </button>
         </div>
 
         {/* Zeile 2: Filter. Auswahlfeld wie im Closing — die Zahl bleibt

@@ -17,7 +17,7 @@ import {
   User
 } from 'lucide-react'
 
-function HotLeadBewerbungenVerwaltung() {
+function HotLeadBewerbungenVerwaltung({ meldeAktualisieren }) {
   const { user } = useAuth()
   const [bewerbungen, setBewerbungen] = useState([])
   const [loading, setLoading] = useState(true)
@@ -59,6 +59,11 @@ function HotLeadBewerbungenVerwaltung() {
       setLoading(false)
     }
   }
+
+  // Der Aktualisieren-Knopf steht in der Kopfzeile der Seite, die
+  // Ladefunktion hier. Nach jedem Zeichnen neu eintragen, damit sie nie auf
+  // einen alten Stand zeigt; ein Ref oben loest kein Neuzeichnen aus.
+  useEffect(() => { meldeAktualisieren?.(() => loadBewerbungen()) })
 
   useEffect(() => {
     loadBewerbungen()
@@ -178,13 +183,6 @@ function HotLeadBewerbungenVerwaltung() {
             <option value="Abgelehnt">Abgelehnt</option>
           </select>
 
-          <button
-            onClick={loadBewerbungen}
-            disabled={loading}
-            className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <RefreshCw className={`w-4 h-4 text-gray-600 ${loading ? 'animate-spin' : ''}`} />
-          </button>
         </div>
       </div>
 

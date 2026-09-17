@@ -825,7 +825,8 @@ function Opening() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+        <div className="seitenkopf-bedienung">
+          <div>
           {/* Leads anfordern Button (für alle außer Admins optional) - nicht im E-Book Pool */}
           {!isAdmin() && viewMode !== 'ebook' && (
             <button
@@ -886,6 +887,24 @@ function Opening() {
               )}
             </div>
           </div>
+
+          {/* Ein Knopf fuer die ganze Seite: Liste oder E-Book-Pool, je
+              nachdem was gerade zu sehen ist, und der Kasten mit den
+              geplatzten Terminen dazu. */}
+          <button
+            onClick={() => {
+              if (viewMode === 'ebook') loadEbookLeads()
+              else loadLeads()
+              loadSetterNoShowLeads()
+            }}
+            disabled={loading || ebookLoading}
+            aria-label="Aktualisieren"
+            title="Aktualisieren"
+            className="kopf-knopf kopf-knopf-symbol"
+          >
+            <RefreshCw className={`w-4 h-4 ${(loading || ebookLoading) ? 'animate-spin' : ''}`} />
+          </button>
+          </div>
         </div>
       </div>
 
@@ -922,14 +941,6 @@ function Opening() {
             />
           </div>
 
-          {/* Refresh */}
-          <button
-            onClick={() => loadLeads()}
-            disabled={loading}
-            className="kopf-knopf kopf-knopf-symbol"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
         </div>
 
         {/* Zeile 2: Filter - responsive grid on mobile */}
@@ -1046,13 +1057,6 @@ function Opening() {
               Lead-Termine neu vereinbaren ({setterNoShowLeads.length})
             </h3>
             <div className="flex items-center gap-2">
-              <button
-                onClick={(e) => { e.stopPropagation(); loadSetterNoShowLeads(); }}
-                disabled={loadingSetterNoShows}
-                className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                <RefreshCw className={`w-4 h-4 text-gray-500 ${loadingSetterNoShows ? 'animate-spin' : ''}`} />
-              </button>
               <ChevronRight className={`w-5 h-5 text-gray-500 transition-transform duration-200 ${reEngagementCollapsed ? '' : 'rotate-90'}`} />
             </div>
           </div>
@@ -1438,18 +1442,6 @@ function Opening() {
       {/* E-Book Pool View */}
       {viewMode === 'ebook' && (
         <>
-          {/* Pool Refresh Button */}
-          <div className="flex justify-end">
-            <button
-              onClick={loadEbookLeads}
-              disabled={ebookLoading}
-              className="kopf-knopf kopf-knopf-symbol"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 text-on-surface-variant ${ebookLoading ? 'animate-spin' : ''}`} />
-              Aktualisieren
-            </button>
-          </div>
-
           <div className="card-elevated overflow-hidden min-h-[600px]">
             {ebookLoading ? (
               <div className="flex items-center justify-center py-20">

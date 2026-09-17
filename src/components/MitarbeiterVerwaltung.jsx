@@ -67,7 +67,7 @@ function Modal({ isOpen, onClose, children }) {
   )
 }
 
-function MitarbeiterVerwaltung() {
+function MitarbeiterVerwaltung({ meldeAktualisieren }) {
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -95,6 +95,11 @@ function MitarbeiterVerwaltung() {
     rolle: [],
     onboarding: ''
   })
+
+  // Der Aktualisieren-Knopf steht in der Kopfzeile der Seite, die
+  // Ladefunktion hier. Nach jedem Zeichnen neu eintragen, damit sie nie auf
+  // einen alten Stand zeigt; ein Ref oben loest kein Neuzeichnen aus.
+  useEffect(() => { meldeAktualisieren?.(() => loadUsers()) })
 
   useEffect(() => {
     loadUsers()
@@ -530,14 +535,6 @@ function MitarbeiterVerwaltung() {
               />
             </div>
 
-            {/* Refresh */}
-            <button
-              onClick={loadUsers}
-              className="p-2 text-on-surface-variant hover:bg-surface-container rounded-lg"
-              title="Aktualisieren"
-            >
-              <RefreshCw className="w-5 h-5" />
-            </button>
 
             {/* Hinzufügen */}
             <button

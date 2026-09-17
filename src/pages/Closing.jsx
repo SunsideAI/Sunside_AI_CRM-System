@@ -1582,7 +1582,8 @@ function Closing() {
         </div>
 
         {/* Toggle: Meine Leads / Pool / Alle (für Admins) - scrollable on mobile */}
-        <div className="w-full sm:w-auto overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="seitenkopf-bedienung">
+          <div>
           <div className="umschalter">
             <button
               onClick={() => { setViewMode('own'); setCurrentPage(1); }}
@@ -1622,6 +1623,19 @@ function Closing() {
               </button>
             )}
           </div>
+
+          {/* Ein Knopf fuer beide Ansichten - handleRefresh laedt ohnehin
+              das, was gerade zu sehen ist. */}
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing || loading || loadingPool}
+            aria-label="Aktualisieren"
+            title="Aktualisieren"
+            className="kopf-knopf kopf-knopf-symbol"
+          >
+            <RefreshCw className={`w-4 h-4 ${(refreshing || loading || loadingPool) ? 'animate-spin' : ''}`} />
+          </button>
+          </div>
         </div>
       </div>
 
@@ -1634,18 +1648,6 @@ function Closing() {
       {/* ==================== POOL-ANSICHT ==================== */}
       {viewMode === 'pool' ? (
         <>
-          {/* Pool Refresh Button */}
-          <div className="flex justify-end">
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing || loadingPool}
-              className="kopf-knopf kopf-knopf-symbol"
-            >
-              <RefreshCw className={`w-4 h-4 mr-2 text-on-surface-variant ${(refreshing || loadingPool) ? 'animate-spin' : ''}`} />
-              Aktualisieren
-            </button>
-          </div>
-
           <div className="card-elevated overflow-hidden min-h-[600px]">
             {loadingPool ? (
             <div className="flex items-center justify-center py-20">
@@ -1929,14 +1931,6 @@ function Closing() {
             )}
           </div>
 
-          {/* Aktualisieren */}
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing || loading}
-            className="kopf-knopf kopf-knopf-symbol"
-          >
-            <RefreshCw className={`w-4 h-4 ${(refreshing || loading) ? 'animate-spin' : ''}`} />
-          </button>
         </div>
 
         {/* Zeile 2: Filter */}

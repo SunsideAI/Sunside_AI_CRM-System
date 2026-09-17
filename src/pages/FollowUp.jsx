@@ -415,30 +415,12 @@ function FollowUp() {
             {totalLeads} Leads im Follow-Up
           </p>
         </div>
-      </div>
 
-      {/* Filter & Suche - gleiches Layout wie Closing/Opening */}
-      <div className="card p-5 space-y-4">
-        {/* Zeile 1: Suche + Buttons */}
-        <div className="flex gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-outline" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Firma, Name suchen..."
-              className="input-field pl-10 pr-10"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-          </div>
+        {/* Aktualisieren, Export und Spaltenwahl standen im Filterkasten
+            ueber der Tabelle. Sie gehoeren zur Seite, nicht zum Filter -
+            also dorthin, wo jeder andere Tab sie auch hat. */}
+        <div className="seitenkopf-bedienung">
+          <div>
 
           <button
             onClick={() => loadLeads(true)}
@@ -491,6 +473,33 @@ function FollowUp() {
               </>
             )}
           </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter & Suche - gleiches Layout wie Closing/Opening */}
+      <div className="card p-5 space-y-4">
+        {/* Zeile 1: Suche + Buttons */}
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-outline" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Firma, Name suchen..."
+              className="input-field pl-10 pr-10"
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+
         </div>
 
         {/* Zeile 2: Filter */}
