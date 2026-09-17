@@ -278,6 +278,15 @@ export async function handler(event) {
           // Der Closer-Pool ist genau das: ein gebuchtes Abschlussgespraech,
           // fuer das noch niemand eingeteilt ist.
           query = query.not('termin_abschlussgespraech', 'is', null)
+
+          // Ein geplatzter Termin ist keine Uebernahme wert: Er wartet beim
+          // Setter auf einen neuen. Ohne diese Zeile stand derselbe Kontakt
+          // gleichzeitig im Kasten des Setters UND im Pool - zwei Leute
+          // haetten unabhaengig voneinander daran gearbeitet.
+          query = query.not('status', 'in',
+            `(${[...beideSchreibweisen(STATUS.TERMIN_ABGESAGT),
+                 ...beideSchreibweisen(STATUS.NICHT_ERSCHIENEN)]
+                .map(x => `"${x}"`).join(',')})`)
         }
 
         // Setter-Filter
