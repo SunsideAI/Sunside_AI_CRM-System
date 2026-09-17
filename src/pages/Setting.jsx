@@ -179,14 +179,14 @@ function Setting() {
               onClick={() => setAnsicht('pool')}
               className={`flex items-center px-3 sm:px-4 py-2 rounded-md text-label-md sm:text-label-lg transition-all duration-250 whitespace-nowrap ${
                 ansicht === 'pool'
-                  ? 'bg-secondary text-white shadow-glow-secondary'
-                  : 'text-on-surface-variant hover:text-secondary hover:bg-secondary-container/30'
+                  ? 'bg-gradient-primary text-white shadow-glow-primary'
+                  : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
               }`}
             >
               <Calendar className="w-4 h-4 mr-1.5" />
               Pool
               <span className={`ml-1.5 min-w-[24px] text-center px-1.5 py-0.5 text-label-sm rounded-md ${
-                ansicht === 'pool' ? 'bg-white/20 text-white' : 'bg-secondary-container text-secondary'
+                ansicht === 'pool' ? 'bg-white/20 text-white' : 'bg-primary-fixed text-primary'
               }`}>
                 {poolAnzahl}
               </span>
