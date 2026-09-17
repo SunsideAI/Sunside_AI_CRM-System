@@ -1,4 +1,7 @@
 import { anmeldungVerlangen } from './utils/session.js'
+import { darf, verboten } from './utils/zugriff.js'
+
+const CALENDLY_TERMINART = /^https:\/\/api\.calendly\.com\/event_types\/[A-Za-z0-9-]+$/
 // Calendly API Integration (Google Calendar entfernt)
 
 const corsHeaders = {
@@ -56,6 +59,9 @@ export const handler = async (event) => {
     }
   }
 
+  // Buchen ist Vertriebsarbeit.
+  if (!darf.vertrieb(angemeldet)) return verboten()
+
   const calendlyHeaders = {
     'Authorization': `Bearer ${process.env.CALENDLY_API_KEY}`,
     'Content-Type': 'application/json'
@@ -73,6 +79,7 @@ export const handler = async (event) => {
       // calendly-test: API Verbindung testen
       // ----------------------------------------
       if (action === 'calendly-test') {
+        if (!angemeldet.istAdmin) return verboten('Die Verbindung prüft die Leitung', 'rolle_fehlt')
         try {
           const userResponse = await fetch('https://api.calendly.com/users/me', {
             headers: calendlyHeaders
@@ -176,6 +183,9 @@ export const handler = async (event) => {
       // ----------------------------------------
       if (action === 'calendly-slots') {
         const eventTypeUri = params.eventTypeUri
+        if (eventTypeUri && !CALENDLY_TERMINART.test(eventTypeUri)) {
+          return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Ungültige Terminart' }) }
+        }
         const dateString = params.dateString  // Format: YYYY-MM-DD (reiner String, keine Zeitzone)
         // Fallback für alte Anfragen mit startDate/endDate
         const startDateParam = params.startDate
@@ -359,6 +369,13 @@ export const handler = async (event) => {
       // ----------------------------------------
       if (postAction === 'calendly-book') {
         const { eventTypeUri, startTime, inviteeName, inviteeEmail, inviteePhone, leadInfo } = body
+
+        // Der Server ruft diese Adresse MIT dem Calendly-Schluessel auf. Kam
+        // sie ungeprueft aus der Anfrage, liess sich der Schluessel an jede
+        // beliebige Adresse schicken.
+        if (eventTypeUri && !CALENDLY_TERMINART.test(eventTypeUri)) {
+          return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Ungültige Terminart' }) }
+        }
 
         if (!eventTypeUri || !startTime || !inviteeName || !inviteeEmail) {
           return {

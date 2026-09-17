@@ -316,7 +316,11 @@ export async function handler(event) {
         abschluesseMonat,
         zugewieseneHotLeads,
         ergebnisse: stats.ergebnisse,
-        vertriebler: vertrieblerArray,
+        // Die Zahlen der Kollegen sieht nur die Leitung - alle anderen nur
+        // ihre eigene Zeile, die die Uebersicht fuer "Zugewiesene Leads" braucht.
+        vertriebler: angemeldet.istAdmin
+          ? vertrieblerArray
+          : vertrieblerArray.filter(v => v.name === userMap[userId]?.name),
         conversionRate: parseFloat(conversionRate)
       })
     }

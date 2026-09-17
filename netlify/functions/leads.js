@@ -1,6 +1,7 @@
 // Leads API - Laden und Aktualisieren von Leads - Supabase Version
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { darf, verboten, leadBeteiligt } from './utils/zugriff.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -155,9 +156,9 @@ export async function handler(event) {
     try {
       const params = event.queryStringParameters || {}
       const {
-        userName,
-        userId,
-        airtableId, // Fallback für alte IDs in lead_assignments
+        userName: userNameAnfrage,
+        userId: userIdAnfrage,
+        airtableId: airtableIdAnfrage, // Fallback für alte IDs in lead_assignments
         userRole,
         view,
         search,
@@ -169,6 +170,17 @@ export async function handler(event) {
         offset,
         wiedervorlage
       } = params
+
+      // Wessen Leads: Fuer alle ausser der Leitung die eigenen - aus dem Token.
+      // Vorher kam die userId aus der Anfrage. Ohne sie fiel der Filter ganz
+      // weg, und jeder Angemeldete bekam die Leads der gesamten Firma.
+      const leitung = angemeldet.istAdmin
+      if (!leitung && wiedervorlage !== 'true' && !darf.opening(angemeldet)) {
+        return verboten('Die Kaltakquise ist nur für Opener', 'rolle_fehlt')
+      }
+      const userId = leitung ? userIdAnfrage : angemeldet.id
+      const userName = leitung ? userNameAnfrage : undefined
+      const airtableId = leitung ? airtableIdAnfrage : undefined
 
       // User-Map laden für Namen-Auflösung
       const userMap = await loadUserMap()
@@ -421,6 +433,12 @@ export async function handler(event) {
         }
       }
 
+      // Aendern darf, wem der Lead zugeteilt ist oder wer am Hot Lead dazu
+      // arbeitet. Vorher jeder Angemeldete, an jedem Lead.
+      if (!(await leadBeteiligt(supabase, angemeldet, leadId))) {
+        return verboten('Dieser Lead gehört nicht zu deinen', 'nicht_beteiligt')
+      }
+
       // Anrufversuch mitzaehlen: Wer ein Ergebnis dokumentiert oder den Lead
       // als kontaktiert markiert, hat angewaehlt. Der Hilfetext im CRM sagt
       // "Zaehlt jeden Anrufversuch automatisch. Niemand muss Striche machen" -
@@ -526,7 +544,8 @@ export async function handler(event) {
         }
         const icon = icons[historyEntry.action] || '📋'
 
-        const newEntry = `[${timestamp}] ${icon} ${historyEntry.details} (${historyEntry.userName})`
+        // Der Name im Verlauf kommt aus der Anmeldung, nicht aus der Anfrage.
+        const newEntry = `[${timestamp}] ${icon} ${historyEntry.details} (${angemeldet.name || historyEntry.userName})`
 
         fieldsToUpdate.kommentar = currentKommentar
           ? `${newEntry}\n${currentKommentar}`

@@ -8,6 +8,7 @@ import { anmeldungVerlangen } from './utils/session.js'
 import { STATUS, normalisiere, uebergangErlaubt, anzeigeName, ruecknahmeZiel, beideSchreibweisen } from '../../shared/status.js'
 import { FELDER, uebergabePruefen, grenzenPruefen, UEBERGABE_1, UEBERGABE_2 } from '../../shared/felder.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
+import { darf, verboten, hotLeadVerlangen, leadBeteiligt, UUID } from './utils/zugriff.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -176,6 +177,31 @@ export async function handler(event) {
 
       console.log('Hot Leads GET - Params:', { setterId, closerId, setterName, closerName, status, limit, pool, originalLeadId })
 
+      // Wer nicht zur Leitung gehoert, sieht nur, was ihn betrifft. Vorher
+      // lieferte ein Aufruf ohne Parameter den gesamten Bestand samt
+      // Rechnungsdaten, und ?closerName=<Kollege> dessen Deals.
+      //
+      // Ein Personenfilter wird darum auf die eigene ID umgebogen, egal wen
+      // die Anfrage nennt. Die Pools sind Bewerbungslisten und gehoeren der
+      // Rolle, die sich bewerben darf.
+      const leitung = angemeldet.istAdmin
+      if (!leitung) {
+        if (pool === 'setter' && !darf.setting(angemeldet)) {
+          return verboten('Der Setter-Pool ist nur für Setter', 'rolle_fehlt')
+        }
+        if ((pool === 'true' || pool === 'closer') && !darf.closing(angemeldet)) {
+          return verboten('Der Closer-Pool ist nur für Closer', 'rolle_fehlt')
+        }
+        if (originalLeadId && !(await leadBeteiligt(supabase, angemeldet, originalLeadId))) {
+          return verboten('Dieser Lead gehört nicht zu deinen', 'nicht_beteiligt')
+        }
+        const personenFilter = setterId || setterName || closerId || closerName || openerId || openerName
+        if (!pool && !personenFilter && !originalLeadId) {
+          return verboten('Alle Kontakte sieht nur die Leitung')
+        }
+      }
+      const eigene = (id, name) => (leitung ? id : ((id || name) ? angemeldet.id : undefined))
+
       // User-Map laden
       const userMap = await loadUserMap()
 
@@ -187,8 +213,8 @@ export async function handler(event) {
       const maxLimit = limit ? parseInt(limit) : 10000
 
       // Filter-Werte vorberechnen
-      let setterIdFilter = setterId
-      let closerIdFilter = closerId
+      let setterIdFilter = eigene(setterId, setterName)
+      let closerIdFilter = eigene(closerId, closerName)
 
       // Ein Name, der sich nicht aufloesen laesst, darf NICHT bedeuten
       // "kein Filter". Genau das passierte vorher: getUserIdByName() gab
@@ -216,7 +242,7 @@ export async function handler(event) {
       // auf den, der das Beratungsgespraech haelt - nicht mehr auf den, der
       // gebucht hat. Ohne diesen Filter verloere der Opener die von ihm
       // gelegten Termine aus den Augen.
-      let openerIdFilter = openerId
+      let openerIdFilter = eigene(openerId, openerName)
       if (!openerIdFilter && openerName) {
         openerIdFilter = await getUserIdByName(openerName)
         if (!openerIdFilter) {
@@ -290,8 +316,10 @@ export async function handler(event) {
         }
 
         // Setter-Filter
-        if (setterIdFilter) {
+        if (setterIdFilter && UUID.test(setterIdFilter)) {
           query = query.eq('setter_id', setterIdFilter)
+        } else if (setterIdFilter) {
+          return { statusCode: 200, headers: corsHeaders, body: JSON.stringify({ hotLeads: [], total: 0 }) }
         }
 
         // Opener-Filter
@@ -651,6 +679,9 @@ export async function handler(event) {
           }
         }
 
+        const gesperrt = await hotLeadVerlangen(supabase, angemeldet, hotLeadId)
+        if (gesperrt) return gesperrt
+
         const { data: stand } = await supabase
           .from('hot_leads').select('status, setter_id, closer_id, opener_id, unternehmen')
           .eq('id', hotLeadId).maybeSingle()
@@ -751,6 +782,27 @@ export async function handler(event) {
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({ error: 'originalLeadId ist erforderlich' })
+        }
+      }
+
+      // Einen Termin legt, wem der Lead gehoert. Und wer ihn haelt, bestimmt
+      // der Aufruf nur fuer sich selbst: Ein Setter darf sich eintragen,
+      // fremde Setter oder Closer vergibt nur die Leitung - sonst liesse sich
+      // der Bewerbungsweg beim Anlegen umgehen, den PATCH schuetzt.
+      if (!angemeldet.istAdmin) {
+        if (!darf.vertrieb(angemeldet)) return verboten()
+        if (!(await leadBeteiligt(supabase, angemeldet, originalLeadId))) {
+          return verboten('Dieser Lead gehört nicht zu deinen', 'nicht_beteiligt')
+        }
+        if (closerId || closerName) {
+          return verboten('Den Closer vergibt die Bewerbung, nicht das Buchen')
+        }
+        if (setterId || setterName) {
+          const selbst = (setterId && setterId === angemeldet.id) ||
+            (!setterId && setterName && setterName === angemeldet.name)
+          if (!selbst || !darf.setting(angemeldet)) {
+            return verboten('Als Setter trägst du nur dich selbst ein')
+          }
         }
       }
 
@@ -927,6 +979,12 @@ export async function handler(event) {
         }
       }
 
+      // Aendern darf, wer am Kontakt beteiligt ist. Vorher konnte jeder
+      // Angemeldete Status, Preise und Rechnungsdaten jedes Hot Leads setzen -
+      // und damit Angebots-Automatisierung und Rechnungsbruecke ausloesen.
+      const gesperrt = await hotLeadVerlangen(supabase, angemeldet, hotLeadId)
+      if (gesperrt) return gesperrt
+
       // Felder mappen
       const fieldMap = {
         // Die Felder beider Uebergaben heissen im CRM wie in der Datenbank -
@@ -1055,7 +1113,7 @@ export async function handler(event) {
       // Termins an die Stufe davor. Wer eine Zuteilung loescht, verschafft
       // sich keinen Vorteil; nur das Setzen bleibt dem Bewerbungsweg
       // vorbehalten.
-      for (const feld of ['closerId', 'setterId', 'openerId']) {
+      for (const feld of ['closerId', 'setterId', 'openerId', 'reaktivierungBearbeiterId']) {
         const wert = fields[fieldMap[feld]]
         if (wert !== undefined && wert !== null && !angemeldet.istAdmin) {
           return {

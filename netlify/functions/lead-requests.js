@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { darf, verboten } from './utils/zugriff.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 const supabase = createClient(
@@ -110,6 +111,7 @@ export async function handler(event) {
 
     // POST - Neue Anfrage erstellen
     if (event.httpMethod === 'POST') {
+      if (!darf.opening(angemeldet)) return verboten('Leads fordern Opener an', 'rolle_fehlt')
       const { anzahl, nachricht } = JSON.parse(event.body)
       // Man stellt nur fuer sich selbst eine Anfrage.
       const userId = angemeldet.id

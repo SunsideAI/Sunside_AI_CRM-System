@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen, nachweisErzeugen } from './utils/session.js'
+import { darf, verboten, hotLeadVerlangen } from './utils/zugriff.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -37,6 +38,12 @@ export const handler = async (event) => {
         body: JSON.stringify({ error: 'hotLeadId and websiteUrl required' })
       }
     }
+
+    // Die Analyse kostet Kontingent und gehoert zum Closing eines eigenen
+    // Kontakts.
+    if (!darf.closing(angemeldet)) return verboten('Die SEO-Analyse startet das Closing', 'rolle_fehlt')
+    const gesperrt = await hotLeadVerlangen(supabase, angemeldet, hotLeadId)
+    if (gesperrt) return gesperrt
 
     // Die Kategorie bestimmt das Keyword-Set im SEO-Tool (Eigentuemer- vs.
     // Gutachten-Keywords). Das Frontend schickt sie mit; fehlt sie, wird

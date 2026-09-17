@@ -21,7 +21,10 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
   const [sendet, setSendet] = useState(null)
   const [fehler, setFehler] = useState('')
 
-  useEffect(() => { laden() }, [])
+  // Erst fragen, wer hier sitzt: Der Pool gehoert den Settern, und der Server
+  // antwortet allen anderen mit 403. Der Kasten wird ohnehin nicht gezeigt.
+  const zustaendig = isSetter() || isAdmin()
+  useEffect(() => { if (zustaendig) laden() }, [zustaendig])
 
   const laden = async () => {
     setLaedt(true)

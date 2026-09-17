@@ -2,6 +2,7 @@
 // Empfängt Leads vom E-Book Funnel und verwaltet den E-Book Pool
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { darf, verboten } from './utils/zugriff.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
 import { istOpener, istSetter, istLeitung } from '../../shared/rollen.js'
 
@@ -143,9 +144,13 @@ export async function handler(event) {
   // POST ist das oeffentliche E-Book-Formular auf der Website und bleibt ohne
   // Anmeldung erreichbar. Lesen und Aendern nicht - dort haengen Kontaktdaten
   // aller Interessenten dran.
+  let angemeldet = null
   if (event.httpMethod !== 'POST') {
     const zugang = anmeldungVerlangen(event)
     if (zugang.antwort) return zugang.antwort
+    angemeldet = zugang.nutzer
+    // Der E-Book-Pool ist ein Teil der Kaltakquise.
+    if (!darf.opening(angemeldet)) return verboten('Der E-Book-Pool gehört zum Opening', 'rolle_fehlt')
   }
 
   if (!process.env.SUPABASE_URL || !process.env.SUPABASE_SERVICE_KEY) {
@@ -361,6 +366,23 @@ export async function handler(event) {
           headers: corsHeaders,
           body: JSON.stringify({ error: 'vertrieblerName oder vertrieblerId ist erforderlich' })
         }
+      }
+
+      // Uebernehmen kann man einen Lead nur fuer sich selbst - die Leitung
+      // darf ihn jemandem zuteilen. Vorher kam der Empfaenger aus der Anfrage.
+      if (!angemeldet.istAdmin) {
+        if ((vertrieblerId && vertrieblerId !== angemeldet.id) ||
+            (!vertrieblerId && vertrieblerName && vertrieblerName !== angemeldet.name)) {
+          return verboten('Einen Lead übernimmst du nur für dich selbst')
+        }
+      }
+
+      // Nur aus dem Pool: Ein Lead, der schon jemandem gehoert, wird hier
+      // nicht ein zweites Mal vergeben.
+      const { data: schonVergeben } = await supabase
+        .from('lead_assignments').select('id').eq('lead_id', id).limit(1)
+      if ((schonVergeben?.length || 0) > 0) {
+        return { statusCode: 409, headers: corsHeaders, body: JSON.stringify({ error: 'Dieser Lead ist bereits vergeben' }) }
       }
 
       // Vertriebler ID ermitteln

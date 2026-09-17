@@ -1,4 +1,5 @@
 import { anmeldungVerlangen } from './utils/session.js'
+import { darf, verboten } from './utils/zugriff.js'
 // Node 18+ bringt fetch mit - kein Paket noetig.
 
 export const handler = async (event) => {
@@ -18,6 +19,9 @@ export const handler = async (event) => {
   if (zugang.antwort) return zugang.antwort
   const angemeldet = zugang.nutzer
 
+
+  // Die KI-Auswertung gehoert zum Opening-Dashboard und kostet pro Aufruf.
+  if (!darf.opening(angemeldet)) return verboten('Die Auswertung gehört zum Opening', 'rolle_fehlt')
 
   if (event.httpMethod !== 'POST') {
     return {

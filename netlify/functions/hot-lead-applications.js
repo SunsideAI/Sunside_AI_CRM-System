@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { darf, verboten } from './utils/zugriff.js'
 import { normalisiere } from '../../shared/status.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
 
@@ -138,6 +139,13 @@ export async function handler(event) {
       // Die Stufe entscheidet, worauf man sich bewirbt: auf das
       // Beratungsgespräch (Setter) oder das Abschlussgespräch (Closer).
       const stufe = stufeRoh === STUFE.SETTER ? STUFE.SETTER : STUFE.CLOSER
+
+      // Bewerben kann sich nur, wer die Stufe auch ausfuellt. Sonst haette
+      // sich ein Opener auf ein Abschlussgespraech bewerben koennen - und bei
+      // abgeschalteter Bewerbungspflicht den Kontakt sofort bekommen.
+      if (stufe === STUFE.SETTER ? !darf.setting(angemeldet) : !darf.closing(angemeldet)) {
+        return verboten(`Bewerben kann sich nur, wer ${stufe === STUFE.SETTER ? 'Setter' : 'Closer'} ist`, 'rolle_fehlt')
+      }
 
       // Wer sich bewirbt, steht im Token. Vorher kam die closerId aus dem
       // Anfrage-Körper - man konnte sich also für jemand anderen bewerben.

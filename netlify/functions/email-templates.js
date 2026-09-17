@@ -1,6 +1,7 @@
 // Email Templates CRUD API - Supabase Version
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { verboten } from './utils/zugriff.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -45,7 +46,8 @@ export async function handler(event) {
     // GET: Alle aktiven Templates laden
     if (event.httpMethod === 'GET') {
       const params = event.queryStringParameters || {}
-      const includeInactive = params.all === 'true'
+      // Inaktive Vorlagen sieht nur, wer sie verwaltet.
+      const includeInactive = params.all === 'true' && angemeldet.istAdmin
       const kategorie = params.kategorie
 
       let query = supabase
@@ -93,6 +95,12 @@ export async function handler(event) {
     }
 
     // POST: Neues Template erstellen (Admin only)
+    // Vorlagen anlegen, aendern und loeschen ist Sache der Leitung. Vorher
+    // konnte jeder Angemeldete die Firmenvorlagen umschreiben oder loeschen.
+    if (['POST', 'PATCH', 'DELETE'].includes(event.httpMethod) && !angemeldet.istAdmin) {
+      return verboten('Vorlagen verwaltet die Leitung', 'rolle_fehlt')
+    }
+
     if (event.httpMethod === 'POST') {
       const body = JSON.parse(event.body)
       const { name, betreff, inhalt, aktiv = true, kategorie = 'Allgemein', attachments = [] } = body

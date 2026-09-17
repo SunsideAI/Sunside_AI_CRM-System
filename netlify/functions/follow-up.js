@@ -6,6 +6,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { hotLeadVerlangen } from './utils/zugriff.js'
 import { normalisiere, beideSchreibweisen } from '../../shared/status.js'
 
 const supabase = createClient(
@@ -104,6 +105,17 @@ export async function handler(event) {
     }
   }
 
+  // Ein einzelner Kontakt oder eine Aufgabe: nur wenn er zu den eigenen
+  // gehoert. Die Liste filterte schon nach closer_id, der Einzelabruf, das
+  // Aendern und das Loeschen nicht.
+  const eigenerKontakt = async (hotLeadId) => (isAdmin ? null : hotLeadVerlangen(supabase, angemeldet, hotLeadId))
+  const eigeneAufgabe = async (actionId) => {
+    if (isAdmin) return null
+    const { data } = await supabase.from('follow_up_actions').select('hot_lead_id').eq('id', actionId).maybeSingle()
+    if (!data) return { statusCode: 404, headers: corsHeaders, body: JSON.stringify({ error: 'Aufgabe nicht gefunden' }) }
+    return hotLeadVerlangen(supabase, angemeldet, data.hot_lead_id)
+  }
+
   try {
     // ==========================================
     // GET: Follow-Up Leads laden ODER Kanban Actions
@@ -197,6 +209,8 @@ export async function handler(event) {
       // SINGLE LEAD: Einzelnen Lead per ID laden
       // ==========================================
       if (leadId) {
+        const gesperrt = await eigenerKontakt(leadId)
+        if (gesperrt) return gesperrt
         const { data: singleLead, error: singleError } = await supabase
           .from('hot_leads')
           .select(`
@@ -475,6 +489,8 @@ export async function handler(event) {
       }
 
       console.log('Follow-Up POST - Create Action:', { hotLeadId, typ })
+      const gesperrtPost = await eigenerKontakt(hotLeadId)
+      if (gesperrtPost) return gesperrtPost
 
       // Neue Action anlegen
       const { data: newAction, error: actionError } = await supabase
@@ -484,7 +500,7 @@ export async function handler(event) {
           typ,
           beschreibung,
           faellig_am: faelligAm || null,
-          erstellt_von: erstelltVon || null,
+          erstellt_von: angemeldet.id || erstelltVon || null,
           erledigt: false
         })
         .select()
@@ -542,6 +558,8 @@ export async function handler(event) {
       }
 
       console.log('Follow-Up PATCH:', { actionId, hotLeadId, updates })
+      const gesperrtPatch = actionId ? await eigeneAufgabe(actionId) : await eigenerKontakt(hotLeadId)
+      if (gesperrtPatch) return gesperrtPatch
 
       // Action updaten
       if (actionId) {
@@ -630,7 +648,7 @@ export async function handler(event) {
             day: '2-digit', month: '2-digit', year: 'numeric',
             hour: '2-digit', minute: '2-digit'
           })
-          const newEntry = `[${timestamp}] 💬 ${neuerKommentar.trim()} (${userName || 'Follow-Up'})`
+          const newEntry = `[${timestamp}] 💬 ${neuerKommentar.trim()} (${angemeldet.name || userName || 'Follow-Up'})`
 
           // An bestehende Kommentare anhängen (neueste oben)
           updatedKommentar = currentKommentar
@@ -686,6 +704,8 @@ export async function handler(event) {
       }
 
       console.log('Follow-Up DELETE - Action:', actionId)
+      const gesperrtDelete = await eigeneAufgabe(actionId)
+      if (gesperrtDelete) return gesperrtDelete
 
       const { error } = await supabase
         .from('follow_up_actions')

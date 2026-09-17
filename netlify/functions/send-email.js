@@ -1,6 +1,7 @@
 // Send Email API via Resend - Supabase Version
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { darf, verboten, leadBeteiligt, hotLeadBeteiligt } from './utils/zugriff.js'
 import { ABSENDER_KUNDE } from './utils/mail.js'
 
 const supabase = createClient(
@@ -35,6 +36,10 @@ export async function handler(event) {
       body: JSON.stringify({ error: 'Method not allowed' })
     }
   }
+
+  // Mails verschickt der Vertrieb. Wer keine Vertriebsrolle hat, hat hier
+  // nichts zu senden.
+  if (!darf.vertrieb(angemeldet)) return verboten()
 
   try {
     const body = JSON.parse(event.body)
@@ -164,6 +169,7 @@ export async function handler(event) {
 
     // NOTIFY CLOSERS RELEASE
     if (body.action === 'notify-closers-release') {
+      if (!darf.closing(angemeldet)) return verboten('Termine gibt nur ein Closer frei', 'rolle_fehlt')
       const { termin } = body
       if (!termin || !RESEND_API_KEY) {
         return { statusCode: 400, headers: corsHeaders, body: JSON.stringify({ error: 'Ungueltige Anfrage' }) }
@@ -247,10 +253,31 @@ export async function handler(event) {
       return { statusCode: 500, headers: corsHeaders, body: JSON.stringify({ error: 'RESEND nicht konfiguriert' }) }
     }
 
-    const fromEmail = senderEmail && senderEmail.includes('@sunsideai.de') ? senderEmail : 'team@sunsideai.de'
-    const fromName = senderName || 'Sunside AI'
+    // Absender ist, wer angemeldet ist - mit der Adresse aus seinem Profil.
+    // Vorher kam sie aus der Anfrage, und includes('@sunsideai.de') liess
+    // jede fremde Adresse der Firma zu, sogar "x@sunsideai.de.example.com".
+    const { data: profil } = await supabase
+      .from('users').select('email_geschaeftlich, email').eq('id', angemeldet.id).maybeSingle()
+    const eigeneAdresse = String(profil?.email_geschaeftlich || '').trim().toLowerCase()
+    const fromEmail = /^[^@\s]+@sunsideai\.de$/.test(eigeneAdresse) ? eigeneAdresse : 'team@sunsideai.de'
+    if (senderEmail && senderEmail.trim().toLowerCase() !== fromEmail) {
+      console.warn('[send-email] Absender aus der Anfrage ignoriert:', senderEmail)
+    }
+    const fromName = angemeldet.name || senderName || 'Sunside AI'
+    // Antworten gehen an die eigene Adresse - auch wenn sie nicht auf
+    // sunsideai.de endet und darum nicht Absender sein kann.
+    const antwortAn = eigeneAdresse || String(profil?.email || '').trim() || fromEmail
+
+    // Wer Verlauf oder Unterlagen an einen Kontakt schreibt, muss an ihm
+    // beteiligt sein.
+    if (leadId && !(await leadBeteiligt(supabase, angemeldet, leadId))) {
+      return verboten('Dieser Lead gehört nicht zu deinen', 'nicht_beteiligt')
+    }
+    if (hotLeadFuerMaterial && (await hotLeadBeteiligt(supabase, angemeldet, hotLeadFuerMaterial)) !== 'ja') {
+      return verboten('Dieser Kontakt gehört nicht zu deinen', 'nicht_beteiligt')
+    }
     const from = fromName + ' <' + fromEmail + '>'
-    const bccEmail = replyTo || senderEmail || fromEmail
+    const bccEmail = antwortAn
 
     const processedAttachments = await processAttachments(attachments)
 
@@ -258,7 +285,7 @@ export async function handler(event) {
       from,
       to: [to],
       bcc: [bccEmail],
-      reply_to: replyTo || fromEmail,
+      reply_to: antwortAn,
       subject,
       text: content,
       html: formatEmailHtml(content, fromName, fromEmail, senderTelefon)
@@ -282,7 +309,7 @@ export async function handler(event) {
 
     if (leadId) {
       try {
-        await updateLeadHistory({ leadId, action: 'email', details: 'E-Mail gesendet: "' + (templateName || 'Individuell') + '" an ' + to, userName: senderName, attachmentCount: processedAttachments.length })
+        await updateLeadHistory({ leadId, action: 'email', details: 'E-Mail gesendet: "' + (templateName || 'Individuell') + '" an ' + to, userName: fromName, attachmentCount: processedAttachments.length })
       } catch (e) { console.error('Lead-Update Fehler:', e) }
     }
 
@@ -364,12 +391,27 @@ async function updateLeadHistory({ leadId, action, details, userName, attachment
   }
 }
 
+function ausEigenemSpeicher(url) {
+  try {
+    const ziel = new URL(url)
+    const speicher = new URL(process.env.SUPABASE_URL)
+    return ziel.protocol === 'https:' && ziel.host === speicher.host &&
+      ziel.pathname.startsWith('/storage/v1/object/public/')
+  } catch { return false }
+}
+
 async function processAttachments(attachments) {
   if (!attachments || !Array.isArray(attachments) || attachments.length === 0) return []
   const processed = []
   for (const att of attachments) {
     try {
       if (!att.url) continue
+      // Nur aus dem eigenen Speicher. Sonst holt der Server jede beliebige
+      // Adresse ab - auch interne, die von aussen nicht erreichbar sind.
+      if (!ausEigenemSpeicher(att.url)) {
+        console.warn('[send-email] Anhang ausserhalb des Speichers ignoriert:', att.url)
+        continue
+      }
       const response = await fetch(att.url)
       if (!response.ok) continue
       const arrayBuffer = await response.arrayBuffer()

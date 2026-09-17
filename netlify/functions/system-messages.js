@@ -5,6 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { hotLeadVerlangen, verboten } from './utils/zugriff.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 // Die Typen aus dem message_type-Enum der Datenbank. Ein freier String liesse
@@ -127,6 +128,20 @@ export async function handler(event) {
           statusCode: 400,
           headers: corsHeaders,
           body: JSON.stringify({ error: 'empfaengerId, typ und titel sind erforderlich' })
+        }
+      }
+
+      // Nachrichten gehen zwischen den Beteiligten eines Kontakts hin und her.
+      // Ohne diese Pruefung liess sich jedem Kollegen eine Mail vom
+      // System-Absender schicken.
+      if (!angemeldet.istAdmin) {
+        if (!hotLeadId) return verboten('Nachrichten gehören zu einem Kontakt')
+        const gesperrt = await hotLeadVerlangen(supabase, angemeldet, hotLeadId)
+        if (gesperrt) return gesperrt
+        const { data: kontakt } = await supabase
+          .from('hot_leads').select('opener_id, setter_id, closer_id').eq('id', hotLeadId).maybeSingle()
+        if (![kontakt?.opener_id, kontakt?.setter_id, kontakt?.closer_id].includes(empfaengerId)) {
+          return verboten('Der Empfänger gehört nicht zu diesem Kontakt')
         }
       }
 

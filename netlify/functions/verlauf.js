@@ -5,6 +5,7 @@
 // Quelle ein Ereignis stammt; sie zeigt, was wann passiert ist.
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { verboten, hotLeadVerlangen, leadBeteiligt } from './utils/zugriff.js'
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
 
@@ -27,6 +28,7 @@ export async function handler(event) {
 
   const zugang = anmeldungVerlangen(event)
   if (zugang.antwort) return zugang.antwort
+  const angemeldet = zugang.nutzer
 
   if (event.httpMethod !== 'GET') {
     return { statusCode: 405, headers: corsHeaders, body: JSON.stringify({ error: 'Method not allowed' }) }
@@ -40,6 +42,14 @@ export async function handler(event) {
       headers: corsHeaders,
       body: JSON.stringify({ error: 'leadId oder hotLeadId ist erforderlich' })
     }
+  }
+
+  // Die Zeitleiste eines Kontakts sieht, wer an ihm arbeitet.
+  if (hotLeadId) {
+    const gesperrt = await hotLeadVerlangen(supabase, angemeldet, hotLeadId)
+    if (gesperrt) return gesperrt
+  } else if (!(await leadBeteiligt(supabase, angemeldet, leadId))) {
+    return verboten('Dieser Lead gehört nicht zu deinen', 'nicht_beteiligt')
   }
 
   try {

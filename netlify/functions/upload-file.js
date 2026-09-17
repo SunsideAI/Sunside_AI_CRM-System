@@ -2,6 +2,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { randomUUID } from 'crypto'
 import { anmeldungVerlangen } from './utils/session.js'
+import { darf, verboten, hotLeadBeteiligt } from './utils/zugriff.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -35,6 +36,9 @@ export const handler = async (event) => {
       body: JSON.stringify({ error: 'Supabase nicht konfiguriert' })
     }
   }
+
+  // Dateien haengen an Angeboten (Closing) und an Mail-Vorlagen (Leitung).
+  if (!darf.closing(angemeldet)) return verboten('Dateien verwaltet das Closing', 'rolle_fehlt')
 
   try {
     // POST: Datei hochladen
@@ -133,6 +137,26 @@ export const handler = async (event) => {
           headers: corsHeaders,
           body: JSON.stringify({ error: 'public_id (Dateipfad) erforderlich' })
         }
+      }
+
+      // Geloescht wird nur, was hier hochgeladen wurde - und ausser von der
+      // Leitung nur eine Datei, die an einem eigenen Kontakt haengt. Vorher
+      // liess sich jede Datei im Speicher entfernen, SEO-Berichte und
+      // Vorlagen-Anhaenge eingeschlossen.
+      if (!/^crm\/[A-Za-z0-9._-]+$/.test(public_id)) {
+        return verboten('Diese Datei kann hier nicht gelöscht werden')
+      }
+      if (!angemeldet.istAdmin) {
+        const { data: traeger } = await supabase
+          .from('hot_leads')
+          .select('id')
+          .filter('attachments', 'cs', JSON.stringify([{ id: public_id }]))
+          .limit(5)
+        const eigene = []
+        for (const t of traeger || []) {
+          if ((await hotLeadBeteiligt(supabase, angemeldet, t.id)) === 'ja') eigene.push(t.id)
+        }
+        if (eigene.length === 0) return verboten('Diese Datei gehört zu keinem deiner Kontakte', 'nicht_beteiligt')
       }
 
       // Datei löschen

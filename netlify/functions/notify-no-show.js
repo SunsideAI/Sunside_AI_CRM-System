@@ -3,6 +3,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { hotLeadVerlangen, verboten } from './utils/zugriff.js'
 import { ABSENDER_SYSTEM } from './utils/mail.js'
 
 const supabase = createClient(
@@ -62,6 +63,16 @@ export const handler = async (event) => {
         headers: corsHeaders,
         body: JSON.stringify({ error: 'hotLeadId und setterId sind erforderlich' })
       }
+    }
+
+    // Melden darf, wer am Kontakt beteiligt ist - und nur an jemanden, der
+    // es auch ist. Vorher liess sich jedem Kollegen eine Mail schicken.
+    const gesperrt = await hotLeadVerlangen(supabase, angemeldet, hotLeadId)
+    if (gesperrt) return gesperrt
+    const { data: kontakt } = await supabase
+      .from('hot_leads').select('opener_id, setter_id, closer_id').eq('id', hotLeadId).maybeSingle()
+    if (!angemeldet.istAdmin && ![kontakt?.opener_id, kontakt?.setter_id, kontakt?.closer_id].includes(setterId)) {
+      return verboten('Der Empfänger gehört nicht zu diesem Kontakt')
     }
 
     // Setter-Daten laden
