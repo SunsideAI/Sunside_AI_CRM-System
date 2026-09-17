@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import MailBausteine from './MailBausteine'
 import { 
   Mail, 
   Send, 
@@ -163,6 +164,23 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
   const handleEditorInput = (e) => {
     setInhalt(e.target.innerHTML)
   }
+
+  // Vorschlaege aus MailBausteine in den Editor bringen. Reiner Text kommt
+  // herein, Absaetze werden zu Zeilenumbruechen - der Editor haelt HTML.
+  const alsHtml = (text) => markdownToHtml(String(text || '').trim())
+
+  const editorSetzen = (html) => {
+    setInhalt(html)
+    if (editorRef.current) editorRef.current.innerHTML = html
+    if (modalEditorRef.current) modalEditorRef.current.innerHTML = html
+  }
+
+  const bausteinEinfuegen = (text) => {
+    const vorhanden = (editorRef.current?.innerHTML || modalEditorRef.current?.innerHTML || inhalt || '').trim()
+    editorSetzen(vorhanden ? `${vorhanden}<br><br>${alsHtml(text)}` : alsHtml(text))
+  }
+
+  const entwurfUebernehmen = (text) => editorSetzen(alsHtml(text))
 
   // Fett formatieren
   const formatBold = () => {
@@ -439,6 +457,13 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
             {error}
           </div>
         )}
+
+        <MailBausteine
+          hotLeadId={hotLeadId}
+          onBetreff={setBetreff}
+          onEinfuegen={bausteinEinfuegen}
+          onEntwurf={entwurfUebernehmen}
+        />
 
         {/* Template Auswahl */}
         <div>
@@ -723,6 +748,13 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
               {error}
             </div>
           )}
+
+          <MailBausteine
+            hotLeadId={hotLeadId}
+            onBetreff={setBetreff}
+            onEinfuegen={bausteinEinfuegen}
+            onEntwurf={entwurfUebernehmen}
+          />
 
           {/* Template Auswahl */}
           <div>

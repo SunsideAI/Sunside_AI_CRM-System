@@ -1251,7 +1251,7 @@ function Closing() {
               body: JSON.stringify({
                 empfaengerId: selectedLead.closerId,
                 typ: 'no_show_rescheduled',
-                titel: `📅 Re-Termin gebucht: ${selectedLead.unternehmen}`,
+                titel: `Neuer Termin gebucht: ${selectedLead.unternehmen}`,
                 nachricht: `${user?.vor_nachname || user?.name} hat einen neuen Termin für ${selectedLead.unternehmen} am ${terminFormatted} vereinbart.`,
                 hotLeadId: selectedLead.id
               })

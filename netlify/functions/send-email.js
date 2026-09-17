@@ -156,7 +156,7 @@ export async function handler(event) {
     // Vorher kam sie aus der Anfrage, und includes('@sunsideai.de') liess
     // jede fremde Adresse der Firma zu, sogar "x@sunsideai.de.example.com".
     const { data: profil } = await supabase
-      .from('users').select('email_geschaeftlich, email').eq('id', angemeldet.id).maybeSingle()
+      .from('users').select('email_geschaeftlich, email, telefon').eq('id', angemeldet.id).maybeSingle()
     const eigeneAdresse = String(profil?.email_geschaeftlich || '').trim().toLowerCase()
     const fromEmail = /^[^@\s]+@sunsideai\.de$/.test(eigeneAdresse) ? eigeneAdresse : 'team@sunsideai.de'
     if (senderEmail && senderEmail.trim().toLowerCase() !== fromEmail) {
@@ -187,7 +187,9 @@ export async function handler(event) {
       reply_to: antwortAn,
       subject,
       text: content,
-      html: formatEmailHtml(content, fromName, fromEmail, senderTelefon)
+      // Auch die Signatur kommt aus dem Profil: Name, Adresse und Nummer
+      // liessen sich vorher über die Anfrage frei setzen.
+      html: formatEmailHtml(content, fromName, fromEmail, profil?.telefon || senderTelefon)
     }
 
     if (processedAttachments.length > 0) {

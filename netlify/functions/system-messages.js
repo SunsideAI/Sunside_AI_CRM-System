@@ -13,7 +13,11 @@ import { crmNachricht } from './utils/mails.js'
 // sich als Ueberschrift in die Mail schreiben.
 const ERLAUBTE_TYPEN = [
   'Termin abgesagt', 'Termin verschoben', 'Lead gewonnen', 'Lead verloren',
-  'Pool Update', 'Direktbuchung', 'termin_rescheduled', 'Info'
+  'Pool Update', 'Direktbuchung', 'termin_rescheduled', 'Info',
+  // Fehlte: Das Closing schickt diesen Typ, wenn ein geplatzter Termin neu
+  // gelegt wurde. Er stand nicht in der Liste, der Aufruf lief in ein 400,
+  // und der Fehler wurde verschluckt - die Meldung kam also nie an.
+  'no_show', 'no_show_rescheduled'
 ]
 
 const supabase = createClient(

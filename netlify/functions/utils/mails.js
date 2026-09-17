@@ -192,6 +192,8 @@ const NACHRICHT_ART = {
   'Lead verloren':      { bereich: 'Closing', ton: 'info',    zustand: 'Verloren',  pfad: '/dashboard' },
   'Pool Update':        { bereich: 'Pool',    ton: 'aktion',  zustand: 'Zu erledigen', pfad: '/dashboard' },
   'Direktbuchung':      { bereich: 'Termine', ton: 'info',    zustand: 'Neu',       pfad: '/termine' },
+  'no_show':            { bereich: 'Setting', ton: 'warnung', zustand: 'Neu terminieren', pfad: '/setting' },
+  'no_show_rescheduled':{ bereich: 'Closing', ton: 'erfolg',  zustand: 'Neuer Termin', pfad: '/closing' },
   'Info':               { bereich: 'CRM',     ton: 'info',    zustand: 'Info',      pfad: '/dashboard' }
 }
 

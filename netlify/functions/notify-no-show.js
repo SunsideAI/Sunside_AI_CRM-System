@@ -94,7 +94,7 @@ export const handler = async (event) => {
 
     // 1. In-App-Benachrichtigung erstellen
     const messageId = `NOSHOW-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
-    const titel = `🔴 Lead nicht erschienen: ${unternehmen}`
+    const titel = `Nicht erschienen: ${unternehmen}`
     const closerName = angemeldet.name || 'Ein Closer'
 
     const nachricht = `${closerName || 'Closer'} hat ${ansprechpartner || 'den Ansprechpartner'} (${unternehmen}) als nicht erschienen markiert. Bitte neuen Termin vereinbaren.`
