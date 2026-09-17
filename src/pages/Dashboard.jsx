@@ -1106,7 +1106,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
               {/* TERMIN Section */}
               {selectedLead.terminDatum && (
-                <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
+                <div className="space-y-3 mt-8">
                   <h3 className="abschnitt-titel">
                     Termin
                   </h3>
@@ -1121,7 +1121,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
               {/* DEAL-DETAILS Section */}
               {(selectedLead.setup > 0 || selectedLead.retainer > 0) && (
-                <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
+                <div className="space-y-3 mt-8">
                   <h3 className="abschnitt-titel flex items-center gap-2">
                     <DollarSign className="w-4 h-4" />
                     Deal-Details
@@ -1150,7 +1150,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
               )}
 
               {/* STATUS & NOTIZEN Section */}
-              <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
+              <div className="space-y-3 mt-8">
                 <h3 className="abschnitt-titel">
                   Status
                 </h3>
@@ -1173,7 +1173,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                   anderen Schublade. Hier stand bis eben die dritte Kopie des
                   handgebauten Kommentar-Zerlegers; die Zeitleiste kann
                   dasselbe und mehr. */}
-              <div className="space-y-3 border-t border-outline-variant pt-6 mt-6">
+              <div className="space-y-3 mt-8">
                 <h3 className="abschnitt-titel flex items-center gap-2">
                   <History className="w-4 h-4" />
                   Verlauf

@@ -60,7 +60,7 @@ export default function Gespraechsausgang({ lead, onGespeichert }) {
   }
 
   return (
-    <div className="border-t border-outline-variant pt-6">
+    <div className="mt-8">
       <h3 className="abschnitt-titel mb-3">
         Ausgang des Abschlussgesprächs
       </h3>

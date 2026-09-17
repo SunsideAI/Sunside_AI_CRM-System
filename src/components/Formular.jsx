@@ -65,15 +65,15 @@ export function Paar({ children }) {
 export function Angabe({ name, children, breit = false }) {
   return (
     <div className={breit ? 'sm:col-span-2 min-w-0' : 'min-w-0'}>
-      <p className="feld-label mb-0.5">{name}</p>
-      <div className="text-body-md text-on-surface break-words">{children ?? '–'}</div>
+      <p className="angabe-label">{name}</p>
+      <div className="angabe-wert">{children ?? '–'}</div>
     </div>
   )
 }
 
 /** Mehrere Angaben als Raster — die übliche Kopfzeile einer Schublade. */
 export function Angaben({ children }) {
-  return <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-4">{children}</div>
+  return <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">{children}</div>
 }
 
 /**

@@ -106,7 +106,7 @@ function Statistik({ werte }) {
 }
 
 export default function LeadSchublade({
-  offen, onClose, titel,
+  offen, onClose, titel, untertitel,
   kontakt = {},
   termin,
   statistik,
@@ -119,7 +119,9 @@ export default function LeadSchublade({
   children
 }) {
   return (
-    <SlideDrawer isOpen={offen} onClose={onClose} title={titel} width={breite} fuss={fuss}>
+    <SlideDrawer isOpen={offen} onClose={onClose} title={titel}
+                 untertitel={untertitel || kontakt.kategorie}
+                 width={breite} fuss={fuss}>
       {/* 1 — Kontaktdaten */}
       <Abschnitt titel="Kontaktdaten" icon={UserIcon}>
         <Angaben>

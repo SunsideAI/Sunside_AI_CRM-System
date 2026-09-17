@@ -10,7 +10,7 @@ import { X } from 'lucide-react'
  * @param {React.ReactNode} children - Content to render inside the drawer
  * @param {string} width - Width class (default: 'max-w-xl')
  */
-function SlideDrawer({ isOpen, onClose, title, children, width = 'max-w-xl', headerActions, fuss }) {
+function SlideDrawer({ isOpen, onClose, title, untertitel, children, width = 'max-w-2xl', headerActions, fuss }) {
   if (!isOpen) return null
 
   return createPortal(
@@ -28,9 +28,19 @@ function SlideDrawer({ isOpen, onClose, title, children, width = 'max-w-xl', hea
       >
         {/* Header */}
         <div className="sticky top-0 bg-surface border-b border-outline-variant px-4 sm:px-6 py-4 flex items-center justify-between z-10">
-          <h2 className="text-title-lg font-semibold text-on-surface truncate pr-4">
-            {title}
-          </h2>
+          <div className="min-w-0 pr-4">
+            <h2 className="text-title-lg font-semibold text-on-surface truncate">
+              {title}
+            </h2>
+            {/* Eine Zeile Einordnung unter dem Namen. Der Kopf trug bisher nur
+                den Firmennamen - wer die Schublade oeffnete, musste erst
+                nach unten sehen, um zu wissen, womit er es zu tun hat. */}
+            {untertitel && (
+              <p className="text-body-sm text-on-surface-variant truncate mt-0.5">
+                {untertitel}
+              </p>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             {headerActions}
             <button

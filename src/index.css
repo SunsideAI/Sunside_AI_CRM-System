@@ -249,16 +249,33 @@
      benutzt hat sie nur die Filterzeile. Was fehlte, war der Rest
      drumherum: Abschnitt, Beschriftung, Hinweis, Fußleiste. */
 
-  /* Die Überschrift eines Abschnitts. Versal und gesperrt, damit sie
-     sich vom Inhalt abhebt, ohne laut zu sein. */
+  /* Die Überschrift eines Abschnitts.
+     Versal und gesperrt, aber eine Spur dunkler und fester als der Fließtext
+     darunter — so trägt SIE die Gliederung. Das Symbol davor steht in der
+     Hausfarbe: Es gibt jedem Abschnitt einen Ankerpunkt fürs Auge, ohne dass
+     dafür eine Linie nötig wäre. */
   .abschnitt-titel {
-    @apply text-label-lg font-medium text-on-surface-variant uppercase tracking-wide;
+    @apply text-label-md font-semibold text-on-surface uppercase tracking-[0.08em];
   }
 
-  /* Der Abstand zwischen zwei Abschnitten samt Trennlinie. Die erste
-     Linie fällt weg — über dem ersten Abschnitt steht der Kopf. */
+  .abschnitt-titel > svg {
+    @apply text-primary;
+  }
+
+  /* Der Abstand zwischen zwei Abschnitten.
+     Hier stand eine durchgehende Trennlinie. Bei fünf Abschnitten waren das
+     fünf waagerechte Striche in einem Blick — die Schublade sah aus wie eine
+     Einstellungsliste, nicht wie eine Übersicht. Luft gliedert genauso gut
+     und ist leiser: 2 rem trennen deutlicher als ein Haarstrich. */
   .abschnitt + .abschnitt {
-    @apply border-t border-outline-variant pt-6 mt-6;
+    @apply mt-8;
+  }
+
+  /* Nach der Überschrift etwas weniger Luft als zwischen den Zeilen des
+     Inhalts — dann gehört sie sichtbar zu dem, was folgt. */
+  .abschnitt > .abschnitt-titel + *,
+  .abschnitt > div:first-child + * {
+    @apply mt-3;
   }
 
   .abschnitt > * + * {
@@ -268,6 +285,17 @@
   /* Feldbeschriftung. Eine Zeile, immer über dem Feld, nie daneben. */
   .feld-label {
     @apply block text-label-md text-on-surface-variant mb-1.5;
+  }
+
+  /* Eine Angabe zum Lesen: Beschriftung klein darüber, Wert darunter.
+     Enger gesetzt als ein Eingabefeld — es gibt nichts anzuklicken, also
+     braucht es auch keine Klickfläche. */
+  .angabe-label {
+    @apply block text-label-sm text-on-surface-variant mb-0.5;
+  }
+
+  .angabe-wert {
+    @apply text-body-md text-on-surface break-words;
   }
 
   /* Der Stern an Pflichtfeldern. */

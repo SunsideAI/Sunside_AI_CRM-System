@@ -1856,7 +1856,7 @@ function Opening() {
               </div>
 
               {/* WEBSITE-STATISTIKEN Section */}
-              <div className="space-y-3 border-t border-outline-variant pt-6 mb-6">
+              <div className="space-y-3 mt-8 mb-6">
                 <h3 className="abschnitt-titel flex items-center gap-2">
                   <Building2 className="w-4 h-4" />
                   Website-Statistiken
@@ -1902,7 +1902,7 @@ function Opening() {
               </div>
 
               {/* STATUS & NOTIZEN Section */}
-              <div className="space-y-4 border-t border-outline-variant pt-6">
+              <div className="space-y-4 mt-8">
                 <h3 className="abschnitt-titel">
                   Status & Notizen
                 </h3>
@@ -2090,7 +2090,7 @@ function Opening() {
                   so wie in Setting, Closing und Follow-Up. Vorher hing er
                   mitten in "Status & Notizen", weshalb er in jedem Tab an
                   einer anderen Stelle auftauchte. */}
-              <div className="space-y-3 border-t border-outline-variant pt-6 mb-6">
+              <div className="space-y-3 mt-8 mb-6">
                 <h3 className="abschnitt-titel flex items-center gap-2">
                   <History className="w-4 h-4" />
                   Verlauf

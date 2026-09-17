@@ -1808,7 +1808,7 @@ function Closing() {
                     Beratungsgespraech gelegt, der Setter hat es gehalten und
                     das Abschlussgespraech gebucht - zwei Namen, zwei Rollen. */}
                 {(selectedPoolLead.openerName || selectedPoolLead.setterName) && (
-                  <div className="space-y-3 border-t border-outline-variant pt-6">
+                  <div className="space-y-3 mt-8">
                     <h3 className="abschnitt-titel">Vorarbeit</h3>
                     <div className="flex flex-wrap items-center gap-2">
                       {selectedPoolLead.openerName && (
@@ -1831,7 +1831,7 @@ function Closing() {
                     ausfuellen MUSS, bevor er buchen darf, standen nirgends.
                     Der Closer entschied ueber einen Termin, ohne zu wissen,
                     was im Beratungsgespraech herauskam. */}
-                <div className="space-y-3 border-t border-outline-variant pt-6">
+                <div className="space-y-3 mt-8">
                   <h3 className="abschnitt-titel">
                     Aus dem Beratungsgespräch
                   </h3>
@@ -1839,7 +1839,7 @@ function Closing() {
                 </div>
 
                 {/* Die Zeitleiste - dieselbe wie in jeder anderen Lead-Ansicht. */}
-                <div className="space-y-3 border-t border-outline-variant pt-6">
+                <div className="space-y-3 mt-8">
                   <h3 className="abschnitt-titel">
                     Verlauf
                   </h3>
@@ -1860,7 +1860,7 @@ function Closing() {
                 </div>
 
                 {/* Bewerben Button */}
-                <div className="border-t border-outline-variant pt-6">
+                <div className="mt-8">
                   <button
                     onClick={() => {
                       setSelectedPoolLead(null)
@@ -2847,7 +2847,7 @@ function Closing() {
                   </div>
 
                   {/* TERMIN Section */}
-                  <div className="space-y-3 border-t border-outline-variant pt-6">
+                  <div className="space-y-3 mt-8">
                     <h3 className="abschnitt-titel">
                       Termin
                     </h3>
@@ -2926,7 +2926,7 @@ function Closing() {
                   )}
 
                   {/* WEBSITE-STATISTIKEN Section */}
-                  <div className="border-t border-outline-variant pt-6">
+                  <div className="mt-8">
                     <button
                       type="button"
                       onClick={() => setShowWebsiteStats(!showWebsiteStats)}
@@ -2993,7 +2993,7 @@ function Closing() {
                       Abschlussgespraech buchen darf - angezeigt wurden sie
                       danach nirgends. Der Closer ging mit einem Termin und
                       einem Kommentarfeld ins Gespraech. */}
-                  <div className="space-y-3 border-t border-outline-variant pt-6">
+                  <div className="space-y-3 mt-8">
                     <h3 className="abschnitt-titel">
                       Übergabe
                     </h3>
@@ -3002,7 +3002,7 @@ function Closing() {
 
                   {/* DEAL-DETAILS Section (wenn nicht Lead-Status) */}
                   {selectedLead.status !== STATUS.BERATUNG_VEREINBART && (
-                    <div className="space-y-3 border-t border-outline-variant pt-6">
+                    <div className="space-y-3 mt-8">
                       <h3 className="abschnitt-titel flex items-center gap-2">
                         <Euro className="w-4 h-4" />
                         Deal-Details
@@ -3043,7 +3043,7 @@ function Closing() {
                       ersten datierten Eintrag. Die datierten Einträge stehen
                       in der Zeitleiste; sie hier nochmals zu zeigen war
                       doppelt gemoppelt. Betrifft 588 von 7.588 Kontakten. */}
-                  <div className="border-t border-outline-variant pt-6">
+                  <div className="mt-8">
                     <h3 className="abschnitt-titel mb-3 flex items-center gap-2">
                       <History className="w-4 h-4" />
                       Verlauf

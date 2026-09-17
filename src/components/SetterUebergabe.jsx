@@ -273,7 +273,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
       {meldung && <p className="text-sm text-green-700">{meldung}</p>}
 
       {/* Reicht der Erstanruf nicht aus, geht der Kontakt zurück an den Opener. */}
-      <div className="pt-2 border-t">
+      <div className="pt-2">
         <RueckgabeKnopf hotLead={lead} onErledigt={onGespeichert} />
       </div>
     </div>
@@ -281,7 +281,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
 
   // Schon dokumentiert: kein Auswahlfeld mehr, der Ausgang steht fest.
   if (status === STATUS.BERATUNG_GEFUEHRT) {
-    return <div className="border-t pt-4 mt-4">{dokumentation}</div>
+    return <div>{dokumentation}</div>
   }
 
   if (status !== STATUS.BERATUNG_VEREINBART) return null
@@ -289,7 +289,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
   const gewaehlt = AUSGAENGE.find(a => a.wert === ausgang)
 
   return (
-    <div className="border-t pt-4 mt-4 space-y-3">
+    <div className="space-y-3">
       {/* Keine eigene Ueberschrift: Der Abschnitt der Schublade heisst
           bereits "Beratungsgespraech". */}
       <p className="feld-hinweis mt-0">

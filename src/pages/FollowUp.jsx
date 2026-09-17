@@ -729,6 +729,7 @@ function FollowUp() {
         offen={!!selectedLead}
         onClose={() => setSelectedLead(null)}
         titel={selectedLead?.unternehmen || 'Kontakt'}
+        untertitel={[selectedLead?.kategorie, selectedLead?.ort].filter(Boolean).join(' · ')}
         kontakt={{
           ansprechpartner: [selectedLead?.ansprechpartner_vorname, selectedLead?.ansprechpartner_nachname]
             .filter(Boolean).join(' '),

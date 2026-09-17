@@ -484,6 +484,7 @@ function Setting() {
         offen={!!gewaehlt}
         onClose={() => { setGewaehlt(null); setMailOffen(false); setTerminOffen(false) }}
         titel={gewaehlt?.unternehmen || 'Kontakt'}
+        untertitel={[gewaehlt?.kategorie, gewaehlt?.ort].filter(Boolean).join(' · ')}
         kontakt={{
           ansprechpartner: [gewaehlt?.ansprechpartnerVorname, gewaehlt?.ansprechpartnerNachname]
             .filter(Boolean).join(' '),
