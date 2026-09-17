@@ -63,7 +63,7 @@ export default function MailBausteine({ hotLeadId, onBetreff, onEinfuegen, onEnt
   return (
     <div className="abschnitt space-y-3">
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h4 className="abschnitt-titel mb-0">
+        <h4 className="abschnitt-titel mb-0 inline-flex items-center gap-2">
           <Sparkles className="w-4 h-4" />
           Textvorschläge aus der Übergabe
         </h4>
@@ -100,7 +100,7 @@ export default function MailBausteine({ hotLeadId, onBetreff, onEinfuegen, onEnt
         type="button"
         onClick={holen}
         disabled={laedt}
-        className="btn-primary w-full sm:w-auto"
+        className="btn-primary inline-flex items-center justify-center gap-2 w-full sm:w-auto"
       >
         {laedt ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
         {laedt ? 'Schreibt…' : 'Vorschläge holen'}
@@ -140,7 +140,7 @@ export default function MailBausteine({ hotLeadId, onBetreff, onEinfuegen, onEnt
             <p className="feld-label mb-0">Betreff</p>
             <p className="text-body-md text-on-surface truncate">{ergebnis.betreff}</p>
           </div>
-          <button type="button" onClick={() => onBetreff?.(ergebnis.betreff)} className="btn-secondary whitespace-nowrap">
+          <button type="button" onClick={() => onBetreff?.(ergebnis.betreff)} className="btn-secondary inline-flex items-center gap-2 whitespace-nowrap">
             Übernehmen
           </button>
         </div>
@@ -156,7 +156,7 @@ export default function MailBausteine({ hotLeadId, onBetreff, onEinfuegen, onEnt
                   <button
                     type="button"
                     onClick={() => einfuegen(baustein, i)}
-                    className="kopf-knopf whitespace-nowrap"
+                    className="kopf-knopf inline-flex items-center gap-1.5 whitespace-nowrap"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     {eingefuegt.includes(i) ? 'Nochmal einfügen' : 'Einfügen'}
@@ -172,7 +172,7 @@ export default function MailBausteine({ hotLeadId, onBetreff, onEinfuegen, onEnt
               <p className="text-body-sm text-on-surface-variant">
                 Alle Bausteine zusammen ergeben einen fertigen Text.
               </p>
-              <button type="button" onClick={() => onEntwurf?.(ergebnis.entwurf)} className="btn-secondary whitespace-nowrap">
+              <button type="button" onClick={() => onEntwurf?.(ergebnis.entwurf)} className="btn-secondary inline-flex items-center gap-2 whitespace-nowrap">
                 <FileText className="w-4 h-4" />
                 Kompletten Entwurf übernehmen
               </button>
@@ -184,7 +184,7 @@ export default function MailBausteine({ hotLeadId, onBetreff, onEinfuegen, onEnt
       {ergebnis && !ergebnis.bausteine?.length && ergebnis.entwurf && (
         <div className="rounded-lg border border-outline-variant/60 p-3">
           <p className="text-body-sm text-on-surface whitespace-pre-line">{ergebnis.entwurf}</p>
-          <button type="button" onClick={() => onEntwurf?.(ergebnis.entwurf)} className="btn-secondary mt-3">
+          <button type="button" onClick={() => onEntwurf?.(ergebnis.entwurf)} className="btn-secondary inline-flex items-center gap-2 mt-3">
             Text übernehmen
           </button>
         </div>
