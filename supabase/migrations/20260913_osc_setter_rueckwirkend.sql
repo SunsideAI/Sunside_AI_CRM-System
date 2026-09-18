@@ -40,15 +40,19 @@ update public.hot_leads
    set setter_id = null
  where closer_id is null;
 
--- Wer rückwirkend Setter wird, muss die Rolle auch tragen - sonst zeigt
--- setter_id auf jemanden, der die Setter-Ansicht gar nicht sehen darf.
--- Betroffen sind genau die heutigen Closer (10 Personen, angeführt von
--- 180 / 108 / 88 Terminen). Die Rolle wird ergänzt, nicht ersetzt: wer
--- Closer ist, bleibt Closer.
-update public.users
-   set rollen = rollen || 'Setter'::rolle_type
- where 'Closer' = any(rollen::text[])
-   and not ('Setter' = any(rollen::text[]));
+-- Frueher stand hier: jeder Closer bekommt zusaetzlich die Setter-Rolle,
+-- damit setter_id nicht auf jemanden zeigt, der die Setter-Ansicht nicht
+-- sehen darf.
+--
+-- Das ist entfallen. Der Rollenzuschnitt ist inzwischen festgelegt - Setter
+-- sind Mark, Marvin und Max - und eine Blanko-Vergabe haette ihn sofort
+-- wieder aufgeweicht. Die rueckwirkende setter_id bleibt trotzdem richtig:
+-- Der Closer HAT das Beratungsgespraech gefuehrt. Er sieht diese Kontakte
+-- weiter ueber closer_id im Closing und im Kalender; die Setting-Ansicht
+-- braucht er dafuer nicht, denn dort steht nur, was noch zu tun ist.
+--
+-- Der Zuschnitt selbst steht in 20260918_osc_rollenzuschnitt.sql und laeuft
+-- direkt nach dieser Datei.
 
 -- ---------------------------------------------------------------------
 -- Coldcaller wird Opener - EINHEITLICH, ABER ERST NACH DEM DEPLOY
