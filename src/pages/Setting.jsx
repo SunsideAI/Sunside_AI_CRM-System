@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
 import {
   Search, Calendar, Phone, Video, Loader2, User as UserIcon,
-  CheckCircle2, AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight
+  CheckCircle2, AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight, Lock
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { STATUS, anzeigeName } from '../../shared/status.js'
+import { STATUS, anzeigeName , stufeVonLead, STUFE, STUFE_TEXT } from '../../shared/status.js'
 import LeadSchublade from '../components/LeadSchublade'
 import GeplatzteTermine from '../components/GeplatzteTermine'
 import SlideDrawer from '../components/SlideDrawer'
 import SetterUebergabe from '../components/SetterUebergabe'
+import KommentarKasten from '../components/KommentarKasten'
 import SetterPool from '../components/SetterPool'
 import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
@@ -150,6 +151,12 @@ function Setting() {
       setLaedt(false)
     }
   }
+
+  // Ein geplatztes Abschlussgespräch, das der Closer behalten hat, steht
+  // weiter in der Geplatzt-Liste des Setters - gehört aber ins Closing. Dort
+  // darf hier niemand mehr etwas ändern.
+  const stufe = gewaehlt ? stufeVonLead(gewaehlt) : null
+  const gesperrt = !!stufe && stufe !== STUFE.SETTING
 
   if (!isSetter() && !isAdmin()) {
     return (
@@ -568,7 +575,22 @@ function Setting() {
           </button>
         )}
       >
-        {gewaehlt && (
+        {gewaehlt && gesperrt && (
+          <div className="space-y-4">
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-primary-fixed/30 border border-primary-fixed-dim">
+              <Lock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+              <div>
+                <p className="text-body-md font-medium text-primary">
+                  {STUFE_TEXT[stufe]?.kopf || 'Dieser Kontakt ist weitergezogen'}
+                </p>
+                <p className="text-body-sm text-primary">{STUFE_TEXT[stufe]?.satz}</p>
+              </div>
+            </div>
+            <KommentarKasten leadId={gewaehlt.originalLeadId} onGespeichert={() => setNeuladen(n => n + 1)} />
+          </div>
+        )}
+
+        {gewaehlt && !gesperrt && (
           <>
             {mailOffen && (
               <EmailComposer

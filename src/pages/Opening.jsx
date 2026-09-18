@@ -1,4 +1,4 @@
-import { STATUS } from '../../shared/status.js'
+import { STATUS, stufeVonLead, STUFE_TEXT } from '../../shared/status.js'
 
 /**
  * Wer darf einen geplatzten Termin neu legen?
@@ -1765,13 +1765,24 @@ function Opening() {
                     </div>
                   </div>
                 ) : (
-                  <div className="mb-4 p-3 bg-primary-fixed/30 border border-primary-fixed-dim rounded-lg flex items-center gap-3">
-                    <Lock className="w-5 h-5 text-primary flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-primary">Dieser Lead ist im Closing-Prozess</p>
-                      <p className="text-xs text-primary">Änderungen nur noch über die Closing-Seite. Du kannst weiterhin Kommentare hinzufügen.</p>
-                    </div>
-                  </div>
+                  /* Wo der Kontakt WIRKLICH liegt. Vorher stand hier immer
+                     "im Closing-Prozess", sobald ein Beratungstermin gebucht
+                     war - auch wenn er noch beim Setter lag. */
+                  (() => {
+                    const stufe = stufeVonLead(hotLeadData || { status: STATUS.BERATUNG_VEREINBART })
+                    const text = STUFE_TEXT[stufe]
+                    return (
+                      <div className="mb-4 p-3 bg-primary-fixed/30 border border-primary-fixed-dim rounded-lg flex items-center gap-3">
+                        <Lock className="w-5 h-5 text-primary flex-shrink-0" />
+                        <div>
+                          <p className="text-sm font-medium text-primary">
+                            {text?.kopf || 'Dieser Lead ist weitergezogen'}
+                          </p>
+                          <p className="text-xs text-primary">{text?.satz}</p>
+                        </div>
+                      </div>
+                    )
+                  })()
                 )
               )}
 

@@ -5,7 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
-import { STATUS, normalisiere, uebergangErlaubt, anzeigeName, ruecknahmeZiel, beideSchreibweisen } from '../../shared/status.js'
+import { STATUS, normalisiere, uebergangErlaubt, anzeigeName, ruecknahmeZiel, beideSchreibweisen, stufeVonLead, zustaendigFuerStufe, STUFE_TEXT } from '../../shared/status.js'
 import { FELDER, uebergabePruefen, grenzenPruefen, UEBERGABE_1, UEBERGABE_2 } from '../../shared/felder.js'
 import { systemMailSenden } from './utils/mailLayout.js'
 import { termineZurueckImPool } from './utils/mails.js'
@@ -1055,6 +1055,32 @@ export async function handler(event) {
             continue
           }
           fields[dbField] = value
+        }
+      }
+
+      // Weitergezogen heisst: aus der Hand gegeben.
+      //
+      // Wer an einem Kontakt beteiligt ist, bleibt es - aber aendern darf nur
+      // der, bei dem der Kontakt gerade LIEGT. Ein Setter, dessen Gespraech
+      // laengst ins Closing uebergeben ist, soll dort nicht mehr am Status,
+      // am Termin oder an den Preisen drehen. Kommentieren darf er weiter:
+      // Was er noch erfaehrt, gehoert an den Kontakt.
+      if (!angemeldet.istAdmin && Object.keys(fields).length > 0) {
+        const { data: lage } = await supabase
+          .from('hot_leads')
+          .select('status, setter_id, closer_id, opener_id, reaktivierung_bearbeiter_id')
+          .eq('id', hotLeadId)
+          .maybeSingle()
+
+        const zustaendig = zustaendigFuerStufe(lage || {})
+        // Ist die Stufe unbesetzt - etwa ein Termin im Pool -, bleibt es beim
+        // bisherigen Schutz: Beteiligung genuegt.
+        if (zustaendig.length > 0 && !zustaendig.includes(angemeldet.id)) {
+          const stufe = stufeVonLead(lage || {})
+          return verboten(
+            `${STUFE_TEXT[stufe]?.kopf || 'Dieser Kontakt ist weitergezogen'}. ${STUFE_TEXT[stufe]?.satz || ''}`.trim(),
+            'andere_stufe'
+          )
         }
       }
 

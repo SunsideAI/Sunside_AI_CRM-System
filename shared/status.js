@@ -140,6 +140,80 @@ export function uebergangErlaubt(von, nach) {
   return (UEBERGAENGE[v] || []).includes(n)
 }
 
+/**
+ * In welcher Stufe des Prozesses ein Kontakt gerade steckt.
+ *
+ * Die Stufe steht nirgends als Feld - sie ergibt sich aus dem Status und, bei
+ * den beiden geplatzten Terminen, aus der Frage, ob noch ein Closer dranhängt.
+ * Ein geplatztes ABSCHLUSSgespräch ohne Closer ist wieder Sache des Setters;
+ * behält der Closer es (no_show_keep_in_closing), bleibt es im Closing.
+ *
+ * Gebraucht wird das überall dort, wo eine Ansicht sagt, wo der Kontakt liegt:
+ * Das Opening zeigte jedem gebuchten Beratungstermin an, er sei "im
+ * Closing-Prozess" - auch wenn er noch beim Setter lag.
+ */
+export const STUFE = {
+  OPENING:  'opening',
+  SETTING:  'setting',
+  CLOSING:  'closing',
+  GEWONNEN: 'gewonnen',
+  VERLOREN: 'verloren'
+}
+
+export function stufeVonLead(lead) {
+  const s = normalisiere(lead?.status)
+  if (!s) return STUFE.OPENING
+
+  if (s === STATUS.GEWONNEN) return STUFE.GEWONNEN
+  if (IST_VERLOREN.includes(s)) return STUFE.VERLOREN
+
+  if (s === STATUS.NICHT_ERSCHIENEN || s === STATUS.TERMIN_ABGESAGT) {
+    return (lead.closer_id || lead.closerId) ? STUFE.CLOSING : STUFE.SETTING
+  }
+  if (s === STATUS.BERATUNG_VEREINBART || s === STATUS.BERATUNG_GEFUEHRT) return STUFE.SETTING
+
+  return STUFE.CLOSING
+}
+
+/** Wie eine Stufe in der Oberfläche heisst - und was sie für andere bedeutet. */
+export const STUFE_TEXT = {
+  [STUFE.SETTING]: {
+    name: 'Setting',
+    kopf: 'Dieser Kontakt ist im Setting',
+    satz: 'Das Beratungsgespräch liegt beim Setter. Du kannst weiterhin Kommentare hinzufügen.'
+  },
+  [STUFE.CLOSING]: {
+    name: 'Closing',
+    kopf: 'Dieser Kontakt ist im Closing',
+    satz: 'Änderungen laufen über die Closing-Seite. Du kannst weiterhin Kommentare hinzufügen.'
+  },
+  [STUFE.GEWONNEN]: {
+    name: 'Abschluss',
+    kopf: 'Dieser Kontakt ist gewonnen',
+    satz: 'Der Kontakt ist Kunde. Du kannst weiterhin Kommentare hinzufügen.'
+  },
+  [STUFE.VERLOREN]: {
+    name: 'Abschluss',
+    kopf: 'Dieser Kontakt ist verloren',
+    satz: 'Hier ist nichts mehr zu tun. Du kannst weiterhin Kommentare hinzufügen.'
+  }
+}
+
+/**
+ * Wer den Kontakt in seiner aktuellen Stufe inhaltlich ändern darf.
+ * Alle anderen Beteiligten dürfen weiter kommentieren - mehr nicht.
+ */
+export function zustaendigFuerStufe(lead) {
+  const stufe = stufeVonLead(lead)
+  const wert = (...namen) => namen.map(n => lead?.[n]).find(Boolean) || null
+
+  if (stufe === STUFE.SETTING) {
+    // Ohne Setter liegt der Kontakt wieder beim Opener: Er terminiert neu.
+    return [wert('setter_id', 'setterId') || wert('opener_id', 'openerId')].filter(Boolean)
+  }
+  return [wert('closer_id', 'closerId'), wert('reaktivierung_bearbeiter_id', 'reaktivierungBearbeiterId')].filter(Boolean)
+}
+
 /** Sonderweg: genau eine Stufe zurück, mit Pflicht-Grund. */
 export function ruecknahmeZiel(von) {
   const v = normalisiere(von)
