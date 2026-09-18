@@ -493,7 +493,7 @@ function UebersichtContent({ user, isColdcaller, isCloser, isAdmin, meldeAktuali
       show: isColdcaller() || isAdmin()
     },
     {
-      name: 'Beratungsgespräche führen',
+      name: 'Gespräch vorbereiten',
       description: 'Halten, dokumentieren, übergeben',
       path: '/setting',
       icon: Users,
