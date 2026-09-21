@@ -1,5 +1,5 @@
 import { STATUS } from '../../shared/status.js'
-import { UEBERGABE_1 } from '../../shared/felder.js'
+import { UEBERGABE_1, uebergabePruefen } from '../../shared/felder.js'
 import { istSetter, istLeitung } from '../../shared/rollen.js'
 import UebergabeFelder from './UebergabeFelder'
 import { useState, useEffect } from 'react'
@@ -71,6 +71,10 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
     mobilnummer: lead?.telefon || ''
   })
   const [uebergabeOffen, setUebergabeOffen] = useState([])
+  // Fehler beim Buchen stehen beim Knopf, nicht ganz oben: Wer unten auf
+  // "Termin buchen" drueckt, sieht eine Meldung am Kopf der Maske nicht -
+  // genau das stand im Testbericht.
+  const [buchFehler, setBuchFehler] = useState('')
 
   // 'Makler' heisst in der Lead-Kategorie seit jeher 'Immobilienmakler'.
   const taetigkeit = uebergabe1.berufsgruppe === 'Sachverständiger'
@@ -252,10 +256,6 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
     if (!unternehmensname) {
       errors.unternehmen = true
     }
-    // Ziel und Schmerzpunkt werden hier NICHT geprueft: Sie sind Gate-Felder
-    // der Uebergabe, das Backend weist die Buchung ohne sie ab und benennt
-    // sie einzeln. Eine zweite Pruefung erzeugte nur eine zweite, andere
-    // Fehlermeldung fuer denselben Mangel.
     if (!selectedSlot) {
       errors.slot = true
     }
@@ -263,12 +263,31 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
     setValidationErrors(errors)
     
     if (Object.keys(errors).length > 0) {
-      setError('Bitte alle Pflichtfelder ausfüllen')
+      setBuchFehler('Bitte alle Pflichtfelder ausfüllen')
       return
+    }
+
+    // Die Uebergabe wird hier geprueft, VOR der Buchung.
+    //
+    // Vorher stand hier, das Backend weise die Buchung ohne diese Felder ab -
+    // das tut es auch, nur eben nachdem Calendly den Termin schon angelegt
+    // hat. Im Test entstand so ein Termin im Kalender des Kunden, zu dem es
+    // im CRM keinen Kontakt gibt, und der Opener sah nur "Buchung
+    // fehlgeschlagen". Ein Termin, den niemand kennt, ist schlimmer als eine
+    // Fehlermeldung.
+    if (!isReschedule) {
+      const pruefung = uebergabePruefen(uebergabe1, UEBERGABE_1)
+      if (!pruefung.vollstaendig) {
+        setUebergabeOffen(pruefung.offen)
+        setBuchFehler('Zum Buchen fehlen noch Angaben aus dem Erstanruf: '
+          + pruefung.offen.map(o => o.name).join(', '))
+        return
+      }
+      setUebergabeOffen([])
     }
     
     setBooking(true)
-    setError('')
+    setBuchFehler('')
     
     const ansprechpartnerName = `${ansprechpartnerVorname} ${ansprechpartnerNachname}`.trim()
     const eventType = eventTypes.find(et => et.type === selectedType)
@@ -435,7 +454,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             // Formular markiert, statt nur eine Fehlermeldung zu zeigen.
             if (hotLeadResponse.status === 422 && hotLeadData.error === 'uebergabe_unvollstaendig') {
               setUebergabeOffen(hotLeadData.offen || [])
-              setError(`${hotLeadData.message} Fehlend: `
+              setBuchFehler(`${hotLeadData.message} Fehlend: `
                 + (hotLeadData.offen || []).map(o => o.name).join(', '))
               setBooking(false)
               return
@@ -447,7 +466,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             if (hotLeadResponse.status === 409) {
               const existingId = hotLeadData.existingHotLeadId
               if (!existingId) {
-                setError('Für diesen Lead existiert bereits ein Beratungsgespräch, aber der bestehende Eintrag konnte nicht ermittelt werden. Bitte einen anderen Lead wählen.')
+                setBuchFehler('Für diesen Lead existiert bereits ein Beratungsgespräch, aber der bestehende Eintrag konnte nicht ermittelt werden. Bitte einen anderen Lead wählen.')
                 setBooking(false)
                 return
               }
@@ -457,7 +476,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
                 'ACHTUNG: Der alte Calendly-Termin wird NICHT automatisch abgesagt - bitte manuell prüfen.'
               )
               if (!shouldReschedule) {
-                setError('Abgebrochen. Der Calendly-Termin wurde gebucht, aber nicht ins CRM übernommen. Bitte den Calendly-Termin manuell absagen, falls nicht mehr benötigt.')
+                setBuchFehler('Abgebrochen. Der Calendly-Termin wurde gebucht, aber nicht ins CRM übernommen. Bitte den Calendly-Termin manuell absagen, falls nicht mehr benötigt.')
                 setBooking(false)
                 return
               }
@@ -483,7 +502,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
                 console.log('Bestehender Hot Lead auf neuen Slot verschoben:', existingId)
                 createdHotLeadId = existingId
               } catch (patchErr) {
-                setError('Update des bestehenden Hot Leads fehlgeschlagen: ' + patchErr.message)
+                setBuchFehler('Update des bestehenden Hot Leads fehlgeschlagen: ' + patchErr.message)
                 setBooking(false)
                 return
               }
@@ -491,7 +510,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
               // 400 mit setter_not_found / closer_not_found:
               // Calendly-Termin ist schon gebucht, aber Hot Lead konnte nicht erstellt werden.
               // User muss den Fehler sehen, sonst "verschwindet" der Termin aus seinem CRM-Kalender.
-              setError(hotLeadData.message || 'Setter oder Closer konnte nicht zugewiesen werden. Termin nicht gespeichert.')
+              setBuchFehler(hotLeadData.message || 'Setter oder Closer konnte nicht zugewiesen werden. Termin nicht gespeichert.')
               setBooking(false)
               return
             } else {
@@ -639,7 +658,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
 
     } catch (err) {
       console.error('Buchungsfehler:', err)
-      setError(err.message || 'Fehler bei der Terminbuchung')
+      setBuchFehler(err.message || 'Fehler bei der Terminbuchung')
     } finally {
       setBooking(false)
     }
@@ -1013,6 +1032,12 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
                 </span>
               </span>
             </label>
+          )}
+
+          {buchFehler && (
+            <div className="p-3 mb-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              {buchFehler}
+            </div>
           )}
 
           {isReschedule ? (

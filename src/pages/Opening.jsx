@@ -615,7 +615,7 @@ function Opening() {
     
     // Validierung: Beratungsgespräch erfordert Termin-Buchung
     if (editForm.ergebnis === 'Beratungsgespräch') {
-      alert('Bitte buche zuerst einen Termin über den "Termin mit Closer buchen" Button.')
+      alert('Bitte buche zuerst einen Termin über den "Termin mit Setter buchen" Button.')
       return
     }
     
@@ -2057,7 +2057,7 @@ function Opening() {
                         className="w-full flex items-center justify-center px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                       >
                         <Calendar className="w-4 h-4 mr-2" />
-                        Termin mit Closer buchen
+                        Termin mit Setter buchen
                       </button>
                     )}
                     
@@ -2198,7 +2198,7 @@ function Opening() {
                     {editMode && editForm.ergebnis === 'Beratungsgespräch' && (
                       <div className="flex items-center p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
                         <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
-                        <span>Bitte buche zuerst einen Termin über den Button "Termin mit Closer buchen".</span>
+                        <span>Bitte buche zuerst einen Termin über den Button "Termin mit Setter buchen".</span>
                       </div>
                     )}
                     
