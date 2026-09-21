@@ -23,6 +23,8 @@ const corsHeaders = {
 const ERLAUBT = {
   bewerbung_pflicht_setter: { art: 'schalter' },
   bewerbung_pflicht_closer: { art: 'schalter' },
+  // Phase 5: die Nachfass-Erinnerungen im stündlichen Lauf. Aus bis zum Go-live.
+  osc_fristen_aktiv: { art: 'schalter' },
   // Ticket 7: welche Calendly-Terminart welchem Gespraech dient, als JSON
   // { "<uri>": "beratung" | "abschluss" }. Leer heisst "wie bisher".
   calendly_terminart_zuordnung: { art: 'text' },

@@ -6,7 +6,7 @@
 // Zuordnung der Platzhalter zu den Feldern.
 
 import { BRANCHE, ZIEL, noetigeAnfragen } from './felder.js'
-import { segmentMailFassung, empfehlung as nachfassEmpfehlung } from './mailstrecken.js'
+import { segmentMailFassung, empfehlung as nachfassEmpfehlung, HOECHSTENS_VERSUCHE } from './mailstrecken.js'
 
 const SEGMENT_NAME = {
   eigentuemer: 'Ziel Eigentümer',
@@ -58,12 +58,22 @@ export function empfohleneVorlage(anlass, lead, bereitsGesendet = []) {
   }
 
   if (anlass === 'nachfassen') {
+    // Leitplanke 1: Ein gebuchter Termin schlägt jede Mail.
+    const termin = lead?.termin_abschlussgespraech
+    if (termin && new Date(termin).getTime() > Date.now()) {
+      return { schluessel: null, grund: 'Es steht ein Termin. Bis dahin ruht das Nachfassen.' }
+    }
+    // Leitplanke 4: Nach fünf Versuchen der Abschied.
+    const versuche = Number(lead?.nachfass_schritt) || 0
+    if (versuche >= HOECHSTENS_VERSUCHE && !bereitsGesendet.includes('abschied')) {
+      return { schluessel: 'nachfass_abschied', grund: `${versuche} Versuche ohne Ergebnis. Mehr rechnet sich nicht, jetzt der Abschied.` }
+    }
     const e = nachfassEmpfehlung(lead, bereitsGesendet)
     if (!e) return { schluessel: null, grund: 'Alle passenden Stücke sind schon verschickt.' }
     const schluessel = WERKZEUG_VORLAGE[e.werkzeug.id] || null
     return {
       schluessel,
-      grund: `${e.werkzeug.name}: ${e.grund}`
+      grund: `Versuch ${versuche + 1} von ${HOECHSTENS_VERSUCHE}. ${e.werkzeug.name}: ${e.grund}`
         + (schluessel ? '' : '. Dafür gibt es keine Mailvorlage, bitte frei schreiben.')
     }
   }

@@ -2417,6 +2417,16 @@ function SettingAnalytics({ user, isAdmin, meldeAktualisieren }) {
             />
           </div>
 
+          {/* Der Frühindikator: Hat der Kunde selbst gesagt, was er bräuchte? */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Kennzahl
+              label="Mit ausgesprochenem Bedarf" value={formatPercent(z.bedarfQuote)}
+              subtitle={`${z.mitBedarf || 0} von ${z.stattgefunden || 0} Gesprächen`}
+              icon={Lightbulb} color="neutral" laedt={loading}
+              vergleich={vergleich('bedarfQuote')}
+            />
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <DiagrammKarte title="Beratungstermine im Zeitverlauf" subtitle="Je Termin-Datum: stattgefunden, geplatzt, offen">
               {stats.zeitverlauf?.some(d => (d.count || 0) > 0) ? (
@@ -2828,6 +2838,17 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
               label="Entschieden" value={(stats.summary?.gewonnen || 0) + (stats.summary?.verloren || 0)}
               subtitle="gewonnen oder verloren"
               icon={CheckCircle} color="neutral"
+            />
+          </div>
+
+          {/* Stichtag statt Zeitraum: was jetzt offen ist und keinen Termin mehr
+              vor sich hat. Diese Vorgänge verschwinden sonst still. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Kennzahl
+              label="Ohne Termin in der Zukunft" value={stats.summary?.ohneZukunftstermin || 0}
+              subtitle="offene Vorgänge, heute"
+              icon={CalendarX}
+              color={(stats.summary?.ohneZukunftstermin || 0) > 0 ? 'warnung' : 'neutral'}
             />
           </div>
 

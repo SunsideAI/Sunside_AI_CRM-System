@@ -476,6 +476,16 @@ export async function handler(event) {
           angebot_angefordert_am: record.angebot_angefordert_am || null,
           angebot_verschickt_am: record.angebot_verschickt_am || null,
           wiedervorlage_am: record.wiedervorlage_am || null,
+          verlust_grund: record.verlust_grund ?? null,
+          // Ausgang und Nachfassen. Ohne sie zeigte der Ausgang nach dem
+          // Neuladen nichts an, und die Nachfass-Empfehlung kannte weder
+          // Diagnose noch Zähler.
+          gespraechsausgang: record.gespraechsausgang ?? null,
+          zugesagter_schritt: record.zugesagter_schritt ?? null,
+          zugesagt_bis: record.zugesagt_bis ?? null,
+          nachfass_grund: record.nachfass_grund ?? null,
+          nachfass_schritt: record.nachfass_schritt ?? 0,
+          nachfass_letzter_versuch: record.nachfass_letzter_versuch ?? null,
           vertrag_laeuft_bis: record.vertrag_laeuft_bis || null,
           kuendigung_zum: record.kuendigung_zum || null
         }
@@ -977,6 +987,7 @@ export async function handler(event) {
         'zugesagt_bis': 'zugesagt_bis',
         'nachfass_grund': 'nachfass_grund',
         'wiedervorlage_am': 'wiedervorlage_am',
+        'verlust_grund': 'verlust_grund',
         'status': 'status',
         'setup': 'setup',
         'retainer': 'retainer',
@@ -1225,6 +1236,25 @@ export async function handler(event) {
               .join(', '),
             felder: ausserhalb
           })
+        }
+      }
+
+      // Verloren, aber wiedervorlagefähig: nur mit Datum und Grund. Sonst ist
+      // es ein toter Datensatz, den der Wecker nie aufruft.
+      if (fields.status === STATUS.VERLOREN_WIEDERVORLAGE) {
+        const { data: bisher } = await supabase
+          .from('hot_leads').select('wiedervorlage_am, verlust_grund').eq('id', hotLeadId).maybeSingle()
+        const datum = fields.wiedervorlage_am || bisher?.wiedervorlage_am
+        const grund = String(fields.verlust_grund || bisher?.verlust_grund || '').trim()
+        if (!datum || !grund) {
+          return {
+            statusCode: 422,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              error: 'wiedervorlage_unvollstaendig',
+              message: 'Für „Verloren, wiedervorlagefähig" braucht es ein Datum und einen Grund.'
+            })
+          }
         }
       }
 

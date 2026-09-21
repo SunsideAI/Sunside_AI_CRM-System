@@ -278,20 +278,26 @@ export function beratungsAusgang(lead, heute) {
 
 async function setterZahlen({ leitung, personId, zeitraum }) {
   const [leads, namen] = await Promise.all([
-    alleSeiten('hot_leads', 'id, status, setter_id, termin_beratungsgespraech, termin_abschlussgespraech', q => q.not('termin_beratungsgespraech', 'is', null)),
+    alleSeiten('hot_leads', 'id, status, setter_id, termin_beratungsgespraech, termin_abschlussgespraech, bedarf_wortlaut', q => q.not('termin_beratungsgespraech', 'is', null)),
     namensListe()
   ])
   const heute = berlinTag(new Date().toISOString())
 
-  const leer = () => ({ termine: 0, stattgefunden: 0, uebergeben: 0, nachfassen: 0, verloren: 0, gefuehrt: 0, noShow: 0, abgesagt: 0, ohneAusgang: 0, anstehend: 0 })
+  const leer = () => ({ termine: 0, stattgefunden: 0, uebergeben: 0, nachfassen: 0, verloren: 0, gefuehrt: 0, noShow: 0, abgesagt: 0, ohneAusgang: 0, anstehend: 0, mitBedarf: 0 })
   const summe = leer()
   const verlauf = {}
   const proPerson = {}
 
-  const zaehle = (z, ausgang) => {
+  // Mit Bedarf: Der Kunde hat im Gespräch selbst ausgesprochen, was er
+  // bräuchte. Gespräche mit so einem Satz schließen deutlich häufiger ab; die
+  // Quote ist der Frühindikator, den es vorher nicht gab (Mailstrecken Teil C).
+  const zaehle = (z, ausgang, lead) => {
     z.termine++
     z[ausgang]++
-    if (['uebergeben', 'nachfassen', 'verloren', 'gefuehrt'].includes(ausgang)) z.stattgefunden++
+    if (['uebergeben', 'nachfassen', 'verloren', 'gefuehrt'].includes(ausgang)) {
+      z.stattgefunden++
+      if (String(lead.bedarf_wortlaut || '').trim()) z.mitBedarf++
+    }
   }
 
   for (const lead of leads) {
@@ -300,7 +306,7 @@ async function setterZahlen({ leitung, personId, zeitraum }) {
     if (personId && lead.setter_id !== personId) continue
 
     const ausgang = beratungsAusgang(lead, heute)
-    zaehle(summe, ausgang)
+    zaehle(summe, ausgang, lead)
 
     const stattgefunden = ['uebergeben', 'nachfassen', 'verloren', 'gefuehrt'].includes(ausgang)
     eintragen(verlauf, tag, {
@@ -311,7 +317,7 @@ async function setterZahlen({ leitung, personId, zeitraum }) {
     })
 
     if (leitung && lead.setter_id) {
-      zaehle(proPerson[lead.setter_id] ||= { id: lead.setter_id, ...leer() }, ausgang)
+      zaehle(proPerson[lead.setter_id] ||= { id: lead.setter_id, ...leer() }, ausgang, lead)
     }
   }
 
@@ -320,7 +326,8 @@ async function setterZahlen({ leitung, personId, zeitraum }) {
     // Erschienen ist, wer zum Gespräch kam. Abgesagte Termine fehlen im
     // Nenner - eine rechtzeitige Absage ist kein Nichterscheinen.
     erscheinungsQuote: quote(z.stattgefunden, z.stattgefunden + z.noShow),
-    uebergabeQuote: quote(z.uebergeben, z.stattgefunden)
+    uebergabeQuote: quote(z.uebergeben, z.stattgefunden),
+    bedarfQuote: quote(z.mitBedarf, z.stattgefunden)
   })
 
   return {
@@ -398,6 +405,19 @@ async function closingZahlen({ leitung, personId, zeitraum }) {
 
   const entschieden = summe.gewonnen + summe.verloren
 
+  // Vorgänge ohne einen einzigen Termin in der Zukunft: die wirksamste
+  // einzelne Auswertung laut Mailstrecken Teil G, weil genau diese Vorgänge
+  // still verschwinden. Ein Stichtag, kein Zeitraum: gezählt wird, was jetzt
+  // offen ist.
+  const jetzt = Date.now()
+  const inZukunft = t => t && new Date(t).getTime() > jetzt
+  const ohneZukunftstermin = leads.filter(lead => {
+    const ausgang = closingAusgang(lead)
+    if (!['offen', 'angebotVersendet', 'noShow'].includes(ausgang)) return false
+    if (personId && lead.closer_id !== personId) return false
+    return !inZukunft(lead.termin_abschlussgespraech) && !inZukunft(lead.termin_beratungsgespraech)
+  }).length
+
   // Die Last je Closer: alles, was jemandem gehört, unabhängig vom Zeitraum.
   let leadsProCloser = []
   if (leitung) {
@@ -427,7 +447,8 @@ async function closingZahlen({ leitung, personId, zeitraum }) {
       offen: summe.offen + summe.angebotVersendet,
       closingQuote: quote(summe.gewonnen, entschieden),
       umsatzGesamt: summe.umsatz,
-      umsatzDurchschnitt: summe.gewonnen > 0 ? summe.umsatz / summe.gewonnen : 0
+      umsatzDurchschnitt: summe.gewonnen > 0 ? summe.umsatz / summe.gewonnen : 0,
+      ohneZukunftstermin
     },
     zeitverlauf: formatZeitverlauf(verlauf, zeitraum),
     perUser: Object.values(proPerson)

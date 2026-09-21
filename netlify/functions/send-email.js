@@ -222,13 +222,19 @@ export async function handler(event) {
       try {
         const stueck = templateName || subject
         const { data: stand } = await supabase
-          .from('hot_leads').select('material_versendet').eq('id', hotLeadFuerMaterial).maybeSingle()
+          .from('hot_leads').select('material_versendet, status, nachfass_schritt').eq('id', hotLeadFuerMaterial).maybeSingle()
 
         const bisher = Array.isArray(stand?.material_versendet) ? stand.material_versendet : []
-        if (stueck && !bisher.includes(stueck)) {
-          await supabase.from('hot_leads')
-            .update({ material_versendet: [...bisher, stueck] })
-            .eq('id', hotLeadFuerMaterial)
+        const aenderung = {}
+        if (stueck && !bisher.includes(stueck)) aenderung.material_versendet = [...bisher, stueck]
+        // Im Nachfassen zählt jede Mail als Versuch. Nach fünf ist Schluss,
+        // dann legt das CRM den Abschied vor (Mailstrecken Teil D).
+        if (stand?.status === 'Wird nachgefasst') {
+          aenderung.nachfass_schritt = (stand.nachfass_schritt || 0) + 1
+          aenderung.nachfass_letzter_versuch = new Date().toISOString()
+        }
+        if (Object.keys(aenderung).length > 0) {
+          await supabase.from('hot_leads').update(aenderung).eq('id', hotLeadFuerMaterial)
         }
       } catch (e) {
         // Der Versand ist gelungen - daran soll ein misslungener Vermerk

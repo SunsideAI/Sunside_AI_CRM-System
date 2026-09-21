@@ -1203,6 +1203,12 @@ function Closing() {
       // Hot Lead Updates sammeln (inkl. Billing-Daten bei Abschluss)
       const hotLeadUpdates = {}
       if (hasStatusChange) hotLeadUpdates.status = data.status
+      // Wiedervorlagefähig heißt: mit Datum und Grund. Ohne beides weckt den
+      // Kontakt niemand, und keiner weiß später, warum er ruhte (Teil C).
+      if (hasStatusChange && data.status === STATUS.VERLOREN_WIEDERVORLAGE) {
+        hotLeadUpdates.wiedervorlage_am = data.wiedervorlage_am || null
+        hotLeadUpdates.verlust_grund = data.verlust_grund || null
+      }
       if (hasTerminChange) {
         if (selectedLead.termin_abschlussgespraech) {
           hotLeadUpdates.termin_abschlussgespraech = data.terminDatum
@@ -2784,6 +2790,32 @@ function Closing() {
                             ))}
                           </select>
                         </div>
+                        {editData.status === STATUS.VERLOREN_WIEDERVORLAGE && selectedLead.status !== STATUS.VERLOREN_WIEDERVORLAGE && (
+                          <div className="space-y-3 p-3 bg-surface-container rounded-lg">
+                            <div>
+                              <label className="feld-label">Wiedervorlage am <span className="text-red-500">*</span></label>
+                              <input
+                                type="date"
+                                value={editData.wiedervorlage_am || ''}
+                                onChange={(e) => handleEditChange('wiedervorlage_am', e.target.value)}
+                                className="input-field"
+                              />
+                              <p className="text-xs text-gray-500 mt-1">
+                                Nach sechs Monaten, oder zu dem Zeitpunkt, den der Kunde selbst genannt hat.
+                              </p>
+                            </div>
+                            <div>
+                              <label className="feld-label">Grund <span className="text-red-500">*</span></label>
+                              <textarea
+                                rows={2}
+                                value={editData.verlust_grund || ''}
+                                onChange={(e) => handleEditChange('verlust_grund', e.target.value)}
+                                placeholder="Warum es gerade nicht passt, und was besprochen war"
+                                className="textarea-field"
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ) : (
                       /* View Mode */

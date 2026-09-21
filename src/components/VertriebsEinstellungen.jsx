@@ -17,6 +17,11 @@ const TEXTE = {
     titel: 'Abschlussgespräche: Bewerbung nötig',
     an:  'Closer bewerben sich, ein Admin teilt zu.',
     aus: 'Closer übernehmen Leads direkt. Wer zuerst kommt, bekommt den Lead.'
+  },
+  osc_fristen_aktiv: {
+    titel: 'Erinnerungen beim Nachfassen',
+    an:  'Das CRM erinnert an geplatzte Termine nach 48 Stunden, vertagte Beratungen, stille Nachfass-Kontakte, den Zweifler nach 14 Tagen und den Abschied nach fünf Versuchen.',
+    aus: 'Aus bis zum Go-live. Die übrigen Erinnerungen laufen unabhängig davon.'
   }
 }
 
