@@ -2,7 +2,7 @@ import { STATUS } from '../../shared/status.js'
 import { UEBERGABE_1, uebergabePruefen } from '../../shared/felder.js'
 import { istSetter, istLeitung } from '../../shared/rollen.js'
 import UebergabeFelder from './UebergabeFelder'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Calendar, Clock, Loader2, Check, ChevronLeft, ChevronRight, Mail, Phone, Video, Users, User } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -75,6 +75,13 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
   // "Termin buchen" drueckt, sieht eine Meldung am Kopf der Maske nicht -
   // genau das stand im Testbericht.
   const [buchFehler, setBuchFehler] = useState('')
+  const fehlerRef = useRef(null)
+
+  // Der Hinweis nuetzt nichts, wenn er unter dem Bildrand steht: Nach einem
+  // Fehlversuch holt die Maske ihn in den Blick.
+  useEffect(() => {
+    if (buchFehler) fehlerRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [buchFehler])
 
   // 'Makler' heisst in der Lead-Kategorie seit jeher 'Immobilienmakler'.
   const taetigkeit = uebergabe1.berufsgruppe === 'Sachverständiger'
@@ -1035,7 +1042,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
           )}
 
           {buchFehler && (
-            <div className="p-3 mb-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div ref={fehlerRef} className="p-3 mb-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
               {buchFehler}
             </div>
           )}
