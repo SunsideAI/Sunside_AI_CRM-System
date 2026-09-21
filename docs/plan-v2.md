@@ -267,3 +267,33 @@ Masken zweimal zu bauen.
 Phase 0 ist bis auf das Notizfeld erledigt (`742f793`, `41ff088`). Das Notizfeld wandert in
 Phase 1. Danach kommt Phase 1, offen ist dafür nur noch E6. Phase 2 läuft nebenher,
 Phase 3 sobald die Felder stehen, dann 4 und 5, und erst danach das Go-live-Fenster.
+
+---
+
+## Stand 21.09., abends
+
+Umgesetzt, lokal committet, **noch nicht gepusht** (kein Vorschau-Build, nichts veröffentlicht):
+
+| Phase | Commit | Was |
+|---|---|---|
+| 1 und 4 | `0b7840b` | Felder nach Feedback und Spezifikation, Setting in Gesprächsreihenfolge mit Fragesätzen, fünf Gates, reduzierter Modus, Sachverständigen-Sprache, Fragen-Bubble mit gespeichertem Modellaufruf. Nebenbei: Sachverständige bekamen nie ihre Mail-Fassung (Vergleich auf „Sachverständige" statt „Sachverständiger"). |
+| 3 | `2aaffbb` | 18 Vorlagen wortgleich aus der Mailstrecken-Datei (Skript `scripts/vorlagen-einpflegen.mjs`), eine Empfehlung je Anlass, Platzhalter aus den Übergabefeldern, Versandsperre bei offenen Platzhaltern, Video-Links in den Einstellungen. Nebenbei: kein doppelter Gruß mehr in Kundenmails, Links in der Hausfarbe. |
+| 5 | `bac8c48` | Versuchszähler, Termin schlägt Mail, Abschied nach fünf, Pflicht-Datum und Grund bei „wiedervorlagefähig", fünf neue Fristen im stündlichen Lauf (Schalter, aus bis Go-live), zwei neue Auswertungen. |
+| 2 | `ea8fb49` | 41 sichtbare Gedankenstrich-Sätze umformuliert. Die Tooltips stammen jetzt aus der Spezifikation; Pauls eigene Fassung steht noch aus. |
+
+In der Datenbank eingespielt (gemeinsam mit Produktion, alles additiv): `20260921_osc_felder_v2.sql`,
+`20260921_osc_mailvorlagen.sql`, `20260921_osc_nachfassen_fristen.sql`, dazu die 18 Vorlagen.
+Geprüft: Der veröffentlichte Stand liest keine der geänderten Spalten und sieht die neuen
+Vorlagen-Kategorien nicht.
+
+**Nachweis bisher:** 31 Logikprüfungen der Felder, Empfehlungs- und Platzhalterlogik per Node,
+Build, `npm run pruefe`, Testlauf der Fristen in einer zurückgerollten Transaktion. **Noch
+offen: der Durchlauf im Browser auf der Vorschau.** Dafür muss gepusht werden.
+
+**Offen:**
+- Video- und VSL-Links in den Einstellungen eintragen (sonst sperrt der Mail-Dialog den Versand).
+- Käufer-Übergangsfassung der Segment-Mail (in Freigabe), Material Kaufinteressenten (E7), Calendly-Felder (E8).
+- 15-Minuten-Erinnerung, wenn nach der Buchung keine Segment-Mail rausging (Ticket 9, Rest).
+- Nebenbefund: Die Vorlage „Ergebnisse & Live-Beispiel" steht seit der Umbenennung auf
+  „Opening" und ist im veröffentlichten Stand (Kategorie „Kaltakquise") nicht mehr zu sehen.
+- Go-live: zusätzlich `osc_fristen_aktiv` auf „an" stellen.
