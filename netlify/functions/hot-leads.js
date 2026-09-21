@@ -6,7 +6,16 @@
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { STATUS, normalisiere, uebergangErlaubt, anzeigeName, ruecknahmeZiel, beideSchreibweisen, stufeVonLead, zustaendigFuerStufe, STUFE_TEXT } from '../../shared/status.js'
-import { FELDER, uebergabePruefen, grenzenPruefen, UEBERGABE_1, UEBERGABE_2 } from '../../shared/felder.js'
+import {
+  FELDER, uebergabePruefen, grenzenPruefen, zielAbleiten, UEBERGABE_1, UEBERGABE_2,
+  SPALTEN_UEBERGABE, SPALTEN_UEBERGABE_1
+} from '../../shared/felder.js'
+
+// Alles, was die beiden Übergaben lesen und schreiben, plus der gespeicherte
+// Fragen-Vorschlag des Settings.
+const UEBERGABE_SPALTEN = [...new Set([
+  ...Object.keys(FELDER), ...SPALTEN_UEBERGABE, 'fragen_vorschlag', 'fragen_vorschlag_am'
+])]
 import { systemMailSenden } from './utils/mailLayout.js'
 import { termineZurueckImPool } from './utils/mails.js'
 import { darf, verboten, hotLeadVerlangen, leadBeteiligt, UUID } from './utils/zugriff.js'
@@ -451,7 +460,7 @@ export async function handler(event) {
           // Felder der beiden Uebergaben. Ohne sie kann die Setter-Ansicht
           // nicht vorbefuellen und das Gate ist im Frontend unsichtbar.
           ...Object.fromEntries(
-            Object.keys(FELDER).map(k => [k, record[k] ?? null])
+            UEBERGABE_SPALTEN.map(k => [k, record[k] ?? null])
           ),
           // Berechnet, nicht eingegeben.
           noetige_anfragen: record.noetige_anfragen ?? null,
@@ -884,15 +893,20 @@ export async function handler(event) {
       if (ortInput) hotLeadData.ort = ortInput
 
       // Die Felder der Übergabe 1 wandern mit in den Datensatz.
-      for (const schluessel of Object.keys(FELDER)) {
-        if (FELDER[schluessel].bereich === UEBERGABE_1 && body[schluessel] !== undefined) {
-          hotLeadData[schluessel] = body[schluessel]
-        }
+      for (const schluessel of SPALTEN_UEBERGABE_1) {
+        if (body[schluessel] !== undefined) hotLeadData[schluessel] = body[schluessel]
       }
+      // Das Arbeits-Ziel leitet der Server selbst aus der Mehrfachauswahl ab,
+      // statt dem mitgeschickten Wert zu glauben: Es steuert Mail und Video.
+      if (Array.isArray(body.ziele)) Object.assign(hotLeadData, zielAbleiten(body))
 
       if (terminart) hotLeadData.terminart = terminart
       if (meetingLink) hotLeadData.meeting_link = meetingLink
-      if (infosErstgespraech) hotLeadData.kommentar = infosErstgespraech
+      // Der Kommentar bleibt die Kurzfassung, die Listen und Schubladen zeigen.
+      // Die Notizen des Openers stehen seit dem 21.09. in der Übergabe statt in
+      // einem eigenen Feld am Termin-Knopf, sie gehören trotzdem dazu.
+      const kurzfassung = [infosErstgespraech, body.notizen_erstanruf?.trim()].filter(Boolean).join('\n\n')
+      if (kurzfassung) hotLeadData.kommentar = kurzfassung
 
       console.log('Creating Hot Lead:', hotLeadData)
 
@@ -955,8 +969,7 @@ export async function handler(event) {
         // Die Felder beider Uebergaben heissen im CRM wie in der Datenbank -
         // eine Umbenennung waere nur eine weitere Stelle, die auseinanderlaufen
         // kann.
-        ...Object.fromEntries(Object.keys(FELDER).map(k => [k, k])),
-        'schmerzpunkt_vertieft': 'schmerzpunkt_vertieft',
+        ...Object.fromEntries(UEBERGABE_SPALTEN.map(k => [k, k])),
         'termin_abschlussgespraech': 'termin_abschlussgespraech',
         'meeting_link_abschluss': 'meeting_link_abschluss',
         'gespraechsausgang': 'gespraechsausgang',
@@ -1223,6 +1236,12 @@ export async function handler(event) {
           .from('hot_leads').select('*').eq('id', hotLeadId).maybeSingle()
 
         const uebergabe2 = uebergabePruefen({ ...stand, ...fields }, UEBERGABE_2)
+        // Der Abschlusstermin ist das fünfte Gate und im reduzierten Modus das
+        // einzige. Er ist keine Spalte der Maske, sondern kommt vom Terminwähler.
+        if (!(fields.termin_abschlussgespraech || stand?.termin_abschlussgespraech)) {
+          uebergabe2.offen.push({ schluessel: 'termin_abschlussgespraech', name: 'Abschlussgespräch am' })
+          uebergabe2.vollstaendig = false
+        }
         if (!uebergabe2.vollstaendig) {
           return {
             statusCode: 422,

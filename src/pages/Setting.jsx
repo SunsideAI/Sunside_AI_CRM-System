@@ -104,6 +104,18 @@ function Setting() {
       setHinweis(`Der Termin mit ${name} ist neu gelegt.`)
     }
 
+    // Vertagt: kein Abschlusstermin, der Setter fasst selbst nach. Der Kontakt
+    // bleibt in „Zu dokumentieren", damit er nicht aus dem Blick gerät.
+    if (updates?.vertagt) {
+      setFilter('zu_tun')
+      setSeite(1)
+      setHinweis(`${name} ist gespeichert und bleibt unter „Zu dokumentieren". Bitte binnen 48 Stunden nachfassen.`)
+    }
+
+    if (updates?.status === STATUS.VERLOREN_ENDGUELTIG) {
+      setHinweis(`${name} ist als Absage abgeschlossen.`)
+    }
+
     setGewaehlt(null)
   }
 

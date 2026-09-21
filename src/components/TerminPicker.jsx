@@ -1,5 +1,5 @@
 import { STATUS } from '../../shared/status.js'
-import { UEBERGABE_1, uebergabePruefen } from '../../shared/felder.js'
+import { UEBERGABE_1, uebergabePruefen, zielAbleiten, BRANCHE } from '../../shared/felder.js'
 import { istSetter, istLeitung } from '../../shared/rollen.js'
 import UebergabeFelder from './UebergabeFelder'
 import { useState, useEffect, useRef } from 'react'
@@ -84,16 +84,20 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
   }, [buchFehler])
 
   // 'Makler' heisst in der Lead-Kategorie seit jeher 'Immobilienmakler'.
-  const taetigkeit = uebergabe1.berufsgruppe === 'Sachverständiger'
+  const taetigkeit = uebergabe1.berufsgruppe === BRANCHE.SV
     ? 'Sachverständiger'
-    : uebergabe1.berufsgruppe === 'andere'
-      ? 'Sonstige'
+    : uebergabe1.berufsgruppe === BRANCHE.ANDERE
+      ? (uebergabe1.branche_andere?.trim() || 'Sonstige')
       : 'Immobilienmakler'
+
+  // Die Mehrfachauswahl des Openers ergibt das Arbeits-Ziel, das Mail, Video
+  // und Zahlenblock steuert. Abgeleitet wird an einer Stelle, in felder.js.
+  const zielStand = zielAbleiten(uebergabe1)
 
   // Was frueher in einem Freitextfeld stand, steht jetzt in zwei Feldern.
   // Zusammengesetzt ergibt es denselben Satz fuer Kommentar und Calendly.
   const problemstellung = [
-    uebergabe1.ziel && `Ziel: ${uebergabe1.ziel}`,
+    (uebergabe1.ziele || []).length > 0 && `Ziel: ${(zielStand.ziel ? [zielStand.ziel] : uebergabe1.ziele).join(', ')}`,
     uebergabe1.schmerzpunkt_wortlaut && `„${uebergabe1.schmerzpunkt_wortlaut}"`
   ].filter(Boolean).join(' — ')
 
@@ -451,7 +455,8 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
               ansprechpartnerVorname: ansprechpartnerVorname || null,
               ansprechpartnerNachname: ansprechpartnerNachname || null,
               ort: lead?.stadt || lead?.ort || null,
-              ...uebergabe1
+              ...uebergabe1,
+              ...zielStand
             })
           })
 

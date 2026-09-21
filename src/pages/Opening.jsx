@@ -2078,17 +2078,21 @@ function Opening() {
                       </button>
                     )}
 
-                    {/* Neuer Kommentar */}
-                    <div>
-                      <label className="feld-label">Neuer Kommentar hinzufügen</label>
-                      <textarea
-                        value={editForm.neuerKommentar}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, neuerKommentar: e.target.value }))}
-                        rows={2}
-                        placeholder="Notiz hinzufügen..."
-                        className="textarea-field"
-                      />
-                    </div>
+                    {/* Neuer Kommentar. Nicht beim Beratungsgespräch: Dort füllt der
+                        Opener gleich die Übergabe aus, und die hat ihr eigenes
+                        Notizfeld (Feedback 21.09.: „Notizfeld hier ist Quatsch"). */}
+                    {editForm.ergebnis !== 'Beratungsgespräch' && (
+                      <div>
+                        <label className="feld-label">Neuer Kommentar hinzufügen</label>
+                        <textarea
+                          value={editForm.neuerKommentar}
+                          onChange={(e) => setEditForm(prev => ({ ...prev, neuerKommentar: e.target.value }))}
+                          rows={2}
+                          placeholder="Notiz hinzufügen..."
+                          className="textarea-field"
+                        />
+                      </div>
+                    )}
                   </div>
                 ) : (
                   // Anzeigemodus

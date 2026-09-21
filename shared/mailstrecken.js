@@ -18,6 +18,8 @@
  * niemand raten muss, warum gerade dieses Stueck.
  */
 
+import { BRANCHE } from './felder.js'
+
 // ---------------------------------------------------------------------------
 // Die festen Ketten: was vor den beiden Terminen laeuft
 // ---------------------------------------------------------------------------
@@ -59,7 +61,7 @@ export const SEGMENT = {
  */
 export function segmentMailFassung(lead) {
   if (lead?.vorhaben === true) return 'vorhaben'
-  if (lead?.berufsgruppe === 'Sachverständige') return 'sachverstaendige'
+  if (lead?.berufsgruppe === BRANCHE.SV) return 'sachverstaendige'
   switch (lead?.ziel) {
     case SEGMENT.EIGENTUEMER: return 'eigentuemer'
     case SEGMENT.KAEUFER:     return 'kaeufer'
@@ -262,7 +264,7 @@ const EMPFEHLUNG = {
 
 /** Sachverstaendige schlagen das Segment - auch beim Nachfassen. */
 function empfehlungsSegment(lead) {
-  if (lead?.berufsgruppe === 'Sachverständige') return 'sachverstaendige'
+  if (lead?.berufsgruppe === BRANCHE.SV) return 'sachverstaendige'
   switch (lead?.ziel) {
     case SEGMENT.EIGENTUEMER: return 'eigentuemer'
     case SEGMENT.KAEUFER:     return 'kaeufer'
