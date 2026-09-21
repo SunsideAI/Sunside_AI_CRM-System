@@ -451,7 +451,7 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
             return (
               <p className="text-xs text-gray-500 mt-1">
                 Wird als <span className="font-medium text-gray-700">{BILLING_MODE_LABELS[derived]}</span> abgerechnet
-                {derived === 'none' && ' – bitte Setup und/oder Retainer im Angebot setzen'}.
+                {derived === 'none' && '. Bitte Setup und/oder Retainer im Angebot setzen'}.
               </p>
             )
           })()}
@@ -467,7 +467,7 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
           )}
           {form.billing_mode === 'reference' && (
             <p className="text-xs text-gray-600 mt-1">
-              🎁 Referenzkunde – keine Rechnungsstellung.
+              🎁 Referenzkunde, keine Rechnungsstellung.
             </p>
           )}
         </div>

@@ -60,7 +60,7 @@ export async function handler(event) {
     return {
       statusCode: 403,
       headers: corsHeaders,
-      body: JSON.stringify({ error: 'Forbidden — Geschäftsführer only' })
+      body: JSON.stringify({ error: 'Nur für die Geschäftsführung' })
     }
   }
 

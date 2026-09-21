@@ -234,10 +234,10 @@ function Setting() {
           </h1>
           <p className="text-body-md text-on-surface-variant mt-2">
             {ansicht === 'pool'
-              ? 'Beratungsgespräche, die der Opener gelegt hat — noch ohne Setter'
+              ? 'Beratungsgespräche, die der Opener gelegt hat und die noch keinen Setter haben'
               : ansicht === 'alle'
                 ? 'Alle Beratungsgespräche, unabhängig vom Setter'
-                : 'Deine Beratungsgespräche — halten, dokumentieren, an den Closer übergeben.'}
+                : 'Deine Beratungsgespräche: halten, dokumentieren, an den Closer übergeben.'}
           </p>
         </div>
 

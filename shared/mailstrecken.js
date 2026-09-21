@@ -91,7 +91,7 @@ export const NACHRICHTEN = [
     fassungen: {
       eigentuemer:       { video: 'Streil-Kurzschnitt',  fundstelle: 'Teil E, Nr. 2, Fassung Eigentümergewinnung' },
       kaeufer:           { video: 'Käufer-Video',        fundstelle: 'Teil E, Nr. 2, Fassung Kaufinteressenten',
-                           offen: 'Käufer-Video noch nicht gedreht — bis dahin die Übergangsfassung mit dem Streil-Kurzschnitt.' },
+                           offen: 'Käufer-Video noch nicht gedreht. Bis dahin die Übergangsfassung mit dem Streil-Kurzschnitt.' },
       automatisierung:   { video: 'Beier-Kurzschnitt',   fundstelle: 'Teil E, Nr. 2, Fassung Automatisierung/Entlastung' },
       sachverstaendige:  { video: 'Beier-Kurzschnitt',   fundstelle: 'Teil E, Nr. 2, Fassung Sachverständige' },
       vorhaben:          { video: 'Beier-Kurzschnitt',   fundstelle: 'Teil E, Nr. 2, Fassung Vorhaben' }
@@ -107,7 +107,7 @@ export const NACHRICHTEN = [
     ausloeser: '24 h vor dem Termin',
     versand: VERSAND.AUTOMATISCH,
     platzhalter: ['Vorname Nachname', 'Absender'],
-    hinweis: 'Generisch für alle Segmente. Enthält den Absage-Absatz — das ist Absicht: '
+    hinweis: 'Generisch für alle Segmente. Enthält den Absage-Absatz, und das ist Absicht: '
            + 'Eine ehrliche Absage ist mehr wert als ein leerer Termin.',
     fundstelle: 'Teil E, Vor-Termin-Kette Nr. 3'
   },
@@ -128,7 +128,7 @@ export const NACHRICHTEN = [
     ausloeser: 'ein Tag vor dem Termin',
     versand: VERSAND.MENSCH,
     platzhalter: [],
-    hinweis: 'Kein Mailtext — ein Gesprächsleitfaden.',
+    hinweis: 'Kein Mailtext, sondern ein Gesprächsleitfaden.',
     fundstelle: 'gespraechsfuehrung/2026-08-01-skript-terminbestaetigung.md'
   },
 
@@ -140,7 +140,7 @@ export const NACHRICHTEN = [
     ausloeser: 'Buchung im Beratungsgespräch',
     versand: VERSAND.AUTOMATISCH,
     platzhalter: ['Vorname Nachname', 'Absender'],
-    hinweis: 'Der Termin trägt dem Makler gegenüber kein Etikett — nicht '
+    hinweis: 'Der Termin trägt dem Makler gegenüber kein Etikett: nicht '
            + '„Abschlussgespräch", nicht „Strategiegespräch", sondern „unser Gespräch".',
     fundstelle: 'Teil E, Nr. 5'
   },
@@ -195,7 +195,7 @@ export const WERKZEUGE = [
     platzhalter: ['Anrede', 'Nötige Anfragen im Monat', 'Lücke'],
     anhang: false, mit_anruf: true, fundstelle: 'Vorlage 3' },
   { id: 'sichtbarkeits_check', name: 'Der Sichtbarkeits-Check seiner Region',
-    greift: 'Ziel Eigentümer — nur wenn er in ChatGPT und Google wirklich fehlt',
+    greift: 'Ziel Eigentümer, nur wenn er in ChatGPT und Google wirklich fehlt',
     platzhalter: ['Anrede', 'Ort', 'Büro 1', 'Büro 2', 'Nötige Anfragen im Monat'],
     anhang: false, fundstelle: 'Vorlage 4',
     regel: 'Der Check wird vor dem Versand wirklich gemacht. Kein Platzhalter-Raten.' },
@@ -207,9 +207,9 @@ export const WERKZEUGE = [
     greift: 'Sachverständige, Ziel Aufträge oder Sichtbarkeit',
     platzhalter: ['Nachname', 'Absender'],
     anhang: true, fundstelle: 'Teil B, Vorlage SV-Ranking-Beweis',
-    regel: 'Screenshot vor jedem Versand aktuell ziehen — Rankings sind beweglich.' },
+    regel: 'Screenshot vor jedem Versand aktuell ziehen, Rankings sind beweglich.' },
   { id: 'beweisstueck', name: 'Das eine Beweisstück',
-    greift: 'er will, traut sich nicht — der Beleg, der seinen offenen Punkt trifft',
+    greift: 'er will, traut sich nicht: der Beleg, der seinen offenen Punkt trifft',
     platzhalter: ['Anrede', 'Offener Punkt'],
     anhang: true, fundstelle: 'Vorlage 6' },
   { id: 'referenzanruf', name: 'Das Referenzanruf-Angebot',
@@ -225,7 +225,7 @@ export const WERKZEUGE = [
     greift: 'der Standard-Erstgriff und der Rückfall, wenn nichts anderes passt',
     platzhalter: ['Anrede'], anhang: true, fundstelle: 'Teil B, Karten' },
   { id: 'webinar', name: 'Webinar-Einladung',
-    greift: 'zweiter Griff nach den KI-Hacks — der stärkste Impuls, weil er ein Datum hat',
+    greift: 'zweiter Griff nach den KI-Hacks, der stärkste Impuls, weil er ein Datum hat',
     platzhalter: ['Anrede'], anhang: false, fundstelle: 'Teil B, Karten' },
   { id: 'voicebot_demo', name: 'Voicebot-Demo-Nummer',
     greift: 'er wollte mehr Erreichbarkeit und interessierte sich für den Voicebot',
@@ -299,7 +299,7 @@ export function empfehlung(lead, bereitsGesendet = []) {
   if (!werkzeug) return null
 
   const grund = !diagnose
-    ? 'keine Diagnose hinterlegt — die KI-Hacks funktionieren als Reaktivierung immer'
+    ? 'keine Diagnose hinterlegt, die KI-Hacks funktionieren als Reaktivierung immer'
     : `${diagnose === DIAGNOSE.ZUFRIEDEN ? 'zufrieden mit dem Ist' : 'will, traut sich nicht'}`
       + (segment ? `, Segment ${segment}` : ', Segment offen')
 

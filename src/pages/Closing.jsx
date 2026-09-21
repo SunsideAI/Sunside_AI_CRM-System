@@ -1671,7 +1671,7 @@ function Closing() {
               <Calendar className="w-16 h-16 text-outline-variant mx-auto mb-4" />
               <p className="text-on-surface-variant text-title-md">Kein Abschlussgespräch wartet auf einen Closer</p>
               <p className="text-outline mt-1">
-                Hier erscheinen Abschlussgespräche, die ein Setter gebucht hat — sobald eines übergeben wird
+                Hier erscheinen Abschlussgespräche, die ein Setter gebucht hat, sobald eines übergeben wird.
               </p>
             </div>
           ) : (
@@ -3621,7 +3621,7 @@ function Closing() {
                   className="mt-0.5 w-4 h-4 accent-rose-600 cursor-pointer"
                 />
                 <span className="text-sm text-on-surface">
-                  <strong>Im Closing behalten</strong> – ich buche selbst neu, Setter wird nicht benachrichtigt.
+                  <strong>Im Closing behalten</strong>: Ich buche selbst neu, der Setter wird nicht benachrichtigt.
                 </span>
               </label>
 

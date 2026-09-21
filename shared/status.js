@@ -103,7 +103,7 @@ export const IST_VERLOREN = [STATUS.VERLOREN_ENDGUELTIG, STATUS.VERLOREN_WIEDERV
 /** Was der Nutzer sieht. "Angebot" heisst im Wert anders als in der Anzeige. */
 export const ANZEIGE = {
   [STATUS.ANGEBOT_ANGEFORDERT]: 'Angebot wird erstellt',
-  [STATUS.ANGEBOT_VERSCHICKT]:  'Angebot verschickt — wartet auf Unterschrift'
+  [STATUS.ANGEBOT_VERSCHICKT]:  'Angebot verschickt, wartet auf Unterschrift'
 }
 
 export function anzeigeName(status) {

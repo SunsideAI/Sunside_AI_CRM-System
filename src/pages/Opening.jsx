@@ -1096,8 +1096,8 @@ function Opening() {
           {!reEngagementCollapsed && (
             <>
               <p className="text-xs text-gray-500 mb-3 mt-1">
-                Diese Leads brauchen einen neuen Termin, weil der alte geplatzt ist
-                — nicht erschienen oder abgesagt.
+                Diese Leads brauchen einen neuen Termin, weil der alte geplatzt ist:
+                nicht erschienen oder abgesagt.
               </p>
           <div className="space-y-2">
             {setterNoShowLeads.slice(0, 5).map(lead => (

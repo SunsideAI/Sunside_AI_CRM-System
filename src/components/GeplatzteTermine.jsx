@@ -87,8 +87,8 @@ export default function GeplatzteTermine({
         <>
           <p className="text-body-sm text-on-surface-variant mt-1 mb-3">
             {istAbschluss
-              ? 'Diese Kontakte brauchen ein neues Abschlussgespräch, weil das alte geplatzt ist — nicht erschienen oder abgesagt.'
-              : 'Diese Leads brauchen einen neuen Termin, weil der alte geplatzt ist — nicht erschienen oder abgesagt.'}
+              ? 'Diese Kontakte brauchen ein neues Abschlussgespräch, weil das alte geplatzt ist: nicht erschienen oder abgesagt.'
+              : 'Diese Leads brauchen einen neuen Termin, weil der alte geplatzt ist: nicht erschienen oder abgesagt.'}
           </p>
 
           <div className="space-y-2">

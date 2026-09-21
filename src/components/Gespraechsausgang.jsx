@@ -137,7 +137,7 @@ export default function Gespraechsausgang({ lead, onGespeichert }) {
             </div>
             <p className="mt-1 text-xs text-on-surface-variant">
               Sie bestimmt die Tonlage des Nachfassens und welches Stück das
-              System vorschlägt — nicht, wie oft du dich meldest.
+              System vorschlägt. Wie oft du dich meldest, bestimmt sie nicht.
             </p>
           </div>
         )}

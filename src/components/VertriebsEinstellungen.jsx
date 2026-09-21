@@ -125,8 +125,8 @@ export default function VertriebsEinstellungen() {
       </div>
 
       <p className="text-xs text-on-surface-variant mt-4">
-        Auch bei „direkt übernehmen" wird festgehalten, wer wann übernommen hat —
-        die Zuteilung bleibt nachvollziehbar, sie braucht nur keine Freigabe mehr.
+        Auch bei „direkt übernehmen" wird festgehalten, wer wann übernommen hat.
+        Die Zuteilung bleibt nachvollziehbar, sie braucht nur keine Freigabe mehr.
       </p>
     </div>
   )

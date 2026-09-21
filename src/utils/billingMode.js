@@ -16,11 +16,11 @@ export function deriveBillingMode(setup, retainer) {
 
 export const BILLING_MODE_LABELS = {
   auto: 'Automatisch (aus Setup + Retainer ableiten)',
-  standard: 'Standard – Setup + monatlicher Retainer',
-  one_time_paid: 'Einmalzahlung – nur Setup',
-  recurring_only: 'Nur Retainer – kein Setup',
-  provision_partner: 'Provisions-Vermittler – Provision pro vermitteltem Lead',
-  manual_external: 'Extern abgerechnet – manuelle Rechnung außerhalb CRM',
-  reference: 'Referenzkunde – keine Abrechnung',
+  standard: 'Standard: Setup und monatlicher Retainer',
+  one_time_paid: 'Einmalzahlung: nur Setup',
+  recurring_only: 'Nur Retainer, kein Setup',
+  provision_partner: 'Provisions-Vermittler: Provision pro vermitteltem Lead',
+  manual_external: 'Extern abgerechnet: manuelle Rechnung außerhalb des CRM',
+  reference: 'Referenzkunde, keine Abrechnung',
   none: 'Kein Abrechnungsmodell (wird von Bridge übersprungen)',
 }

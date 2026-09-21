@@ -314,7 +314,7 @@ export async function handler(event) {
           stufe,
           kommentar: konflikt
             ? [kommentar, 'Hinweis: Bewerber hat diesen Kontakt selbst qualifiziert.']
-                .filter(Boolean).join(' — ')
+                .filter(Boolean).join(' ')
             : (kommentar || null),
           status: 'Offen'
         })

@@ -15,7 +15,7 @@ import { Loader2, CalendarClock, AlertTriangle, Video, Phone } from 'lucide-reac
 const SCHLUESSEL = 'calendly_terminart_zuordnung'
 
 const ZWECKE = [
-  { wert: '',          name: '— nicht zugeordnet —' },
+  { wert: '',          name: 'nicht zugeordnet' },
   { wert: 'beratung',  name: 'Beratungsgespräch' },
   { wert: 'abschluss', name: 'Abschlussgespräch' }
 ]
@@ -93,7 +93,7 @@ export default function TerminartenZuordnung() {
       </div>
       <p className="text-body-sm text-on-surface-variant mb-4">
         Wozu jede Calendly-Terminart dient. Solange nichts zugeordnet ist,
-        bleibt alles wie bisher — der Buchende wählt dann aus allen.
+        bleibt alles wie bisher, und der Buchende wählt aus allen.
       </p>
 
       {fehler && (

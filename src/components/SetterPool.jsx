@@ -105,8 +105,8 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
         </div>
       )}
       <p className="text-xs text-gray-500 mb-3">
-        Wer den Kontakt selbst am Telefon hatte, wird dabei sichtbar markiert —
-        das ist kein Hindernis, nur Transparenz. Ob ein Admin zuteilt oder direkt
+        Wer den Kontakt selbst am Telefon hatte, wird dabei sichtbar markiert.
+        Das ist kein Hindernis, nur Transparenz. Ob ein Admin zuteilt oder direkt
         übernommen wird, stellen Admins in den Einstellungen ein.
       </p>
 

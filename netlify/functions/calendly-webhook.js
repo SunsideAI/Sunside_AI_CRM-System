@@ -554,7 +554,7 @@ export async function handler(event) {
             headers: corsHeaders,
             body: JSON.stringify({
               success: false,
-              message: 'Direktbuchung erkannt, Cold-Lead-Anlage fehlgeschlagen – Admins alarmiert'
+              message: 'Direktbuchung erkannt, Cold-Lead-Anlage fehlgeschlagen. Admins sind alarmiert.'
             })
           }
         }
@@ -604,7 +604,7 @@ export async function handler(event) {
           headers: corsHeaders,
           body: JSON.stringify({
             success: false,
-            message: 'Direktbuchung erkannt, Hot-Lead-Anlage fehlgeschlagen – Admins alarmiert',
+            message: 'Direktbuchung erkannt, Hot-Lead-Anlage fehlgeschlagen. Admins sind alarmiert.',
             leadId
           })
         }
@@ -628,8 +628,8 @@ export async function handler(event) {
         body: JSON.stringify({
           success: true,
           message: leadWasCreated
-            ? 'Direktbuchung – Cold Lead und Hot Lead im Pool angelegt'
-            : 'Direktbuchung – Hot Lead im Pool angelegt (Cold Lead existierte bereits)',
+            ? 'Direktbuchung: Cold Lead und Hot Lead im Pool angelegt'
+            : 'Direktbuchung: Hot Lead im Pool angelegt (Cold Lead existierte bereits)',
           hotLeadId: newHotLead.id,
           leadId,
           leadWasCreated
@@ -1217,7 +1217,7 @@ async function notifyAdminsOfDirectBooking({
 
     let titel, nachricht
     if (hotLeadId) {
-      titel = 'Direktbuchung – Hot Lead im Pool angelegt'
+      titel = 'Direktbuchung: Hot Lead im Pool angelegt'
       const leadHinweis = leadWasCreated
         ? `Neuer Cold Lead angelegt (id: ${leadId}) und mit dem Hot Lead verknüpft.\n`
         : `Verknüpft mit bestehendem Cold Lead (id: ${matchedLeadId || leadId}) via Email-Match.\n`
@@ -1227,9 +1227,9 @@ async function notifyAdminsOfDirectBooking({
         `Unternehmen: ${unternehmen || '(nicht angegeben)'}\n` +
         `Termin: ${formatDate(time)}\n` +
         leadHinweis +
-        `\nKein Handlungsbedarf – Closer können sich den Termin aus dem Pool ziehen.`
+        `\nKein Handlungsbedarf, Closer können sich den Termin aus dem Pool ziehen.`
     } else {
-      titel = 'Direktbuchung – automatische Anlage fehlgeschlagen'
+      titel = 'Direktbuchung: automatische Anlage fehlgeschlagen'
       nachricht =
         `Kunde hat direkt über Calendly gebucht, aber die automatische Anlage ist fehlgeschlagen.\n\n` +
         `E-Mail: ${email || '(keine)'}\n` +

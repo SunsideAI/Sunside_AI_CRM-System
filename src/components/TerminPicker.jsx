@@ -99,7 +99,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
   const problemstellung = [
     (uebergabe1.ziele || []).length > 0 && `Ziel: ${(zielStand.ziel ? [zielStand.ziel] : uebergabe1.ziele).join(', ')}`,
     uebergabe1.schmerzpunkt_wortlaut && `„${uebergabe1.schmerzpunkt_wortlaut}"`
-  ].filter(Boolean).join(' — ')
+  ].filter(Boolean).join('. ')
 
   // Prüfen ob User selbst Closer sein kann
   const userRoles = user?.rolle || []
