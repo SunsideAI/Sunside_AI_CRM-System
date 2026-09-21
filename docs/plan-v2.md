@@ -38,7 +38,7 @@ F25.1 und die Übergangsmatrix F25.3. Drei Stellen auf dem Board sind veraltet.
   Sie-Satz in Anführungszeichen zum Vorlesen, „Setter-Hinweis" anders eingefärbt. Einen Vorsatz
   gibt es nur an zwei Feldern (bisherige Versuche, offene Hürde).
 - **Sichtbarkeitsregeln:** „Aufträge im letzten Jahr" ist bei Ziel Kaufinteressenten ausgeblendet.
-  „Anrufe pro Woche" erscheint nur, wenn Erreichbarkeit Thema war (Auslöser ist offen, siehe E9).
+  „Anrufe pro Woche" erscheint nur, wenn Erreichbarkeit Thema war (Häkchen, E9).
   Die Kennzeichen „genannt/geschätzt" stehen auf derselben Zeile wie die Eingabe.
 
 **Fragen-Bubble (Ticket 17).** Sie steht **über dem Notizfeld**, nicht über dem ganzen
@@ -58,16 +58,17 @@ als verlinktes Wort, drei Versand-Vermerke an der Bestätigungsmail („Was ich 
 „gestern" am Folgetag). Noch **in Freigabe** sind die Käufer-Übergangsfassung der Segment-Mail und
 drei Texte für die Themen-Bausteine im Nachfassen.
 
-**Veraltet auf dem Board:**
-1. **F24, Block Erstanruf:** Dort stehen noch „Berufsgruppe", Einfachauswahl plus
-   Priorisiert-Häkchen und „Vom Kunden bestätigt". Das Feedback vom 21.09. ist neuer und gilt
-   (1.1).
-2. **Ticket 12 „Nachfass-Serien-Motor"** mit Tag 0/4/10/21/35: Die Regel vom 15.09. in F25.1 hat
-   es überholt.
-3. **Ticket-Status:** Laut Commits sind 6, 10, 11, 13, 14 und 15 gebaut (`097a2c4`, `c0dd56b`,
-   `b7930c1`, `dfc91e1`, `6fe1d8a`). Auf dem Board stehen sie noch offen. Ticket 7 ist teilweise
-   gebaut: Das Abschlussgespräch wird inzwischen echt gebucht (`0af4180`). Wirklich offen sind 9
-   (Empfehlungsfenster und Vorlagen-Import, entspricht Phase 3) und 16–18 (Phase 1 und 4).
+**Board nachgezogen am 21.09.** (E10). Drei Stellen waren veraltet und sind jetzt korrigiert:
+1. **F24, Block Erstanruf:** stand noch auf „Berufsgruppe", Einfachauswahl plus Priorisiert-Häkchen
+   und „Vom Kunden bestätigt". Jetzt auf dem Stand des Feedbacks (1.1), dazu Investitionsrahmen als
+   Freitext (E4) und das Häkchen „Erreichbarkeit war Thema" (E9).
+2. **Ticket 12 „Nachfass-Serien-Motor"** mit Tag 0/4/10/21/35 ist als überholt markiert, weil die
+   Regel vom 15.09. in F25.1 ihn ersetzt.
+3. **Ticket-Status mit Commit:** 6, 10, 11, 14 und 15 sind gebaut (`097a2c4`, `c0dd56b`, `b7930c1`,
+   `dfc91e1`, `10f1af6`, `6fe1d8a`). Ticket 7 ist gebaut, aber der Folgetermin wurde gestrichen
+   (`6795449`, `51f4a50`, `4fa3610`). Bei Ticket 13 fehlt ein Beleg für die Mahnstufe-3-Endstation,
+   das vor dem Go-live prüfen. Alles liegt auf `osc-umbau` und ist noch nicht veröffentlicht. Offen
+   sind 9 (entspricht Phase 3) und 16–18 (Phase 1 und 4).
 
 ---
 
@@ -142,8 +143,8 @@ Umbenennungen aus dem Feedback. Die Spezifikation und der gebaute Stand weichen 
 - **Eigenes Feld für die Erfolgskriterien**, getrennt vom Entscheider (Ticket 16, ersetzt E5).
 - **Raus:** das Preis-Häkchen, das Ja/Nein zum Vorabschluss. „Versendete Unterlagen" wird Anzeige.
 - **Rein:** Mobilnummer (Pflicht nur wenn leer) und ein eigenes Ergebnis des Beratungsgesprächs.
-- „Investitionsrahmen" wird Freitext (Feedback). Spezifikation und Miro sagen „Betrag oder
-  ausgewichen". Siehe Entscheidung E4.
+- „Investitionsrahmen" wird Freitext und bleibt Gate (E4, entschieden 21.09.).
+- **Häkchen „Erreichbarkeit war Thema"** im Zeit-Zahlenblock blendet „Anrufe pro Woche" ein (E9).
 
 **1.3 Datenbank**
 Neue Spalten für die neuen Felder, Umbenennungen für die geänderten, Migration im selben Fenster
@@ -238,15 +239,15 @@ Masken zweimal zu bauen.
 | # | Frage | Warum sie blockiert |
 |---|---|---|
 | E1 | ~~Zugang zum Miro-Board~~ | **erledigt 21.09.**, Board gelesen |
-| E2 | Ziel-Werte: kurz („Eigentümer") oder lang („Mehr Eigentümer-Anfragen")? Und heißt der Ausweichwert „nicht erhoben" oder „noch nicht besprochen"? | Wert steht in der Datenbank und in jeder Mailregel. **Vorschlag nach Miro:** lange Werte wie in F24 und im Code, „Noch nicht besprochen" als Wert. „Nicht erhoben" ist in F24 nur der Ziel-Status, der die Fragesätze steuert. |
+| E2 | ~~Ziel-Werte kurz oder lang?~~ | **entschieden 21.09.:** lange Werte wie in F24 und im Code, „Noch nicht besprochen" als Wert. „Nicht erhoben" ist nur der Ziel-Status, der die Fragesätze steuert. |
 | E3 | ~~Zählen die Zahlenfelder zu den Gates?~~ | **geklärt durch Ticket 16:** nein. Die fünf Gates sind Problem, Wer mitentscheidet, Erfolgskriterien, Investitionsrahmen und Abschlusstermin. Die Zahlen sind Pflicht mit Warnung. |
-| E4 | Investitionsrahmen: Freitext (Feedback) oder Betrag mit „ausgewichen" (Spezifikation und Miro)? | zwei gegen eins, aber das Feedback ist das neueste. Bleibt offen. |
+| E4 | ~~Investitionsrahmen Freitext oder Betrag?~~ | **entschieden 21.09.:** das Feedback gilt, Freitext. Bleibt Gate. `rahmen_ausgewichen` entfällt; bestehende Beträge werden als Text übernommen. |
 | E5 | ~~Entscheider und Erfolgskriterien trennen?~~ | **geklärt durch Ticket 16:** ja, eigenes Feld. Bestehende Einträge in `entscheider_messlatte` bleiben beim Entscheider und werden nicht automatisch geteilt. |
 | E6 | Vorerfahrung ist Gate, hat aber den Wert „nicht gefragt" | ein Gate, das man mit „nicht gefragt" erfüllt, blockiert nichts |
 | E7 | Material für Kaufinteressenten (Video, VSL, Fallstudie van Hoorn?) | ohne das bleibt ein Segment ohne Empfehlung |
 | E8 | Welche Felder sollen in Calendly noch abgefragt werden, und wer pflegt es? | Feedback verlangt „so wenig wie notwendig", der Unternehmensname muss mit |
-| E9 | Woran erkennt die Maske, dass Erreichbarkeit Thema war, damit „Anrufe pro Woche" erscheint? | Miro nennt keinen Auslöser. Vorschlag: ein kleines Häkchen „Erreichbarkeit war Thema" im Zeit-Zahlenblock. |
-| E10 | Soll ich das Board nachziehen: F24-Erstanruf auf den Stand des Feedbacks, Tickets 6, 10, 11, 13, 14 und 15 auf erledigt, Ticket 12 als überholt markieren? | Das Board ist die Quelle fürs Team. Wer es liest, sieht sonst einen falschen Stand. |
+| E9 | ~~Auslöser für „Anrufe pro Woche"?~~ | **entschieden 21.09.:** Häkchen „Erreichbarkeit war Thema" im Zeit-Zahlenblock, nur bei Ziel Zeitersparnis. |
+| E10 | ~~Board nachziehen?~~ | **erledigt 21.09.:** F24 mit Branche, Ziel als Mehrfachauswahl, „Priorisiertes Ziel", umbenannten Feldern, neuem Notizfeld im Erstanruf, Investitionsrahmen als Freitext und dem Häkchen „Erreichbarkeit war Thema". In F25.4 sind die Tickets 6, 10, 11, 14 und 15 als gebaut markiert, 7 und 13 als gebaut mit Abweichung, 9 als offen und 12 als überholt, jeweils mit Commit. Die neuen Zeilen stehen am Ende der F24-Tabelle, weil sich Zeilen dort nicht verschieben lassen. |
 
 ---
 
@@ -264,5 +265,5 @@ Masken zweimal zu bauen.
 ## Reihenfolge in einem Satz
 
 Phase 0 ist bis auf das Notizfeld erledigt (`742f793`, `41ff088`). Das Notizfeld wandert in
-Phase 1. Danach kommt Phase 1 zusammen mit den offenen Entscheidungen E2, E4, E6 und E9, Phase 2 nebenher,
+Phase 1. Danach kommt Phase 1, offen ist dafür nur noch E6. Phase 2 läuft nebenher,
 Phase 3 sobald die Felder stehen, dann 4 und 5, und erst danach das Go-live-Fenster.
