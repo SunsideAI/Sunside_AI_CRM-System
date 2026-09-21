@@ -14,6 +14,7 @@ import {
 import PasswordManager from '../components/PasswordManager'
 import VertriebsEinstellungen from '../components/VertriebsEinstellungen'
 import TerminartenZuordnung from '../components/TerminartenZuordnung'
+import MailLinks from '../components/MailLinks'
 import EmailTemplateManager from '../components/EmailTemplateManager'
 import MitarbeiterVerwaltung from '../components/MitarbeiterVerwaltung'
 import LeadAnfragenVerwaltung from '../components/LeadAnfragenVerwaltung'
@@ -171,6 +172,7 @@ function SystemeinstellungenContent({ user }) {
       {/* Zuteilung von Terminen */}
       <VertriebsEinstellungen />
       <TerminartenZuordnung />
+      <MailLinks />
 
       {/* Password Manager */}
       <PasswordManager />

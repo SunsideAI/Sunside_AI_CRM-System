@@ -1,5 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
 import MailBausteine from './MailBausteine'
+import {
+  empfohleneVorlage, platzhalterWerte, platzhalterFuellen, offenePlatzhalter,
+  hatEigenenGruss, gesendeteWerkzeuge
+} from '../../shared/mailvorlagen.js'
 import { 
   Mail, 
   Send, 
@@ -16,7 +20,9 @@ import {
   FileSpreadsheet,
   Bold,
   List,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Sparkles,
+  Info
 } from 'lucide-react'
 
 // Markdown zu HTML konvertieren (für Template-Laden)
@@ -26,7 +32,7 @@ const markdownToHtml = (text) => {
   
   return str
     // Markdown-Links: [Text](URL) zu klickbarem Link
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color: #7c3aed; text-decoration: underline;">$1</a>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color: #460E74; text-decoration: underline;">$1</a>')
     // Fettdruck: **text** zu <strong>
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     // Bullet Points am Zeilenanfang
@@ -72,8 +78,13 @@ const htmlToMarkdown = (html) => {
 }
 
 // hotLeadId wird durchgereicht, damit der Versand die Liste der versendeten
-// Unterlagen am Kontakt fortschreiben kann (Gate der Uebergabe 2).
-function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie = null, hotLeadId = null }) {
+// Unterlagen am Kontakt fortschreiben kann.
+//
+// anlass ('opening' | 'setting' | 'nachfassen') wählt die eine empfohlene
+// Vorlage vor, mit einer Zeile Begründung. kontakt ist der Datensatz mit den
+// Übergabefeldern; aus ihm füllen sich die Platzhalter der Mailstrecken-Datei
+// ({Schmerzpunkt im Wortlaut}, {Zuwachs} …). Gesendet wird nie automatisch.
+function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie = null, hotLeadId = null, anlass = null, kontakt = null }) {
   const [templates, setTemplates] = useState([])
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [loading, setLoading] = useState(true)
@@ -97,6 +108,51 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
   // Attachments
   const [attachments, setAttachments] = useState([])
   const [selectedAttachments, setSelectedAttachments] = useState([])
+
+  // Die Links für {Video-Link} und {VSL-Link} aus den Vertriebseinstellungen.
+  const [links, setLinks] = useState({})
+  const [empfehlung, setEmpfehlung] = useState(null)
+  const daten = { ...lead, ...kontakt }
+  const gewaehlteVorlage = templates.find(t => t.id === selectedTemplate)
+
+  useEffect(() => {
+    fetch('/.netlify/functions/einstellungen')
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (!d?.einstellungen) return
+        setLinks(Object.fromEntries(Object.entries(d.einstellungen)
+          .filter(([k]) => k.startsWith('link_'))
+          .map(([k, v]) => [k, v.wert])))
+      })
+      .catch(() => {})
+  }, [])
+
+  // Die Empfehlung, sobald Vorlagen und Links da sind. Nur einmal: Wählt der
+  // Absender danach etwas anderes, bleibt es dabei.
+  const empfehlungGesetzt = useRef(false)
+  useEffect(() => {
+    if (!anlass || empfehlungGesetzt.current || loading) return
+    empfehlungGesetzt.current = true
+    const bereits = gesendeteWerkzeuge(daten.material_versendet, templates)
+    const e = empfohleneVorlage(anlass, daten, bereits)
+    setEmpfehlung(e)
+    const vorlage = e.schluessel && templates.find(t => t.schluessel === e.schluessel)
+    if (vorlage) handleTemplateSelect(vorlage.id)
+  }, [anlass, loading, templates]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Links kommen oft nach der Vorlage an: dann die offenen Link-Platzhalter
+  // noch einmal füllen, ohne den übrigen Text anzufassen.
+  useEffect(() => {
+    if (!selectedTemplate || Object.keys(links).length === 0) return
+    const editor = inline ? editorRef.current : modalEditorRef.current
+    const html = editor?.innerHTML || inhalt
+    if (!/\{(Video|VSL)-Link\}/.test(html)) return
+    const werte = platzhalterWerte({ lead: daten, absender: user?.vor_nachname, links, schluessel: gewaehlteVorlage?.schluessel })
+    const neu = markdownToHtml(platzhalterFuellen(htmlToMarkdown(html), werte))
+    setInhalt(neu)
+    if (editorRef.current) editorRef.current.innerHTML = neu
+    if (modalEditorRef.current) modalEditorRef.current.innerHTML = neu
+  }, [links]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Templates laden
   useEffect(() => {
@@ -146,8 +202,8 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
 
     const template = templates.find(t => t.id === templateId)
     if (template) {
-      setBetreff(replacePlaceholders(template.betreff))
-      const htmlContent = markdownToHtml(replacePlaceholders(template.inhalt))
+      setBetreff(replacePlaceholders(template.betreff, template.schluessel))
+      const htmlContent = markdownToHtml(replacePlaceholders(template.inhalt, template.schluessel))
       setInhalt(htmlContent)
       // Editor-Inhalt setzen
       if (editorRef.current) editorRef.current.innerHTML = htmlContent
@@ -221,7 +277,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
       // Link-Element erstellen
       const link = document.createElement('a')
       link.href = linkUrl
-      link.style.color = '#7c3aed'
+      link.style.color = '#460E74'
       link.style.textDecoration = 'underline'
       link.textContent = linkText
       
@@ -278,13 +334,9 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
   }
 
   // Platzhalter im Text ersetzen
-  const replacePlaceholders = (text) => {
+  const replacePlaceholders = (text, schluessel = null) => {
     if (!text) return ''
-    
-    // Debug: Lead- und User-Daten ausgeben
-    console.log('Lead-Daten für Platzhalter:', lead)
-    console.log('User-Daten für Platzhalter:', user)
-    
+
     // Hot Leads haben andere Feldnamen als normale Leads
     const firma = lead?.unternehmensname || lead?.unternehmen || ''
     const stadt = lead?.stadt || lead?.ort || ''
@@ -324,8 +376,11 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
     for (const [placeholder, value] of Object.entries(replacements)) {
       result = result.replace(new RegExp(placeholder, 'gi'), value)
     }
-    
-    return result
+
+    // Die Platzhalter der Mailstrecken-Datei ({Nachname}, {Video-Link} …).
+    // Was sich nicht füllen lässt, bleibt sichtbar stehen.
+    const werte = platzhalterWerte({ lead: daten, absender: user?.vor_nachname, links, schluessel })
+    return platzhalterFuellen(result, werte)
   }
 
   // Markdown-Link aus E-Mail entfernen
@@ -372,6 +427,14 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
     const contentToSend = getContentForSend()
     if (!contentToSend.trim()) {
       setError('Bitte E-Mail-Text eingeben')
+      return
+    }
+
+    // Ein stehengebliebener Platzhalter ginge wörtlich an den Kunden
+    // („{Büro 1}"). Dann lieber nicht senden und sagen, was fehlt.
+    const offen = offenePlatzhalter(`${betreff}\n${contentToSend}`)
+    if (offen.length > 0) {
+      setError(`Noch nicht ersetzt: ${offen.join(', ')}. Bitte im Text ergänzen.`)
       return
     }
 
@@ -464,6 +527,31 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
           onEinfuegen={bausteinEinfuegen}
           onEntwurf={entwurfUebernehmen}
         />
+
+        {(empfehlung || gewaehlteVorlage?.hinweis) && (
+          <div className="space-y-2">
+            {empfehlung && (
+              <div className="flex gap-2 p-3 rounded-lg border border-primary-fixed-dim bg-primary-fixed/20 text-sm">
+                <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-on-surface">
+                    {empfehlung.schluessel
+                      ? <>Empfohlen: <strong>{templates.find(t => t.schluessel === empfehlung.schluessel)?.name || empfehlung.schluessel}</strong></>
+                      : 'Keine Vorlage vorausgewählt'}
+                  </p>
+                  {empfehlung.grund && <p className="text-xs text-gray-600">Grund: {empfehlung.grund}</p>}
+                  <p className="text-xs text-gray-500 mt-1">Bitte vor dem Senden durchlesen: Anrede, Ziel und Problem an den Kunden anpassen.</p>
+                </div>
+              </div>
+            )}
+            {gewaehlteVorlage?.hinweis && (
+              <div className="flex gap-2 p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-900">
+                <Info className="w-4 h-4 shrink-0" />
+                <p><span className="font-medium">Hinweis für dich (geht nicht mit):</span> {gewaehlteVorlage.hinweis}</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Template Auswahl */}
         <div>
@@ -611,8 +699,13 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
         <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
           <p className="text-xs text-gray-400 mb-2">Signatur (wird automatisch angehängt)</p>
           <div className="text-sm text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
-            <p className="mb-1">Mit freundlichen Grüßen</p>
-            <p className="font-semibold">{user?.vor_nachname || 'Sunside AI Team'}</p>
+            {/* Endet die Mail schon mit Gruß und Namen, entfallen diese zwei Zeilen. */}
+            {!hatEigenenGruss(htmlToMarkdown(inhalt)) && (
+              <>
+                <p className="mb-1">Mit freundlichen Grüßen</p>
+                <p className="font-semibold">{user?.vor_nachname || 'Sunside AI Team'}</p>
+              </>
+            )}
             <p className="text-gray-600 mb-3">KI-Entwicklung für Immobilienmakler</p>
             
             <img 
@@ -755,6 +848,31 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
             onEinfuegen={bausteinEinfuegen}
             onEntwurf={entwurfUebernehmen}
           />
+
+          {(empfehlung || gewaehlteVorlage?.hinweis) && (
+            <div className="space-y-2">
+              {empfehlung && (
+                <div className="flex gap-2 p-3 rounded-lg border border-primary-fixed-dim bg-primary-fixed/20 text-sm">
+                  <Sparkles className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-on-surface">
+                      {empfehlung.schluessel
+                        ? <>Empfohlen: <strong>{templates.find(t => t.schluessel === empfehlung.schluessel)?.name || empfehlung.schluessel}</strong></>
+                        : 'Keine Vorlage vorausgewählt'}
+                    </p>
+                    {empfehlung.grund && <p className="text-xs text-gray-600">Grund: {empfehlung.grund}</p>}
+                    <p className="text-xs text-gray-500 mt-1">Bitte vor dem Senden durchlesen: Anrede, Ziel und Problem an den Kunden anpassen.</p>
+                  </div>
+                </div>
+              )}
+              {gewaehlteVorlage?.hinweis && (
+                <div className="flex gap-2 p-3 rounded-lg border border-amber-200 bg-amber-50 text-xs text-amber-900">
+                  <Info className="w-4 h-4 shrink-0" />
+                  <p><span className="font-medium">Hinweis für dich (geht nicht mit):</span> {gewaehlteVorlage.hinweis}</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Template Auswahl */}
           <div>

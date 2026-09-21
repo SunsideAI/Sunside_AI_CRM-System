@@ -153,6 +153,8 @@ function Opening() {
   const [saving, setSaving] = useState(false)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
   const [showEmailComposer, setShowEmailComposer] = useState(false)
+  // Nach der Buchung: die empfohlene Segment-Mail zum neuen Kontakt.
+  const [segmentMail, setSegmentMail] = useState(null)
   const [showKontaktdaten, setShowKontaktdaten] = useState(false) // Kontaktdaten-Sektion ein/ausklappen
 
   // Hot-Lead Data für No-Show Bearbeitung durch Setter
@@ -1573,7 +1575,7 @@ function Opening() {
         <div className="fixed inset-0 z-50">
           <div
             className="fixed inset-0 bg-scrim/50"
-            onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
+            onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setSegmentMail(null); setKommentarOnlyMode(false); }}
           />
           <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-surface shadow-xl flex flex-col overflow-hidden">
             {/* Drawer Header */}
@@ -1587,7 +1589,7 @@ function Opening() {
                 )}
               </div>
               <button
-                onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setKommentarOnlyMode(false); }}
+                onClick={() => { setSelectedLead(null); setShowTerminPicker(false); setShowEmailComposer(false); setSegmentMail(null); setKommentarOnlyMode(false); }}
                 className="p-2 hover:bg-surface-container rounded-lg transition-colors flex-shrink-0"
               >
                 <X className="w-5 h-5" />
@@ -1659,13 +1661,42 @@ function Opening() {
                       }
                     }
                     setShowTerminPicker(false)
-                    setSelectedLead(null)
-                    setEditMode(false)
                     loadLeads() // Leads neu laden
                     loadSetterNoShowLeads() // No-Show Widget aktualisieren
+
+                    // Neuer Kontakt: Die Schublade bleibt offen und zeigt die
+                    // empfohlene Segment-Mail. Sie soll binnen Minuten raus,
+                    // solange das Telefonat frisch ist (Miro F23).
+                    if (!isReEngagement && termin?.hotLeadId) {
+                      setSegmentMail({ hotLeadId: termin.hotLeadId, kontakt: termin.kontakt })
+                      return
+                    }
+                    setSelectedLead(null)
+                    setEditMode(false)
                   }}
                   onCancel={() => setShowTerminPicker(false)}
                 />
+              ) : segmentMail ? (
+                // Das Empfehlungsfenster nach der Buchung. Anders als „Unterlagen
+                // senden" setzt es kein Ergebnis: Der Lead bleibt beim
+                // Beratungsgespräch.
+                <div className="space-y-4">
+                  <div className="p-3 bg-success-container rounded-lg text-body-sm text-on-surface">
+                    Der Termin steht. Jetzt die Mail mit dem passenden Video hinterher,
+                    solange das Gespräch frisch ist. Bitte vor dem Senden anpassen.
+                  </div>
+                  <EmailComposer
+                    hotLeadId={segmentMail.hotLeadId}
+                    lead={selectedLead}
+                    kontakt={segmentMail.kontakt}
+                    user={user}
+                    inline={true}
+                    kategorie="Opening"
+                    anlass="opening"
+                    onClose={() => { setSegmentMail(null); setSelectedLead(null); setEditMode(false) }}
+                    onSent={() => { setSegmentMail(null); setSelectedLead(null); setEditMode(false) }}
+                  />
+                </div>
               ) : showEmailComposer ? (
                 // Email Composer anzeigen
                 <EmailComposer

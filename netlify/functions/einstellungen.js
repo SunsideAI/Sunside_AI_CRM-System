@@ -25,7 +25,16 @@ const ERLAUBT = {
   bewerbung_pflicht_closer: { art: 'schalter' },
   // Ticket 7: welche Calendly-Terminart welchem Gespraech dient, als JSON
   // { "<uri>": "beratung" | "abschluss" }. Leer heisst "wie bisher".
-  calendly_terminart_zuordnung: { art: 'text' }
+  calendly_terminart_zuordnung: { art: 'text' },
+  // Phase 3: die Links, die in die Mailvorlagen eingesetzt werden.
+  link_video_streil: { art: 'link' },
+  link_video_beier: { art: 'link' },
+  link_video_kaeufer: { art: 'link' },
+  link_vsl_eigentuemer: { art: 'link' },
+  link_vsl_automatisierung: { art: 'link' },
+  link_vsl_propstack: { art: 'link' },
+  link_vsl_pipedrive: { art: 'link' },
+  link_vsl_kaeufer: { art: 'link' }
 }
 
 export async function handler(event) {
@@ -78,7 +87,19 @@ export async function handler(event) {
       }
 
       let wert
-      if (ERLAUBT[schluessel].art === 'text') {
+      if (ERLAUBT[schluessel].art === 'link') {
+        // Leer oder eine https-Adresse. Alles andere landete sonst als Link in
+        // einer Kundenmail.
+        const url = String(neuerWert ?? '').trim()
+        if (url && !/^https:\/\/[^\s]+$/.test(url)) {
+          return {
+            statusCode: 400,
+            headers: corsHeaders,
+            body: JSON.stringify({ error: 'Bitte eine vollständige https-Adresse eintragen' })
+          }
+        }
+        wert = url.slice(0, 1000)
+      } else if (ERLAUBT[schluessel].art === 'text') {
         // Freitext, aber nicht beliebig lang - hier stehen Calendly-URIs.
         if (neuerWert !== null && neuerWert !== undefined && typeof neuerWert !== 'string') {
           return {

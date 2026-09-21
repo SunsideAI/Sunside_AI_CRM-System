@@ -49,6 +49,8 @@ function Setting() {
   const [filter, setFilter] = useState('offen')
   const [gewaehlt, setGewaehlt] = useState(null)
   const [mailOffen, setMailOffen] = useState(false)
+  // Nach der Übergabe: die Bestätigungsmail mit VSL zum eben übergebenen Kontakt.
+  const [bestaetigung, setBestaetigung] = useState(null)
   const [terminOffen, setTerminOffen] = useState(false)
   // 'meine' oder 'pool' — dieselbe Umschaltung wie im Closing. Der Pool war
   // vorher ein Block ueber der Liste; als eigene Ansicht ist er dort, wo man
@@ -87,6 +89,13 @@ function Setting() {
 
     if (updates?.status === STATUS.ABSCHLUSS_VEREINBART) {
       setHinweis(`${name} ist an den Closer übergeben. Das Abschlussgespräch steht im Closer-Pool.`)
+      // Die Schublade bleibt offen: Direkt nach dem Gespräch geht die
+      // Bestätigungsmail mit dem VSL raus (Mailstrecken Teil E, Nr. 6).
+      setBestaetigung({ ...gewaehlt, ...updates })
+      // Mit dem neuen Status ist der Kontakt für den Setter gesperrt, die
+      // Maske verschwindet und nur die Mail bleibt.
+      setGewaehlt(g => (g ? { ...g, ...updates } : g))
+      return
     }
 
     // Geplatzt: Der Kontakt wechselt in einen Filter, den man gerade nicht
@@ -587,7 +596,35 @@ function Setting() {
           </button>
         )}
       >
-        {gewaehlt && gesperrt && (
+        {gewaehlt && bestaetigung?.id === gewaehlt.id && (
+          <div className="space-y-4">
+            <div className="p-3 bg-success-container rounded-lg text-body-sm text-on-surface">
+              Übergeben. Jetzt die Bestätigungsmail mit dem Video, solange das Gespräch
+              frisch ist. Bitte vor dem Senden anpassen.
+            </div>
+            <EmailComposer
+              hotLeadId={gewaehlt.id}
+              lead={{
+                id: gewaehlt.originalLeadId || gewaehlt.id,
+                unternehmensname: gewaehlt.unternehmen,
+                email: gewaehlt.email,
+                telefon: gewaehlt.telefon,
+                ort: gewaehlt.ort,
+                ansprechpartnerVorname: gewaehlt.ansprechpartnerVorname,
+                ansprechpartnerNachname: gewaehlt.ansprechpartnerNachname
+              }}
+              kontakt={bestaetigung}
+              user={user}
+              inline={true}
+              kategorie="Setting"
+              anlass="setting"
+              onClose={() => { setBestaetigung(null); setGewaehlt(null) }}
+              onSent={() => { setBestaetigung(null); setGewaehlt(null) }}
+            />
+          </div>
+        )}
+
+        {gewaehlt && gesperrt && bestaetigung?.id !== gewaehlt.id && (
           <div className="space-y-4">
             <div className="flex items-start gap-3 p-3 rounded-lg bg-primary-fixed/30 border border-primary-fixed-dim">
               <Lock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
@@ -616,6 +653,8 @@ function Setting() {
                   ansprechpartnerVorname: gewaehlt.ansprechpartnerVorname,
                   ansprechpartnerNachname: gewaehlt.ansprechpartnerNachname
                 }}
+                kontakt={gewaehlt}
+                anlass={gewaehlt.status === STATUS.BERATUNG_GEFUEHRT ? 'setting' : null}
                 user={user}
                 inline={true}
                 kategorie="Setting"

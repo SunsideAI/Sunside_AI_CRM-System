@@ -26,7 +26,7 @@ const markdownToHtml = (text) => {
   
   return str
     // Markdown-Links: [Text](URL) zu klickbarem Link
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color: #7c3aed; text-decoration: underline;">$1</a>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color: #460E74; text-decoration: underline;">$1</a>')
     // Fettdruck: **text** zu <strong>
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     // Bullet Points am Zeilenanfang
@@ -86,7 +86,9 @@ const renderFormattedPreview = (text) => {
 // Kategorie-Optionen für Templates
 const KATEGORIE_OPTIONS = [
   { value: 'Opening', label: 'Opening', description: 'Für Unterlagen nach dem Erstanruf' },
+  { value: 'Setting', label: 'Setting', description: 'Bestätigungsmail nach dem Beratungsgespräch' },
   { value: 'Closing', label: 'Closing', description: 'Für Angebote im Closing-Prozess' },
+  { value: 'Nachfassen', label: 'Nachfassen', description: 'Das Nachfass-Toolkit nach dem Abschlussgespräch' },
   { value: 'Allgemein', label: 'Allgemein', description: 'Überall verfügbar' }
 ]
 
@@ -235,7 +237,7 @@ function EmailTemplateManager() {
     if (linkUrl && linkText) {
       const link = document.createElement('a')
       link.href = linkUrl
-      link.style.color = '#7c3aed'
+      link.style.color = '#460E74'
       link.style.textDecoration = 'underline'
       link.textContent = linkText
       
@@ -575,6 +577,17 @@ function EmailTemplateManager() {
                     }`}>
                       {template.kategorie || 'Allgemein'}
                     </span>
+                    {/* Eingepflegt aus der Mailstrecken-Datei: Dort wird der Text
+                        gepflegt. Eine Änderung hier überschreibt das nächste
+                        Einpflegen wieder. */}
+                    {template.schluessel && (
+                      <span
+                        className="px-2 py-0.5 text-xs rounded-full bg-amber-50 text-amber-800 border border-amber-200"
+                        title="Text in der Mailstrecken-Datei ändern und neu einpflegen (scripts/vorlagen-einpflegen.mjs). Änderungen hier gehen beim nächsten Einpflegen verloren."
+                      >
+                        aus der Mailstrecken-Datei
+                      </span>
+                    )}
                     {!template.aktiv && (
                       <span className="px-2 py-0.5 bg-gray-200 text-gray-600 text-xs rounded">
                         Inaktiv

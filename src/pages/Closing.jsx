@@ -2277,12 +2277,16 @@ function Closing() {
                     Zurück zur Übersicht
                   </button>
                   
+                  {/* Im Nachfassen zeigt der Dialog auch das Toolkit und
+                      schlägt das Stück aus Diagnose und Segment vor. */}
                   <EmailComposer
                     hotLeadId={selectedLead?.id}
                     lead={selectedLead}
+                    kontakt={selectedLead}
+                    anlass={selectedLead?.status === STATUS.WIRD_NACHGEFASST ? 'nachfassen' : null}
                     user={user}
                     inline={true}
-                    kategorie="Closing"
+                    kategorie={selectedLead?.status === STATUS.WIRD_NACHGEFASST ? 'Closing,Nachfassen' : 'Closing'}
                     onClose={() => setShowEmailComposer(false)}
                     onSent={(info) => {
                       console.log('E-Mail gesendet:', info)

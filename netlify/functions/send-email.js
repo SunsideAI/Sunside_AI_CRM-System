@@ -4,6 +4,7 @@ import { anmeldungVerlangen } from './utils/session.js'
 import { darf, verboten, leadBeteiligt, hotLeadBeteiligt } from './utils/zugriff.js'
 import { systemMailSenden } from './utils/mailLayout.js'
 import { neuerTerminImPool, terminWiederFrei } from './utils/mails.js'
+import { hatEigenenGruss } from '../../shared/mailvorlagen.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -324,12 +325,17 @@ async function processAttachments(attachments) {
 }
 
 function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
+  // Die Vorlagen aus der Mailstrecken-Datei schließen selbst mit Gruß und
+  // Namen. Dann hängt die Signatur nur den Firmenblock an, sonst stünde der
+  // Gruß zweimal beim Kunden.
+  const eigenerGruss = hatEigenenGruss(text)
+
   // Convert markdown-style formatting to HTML
   let htmlContent = text
     // Escape HTML entities first (but not our markdown syntax)
     .replace(/&/g, '&amp;')
     // Convert markdown links [text](url) to HTML links
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color: #7c3aed; text-decoration: underline;">$1</a>')
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g, '<a href="$2" style="color: #460E74; text-decoration: underline;">$1</a>')
     // Convert bold **text** to <strong>
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     // Convert line breaks
@@ -337,8 +343,8 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
 
   const signatur = `
     <div style="margin-top: 30px; font-family: Arial, sans-serif; font-size: 10pt;">
-      <div style="margin-bottom: 5px;">Mit freundlichen Grüßen</div>
-      <div style="font-weight: bold; margin-bottom: 2px;">${senderName || 'Sunside AI Team'}</div>
+      ${eigenerGruss ? '' : `<div style="margin-bottom: 5px;">Mit freundlichen Grüßen</div>
+      <div style="font-weight: bold; margin-bottom: 2px;">${senderName || 'Sunside AI Team'}</div>`}
       <div style="color: #666; margin-bottom: 15px;">KI-Entwicklung für Immobilienmakler</div>
 
       <img src="https://onecdn.io/media/8c3e476c-82b3-4db6-8cbe-85b46cd452d0/full" alt="Sunside AI" style="height: 32px; margin-bottom: 10px;" />
@@ -356,9 +362,9 @@ function formatEmailHtml(text, senderName, senderEmail, senderTelefon) {
       <div style="font-size: 9pt; color: #666;">
         Schiefer Berg 3 | 38124 Braunschweig | Deutschland<br />
         E-Mail: ${senderEmail || 'contact@sunsideai.de'} | Tel: ${senderTelefon || '+49 176 56039050'}<br />
-        <a href="https://www.sunsideai.de" style="color: #7c3aed;">www.sunsideai.de</a> |
-        <a href="https://sunsideai.de/#kontakt" style="color: #7c3aed; margin-left: 4px;">Jetzt Termin buchen</a> |
-        <a href="https://sachverstand-mit-herz.podigee.io/12-new-episode" style="color: #7c3aed; margin-left: 4px;">Zur Podcast-Folge</a>
+        <a href="https://www.sunsideai.de" style="color: #460E74;">www.sunsideai.de</a> |
+        <a href="https://sunsideai.de/#kontakt" style="color: #460E74; margin-left: 4px;">Jetzt Termin buchen</a> |
+        <a href="https://sachverstand-mit-herz.podigee.io/12-new-episode" style="color: #460E74; margin-left: 4px;">Zur Podcast-Folge</a>
       </div>
       <div style="font-size: 9pt; color: #888; margin-top: 5px;">Geschäftsführung: Paul Probodziak und Niklas Schwerin</div>
 

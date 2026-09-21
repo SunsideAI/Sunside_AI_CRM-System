@@ -663,7 +663,18 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             slot: selectedSlot,
             type: selectedType,
             assignedToPool: !(kannSelbstSetten && setzeSelbst),
-            meetingLink: meetingLink
+            meetingLink: meetingLink,
+            // Für das Empfehlungsfenster: welcher Kontakt entstanden ist und
+            // was der Opener aufgenommen hat. Daraus wählt das CRM die
+            // Segment-Mail und füllt ihre Platzhalter.
+            hotLeadId: createdHotLeadId,
+            kontakt: createdHotLeadId ? {
+              ...uebergabe1,
+              ...zielStand,
+              ansprechpartner_vorname: ansprechpartnerVorname,
+              ansprechpartner_nachname: ansprechpartnerNachname,
+              ort: lead?.stadt || lead?.ort || null
+            } : null
           })
         }
       }, meetingLink ? 5000 : 1500)

@@ -14,7 +14,7 @@ const supabase = createClient(
 // 'Kaltakquise' heisst seit dem OSC-Umbau 'Opening'. Der alte Wert bleibt
 // zugelassen, damit Vorlagen aus der Zeit davor weiter gespeichert werden
 // koennen, falls doch eine uebersehen wurde.
-const VALID_CATEGORIES = ['Opening', 'Setting', 'Closing', 'Allgemein', 'Kaltakquise']
+const VALID_CATEGORIES = ['Opening', 'Setting', 'Closing', 'Nachfassen', 'Allgemein', 'Kaltakquise']
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -61,8 +61,12 @@ export async function handler(event) {
         query = query.eq('aktiv', true)
       }
 
+      // Mehrere Kategorien mit Komma: Das Closing zeigt beim Nachfassen auch
+      // die Nachfass-Vorlagen. Nur bekannte Namen, der Wert landet im Filter.
       if (kategorie) {
-        query = query.or(`kategorie.eq.${kategorie},kategorie.eq.Allgemein,kategorie.is.null`)
+        const gewaehlt = String(kategorie).split(',').map(k => k.trim()).filter(k => VALID_CATEGORIES.includes(k))
+        const bedingungen = gewaehlt.map(k => `kategorie.eq.${k}`).concat('kategorie.eq.Allgemein', 'kategorie.is.null')
+        query = query.or(bedingungen.join(','))
       }
 
       const { data: templates, error } = await query
@@ -78,6 +82,8 @@ export async function handler(event) {
         inhalt: record.inhalt || '',
         aktiv: record.aktiv !== false,
         kategorie: record.kategorie || 'Allgemein',
+        schluessel: record.schluessel || null,
+        hinweis: record.hinweis || null,
         attachments: (record.email_template_attachments || []).map(att => ({
           id: att.id,
           filename: att.file_name,
