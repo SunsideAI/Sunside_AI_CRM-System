@@ -1,0 +1,38 @@
+ALLGEMEIN
+Generell: Humanizer drüberlaufen lassen – es sind noch viele Em-Dashes und KI-Muster überall im CRM, die abgebaut werden müssen
+Tooltipps und Beschreibungen schöner gestalten und sprachlich überarbeiten – Es soll eine Erklärung sein, die jeder Dritte versteht (ich kann es nachliefern und durchgehen später)
+Zusätzlich sollen Felder selbsterklärend sein
+Mail-Templates hinzufügen aus den Mailstrecken – z.B. bei „Unterlagen bereitstellen“ im Opening oder nach dem Opening die Testimonial-Videos inkl. Empfehlung, welche Mail versendet werden soll
+Bei Eigentümer: Streil Testimonial
+Bei Automatisierung und festes Vorhaben oder SVB: Patrick Beier
+Bei Kaufinteressenten: Noch zu klären (ggf. VSL und Fallstudie van Hoorn)
+Mail-Templates für nach Setting hinzufügen inkl. Empfehlung welche versendet werden kann
+Bei Eigentümer: VSL Eigentümergewinnung
+Bei Automatisierung und festes Vorhaben: VSL Automatisierung (aufgeteilt nach Propstack/Pipedrive)
+Bei Kaufinteressenten: Noch zu klären (ggf. VSL und Fallstudie van Hoorn)
+Generell müssen wir Calendly noch anpassen, welche Felder dort reinmüssen und welche nicht: Es gilt, so wenig wie notwendig in Calendly nur abfragen
+OPENING
+Das muss „Termin mit Setter buchen“ heißen
+Notizfeld hier ist Quatsch, weil er im Folgenden noch Infos ausfüllen muss. Dort kann das Notizfeld dann hinterlegt werden am Ende als optionales Feld
+Bei andere noch Feld hinzufügen, welche Branche
+„Berufsgruppe“ zu „Branche“ ändern
+Das muss eine Mehrfachauswahl werden, und ein Ziel des Kunden kann priorisiert werden, sodass wir ihm zum Prio Ziel das passende Testimonial und VSL zuschicken können.
+Das muss umbenannt werden in „Bisherige Versuche und Anbieter zur Lösung des Problems“ und muss einen hochrutschen direkt nach „Größtes Problem des Kunden“, da es dazu gehört
+„Wer oder was genau“ dann natürlich auch
+„Vom Kunden bestätigt“ muss noch definieren, was bestätigt werden soll, wahrscheinlich „Termin vom Kunden bestätigt“
+WICHTIG: Notizfeld von „Termin mit Closer buchen“ soll dann unter das Feld „Wer oder was genau, wörtlich“
+Dort können noch wichtige zusätzliche Informationen rein oder nochmal eine komplettes Zusammenfassung
+Idee: Man könnte dort noch einen Reminder / Textbausteine für den Opener hinzufügen, die er am Ende des Openings vorverkaufen soll – z.B. „ich schicke ihnen noch ein Testimonial von einem Kunden, der das gleiche Problem wie sie hatte“
+WICHTIG: Funktion mit Empfehlung einer passenden Mail mit Testimonial je nach Ziel fehlt hier bzw. konnte ich nicht testen wegen fehlgeschlagenen Calendly Buchung (siehe auch ALLGEMEIN)
+Der Opener bekommt einen Vorschlag welche Mail er verschicken sollte. Wichtig ist das er noch Individualisierungen vornimmt (z.B. Anrede richtig einfügen und ggf. Ziele, Problemstellungen)
+Diesen Hinweis sieht man kaum, weil er ganz oben ist, wenn man ein Feld vergisst
+Calendly Buchung ist fehlgeschlagen
+SETTING
+Em-Dashes abbauen (siehe oben)
+Investitionsrahmen muss Freitext Feld sein
+WICHTIG: Eine Übersetzung in Sachverständige muss erfolgen. Bei Sachverständigen wird z.B. aus Eigentümeranfragen Bewertungsanfragen
+Im Setting sollen die Fragen aus dem Skript auf die sich die Felder beziehen abgebildet werden (nicht nur im Tooltipp) ohne das es unübersichtlich wird
+Der Setter stellt am Ende über CRM (bzw. Trigger von Calendly – wichtig beachten, dass der Unternehmensname an Calendly übergeben wird) den Closing Termin ein und übergibt damit an den Closer. Der Closer kann dann ein passendes VSL bzw. Mail verschicken.
+WICHTIG: wenn die Branche "andere" ist oder ein konkretes Vorhaben genannt wird, dann immer nur im Setting das Notizfeld zeigen und erklären, warum das so ist (ist es eine andere Branche oder hat er ein konkretes Vorhaben)
+Es soll eine AI Funktion geben, die auf Basis der Branche oder dem konkreten Vorhaben ihm ein paar wenige mögliche Fragen gibt. Immer nach dem Vorbild (Closer-Framework). Das soll dann in eine Bubble oder nicht bearbeitbares Textfeld darüber geschrieben werden:Das ist die CLOSER Framework Basis:  Was ist sein Ziel? Was ist sein Problem? Was hat er schon probiert, um es zu lösen? Was bräuchten Sie, damit das besser läuft? Woran würden Sie in einem halben Jahr festmachen, dass es sich gelohnt hat? Was ist sein Budget? Wer ist noch Entscheider?
+WICHTIG: Felder nochmal komplett überarbeiten + Reihenfolge verändern:Siehe mitgelieferte md und Miro-Board

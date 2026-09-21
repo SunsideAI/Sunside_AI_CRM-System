@@ -57,7 +57,7 @@ Ziel „Zeit" läuft im Segment Automatisierung/Entlastung. Steht das Ziel auf �
 
 **Für das Nachfassen** gilt Teil D: das Toolkit (Sammlung statt Serie); die Diagnose bestimmt die Tonlage, und das CRM schlägt dem Closer aus der Empfehlungstabelle in Teil B das passende Stück vor. Die Themen-Bausteine in `nachfass-bausteine/` sind zusätzlich Reserve für Leads ohne passendes Video und für den Fall, dass ein Segment-Video noch nicht aufgenommen ist.
 
-**Drei Ton-Leitplanken für alle Mails der Kette** (aus der Überarbeitung am 30.08.): keine Rechen-Lektionen (Zahlen nur, wenn es seine eigenen aus dem Gespräch sind) · klingen wie nach einem echten Telefonat, nicht wie eine Serienmail · dienlich statt druckvoll, Video schlägt Text, je Mail ein Stück und ein nächster Schritt. Durchgehend Sie, keine Emojis, kein Berater-Name in Mails und SMS (Automatisierbarkeit; im Gespräch heißt es „unser KI-Experte"). Und kommende Termine werden in Mails nie mit Wochentag oder Datum benannt, sondern nur als „unser Gespräch" oder „unser nächstes Gespräch" (Entscheidung Niklas, 15.09.2026): Der Termin steht in der Kalender-Einladung und im Kalender des Maklers, jede Zeitangabe im Mailtext ist eine Fehlerquelle und lässt die Mail nach System aussehen. Erlaubt bleiben der Rückbezug auf das geführte Gespräch ({Gesprächsdatum} im Nachfassen) und das relative „morgen" in der automatischen 24-Stunden-Erinnerung; auch dort steht seit dem 15.09.2026 keine Uhrzeit mehr im Text, sie steht im Kalender. **Anreden und Grüße folgen einem festen Mix** (Entscheidung Niklas, 15.09.2026), damit kein Empfänger zweimal dieselbe Kombination sieht und nichts nach Serienmail klingt: Segment- und Vorhaben-Mail „Schönen guten Tag Herr/Frau {Nachname}" (die Begrüßung aus dem Telefonskript) mit „Ich freue mich darauf! Viele Grüße" · Bestätigungsmail nach dem Setting „Guten Tag" mit „Bis dahin" · Nachfass-Mails „Hallo" mit „Viele Grüße" · Abschiedsbrief „Guten Tag" mit „Alles Gute Ihnen". „Herzliche Grüße" wird nicht mehr verwendet.
+**Drei Ton-Leitplanken für alle Mails der Kette** (aus der Überarbeitung am 30.08.): keine Rechen-Lektionen (Zahlen nur, wenn es seine eigenen aus dem Gespräch sind) · klingen wie nach einem echten Telefonat, nicht wie eine Serienmail · dienlich statt druckvoll, Video schlägt Text, je Mail ein Stück und ein nächster Schritt. Durchgehend Sie, keine Emojis, kein Berater-Name in Mails und SMS (Automatisierbarkeit; im Gespräch heißt es „unser KI-Experte"). Und kommende Termine werden in Mails nie mit Wochentag oder Datum benannt, sondern nur als „unser Gespräch" oder „unser nächstes Gespräch" (Entscheidung Niklas, 15.09.2026): Der Termin steht in der Kalender-Einladung und im Kalender des Maklers, jede Zeitangabe im Mailtext ist eine Fehlerquelle und lässt die Mail nach System aussehen. Erlaubt bleiben der Rückbezug auf das geführte Gespräch ({Gesprächsdatum} im Nachfassen) und das relative „morgen" in der automatischen 24-Stunden-Erinnerung; auch dort steht seit dem 15.09.2026 keine Uhrzeit mehr im Text, sie steht im Kalender. **Anreden und Grüße folgen einem festen Mix** (Entscheidung Niklas, 15.09.2026), damit kein Empfänger zweimal dieselbe Kombination sieht und nichts nach Serienmail klingt: Segment- und Vorhaben-Mail „Schönen guten Tag Herr/Frau {Nachname}" (die Begrüßung aus dem Telefonskript) mit „Ich freue mich darauf! Viele Grüße" · Bestätigungsmail nach dem Setting „Schönen guten Tag" mit „Bis dahin" · Nachfass-Mails „Hallo" mit „Viele Grüße" · Abschiedsbrief „Guten Tag" mit „Alles Gute Ihnen". „Herzliche Grüße" wird nicht mehr verwendet.
 
 ---
 
@@ -320,16 +320,16 @@ Durchgehend Sie, keine Emojis, kein Berater-Name (Automatisierbarkeit). Die Segm
 
 > Guten Tag {Vorname Nachname},
 >
-> danke für das gute Gespräch eben. Ihr Termin steht, Sie finden ihn in dieser Einladung und in Ihrem Kalender.
+> Ihr Termin steht und liegt mit dieser Einladung direkt in Ihrem Kalender. Bestätigen Sie die Einladung bitte kurz, dann ist die Zeit fest für Sie reserviert.
 >
-> Bestätigen Sie die Einladung bitte kurz, dann ist die Zeit fest für Sie geblockt.
+> Vor dem Gespräch schauen wir uns Ihre Ausgangslage an. So sprechen wir direkt über Ihr Unternehmen und nicht über Allgemeines. Es wird eine ehrliche Bestandsaufnahme, kein Verkaufsgespräch. Und wenn wir nicht helfen können, sagen wir Ihnen genau das.
 >
-> Wir bereiten uns auf Sie vor: Vor dem Termin schauen wir uns Ihre Ausgangslage an, damit wir direkt über Ihr Büro sprechen können statt über Allgemeines. Es wird eine ehrliche Bestandsaufnahme, kein Verkaufsgespräch. Und wenn wir nicht helfen können, sagen wir Ihnen genau das.
+> In ein paar Minuten bekommen Sie noch eine kurze Mail von uns, mit einem Einblick, was einer unserer Kunden mit uns erreicht hat.
 >
-> Gleich bekommen Sie noch eine kurze Mail von mir mit einem Einblick von einem unserer Kunden.
->
-> Bis gleich
-> {Absender}
+> Bis dahin
+> Ihr Team von Sunside AI
+
+**Absender und Event-Name (Entscheidung Niklas, 16.09.2026):** Die automatischen Calendly-Mails unterschreibt **„Ihr Team von Sunside AI"**, kein Personenname: Bei Buchung steht noch nicht fest, wer Setter oder Closer wird (Sammel-Kalender, Zuteilung danach), und die Mails sind ohnehin in Wir-Form. Die persönliche Note trägt die Segment-Mail des Openers, der wirklich telefoniert hat; dort lebt auch das Danke für Gespräch und Termin, die automatische Einladung dankt deshalb nicht (Entscheidung Niklas, 16.09.2026). Der Calendly-Event-Name ist zugleich Kalendereintrag und Mail-Betreff und heißt **„Bestandsaufnahme mit Sunside AI"**: Er knüpft ans Versprechen der Mail an und ist unverfänglich, falls Kollegen auf den Kalender des Maklers schauen.
 
 **2. Die Segment-Mail** (binnen Minuten nach dem Kaltanruf)
 
@@ -339,7 +339,7 @@ Fassung Eigentümergewinnung:
 >
 > Schönen guten Tag Herr/Frau {Nachname},
 >
-> wie am Telefon versprochen ein kurzer Einblick vor unserem Gespräch, von einem Kollegen: Michael Streil führt ein Maklerbüro in Augsburg und arbeitet seit rund zwei Jahren mit uns. Seine Website-Besucher wurden in dieser Zeit zu über 300 qualifizierten Anfragen, darunter mehr als 25 Bewertungsanfragen und mehr als 25 Eigentümeranfragen. Wie er das erlebt, erzählt er am besten selbst:
+> vielen Dank für das gute Gespräch eben und dass Sie sich die Zeit für unseren Termin nehmen. Wie versprochen ein kurzer Einblick vorab, von einem Kollegen: Michael Streil führt ein Maklerbüro in Augsburg und arbeitet seit rund zwei Jahren mit uns. Seine Website-Besucher wurden in dieser Zeit zu über 300 qualifizierten Anfragen, darunter mehr als 25 Bewertungsanfragen und mehr als 25 Eigentümeranfragen. Wie er das erlebt, erzählt er am besten selbst:
 >
 > {Video-Link}
 >
@@ -360,7 +360,7 @@ Fassung Kaufinteressenten:
 >
 > Schönen guten Tag Herr/Frau {Nachname},
 >
-> wie am Telefon versprochen ein kurzer Einblick vor unserem Gespräch: In diesem Video sehen Sie, wie wir für Maklerbüros gezielte Anzeigen schalten und aus den Besuchern ernsthafte Kaufinteressenten machen, mit Kontaktdaten, konkretem Wunsch und geklärter Finanzierung, statt endloser Rückrufe bei Leuten, die nur gucken.
+> vielen Dank für das gute Gespräch eben und dass Sie sich die Zeit für unseren Termin nehmen. Wie versprochen ein kurzer Einblick vorab: In diesem Video sehen Sie, wie wir für Maklerbüros gezielte Anzeigen schalten und aus den Besuchern ernsthafte Kaufinteressenten machen, mit Kontaktdaten, konkretem Wunsch und geklärter Finanzierung, statt endloser Rückrufe bei Leuten, die nur gucken.
 >
 > {Video-Link}
 >
@@ -381,7 +381,7 @@ Fassung Automatisierung/Entlastung (Freigabe Niklas 30.08., „Autorität führt
 >
 > Schönen guten Tag Herr/Frau {Nachname},
 >
-> wie am Telefon versprochen ein kurzer Einblick vor unserem Gespräch. Patrick Beier ist öffentlich bestellter und vereidigter Sachverständiger für Immobilienbewertung, Co-Autor eines Standardwerks im Sprengnetter Verlag und Referent in der Branche. Also jemand, der sehr genau hinschaut, bevor er seinen Namen mit etwas verbindet.
+> vielen Dank für das gute Gespräch eben und dass Sie sich die Zeit für unseren Termin nehmen. Wie versprochen ein kurzer Einblick vorab: Patrick Beier ist öffentlich bestellter und vereidigter Sachverständiger für Immobilienbewertung, Co-Autor eines Standardwerks im Sprengnetter Verlag und Referent in der Branche. Also jemand, der sehr genau hinschaut, bevor er seinen Namen mit etwas verbindet.
 >
 > Wir haben sein Büro komplett digitalisiert, und genau das machen wir auch für Makler: Anfragen kommen automatisiert rein, die Abläufe im CRM laufen von selbst, und typischerweise wird dabei rund 30 Prozent des Backoffice frei. In seinen Worten ersetzt die KI-Assistenz heute fast eine ganze Vollzeitkraft im Vertrieb. Wie er das erlebt, erzählt er am besten selbst:
 >
@@ -402,7 +402,7 @@ Fassung Sachverständige (Freigabe Niklas 30.08.; gilt unabhängig vom Ziel, ges
 >
 > Schönen guten Tag Herr/Frau {Nachname},
 >
-> wie am Telefon versprochen ein kurzer Einblick vor unserem Gespräch, von einem Kollegen aus Ihrem Fach: Patrick Beier ist öffentlich bestellter und vereidigter Sachverständiger für Immobilienbewertung, Co-Autor eines Standardwerks im Sprengnetter Verlag und Referent in der Branche. Also jemand, der sehr genau hinschaut, bevor er seinen Namen mit etwas verbindet.
+> vielen Dank für das gute Gespräch eben und dass Sie sich die Zeit für unseren Termin nehmen. Wie versprochen ein kurzer Einblick vorab, von einem Kollegen aus Ihrem Fach: Patrick Beier ist öffentlich bestellter und vereidigter Sachverständiger für Immobilienbewertung, Co-Autor eines Standardwerks im Sprengnetter Verlag und Referent in der Branche. Also jemand, der sehr genau hinschaut, bevor er seinen Namen mit etwas verbindet.
 >
 > Wir haben sein Büro komplett digitalisiert. Heute kommen seine Bewertungs- und Gutachtenanfragen automatisiert rein, fünf bis zehn qualifizierte Gutachten-Anfragen im Monat allein über die KI-Assistenz, und im Backoffice ist rund 30 Prozent frei geworden. In seinen Worten ersetzt die Assistenz heute fast eine ganze Vollzeitkraft im Vertrieb. Wie er das erlebt, erzählt er am besten selbst:
 >
@@ -423,7 +423,7 @@ Fassung Vorhaben (Freigabe Niklas 11.09.; gilt unabhängig vom Ziel, gesteuert �
 >
 > Schönen guten Tag Herr/Frau {Nachname},
 >
-> danke für das offene Gespräch eben. Sie haben ein konkretes Vorhaben: {Vorhaben in einem Satz, wörtlich aus dem Anruf}. Genau darum geht es in unserem Gespräch: was davon technisch machbar ist, was es braucht und womit man am besten anfängt.
+> vielen Dank für das offene Gespräch eben und dass Sie sich die Zeit für unseren Termin nehmen. Sie haben ein konkretes Vorhaben: {Vorhaben in einem Satz, wörtlich aus dem Anruf}. Genau darum geht es in unserem Gespräch: was davon technisch machbar ist, was es braucht und womit man am besten anfängt.
 >
 > Damit Sie vorab sehen, wie so etwas bei uns aussieht, wenn es fertig ist: Patrick Beier, öffentlich bestellter und vereidigter Sachverständiger, hat sein Büro mit uns Schritt für Schritt automatisiert. Im Video erzählt er, was sich dadurch in seinem Alltag verändert hat: {Video-Link}
 >
@@ -442,20 +442,22 @@ Calendly kann keine Mails nach Segment unterscheiden, und das ist kein Verlust: 
 >
 > Guten Tag {Vorname Nachname},
 >
-> morgen telefonieren wir; wir rufen Sie unter Ihrer Nummer an, die genaue Uhrzeit steht in Ihrem Kalender. Wir haben uns Ihre Ausgangslage vorab angesehen, und es gibt einiges zu besprechen: wo Sie heute Anfragen oder Zeit verlieren und wo bei Ihnen der größte Hebel liegt.
+> morgen telefonieren wir. Wir rufen Sie unter Ihrer Nummer an, die genaue Uhrzeit steht in Ihrem Kalender.
 >
-> Ein Tipp vorab: Werfen Sie noch einen kurzen Blick in das Video aus meiner Mail, falls Sie es noch nicht gesehen haben. Es dauert nur ein paar Minuten, und wir können morgen direkt einsteigen.
+> Wir haben uns Ihre Ausgangslage angesehen, und es gibt einiges zu besprechen: wo Sie heute Anfragen oder Zeit verlieren und wo bei Ihnen der größte Hebel liegt.
 >
-> Falls etwas dazwischenkommt, verschieben Sie den Termin bitte kurz über den Link in der Einladung, dann finden wir einen neuen Slot.
+> Ein Tipp vorab: Werfen Sie noch einen kurzen Blick in das Video aus unserer Mail, falls Sie es noch nicht gesehen haben. Es dauert nur ein paar Minuten, und wir können morgen direkt einsteigen.
+>
+> Falls etwas dazwischenkommt, verschieben Sie den Termin bitte kurz über den Link in der Einladung, dann finden wir einen neuen Termin.
 >
 > Bis morgen
-> {Absender}
+> Ihr Team von Sunside AI
 
 **Die Testimonial-Kurzschnitte sind damit Werkzeug statt Pflicht-Kettenglied:** Der Setter schiebt bei einem Wackler manuell einen nach (Tandel oder JD Homes bei Eigentümern, Streil bei Käufern, Beier bei Automatisierung; bei Tandel und JD Homes ohne Ergebniszahlen, solange keine belegt sind), und im Nachfassen laufen die Vollversionen als Beweis-Stücke.
 
 **4. Die SMS, eine Stunde vorher**
 
-> In einer Stunde hören wir uns. Wir rufen Sie pünktlich unter Ihrer Nummer an. Wir freuen uns auf das Gespräch. {Absender}, Sunside AI
+> In einer Stunde hören wir uns. Wir rufen Sie pünktlich unter Ihrer Nummer an. Wir freuen uns auf das Gespräch. Ihr Team von Sunside AI
 
 Dazu kommt der Bestätigungsanruf einen Tag vorher; Skript: `gespraechsfuehrung/2026-08-01-skript-terminbestaetigung.md`.
 
@@ -465,16 +467,16 @@ Dazu kommt der Bestätigungsanruf einen Tag vorher; Skript: `gespraechsfuehrung/
 
 > Guten Tag {Vorname Nachname},
 >
-> danke für das offene Gespräch eben. Ihr nächster Termin ist eingetragen, Sie finden ihn in dieser Einladung und in Ihrem Kalender.
->
-> Bestätigen Sie die Einladung bitte kurz, dann sind die 45 Minuten fest für Sie geblockt.
+> Ihr nächster Termin steht und liegt mit dieser Einladung direkt in Ihrem Kalender. Bestätigen Sie die Einladung bitte kurz, dann sind die 45 Minuten fest für Sie reserviert.
 >
 > Diesmal treffen wir uns per Video über Google Meet, den Link finden Sie direkt in der Einladung.
 >
-> Jetzt beginnt die eigentliche Arbeit bei uns: Aus Ihrer Situation, Ihren Zielen und dem, was Sie uns erzählt haben, entsteht bis zum Termin Ihr persönliches Konzept. Gleich bekommen Sie noch eine kurze Mail von mir mit einem Video zur Vorbereitung.
+> Jetzt beginnt die eigentliche Arbeit bei uns: Aus Ihrer Situation, Ihren Zielen und dem, was Sie uns erzählt haben, entsteht bis zum Termin Ihr persönliches Konzept. Gleich bekommen Sie noch eine kurze Mail von uns mit einem Video zur Vorbereitung.
 >
-> Bis gleich
-> {Absender}
+> Bis dahin
+> Ihr Team von Sunside AI
+
+**Event-Name für diesen Termin: „Ihr persönliches Konzept mit Sunside AI"** (kein Prozess-Etikett, siehe Etikett-Regel unten); der Follow-Up-Termin heißt „Unser nächstes Gespräch mit Sunside AI".
 
 **Übergangsregel, bis die VSLs aufgenommen sind** (Freigabe Niklas 30.08.): Eigentümer bekommen das Loom-Video (sein Analyse-Versprechen am Ende passt genau an diese Stelle) · Kaufinteressenten bekommen statt des Videos die Van-Hoorn-Fallstudie als Anhang, die Magnet-Ankündigung trägt die Mail · Automatisierung und Sachverständige bekommen das Beier-Referenzschreiben als Anhang (Beier-Video lief schon in Mail 1). Jeder VSL ersetzt seinen Übergang, sobald er aufgenommen ist; die Reihenfolge steht in den Drehbüchern (Eigentümer zuerst).
 
@@ -482,11 +484,11 @@ Dazu kommt der Bestätigungsanruf einen Tag vorher; Skript: `gespraechsfuehrung/
 
 > **Betreff:** Ihr nächster Termin, und was bis dahin für Sie entsteht
 >
-> Guten Tag Herr/Frau {Nachname},
+> Schönen guten Tag Herr/Frau {Nachname},
 >
-> was ich aus unserem Gespräch eben mitgenommen habe: {Ausgesprochener Bedarf, seine Worte}.
+> vielen Dank für das offene Gespräch eben und dass Sie sich die Zeit für den nächsten Termin nehmen. Was der Kollege mitgenommen hat: {Ausgesprochener Bedarf, seine Worte}.
 >
-> Bis zu unserem nächsten Gespräch entsteht daraus {Magnet-Einschub}. Dafür sind 45 Minuten fest für Sie geblockt.
+> Bis zu unserem nächsten Gespräch entsteht daraus {Magnet-Einschub}.
 >
 > Eine Bitte vorab: Schauen Sie sich dieses Video an. Darin sehen Sie an einem Büro wie Ihrem, wie der Weg von der heutigen Lage zum Ziel aussieht, Schritt für Schritt: {VSL-Link}
 >
@@ -497,13 +499,15 @@ Dazu kommt der Bestätigungsanruf einen Tag vorher; Skript: `gespraechsfuehrung/
 >
 > PS: Im Anhang finden Sie das Referenzschreiben von Wüstenrot Immobilien, falls Sie lesen möchten, wie andere Makler die Zusammenarbeit mit uns erleben.
 
-**Der Video-Satz beim Ziel Eigentümer nennt die Maßnahmen-Palette** (Freigabe Niklas, 15.09.2026). Er ersetzt in der Eigentümer-Fassung den generischen Video-Satz oben:
+*(Drei Versand-Vermerke, aus dem ersten Echt-Versand abgeleitet, Niklas 16.09.2026: „Was der Kollege mitgenommen hat" funktioniert unabhängig davon, wer sendet; führt der Absender das Beratungsgespräch selbst, wird daraus „Was ich mitgenommen habe". Geht die Mail erst am Folgetag raus, heißt es „für das offene Gespräch gestern" statt „eben". Und der {VSL-Link} wird als verlinktes Wort gesetzt, nicht als nackte Adresse.)*
 
-> Eine Bitte vorab: Schauen Sie sich dieses Video an. Darin sehen Sie an einem Büro wie Ihrem, mit welchen Maßnahmen wir Eigentümer gewinnen: Sichtbarkeit bei Google und in den KI-Suchen wie ChatGPT, Empfehlungsmanagement und KI-Assistenzen, Schritt für Schritt: {VSL-Link}
+**Der Video-Satz beim Ziel Eigentümer nennt die Maßnahmen-Palette** (Freigabe Niklas, 15.09.2026; Palette am 16.09. auf das gekürzt, was das Video tatsächlich zeigt). Er ersetzt in der Eigentümer-Fassung den generischen Video-Satz oben:
 
-Die anderen Segmente behalten den generischen Satz, ihre Videos erzählen andere Schwerpunkte. Und ein Vermerk zur Übergangszeit: Solange der Eigentümer-VSL nicht gedreht ist, läuft das Loom-Video; es deckt die Palette nicht komplett ab, der Satz gilt trotzdem (Entscheidung Niklas, 15.09.2026), und der VSL schließt die Lücke, sobald er steht.
+> Eine Bitte vorab: Schauen Sie sich dieses Video an. Darin sehen Sie an einem Büro wie Ihrem, mit welchen Maßnahmen wir Eigentümer gewinnen: Sichtbarkeit bei Google und neuerdings in KI-Suchen wie ChatGPT, Empfehlungsmanagement und KI-Assistenzen, Schritt für Schritt: {VSL-Link}. Notieren Sie sich gern Ihre Fragen dazu, die klären wir dann im Gespräch.
 
-**Zum Referenzschreiben-PS (Freigabe Niklas, 30.08.):** Jedes Segment bekommt in dieser Mail ein Referenzschreiben als den einen Beleg, und zwar das passende: die drei Makler-Segmente (Eigentümer, Käufer, Automatisierung) das von **Wüstenrot Immobilien** (der bekannte Name beglaubigt, er muss die Einzelleistungen nicht beschreiben), Sachverständige das von **Patrick Beier** (der Peer, schriftlich und formeller als sein Video; das PS lautet dort „Im Anhang finden Sie das Referenzschreiben von Patrick Beier, öffentlich bestelltem und vereidigtem Sachverständigen, falls Sie lesen möchten, wie ein Kollege die Zusammenarbeit mit uns erlebt."). Eine Regel: Solange bei Automatisierung und Sachverständigen das Beier-Schreiben noch der Übergangs-Hauptinhalt ist (VSL nicht gedreht), gibt es kein zusätzliches Schreiben-PS; es greift, sobald der VSL übernimmt.
+Die anderen Segmente behalten den generischen Satz, ihre Videos erzählen andere Schwerpunkte. Die KI-Suchen stehen im Satz, weil der Eigentümer-VSL sie live zeigt (Drehbuch `video-drehbuecher/2026-09-18-drehbuch-vsl-eigentuemergewinnung.md`). Solange er noch nicht aufgenommen ist und das Loom-Video läuft, fällt „und neuerdings in KI-Suchen wie ChatGPT" aus dem Satz, damit die Mail nichts verspricht, was das Video nicht zeigt.
+
+**Zum Referenzschreiben-PS (Freigabe Niklas, 30.08.):** Jedes Segment bekommt in dieser Mail ein Referenzschreiben als den einen Beleg, und zwar das passende: die drei Makler-Segmente (Eigentümer, Käufer, Automatisierung) das von **Wüstenrot Immobilien** (der bekannte Name beglaubigt, er muss die Einzelleistungen nicht beschreiben), Sachverständige das von **Patrick Beier** (der Peer, schriftlich und formeller als sein Video; das PS lautet dort „Im Anhang finden Sie das Referenzschreiben von Patrick Beier, öffentlich bestelltem und vereidigtem Sachverständigen, falls Sie lesen möchten, wie ein Kollege die Zusammenarbeit mit uns erlebt."). Sonderfall gleicher Verbund: Gehört der Empfänger zur selben Organisation wie der Referenzgeber (etwa eine Wüstenrot-Maklerin), wird das PS persönlicher: „…, falls Sie lesen möchten, wie ein Kollege aus Ihrem Haus die Zusammenarbeit mit uns erlebt." (erstmals eingesetzt 16.09.2026). Eine Regel: Solange bei Automatisierung und Sachverständigen das Beier-Schreiben noch der Übergangs-Hauptinhalt ist (VSL nicht gedreht), gibt es kein zusätzliches Schreiben-PS; es greift, sobald der VSL übernimmt.
 
 Die Magnet-Einschübe je Segment: **Eigentümer:** „eine SEO- und GEO-Analyse zur Eigentümergewinnung in {Region} und Umgebung" · **Kaufinteressenten:** „eine Kalkulation mit Ihren Zahlen und eine Muster-Anzeige für eines Ihrer Objekte" · **Automatisierung:** „Ihre Automatisierungs-Kurzanalyse: Ihre drei größten Zeitfresser aus dem Gespräch und was davon KI übernehmen kann" · **Sachverständige:** „Ihre Automatisierungs-Kurzanalyse: Ihre größten Zeitfresser im Gutachtenprozess und was davon KI übernehmen kann".
 
