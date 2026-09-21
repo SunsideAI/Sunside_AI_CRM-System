@@ -7,11 +7,67 @@ Grundlage sind drei Dokumente und ein Testlauf:
 | Feedback aus dem Test, Opening und Setting | 21.09.2026 | `docs/ressourcen/2026-09-21-feedback-test-v2.txt` (Text) und die `.docx` daneben |
 | CRM-Feldspezifikation | Inhalt bis 20.09.2026 | `docs/ressourcen/2026-08-28-crm-feldspezifikation.md` |
 | Ressourcen und Mailstrecken (Paket 4) | Inhalt bis 16.09.2026 | `docs/ressourcen/2026-08-12-ressourcen-crm-mailstrecken.md` |
-| Miro F23–F25 (Versandlogik, Bauaufträge) | offen | **fehlt**, siehe „Blockaden" |
+| Miro F23–F25 (Soll-Prozess, Feldtabelle, Mail-Übersicht, Schema-Delta, Status-Übergänge, Tickets) | gelesen 21.09.2026, Tickets 16–18 vom 20.09. | Board „Sunside AI CRM — Prozess- & Systemlandkarte" (`uXjVH0WcKV0=`), Abgleich im nächsten Abschnitt |
 
 Die Feldspezifikation nennt Miro als verbindliche Quelle für die Reihenfolge der Felder, und das
-Feedback verweist ausdrücklich darauf („Siehe mitgelieferte md und Miro-Board"). Ohne Miro ist
-Phase 1 nur zu drei Vierteln bestimmt.
+Feedback verweist ausdrücklich darauf („Siehe mitgelieferte md und Miro-Board").
+
+---
+
+## Was Miro ergänzt (Abgleich vom 21.09.)
+
+**Kurz:** Für die Setting-Maske bringt Miro nichts, was nicht schon in der Feldspezifikation steht.
+Die F24-Tabelle und Block 3 der Spezifikation stimmen wörtlich überein, auch die neue Spalte
+„Sichtbar am Feld". Neu sind die drei Bauaufträge vom 20.09. (Tickets 16–18), die Mail-Regeln aus
+F25.1 und die Übergangsmatrix F25.3. Drei Stellen auf dem Board sind veraltet.
+
+**Setting-Maske (Ticket 16, 17, 18). Punkte, die im Plan bisher fehlten, stehen jetzt in 1.2:**
+- Gates von sechs auf **fünf**: Problem im Wortlaut, Wer mitentscheidet, Erfolgskriterien,
+  Investitionsrahmen, Abschlusstermin. Die Zahlenfelder sind Pflicht (Warnung), kein Gate, und
+  „Kunde wollte keine Zahlen nennen" hebt den ganzen Zahlenblock auf.
+- **Erfolgskriterien bekommen ein eigenes Feld** („Was passieren müsste, damit es sich gelohnt hat").
+  Heute stecken sie mit dem Entscheider in `entscheider_messlatte`.
+- **Raus aus der Setter-Maske:** das Häkchen „fragt von sich aus nach Preis" (bleibt im Opening),
+  das Ja/Nein zum Vorabschluss (die offene Hürde wird optionaler Freitext), „Versendete Unterlagen"
+  wird reine Anzeige.
+- **Neu in der Setter-Maske:** Mobilnummer (vorbelegt, Pflicht nur wenn leer, Fragesatz nur bei
+  leerem Feld) und ein **eigenes „Ergebnis des Gesprächs" für den Setter**. Zu prüfen ist, ob
+  `gespraechsausgang` heute nur das Abschlussgespräch meint. Dann braucht es eine zweite Spalte.
+- **Fragesatz am Feld:** genau eine Variante sichtbar, gesteuert von „Ziel bestätigt oder
+  korrigiert", und sie wechselt mit, wenn der Setter das Ziel im Gespräch ändert. Zwei Textarten:
+  Sie-Satz in Anführungszeichen zum Vorlesen, „Setter-Hinweis" anders eingefärbt. Einen Vorsatz
+  gibt es nur an zwei Feldern (bisherige Versuche, offene Hürde).
+- **Sichtbarkeitsregeln:** „Aufträge im letzten Jahr" ist bei Ziel Kaufinteressenten ausgeblendet.
+  „Anrufe pro Woche" erscheint nur, wenn Erreichbarkeit Thema war (Auslöser ist offen, siehe E9).
+  Die Kennzeichen „genannt/geschätzt" stehen auf derselben Zeile wie die Eingabe.
+
+**Fragen-Bubble (Ticket 17).** Sie steht **über dem Notizfeld**, nicht über dem ganzen
+Arbeitsbereich. Sie erscheint bei „andere", bei Vorhaben **und bei Sachverständigen**, dort mit
+voller Maske. Beim ersten Öffnen läuft genau ein Modellaufruf, das Ergebnis wird gespeichert, und
+es gibt eine Schaltfläche „Neue Vorschläge". In den Prompt gehen nur Branche, Vorhaben-Wortlaut,
+Problem-Wortlaut und Ziel, keine Namen, keine Firma und keine Kontaktdaten. Heraus kommen höchstens
+sieben Fragen in Sie-Form. Fällt der Aufruf aus, erscheint die Basis unverändert. Die Bubble füllt
+nie ein Feld. Nötig sind ein Zeitlimit und eine Protokollierung ohne Kundendaten.
+
+**Mails (F25.1).** Das Nachfassen läuft **ohne getaktete Serie** (Regel vom 15.09.): Das CRM legt
+das passende Stück vor, der Closer wählt Zeitpunkt und Reihenfolge, und ein gebuchter Folgetermin
+pausiert das Nachfassen. Der Code ist schon so gebaut (Commit `3dc7c19`). Dazu kommen feste Regeln:
+Event-Namen „Bestandsaufnahme mit Sunside AI" und „Ihr persönliches Konzept mit Sunside AI",
+Team-Signatur ohne Personennamen in Calendly-Mails und SMS, keine Terminzeiten in Mails, `{VSL-Link}`
+als verlinktes Wort, drei Versand-Vermerke an der Bestätigungsmail („Was ich mitgenommen habe",
+„gestern" am Folgetag). Noch **in Freigabe** sind die Käufer-Übergangsfassung der Segment-Mail und
+drei Texte für die Themen-Bausteine im Nachfassen.
+
+**Veraltet auf dem Board:**
+1. **F24, Block Erstanruf:** Dort stehen noch „Berufsgruppe", Einfachauswahl plus
+   Priorisiert-Häkchen und „Vom Kunden bestätigt". Das Feedback vom 21.09. ist neuer und gilt
+   (1.1).
+2. **Ticket 12 „Nachfass-Serien-Motor"** mit Tag 0/4/10/21/35: Die Regel vom 15.09. in F25.1 hat
+   es überholt.
+3. **Ticket-Status:** Laut Commits sind 6, 10, 11, 13, 14 und 15 gebaut (`097a2c4`, `c0dd56b`,
+   `b7930c1`, `dfc91e1`, `6fe1d8a`). Auf dem Board stehen sie noch offen. Ticket 7 ist teilweise
+   gebaut: Das Abschlussgespräch wird inzwischen echt gebucht (`0af4180`). Wirklich offen sind 9
+   (Empfehlungsfenster und Vorlagen-Import, entspricht Phase 3) und 16–18 (Phase 1 und 4).
 
 ---
 
@@ -78,9 +134,16 @@ Umbenennungen aus dem Feedback. Die Spezifikation und der gebaute Stand weichen 
   Zeile, warum.
 - **Übersetzung für Sachverständige:** aus „Eigentümeranfragen" werden „Bewertungsanfragen", und
   zwar in jedem Fragesatz, Tooltip und Rechenergebnis.
-- **Die Fragen aus dem Skript** stehen am Feld, nicht nur im Tooltip.
-- „Investitionsrahmen" wird Freitext (Feedback) — die Spezifikation sagt „Betrag oder ausgewichen".
-  Siehe Entscheidung E4.
+  Miro löst das nur in der Bubble. Das Feedback verlangt mehr und ist neuer, deshalb gilt es auch
+  für Feldnamen und Fragesätze.
+- **Die Fragen aus dem Skript** stehen am Feld, nicht nur im Tooltip, nach den Regeln aus Ticket 18
+  (eine Variante je Ziel, Sie-Satz und Setter-Hinweis getrennt eingefärbt, kein Schalter zum
+  Ausblenden).
+- **Eigenes Feld für die Erfolgskriterien**, getrennt vom Entscheider (Ticket 16, ersetzt E5).
+- **Raus:** das Preis-Häkchen, das Ja/Nein zum Vorabschluss. „Versendete Unterlagen" wird Anzeige.
+- **Rein:** Mobilnummer (Pflicht nur wenn leer) und ein eigenes Ergebnis des Beratungsgesprächs.
+- „Investitionsrahmen" wird Freitext (Feedback). Spezifikation und Miro sagen „Betrag oder
+  ausgewichen". Siehe Entscheidung E4.
 
 **1.3 Datenbank**
 Neue Spalten für die neuen Felder, Umbenennungen für die geänderten, Migration im selben Fenster
@@ -137,8 +200,10 @@ und automatisch prüfen (Betreffschema, Platzhalter, Emojis, Textfassung).
 
 **4.1 Fragen-Bubble im Setting.** Aus Branche oder genanntem Vorhaben schlägt die KI wenige Fragen
 nach dem CLOSER-Framework vor (Ziel, Problem, bisherige Versuche, was er bräuchte, Messlatte in
-einem halben Jahr, Budget, Entscheider). Nicht bearbeitbar, über dem Arbeitsbereich, als Hilfe beim
-Zuhören.
+einem halben Jahr, Budget, Entscheider). Nicht bearbeitbar, **über dem Notizfeld**, als Hilfe beim
+Zuhören. Sie erscheint bei „andere", bei Vorhaben und bei Sachverständigen. Die technischen
+Leitplanken aus Ticket 17 stehen oben im Miro-Abgleich: ein gespeicherter Aufruf, keine
+Kundendaten im Prompt, Rückfall auf die Basis.
 
 **4.2 Die Mail-Bausteine** aus der letzten Runde auf die neuen Felder umstellen.
 
@@ -172,20 +237,23 @@ Masken zweimal zu bauen.
 
 | # | Frage | Warum sie blockiert |
 |---|---|---|
-| E1 | Zugang zum Miro-Board F23–F25 (Verbindung ist getrennt) oder ein Export | Reihenfolge und Versandlogik stehen nur dort |
-| E2 | Ziel-Werte: kurz („Eigentümer") oder lang („Mehr Eigentümer-Anfragen")? Und heißt der Ausweichwert „nicht erhoben" oder „noch nicht besprochen"? | Wert steht in der Datenbank und in jeder Mailregel |
-| E3 | Im Setting fünf Gates — zählen die zwei Zahlenfelder dazu? | entscheidet, wann die Übergabe blockiert |
-| E4 | Investitionsrahmen: Freitext (Feedback) oder Betrag mit „ausgewichen" (Spezifikation)? | zwei Quellen widersprechen sich |
-| E5 | „Wer entscheidet mit" und „Woran er den Erfolg misst" sind heute ein Feld. Trennen? | bestehende Daten müssten aufgeteilt werden |
+| E1 | ~~Zugang zum Miro-Board~~ | **erledigt 21.09.**, Board gelesen |
+| E2 | Ziel-Werte: kurz („Eigentümer") oder lang („Mehr Eigentümer-Anfragen")? Und heißt der Ausweichwert „nicht erhoben" oder „noch nicht besprochen"? | Wert steht in der Datenbank und in jeder Mailregel. **Vorschlag nach Miro:** lange Werte wie in F24 und im Code, „Noch nicht besprochen" als Wert. „Nicht erhoben" ist in F24 nur der Ziel-Status, der die Fragesätze steuert. |
+| E3 | ~~Zählen die Zahlenfelder zu den Gates?~~ | **geklärt durch Ticket 16:** nein. Die fünf Gates sind Problem, Wer mitentscheidet, Erfolgskriterien, Investitionsrahmen und Abschlusstermin. Die Zahlen sind Pflicht mit Warnung. |
+| E4 | Investitionsrahmen: Freitext (Feedback) oder Betrag mit „ausgewichen" (Spezifikation und Miro)? | zwei gegen eins, aber das Feedback ist das neueste. Bleibt offen. |
+| E5 | ~~Entscheider und Erfolgskriterien trennen?~~ | **geklärt durch Ticket 16:** ja, eigenes Feld. Bestehende Einträge in `entscheider_messlatte` bleiben beim Entscheider und werden nicht automatisch geteilt. |
 | E6 | Vorerfahrung ist Gate, hat aber den Wert „nicht gefragt" | ein Gate, das man mit „nicht gefragt" erfüllt, blockiert nichts |
 | E7 | Material für Kaufinteressenten (Video, VSL, Fallstudie van Hoorn?) | ohne das bleibt ein Segment ohne Empfehlung |
 | E8 | Welche Felder sollen in Calendly noch abgefragt werden, und wer pflegt es? | Feedback verlangt „so wenig wie notwendig", der Unternehmensname muss mit |
+| E9 | Woran erkennt die Maske, dass Erreichbarkeit Thema war, damit „Anrufe pro Woche" erscheint? | Miro nennt keinen Auslöser. Vorschlag: ein kleines Häkchen „Erreichbarkeit war Thema" im Zeit-Zahlenblock. |
+| E10 | Soll ich das Board nachziehen: F24-Erstanruf auf den Stand des Feedbacks, Tickets 6, 10, 11, 13, 14 und 15 auf erledigt, Ticket 12 als überholt markieren? | Das Board ist die Quelle fürs Team. Wer es liest, sieht sonst einen falschen Stand. |
 
 ---
 
 ## Blockaden, die nicht bei mir liegen
 
-- **Miro** ist in der aktuellen Sitzung nicht verbunden, ich komme an F23–F25 nicht heran.
+- **Freigaben** in F25.1: Käufer-Übergangsfassung der Segment-Mail und drei Texte für die
+  Themen-Bausteine im Nachfassen. Die Struktur lässt sich bauen, die Texte kommen nach der Freigabe.
 - **Assets:** VSL Eigentümergewinnung, VSL Automatisierung (Propstack/Pipedrive), Käufer-Video,
   Webinar und die Voicebot-Nummer sind laut Paket 4 noch nicht fertig. Bis dahin gelten die
   Übergangsfassungen (Loom-Video, Beier-Referenzschreiben, van-Hoorn-Fallstudie).
@@ -195,5 +263,6 @@ Masken zweimal zu bauen.
 
 ## Reihenfolge in einem Satz
 
-Phase 0 sofort, danach Phase 1 zusammen mit den Entscheidungen E1 bis E6, Phase 2 nebenher,
+Phase 0 ist bis auf das Notizfeld erledigt (`742f793`, `41ff088`). Das Notizfeld wandert in
+Phase 1. Danach kommt Phase 1 zusammen mit den offenen Entscheidungen E2, E4, E6 und E9, Phase 2 nebenher,
 Phase 3 sobald die Felder stehen, dann 4 und 5, und erst danach das Go-live-Fenster.
