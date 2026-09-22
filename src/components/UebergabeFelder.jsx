@@ -19,24 +19,37 @@ import {
 function Hilfe({ text }) {
   const [offen, setOffen] = useState(false)
   if (!text) return null
+
+  // „Wozu:" trennt, was der Setter tun soll, von dem, wofür das Feld gebraucht
+  // wird. Abgesetzt liest sich beides schneller als ein Block.
+  const [anleitung, wozu] = text.split(/\s*Wozu:\s*/)
+
   return (
     <>
       <button
         type="button"
         onClick={() => setOffen(o => !o)}
-        className="text-gray-400 hover:text-primary align-middle ml-1"
+        className={`align-middle ml-1 transition-colors ${offen ? 'text-primary' : 'text-gray-400 hover:text-primary'}`}
         aria-label="Mehr zu diesem Feld"
+        aria-expanded={offen}
       >
         <HelpCircle className="w-4 h-4" />
       </button>
 
-      {/* Eine Zeile unter dem Feldnamen statt einer schwebenden Box: Sie nimmt
-          die Breite, die da ist, und kann in der schmalen Schublade nirgends
-          überstehen. */}
+      {/* Ein ruhiger Hinweis unter dem Feldnamen statt einer schwebenden Box:
+          Er nimmt die Breite, die da ist, und kann in der schmalen Schublade
+          nirgends überstehen. Hell und mit Akzentlinie, damit er zur Maske
+          gehört und nicht wie ein Fremdkörper darüber liegt. */}
       {offen && (
-        <span className="block mt-1 mb-1 p-2.5 text-xs leading-relaxed font-normal
-                         bg-gray-900 text-white rounded-lg">
-          {text}
+        <span className="block mt-1.5 mb-2 pl-3 pr-3 py-2 space-y-1.5 text-xs leading-relaxed font-normal
+                         text-on-surface-variant bg-surface-container-low rounded-r-lg
+                         border-l-2 border-primary-fixed-dim">
+          {anleitung && <span className="block">{anleitung}</span>}
+          {wozu && (
+            <span className="block">
+              <span className="font-medium text-on-surface">Wozu: </span>{wozu}
+            </span>
+          )}
         </span>
       )}
     </>
