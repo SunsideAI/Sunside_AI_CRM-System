@@ -17,6 +17,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import TerminPicker from '../components/TerminPicker'
+import { Rollen, Pille, Statistik } from '../components/LeadSchublade'
 import Verlauf from '../components/Verlauf'
 import EmailComposer from '../components/EmailComposer'
 import {
@@ -28,6 +29,8 @@ import {
   Mail,
   Globe,
   MapPin,
+  Edit3,
+  Save,
   Building2,
   CheckCircle2,
   XCircle,
@@ -1839,13 +1842,6 @@ function Opening() {
                     <p className="angabe-label">Kategorie</p>
                     <p className="angabe-wert">{selectedLead.kategorie || '–'}</p>
                   </div>
-                  <div className="min-w-0">
-                    <p className="angabe-label">Standort</p>
-                    <p className="angabe-wert flex items-center gap-1">
-                      {selectedLead.land && <span title={selectedLead.land}>{getLandFlag(selectedLead.land)}</span>}
-                      {selectedLead.stadt || '–'}
-                    </p>
-                  </div>
                 </div>
 
                 {/* Contact Buttons (Pill Style) - Edit mode inline */}
@@ -1887,93 +1883,58 @@ function Opening() {
                     </div>
                   </div>
                 ) : (
+                  // Dieselben Pillen wie in Setting und Closing, der Ort
+                  // eingeschlossen. Vorher stand er hier als eigenes Feld.
                   <div className="flex flex-wrap gap-2">
                     {selectedLead.telefon && (
-                      <a
-                        href={`tel:${selectedLead.telefon}`}
-                        className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
-                      >
-                        <Phone className="h-4 w-4 text-primary" />
-                        <span className="text-body-sm">{selectedLead.telefon}</span>
-                      </a>
+                      <Pille icon={Phone} href={`tel:${selectedLead.telefon}`}>{selectedLead.telefon}</Pille>
                     )}
                     {selectedLead.email && (
-                      <a
-                        href={`mailto:${selectedLead.email}`}
-                        className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
-                      >
-                        <Mail className="h-4 w-4 text-primary" />
-                        <span className="text-body-sm truncate max-w-[180px]">{selectedLead.email}</span>
-                      </a>
+                      <Pille icon={Mail} href={`mailto:${selectedLead.email}`}>{selectedLead.email}</Pille>
                     )}
                     {selectedLead.website && (
-                      <a
-                        href={selectedLead.website.startsWith('http') ? selectedLead.website : `https://${selectedLead.website}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
-                      >
-                        <Globe className="h-4 w-4 text-primary" />
-                        <span className="text-body-sm">Website</span>
-                      </a>
+                      <Pille icon={Globe}
+                             href={selectedLead.website.startsWith('http') ? selectedLead.website : `https://${selectedLead.website}`}>
+                        Website
+                      </Pille>
+                    )}
+                    {selectedLead.stadt && (
+                      <Pille icon={MapPin}>
+                        {selectedLead.land && <span title={selectedLead.land} className="mr-1">{getLandFlag(selectedLead.land)}</span>}
+                        {selectedLead.stadt}
+                      </Pille>
                     )}
                   </div>
                 )}
 
-                {/* Vertriebler Tag */}
-                {selectedLead.zugewiesenAn && selectedLead.zugewiesenAn.length > 0 && (
-                  <div className="flex flex-wrap gap-2">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-label-sm">
-                      Vertriebler: {selectedLead.zugewiesenAn.join(', ')}
-                    </span>
-                  </div>
-                )}
+                {/* Wer den Kontakt hat. Der zugewiesene Vertriebler ist der
+                    Opener; steht schon ein Kontakt dahinter, kommen Setter
+                    und Closer dazu. */}
+                <Rollen
+                  opener={selectedLead.zugewiesenAn}
+                  setter={hotLeadData?.setterName}
+                  closer={hotLeadData?.closerName}
+                />
               </div>
 
-              {/* WEBSITE-STATISTIKEN Section */}
-              <div className="space-y-3 abschnitt-trenner mb-6">
-                <h3 className="abschnitt-titel flex items-center gap-2">
-                  <Building2 className="w-4 h-4" />
-                  Website-Statistiken
-                </h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-surface-container-lowest rounded-xl border border-outline-variant">
-                  <div>
-                    <p className="text-label-sm text-on-surface-variant">Besucher/Monat</p>
-                    <p className="text-title-md font-semibold text-on-surface">
-                      {selectedLead.monatlicheBesuche !== null && selectedLead.monatlicheBesuche !== undefined
-                        ? selectedLead.monatlicheBesuche.toLocaleString('de-DE')
-                        : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-label-sm text-on-surface-variant">Mehrwert</p>
-                    <p className="text-title-md font-semibold text-success">
-                      {selectedLead.mehrwert !== null && selectedLead.mehrwert !== undefined
-                        ? `${selectedLead.mehrwert.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €`
-                        : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-label-sm text-on-surface-variant">Absprungrate</p>
-                    <p className={`text-title-md font-semibold ${
-                      selectedLead.absprungrate === null || selectedLead.absprungrate === undefined ? 'text-on-surface-variant' :
-                      (parseFloat(selectedLead.absprungrate) * 100) > 60 ? 'text-error' :
-                      (parseFloat(selectedLead.absprungrate) * 100) > 40 ? 'text-warning' : 'text-success'
-                    }`}>
-                      {selectedLead.absprungrate !== null && selectedLead.absprungrate !== undefined
-                        ? `${Math.round(parseFloat(selectedLead.absprungrate) * 100)}%`
-                        : '-'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-label-sm text-on-surface-variant">Leads/Monat</p>
-                    <p className="text-title-md font-semibold text-primary">
-                      {selectedLead.anzahlLeads !== null && selectedLead.anzahlLeads !== undefined
-                        ? selectedLead.anzahlLeads
-                        : '-'}
-                    </p>
-                  </div>
-                </div>
+              {/* Website-Zahlen: derselbe Baustein wie in Setting und Closing,
+                  hier offen, weil sie der Einstieg ins Telefonat sind. */}
+              <div className="abschnitt-trenner mb-6">
+                <Statistik
+                  anfangsOffen
+                  werte={{
+                    besucher: selectedLead.monatlicheBesuche != null
+                      ? selectedLead.monatlicheBesuche.toLocaleString('de-DE') : null,
+                    mehrwert: selectedLead.mehrwert != null
+                      ? `${selectedLead.mehrwert.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €` : null,
+                    absprungrate: selectedLead.absprungrate != null
+                      ? `${Math.round(parseFloat(selectedLead.absprungrate) * 100)}%` : null,
+                    absprungrateFarbe: selectedLead.absprungrate == null ? undefined
+                      : (parseFloat(selectedLead.absprungrate) * 100) > 60 ? 'text-error'
+                      : (parseFloat(selectedLead.absprungrate) * 100) > 40 ? 'text-warning' : 'text-success',
+                    leads: selectedLead.anzahlLeads ?? null
+                  }}
+                />
               </div>
 
               {/* STATUS & NOTIZEN Section */}
@@ -2196,7 +2157,7 @@ function Opening() {
             <div className="schublade-fuss">
                 {kommentarOnlyMode ? (
                   /* Kommentar-Only Modus für gesperrte Leads */
-                  <div className="px-6 py-4 space-y-3">
+                  <div className="w-full space-y-3">
                     <div>
                       <label className="feld-label">Kommentar hinzufügen</label>
                       <textarea
@@ -2211,24 +2172,22 @@ function Opening() {
                     <div className="flex items-center justify-end gap-3">
                       <button
                         onClick={() => { setKommentarOnlyMode(false); setEditForm(prev => ({ ...prev, neuerKommentar: '' })); }}
-                        className="px-4 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors"
+                        className="fuss-leise"
                       >
                         Abbrechen
                       </button>
                       <button
                         onClick={saveKommentarOnly}
                         disabled={saving || !editForm.neuerKommentar?.trim()}
-                        className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-container transition-colors disabled:opacity-50"
+                        className="fuss-haupt"
                       >
-                        {saving ? (
-                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                        ) : null}
+                        {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         Kommentar speichern
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-3 px-6 py-4">
+                  <div className="w-full flex flex-col gap-3">
                     {/* Warnung bei Beratungsgespräch ohne Termin */}
                     {editMode && editForm.ergebnis === 'Beratungsgespräch' && (
                       <div className="flex items-center p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
@@ -2240,20 +2199,15 @@ function Opening() {
                     <div className="flex items-center justify-end gap-3">
                     {editMode ? (
                       <>
-                        <button
-                          onClick={() => setEditMode(false)}
-                          className="px-4 py-2 text-on-surface-variant hover:bg-surface-container rounded-lg transition-colors"
-                        >
+                        <button onClick={() => setEditMode(false)} className="fuss-leise">
                           Abbrechen
                         </button>
                         <button
                           onClick={saveLead}
                           disabled={saving || editForm.ergebnis === 'Beratungsgespräch'}
-                          className="flex items-center px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-primary-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="fuss-haupt"
                         >
-                          {saving ? (
-                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                          ) : null}
+                          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                           Speichern
                         </button>
                       </>
@@ -2263,32 +2217,20 @@ function Opening() {
                         {selectedLead.ergebnis === 'Beratungsgespräch' ? (
                           // No-Show oder Abgesagt: Setter kann voll bearbeiten
                           (hotLeadData?.status === STATUS.NICHT_ERSCHIENEN || hotLeadData?.status === STATUS.TERMIN_ABGESAGT) && darfNachterminieren(hotLeadData, user) ? (
-                            <button
-                              onClick={() => setEditMode(true)}
-                              className={`flex items-center px-4 py-2 text-white rounded-lg transition-colors ${
-                                hotLeadData?.status === STATUS.TERMIN_ABGESAGT
-                                  ? 'bg-orange-600 hover:bg-orange-700'
-                                  : 'bg-rose-600 hover:bg-rose-700'
-                              }`}
-                            >
-                              <Calendar className="w-4 h-4 mr-2" />
+                            <button onClick={() => setEditMode(true)} className="fuss-haupt">
+                              <Calendar className="w-4 h-4" />
                               Lead neu terminieren
                             </button>
                           ) : (
                             // Normal Closing: nur Kommentar
-                            <button
-                              onClick={() => setKommentarOnlyMode(true)}
-                              className="flex items-center px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-container transition-colors"
-                            >
-                              <MessageSquare className="w-4 h-4 mr-2" />
+                            <button onClick={() => setKommentarOnlyMode(true)} className="fuss-haupt">
+                              <MessageSquare className="w-4 h-4" />
                               Kommentar hinzufügen
                             </button>
                           )
                         ) : (
-                          <button
-                            onClick={() => setEditMode(true)}
-                            className="px-4 py-2 bg-sunside-primary text-white rounded-lg hover:bg-primary-container transition-colors"
-                          >
+                          <button onClick={() => setEditMode(true)} className="fuss-haupt">
+                            <Edit3 className="w-4 h-4" />
                             Bearbeiten
                           </button>
                         )}

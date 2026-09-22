@@ -40,7 +40,7 @@ export function altbestand(kommentar) {
   return (k.split(/\n(?=\[\d{2}\.\d{2}\.\d{4})/)[0] || '').trim()
 }
 
-function Pille({ icon: Icon, children, href }) {
+export function Pille({ icon: Icon, children, href }) {
   const inhalt = (
     <>
       <Icon className="h-4 w-4 text-primary shrink-0" />
@@ -64,15 +64,36 @@ function Rollenpille({ name, wert }) {
   )
 }
 
-/** Die Zahlen zur Website. Zugeklappt, weil sie selten gebraucht werden. */
-function Statistik({ werte }) {
-  const [offen, setOffen] = useState(false)
+/**
+ * Wer den Kontakt in welcher Stufe hat: Opener, Setter, Closer, in dieser
+ * Reihenfolge und in jedem Tab mit denselben Namen. Leere fallen weg.
+ * Vorher hieß der Opener in einem Tab „Vertriebler", im nächsten „Erstanruf",
+ * und im Closing fehlte er ganz.
+ */
+export function Rollen({ opener, setter, closer }) {
+  const liste = [['Opener', opener], ['Setter', setter], ['Closer', closer]]
+    .map(([name, wert]) => [name, Array.isArray(wert) ? wert.filter(Boolean).join(', ') : wert])
+    .filter(([, wert]) => wert)
+  if (liste.length === 0) return null
+  return (
+    <div className="flex flex-wrap gap-2">
+      {liste.map(([name, wert]) => <Rollenpille key={name} name={name} wert={wert} />)}
+    </div>
+  )
+}
+
+/**
+ * Die Zahlen zur Website. Zugeklappt, weil sie selten gebraucht werden;
+ * im Opening offen, dort sind sie der Einstieg ins Telefonat.
+ */
+export function Statistik({ werte, anfangsOffen = false }) {
+  const [offen, setOffen] = useState(anfangsOffen)
   if (!werte) return null
 
   const zeilen = [
     ['Besucher/Monat', werte.besucher, 'text-on-surface'],
     ['Mehrwert', werte.mehrwert, 'text-success'],
-    ['Absprungrate', werte.absprungrate, 'text-warning'],
+    ['Absprungrate', werte.absprungrate, werte.absprungrateFarbe || 'text-warning'],
     ['Leads/Monat', werte.leads, 'text-primary']
   ].filter(([, w]) => w !== null && w !== undefined && w !== '')
 
@@ -149,11 +170,7 @@ export default function LeadSchublade({
           </div>
         )}
 
-        {(kontakt.rollen || []).some(r => r?.wert) && (
-          <div className="flex flex-wrap gap-2">
-            {kontakt.rollen.map(r => <Rollenpille key={r.name} {...r} />)}
-          </div>
-        )}
+        {kontakt.rollen && <Rollen {...kontakt.rollen} />}
       </Abschnitt>
 
       {/* 2 — Termin */}

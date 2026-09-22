@@ -820,7 +820,7 @@ function Termine() {
                       </h3>
                       <div className="flex flex-wrap gap-2">
                         {selectedEvent.closerName && (
-                          <span className="px-2 py-1 bg-secondary-container text-primary rounded-full text-label-sm">
+                          <span className="px-3 py-1.5 bg-primary-fixed text-primary rounded-full text-label-sm">
                             Closer: {selectedEvent.closerName}
                           </span>
                         )}

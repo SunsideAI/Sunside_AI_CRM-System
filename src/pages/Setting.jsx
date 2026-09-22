@@ -572,10 +572,7 @@ function Setting() {
           email: gewaehlt?.email,
           website: gewaehlt?.website,
           ort: gewaehlt?.ort,
-          rollen: [
-            { name: 'Erstanruf', wert: gewaehlt?.openerName },
-            { name: 'Setter', wert: gewaehlt?.setterName }
-          ]
+          rollen: { opener: gewaehlt?.openerName, setter: gewaehlt?.setterName, closer: gewaehlt?.closerName }
         }}
         termin={gewaehlt ? {
           datum: terminText(gewaehlt.terminDatum),
@@ -587,11 +584,7 @@ function Setting() {
         arbeitsTitel="Beratungsgespräch"
         arbeitsIcon={Users}
         fuss={gewaehlt && (
-          <button
-            onClick={() => setMailOffen(o => !o)}
-            className="flex items-center gap-2 px-4 py-2 border border-primary-fixed-dim
-                       text-primary rounded-lg hover:bg-primary-fixed/30"
-          >
+          <button onClick={() => setMailOffen(o => !o)} className="fuss-neben">
             <Mail className="w-4 h-4" /> E-Mail an den Kontakt
           </button>
         )}

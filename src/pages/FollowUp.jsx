@@ -662,7 +662,7 @@ function FollowUp() {
           email: selectedLead?.mail,
           website: selectedLead?.website,
           ort: selectedLead?.ort,
-          rollen: [{ name: 'Closer', wert: selectedLead?.closer_name }]
+          rollen: { closer: selectedLead?.closer_name }
         }}
         termin={selectedLead?.termin_beratungsgespraech ? {
           datum: new Date(selectedLead.termin_beratungsgespraech).toLocaleString('de-DE', {
@@ -681,7 +681,7 @@ function FollowUp() {
           <button
             onClick={handleSaveLead}
             disabled={saving}
-            className="btn-primary inline-flex items-center gap-2 disabled:opacity-50"
+            className="fuss-haupt"
           >
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Speichern

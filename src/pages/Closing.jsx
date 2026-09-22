@@ -21,6 +21,8 @@ import Verlauf from '../components/Verlauf'
 import Uebergabeblatt, { UEBERGABE_2 } from '../components/Uebergabeblatt'
 import Aktionsmenue from '../components/Aktionsmenue'
 import Gespraechsausgang from '../components/Gespraechsausgang'
+import { Rollen, Pille } from '../components/LeadSchublade'
+import { Angabe, Angaben } from '../components/Formular'
 
 // Der Termin, der den Closer angeht.
 //
@@ -1839,7 +1841,7 @@ function Closing() {
                     <div className="flex flex-wrap items-center gap-2">
                       {selectedPoolLead.openerName && (
                         <span className="px-3 py-1.5 bg-surface-container text-on-surface-variant rounded-full text-label-sm">
-                          Erstanruf: {selectedPoolLead.openerName}
+                          Opener: {selectedPoolLead.openerName}
                         </span>
                       )}
                       {selectedPoolLead.setterName && (
@@ -2727,53 +2729,53 @@ function Closing() {
                         </div>
                         <div>
                           <label className="feld-label">E-Mail</label>
-                          <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                          <div className="input-field-icon">
                             <Mail className="h-4 w-4 text-primary flex-shrink-0" />
                             <input
                               type="email"
                               value={editData.email}
                               onChange={(e) => handleEditChange('email', e.target.value)}
                               placeholder="E-Mail eingeben..."
-                              className="flex-1 bg-transparent outline-none text-body-md"
+                              
                             />
                           </div>
                         </div>
                         <div>
                           <label className="feld-label">Telefon</label>
-                          <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                          <div className="input-field-icon">
                             <Phone className="h-4 w-4 text-primary flex-shrink-0" />
                             <input
                               type="tel"
                               value={editData.telefon}
                               onChange={(e) => handleEditChange('telefon', e.target.value)}
                               placeholder="Telefon eingeben..."
-                              className="flex-1 bg-transparent outline-none text-body-md"
+                              
                             />
                           </div>
                         </div>
                         <div>
                           <label className="feld-label">Website</label>
-                          <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                          <div className="input-field-icon">
                             <Globe className="h-4 w-4 text-primary flex-shrink-0" />
                             <input
                               type="url"
                               value={editData.website}
                               onChange={(e) => handleEditChange('website', e.target.value)}
                               placeholder="Website eingeben..."
-                              className="flex-1 bg-transparent outline-none text-body-md"
+                              
                             />
                           </div>
                         </div>
                         <div>
                           <label className="feld-label">Ort</label>
-                          <div className="flex items-center gap-2 px-3 py-2 bg-surface-container-lowest border border-outline-variant rounded-lg focus-within:border-primary focus-within:ring-1 focus-within:ring-primary">
+                          <div className="input-field-icon">
                             <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
                             <input
                               type="text"
                               value={editData.ort}
                               onChange={(e) => handleEditChange('ort', e.target.value)}
                               placeholder="Ort eingeben..."
-                              className="flex-1 bg-transparent outline-none text-body-md"
+                              
                             />
                           </div>
                         </div>
@@ -2829,79 +2831,42 @@ function Closing() {
                         />
 
                         {/* Info Grid */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-body-sm text-on-surface-variant">Ansprechpartner</p>
-                            <p className="text-body-md text-on-surface">
-                              {safeString(selectedLead.ansprechpartnerVorname) || safeString(selectedLead.ansprechpartnerNachname)
-                                ? `${safeString(selectedLead.ansprechpartnerVorname)} ${safeString(selectedLead.ansprechpartnerNachname)}`.trim()
-                                : '-'}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-body-sm text-on-surface-variant">Status</p>
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-label-sm ${getStatusStyle(selectedLead.status)}`}>
-                              {selectedLead.status || 'Unbekannt'}
-                            </span>
-                          </div>
-                        </div>
+                        <Angaben>
+                          <Angabe name="Ansprechpartner">
+                            {`${safeString(selectedLead.ansprechpartnerVorname)} ${safeString(selectedLead.ansprechpartnerNachname)}`.trim() || null}
+                          </Angabe>
+                          <Angabe name="Status">{anzeigeName(selectedLead.status) || null}</Angabe>
+                        </Angaben>
 
-                        {/* Contact Buttons (Pill Style) */}
+                        {/* Dieselben Pillen wie in Opening und Setting. */}
                         <div className="flex flex-wrap gap-2">
                           {safeString(selectedLead.telefon) && (
-                            <a
-                              href={`tel:${safeString(selectedLead.telefon)}`}
-                              className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
-                            >
-                              <Phone className="h-4 w-4 text-primary" />
-                              <span className="text-body-sm">{safeString(selectedLead.telefon)}</span>
-                            </a>
+                            <Pille icon={Phone} href={`tel:${safeString(selectedLead.telefon)}`}>{safeString(selectedLead.telefon)}</Pille>
                           )}
                           {safeString(selectedLead.email) && (
-                            <a
-                              href={`mailto:${safeString(selectedLead.email)}`}
-                              className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
-                            >
-                              <Mail className="h-4 w-4 text-primary" />
-                              <span className="text-body-sm truncate max-w-[180px]">{safeString(selectedLead.email)}</span>
-                            </a>
+                            <Pille icon={Mail} href={`mailto:${safeString(selectedLead.email)}`}>{safeString(selectedLead.email)}</Pille>
                           )}
                           {safeString(selectedLead.website) && (
-                            <a
-                              href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
-                            >
-                              <Globe className="h-4 w-4 text-primary" />
-                              <span className="text-body-sm">Website</span>
-                            </a>
+                            <Pille icon={Globe}
+                                   href={safeString(selectedLead.website).startsWith('http') ? safeString(selectedLead.website) : `https://${safeString(selectedLead.website)}`}>
+                              Website
+                            </Pille>
                           )}
                           {(safeString(selectedLead.ort) || safeString(selectedLead.bundesland)) && (
-                            <div className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg">
-                              <MapPin className="h-4 w-4 text-primary" />
-                              <span className="text-body-sm">
-                                {[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ')}
-                              </span>
-                            </div>
+                            <Pille icon={MapPin}>
+                              {[safeString(selectedLead.ort), safeString(selectedLead.bundesland)].filter(Boolean).join(', ')}
+                            </Pille>
                           )}
                         </div>
                       </>
                     )}
 
-                    {/* Setter/Closer Tags */}
-                    <div className="flex flex-wrap gap-2">
-                      {safeString(selectedLead.setterName) && (
-                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-label-sm">
-                          Setter: {safeString(selectedLead.setterName)}
-                        </span>
-                      )}
-                      {safeString(selectedLead.closerName) && (
-                        <span className="px-2 py-1 bg-secondary-container text-primary rounded-full text-label-sm">
-                          Closer: {safeString(selectedLead.closerName)}
-                        </span>
-                      )}
-                    </div>
+                    {/* Wer den Kontakt hatte und hat, in jeder Schublade gleich. */}
+                    <Rollen
+                      opener={safeString(selectedLead.openerName)}
+                      setter={safeString(selectedLead.setterName)}
+                      closer={safeString(selectedLead.closerName)}
+                    />
                   </div>
 
                   {/* TERMIN Section */}
@@ -3036,17 +3001,6 @@ function Closing() {
                     )}
                   </div>
 
-                  {/* Der Ausgang steht vor dem Verlauf: Er ist das, was nach
-                      dem Gespräch als Erstes festzuhalten ist. Nur sichtbar,
-                      wenn es ein Abschlussgespräch gab — vorher gibt es keinen
-                      Ausgang. */}
-                  {selectedLead.termin_abschlussgespraech && (
-                    <Gespraechsausgang
-                      lead={selectedLead}
-                      onGespeichert={() => loadLeads()}
-                    />
-                  )}
-
                   {/* Was Opener und Setter aufgenommen haben.
                       Der Setter fuellt zwoelf Pflichtfelder aus, bevor er das
                       Abschlussgespraech buchen darf - angezeigt wurden sie
@@ -3059,6 +3013,19 @@ function Closing() {
                   </h3>
                     <Uebergabeblatt lead={selectedLead} />
                   </div>
+
+                  {/* Ab hier der Arbeitsbereich des Closers, dann der Verlauf.
+                      Dieselbe Reihenfolge wie in jeder Schublade (LeadSchublade). */}
+                  {/* Der Ausgang steht vor dem Verlauf: Er ist das, was nach
+                      dem Gespräch als Erstes festzuhalten ist. Nur sichtbar,
+                      wenn es ein Abschlussgespräch gab — vorher gibt es keinen
+                      Ausgang. */}
+                  {selectedLead.termin_abschlussgespraech && (
+                    <Gespraechsausgang
+                      lead={selectedLead}
+                      onGespeichert={() => loadLeads()}
+                    />
+                  )}
 
                   {/* DEAL-DETAILS Section (wenn nicht Lead-Status) */}
                   {selectedLead.status !== STATUS.BERATUNG_VEREINBART && (
@@ -3095,45 +3062,9 @@ function Closing() {
                   )}
 
 
-                  {/* NOTIZEN & VERLAUF Section.
-                      Die Zeitleiste steht hier oben, nicht als eigener Kasten
-                      weiter unten — zwei Verlaufs-Abschnitte nebeneinander
-                      waren genau das Durcheinander, das zu beheben war.
-                      Darunter steht NUR noch der Altbestand — alles vor dem
-                      ersten datierten Eintrag. Die datierten Einträge stehen
-                      in der Zeitleiste; sie hier nochmals zu zeigen war
-                      doppelt gemoppelt. Betrifft 588 von 7.588 Kontakten. */}
-                  <div className="abschnitt-trenner">
-                    <h3 className="abschnitt-titel mb-3 flex items-center gap-2">
-                      <History className="w-4 h-4" />
-                      Verlauf
-                    </h3>
-
-                    <div className="mb-4">
-                      <Verlauf hotLeadId={selectedLead.id} leadId={selectedLead.originalLeadId} />
-                    </div>
-
-                    {altbestand(selectedLead.kommentar) && (
-                      <div className="text-label-sm text-on-surface-variant mb-2">
-                        Ältere Notizen ohne Datum
-                      </div>
-                    )}
-                    <div className={altbestand(selectedLead.kommentar)
-                      ? 'bg-surface-container-lowest rounded-xl p-4 max-h-[250px] overflow-y-auto'
-                      : 'hidden'}>
-                      {altbestand(selectedLead.kommentar) ? (
-                        <p className="text-body-sm text-on-surface whitespace-pre-line">
-                          {altbestand(selectedLead.kommentar)}
-                        </p>
-                      ) : (
-                        <p className="text-body-sm text-outline italic">Keine Notizen vorhanden</p>
-                      )}
-                    </div>
-                  </div>
-                  
                   {/* Neuer Kommentar hinzufügen - nur im Edit-Mode */}
                   {editMode && (
-                    <div>
+                    <div className="abschnitt-trenner">
                       <label className="feld-label">Neuer Kommentar hinzufügen</label>
                       <textarea
                         value={editData.neuerKommentar || ''}
@@ -3147,23 +3078,23 @@ function Closing() {
 
                   {/* SEO-Analyse - nur für Closer und Admins */}
                   {(isAdmin() || isCloser()) && selectedLead.website && (
-                    <div className="p-4 bg-gray-50 rounded-lg">
-                      <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center gap-2">
+                    <div className="space-y-3 abschnitt-trenner">
+                      <h3 className="abschnitt-titel flex items-center gap-2">
                         <BarChart3 className="w-4 h-4" />
                         SEO-Analyse
-                      </h4>
-                      <p className="text-xs text-gray-500 mb-3">
+                      </h3>
+                      <p className="text-body-sm text-on-surface-variant">
                         Startet eine externe SEO-Analyse. Der Bericht wird automatisch zu den Dokumenten hinzugefügt.
                       </p>
                       <button
                         onClick={() => handleStartSeoAnalysis(selectedLead)}
                         disabled={seoAnalysisLoading[selectedLead.id]}
-                        className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        className="fuss-neben"
                       >
                         {seoAnalysisLoading[selectedLead.id] ? (
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <Search className="w-4 h-4 mr-2" />
+                          <Search className="w-4 h-4" />
                         )}
                         SEO-Analyse starten
                       </button>
@@ -3171,8 +3102,11 @@ function Closing() {
                   )}
 
                   {/* Dokumente / Attachments */}
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-500 mb-3">Dokumente</h4>
+                  <div className="space-y-3 abschnitt-trenner">
+                    <h3 className="abschnitt-titel flex items-center gap-2">
+                      <Paperclip className="w-4 h-4" />
+                      Dokumente
+                    </h3>
 
                     {/* Hidden File Input */}
                     <input
@@ -3296,6 +3230,41 @@ function Closing() {
                       )
                     )}
                   </div>
+                  {/* NOTIZEN & VERLAUF Section.
+                      Die Zeitleiste steht hier oben, nicht als eigener Kasten
+                      weiter unten — zwei Verlaufs-Abschnitte nebeneinander
+                      waren genau das Durcheinander, das zu beheben war.
+                      Darunter steht NUR noch der Altbestand — alles vor dem
+                      ersten datierten Eintrag. Die datierten Einträge stehen
+                      in der Zeitleiste; sie hier nochmals zu zeigen war
+                      doppelt gemoppelt. Betrifft 588 von 7.588 Kontakten. */}
+                  <div className="abschnitt-trenner">
+                    <h3 className="abschnitt-titel mb-3 flex items-center gap-2">
+                      <History className="w-4 h-4" />
+                      Verlauf
+                    </h3>
+
+                    <div className="mb-4">
+                      <Verlauf hotLeadId={selectedLead.id} leadId={selectedLead.originalLeadId} />
+                    </div>
+
+                    {altbestand(selectedLead.kommentar) && (
+                      <div className="text-label-sm text-on-surface-variant mb-2">
+                        Ältere Notizen ohne Datum
+                      </div>
+                    )}
+                    <div className={altbestand(selectedLead.kommentar)
+                      ? 'bg-surface-container-lowest rounded-xl p-4 max-h-[250px] overflow-y-auto'
+                      : 'hidden'}>
+                      {altbestand(selectedLead.kommentar) ? (
+                        <p className="text-body-sm text-on-surface whitespace-pre-line">
+                          {altbestand(selectedLead.kommentar)}
+                        </p>
+                      ) : (
+                        <p className="text-body-sm text-outline italic">Keine Notizen vorhanden</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -3323,7 +3292,7 @@ function Closing() {
                         })
                       }}
                       disabled={sendingAngebot}
-                      className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                      className="fuss-leise"
                     >
                       Abbrechen
                     </button>
@@ -3336,16 +3305,16 @@ function Closing() {
                           (angebotData.retainer !== '' && angebotData.retainer !== null && angebotData.retainer !== undefined))
                         || sendingAngebot
                       }
-                      className="flex items-center px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      className="fuss-haupt"
                     >
                       {sendingAngebot ? (
                         <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          <Loader2 className="w-4 h-4 animate-spin" />
                           Angebot wird versendet...
                       </>
                     ) : (
                       <>
-                        <Send className="w-4 h-4 mr-2" />
+                        <Send className="w-4 h-4" />
                         Angebot versenden
                       </>
                     )}
@@ -3357,7 +3326,7 @@ function Closing() {
                   <button
                     type="button"
                     onClick={() => setEditMode(false)}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-200 rounded-lg transition-colors"
+                    className="fuss-leise"
                   >
                     Abbrechen
                   </button>
@@ -3365,13 +3334,9 @@ function Closing() {
                     type="button"
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex items-center px-6 py-2 bg-primary text-on-primary rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="fuss-haupt"
                   >
-                    {saving ? (
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    ) : (
-                      <Save className="w-4 h-4 mr-2" />
-                    )}
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                     Speichern
                   </button>
                 </>
@@ -3405,10 +3370,9 @@ function Closing() {
                   <button
                     type="button"
                     onClick={() => setEditMode(true)}
-                    className="flex items-center px-4 py-2 whitespace-nowrap bg-primary text-on-primary
-                               rounded-xl hover:bg-primary/90 transition-colors"
+                    className="fuss-haupt"
                   >
-                    <Edit3 className="w-4 h-4 mr-2" />
+                    <Edit3 className="w-4 h-4" />
                     Bearbeiten
                   </button>
                 </>

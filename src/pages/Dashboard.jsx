@@ -51,7 +51,7 @@ import Verlauf from '../components/Verlauf'
 import {
   HeroKennzahl, Kennzahl, Vergleich, DiagrammKarte, LeerZustand, REIHE, STATUS_FARBE
 } from '../components/Kennzahlen'
-import { altbestand } from '../components/LeadSchublade'
+import { altbestand, Rollen } from '../components/LeadSchublade'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, Legend, PieChart, Pie, Cell
@@ -1148,19 +1148,8 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                   )}
                 </div>
 
-                {/* Setter/Closer Tags */}
-                <div className="flex flex-wrap gap-2">
-                  {selectedLead.setterName && (
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-label-sm">
-                      Setter: {selectedLead.setterName}
-                    </span>
-                  )}
-                  {selectedLead.closerName && (
-                    <span className="px-2 py-1 bg-secondary-container text-primary rounded-full text-label-sm">
-                      Closer: {selectedLead.closerName}
-                    </span>
-                  )}
-                </div>
+                {/* Wer den Kontakt hatte und hat, wie in jeder Schublade. */}
+                <Rollen opener={selectedLead.openerName} setter={selectedLead.setterName} closer={selectedLead.closerName} />
               </div>
 
               {/* TERMIN Section */}
