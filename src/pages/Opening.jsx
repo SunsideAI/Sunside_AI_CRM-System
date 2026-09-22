@@ -1846,7 +1846,11 @@ function Opening() {
 
                 {/* Contact Buttons (Pill Style) - Edit mode inline */}
                 {editMode ? (
+                  // Beschriftet wie im Closing: Ohne Namen über dem Feld ist
+                  // ein Platzhalter die einzige Erklärung, und der ist weg,
+                  // sobald etwas drinsteht.
                   <div className="grid grid-cols-1 gap-3">
+                    <label className="feld-label -mb-2">Telefon</label>
                     <div className="input-field-icon">
                       <Phone className="h-4 w-4 text-primary flex-shrink-0" />
                       <input
@@ -1856,6 +1860,7 @@ function Opening() {
                         placeholder="Telefonnummer eingeben..."
                       />
                     </div>
+                    <label className="feld-label -mb-2">E-Mail <span className="text-red-500">*</span></label>
                     <div className={`input-field-icon${
                       editForm.emailValidation && !editForm.email?.trim() ? ' fehlt' : ''
                     }`}>
@@ -1866,12 +1871,13 @@ function Opening() {
                         type="email"
                         value={editForm.email}
                         onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value, emailValidation: false }))}
-                        placeholder="E-Mail eingeben... *"
+                        placeholder="E-Mail eingeben..."
                       />
                     </div>
                     {editForm.emailValidation && !editForm.email?.trim() && (
                       <p className="text-xs text-red-500 -mt-1">E-Mail ist Pflichtfeld für Terminbuchung</p>
                     )}
+                    <label className="feld-label -mb-2">Website</label>
                     <div className="input-field-icon">
                       <Globe className="h-4 w-4 text-primary flex-shrink-0" />
                       <input
