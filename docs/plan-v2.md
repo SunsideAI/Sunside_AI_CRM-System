@@ -297,3 +297,22 @@ offen: der Durchlauf im Browser auf der Vorschau.** Dafür muss gepusht werden.
 - Nebenbefund: Die Vorlage „Ergebnisse & Live-Beispiel" steht seit der Umbenennung auf
   „Opening" und ist im veröffentlichten Stand (Kategorie „Kaltakquise") nicht mehr zu sehen.
 - Go-live: zusätzlich `osc_fristen_aktiv` auf „an" stellen.
+
+## Test auf der Vorschau, 22.09.
+
+Gepusht, getestet mit Playwright gegen die Vorschau, Testdaten danach vollständig entfernt.
+
+| Bereich | Ergebnis |
+|---|---|
+| Schnittstellen (Gates, Ziel-Ableitung, reduzierter Modus, Wiedervorlage, Fragen-Vorschlag, Vorlagen, Auswertungen, Links) | 31/31 |
+| Setting-Maske (Abschnitte, Fragesätze, Zahlenblock, Knopf je Ergebnis, Mail-Empfehlung, Versandsperre, reduzierter Modus, Sachverständige) | 40/40 |
+| Opening (Übergabe-Felder, Reihenfolge, Mehrfachauswahl, Priorität, „andere", E6, Buchung stoppt vor Calendly) | 18/18 |
+| Closing (Ausgang nach dem Laden, Nachfass-Empfehlung mit Zähler, Anrede, Abschied, Wiedervorlage-Felder) | 13/13 |
+| Dashboards und Einstellungen, Konsole ohne Fehler | 6/6 |
+
+Dabei korrigiert: Die Beschriftung „Mit ausgesprochenem Bedarf" wurde in der Kachel abgeschnitten (`0962199`).
+
+**Nicht im Browser getestet**, weil dafür ein echter Calendly-Termin oder ein echter Mailversand nötig wäre:
+das Empfehlungsfenster direkt nach einer echten Buchung, die Übergabe mit echter Buchung des
+Abschlussgesprächs und das Hochzählen der Versuche beim Senden. Die Logik dahinter ist per
+Schnittstelle und Node geprüft. Miro-Tickets 9 (teilweise), 16, 17 und 18 sind als gebaut markiert.
