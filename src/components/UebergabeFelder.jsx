@@ -16,43 +16,38 @@ import {
 // Anführungszeichen werden gesprochen, eine Zeile „Hinweis" ist eine
 // Anweisung und wird nie vorgelesen.
 
-function Hilfe({ text }) {
-  const [offen, setOffen] = useState(false)
-  if (!text) return null
+/** Das Fragezeichen am Feldnamen. Der Text selbst steht in HilfeText. */
+function HilfeKnopf({ offen, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`align-middle ml-1 transition-colors ${offen ? 'text-primary' : 'text-gray-400 hover:text-primary'}`}
+      aria-label="Mehr zu diesem Feld"
+      aria-expanded={offen}
+    >
+      <HelpCircle className="w-4 h-4" />
+    </button>
+  )
+}
 
+/**
+ * Der aufgeklappte Hilfetext: ein ruhiger Hinweis in der Breite der Maske,
+ * hell und mit Akzentlinie, damit er zur Maske gehört und nicht wie ein
+ * Fremdkörper darüber liegt. Er steht unter dem Fragesatz, direkt über der
+ * Eingabe, damit Satz und Feldname zusammenbleiben.
+ */
+function HilfeText({ text }) {
   // „Wozu:" trennt, was der Setter tun soll, von dem, wofür das Feld gebraucht
   // wird. Abgesetzt liest sich beides schneller als ein Block.
-  const [anleitung, wozu] = text.split(/\s*Wozu:\s*/)
-
+  const [anleitung, wozu] = String(text).split(/\s*Wozu:\s*/)
   return (
-    <>
-      <button
-        type="button"
-        onClick={() => setOffen(o => !o)}
-        className={`align-middle ml-1 transition-colors ${offen ? 'text-primary' : 'text-gray-400 hover:text-primary'}`}
-        aria-label="Mehr zu diesem Feld"
-        aria-expanded={offen}
-      >
-        <HelpCircle className="w-4 h-4" />
-      </button>
-
-      {/* Ein ruhiger Hinweis unter dem Feldnamen statt einer schwebenden Box:
-          Er nimmt die Breite, die da ist, und kann in der schmalen Schublade
-          nirgends überstehen. Hell und mit Akzentlinie, damit er zur Maske
-          gehört und nicht wie ein Fremdkörper darüber liegt. */}
-      {offen && (
-        <span className="block mt-1.5 mb-2 pl-3 pr-3 py-2 space-y-1.5 text-xs leading-relaxed font-normal
-                         text-on-surface-variant bg-surface-container-low rounded-r-lg
-                         border-l-2 border-primary-fixed-dim">
-          {anleitung && <span className="block">{anleitung}</span>}
-          {wozu && (
-            <span className="block">
-              <span className="font-medium text-on-surface">Wozu: </span>{wozu}
-            </span>
-          )}
-        </span>
-      )}
-    </>
+    <div className="mb-2 pl-3 pr-3 py-2 space-y-1.5 text-xs leading-relaxed
+                    text-on-surface-variant bg-surface-container-low rounded-r-lg
+                    border-l-2 border-primary-fixed-dim">
+      {anleitung && <p>{anleitung}</p>}
+      {wozu && <p><span className="font-medium text-on-surface">Wozu: </span>{wozu}</p>}
+    </div>
   )
 }
 
@@ -242,6 +237,7 @@ function Eingabe({ feld, wert, werte, setzen, fehlt, abgeschaltet }) {
 
 function Feld({ feld, werte, setzen, fehlt, rolle }) {
   const { name, hilfe, frage } = beschriftung(feld, werte)
+  const [hilfeOffen, setHilfeOffen] = useState(false)
   const wert = werte?.[feld.schluessel]
 
   // „Kunde wollte keine Zahlen nennen" schaltet die Zahlenfelder aus: Leer ist
@@ -254,9 +250,10 @@ function Feld({ feld, werte, setzen, fehlt, rolle }) {
       <label className="feld-label">
         {name}
         {istGate(feld, werte) && <span className="text-red-500 ml-0.5">*</span>}
-        <Hilfe text={hilfe} />
+        {hilfe && <HilfeKnopf offen={hilfeOffen} onClick={() => setHilfeOffen(o => !o)} />}
       </label>
       <Frage frage={frage} rolle={rolle} />
+      {hilfeOffen && hilfe && <HilfeText text={hilfe} />}
 
       {feld.kennzeichen ? (
         <div className="flex gap-2">
