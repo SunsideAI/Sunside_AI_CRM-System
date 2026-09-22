@@ -2420,7 +2420,7 @@ function SettingAnalytics({ user, isAdmin, meldeAktualisieren }) {
           {/* Der Frühindikator: Hat der Kunde selbst gesagt, was er bräuchte? */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <Kennzahl
-              label="Mit ausgesprochenem Bedarf" value={formatPercent(z.bedarfQuote)}
+              label="Bedarf ausgesprochen" value={formatPercent(z.bedarfQuote)}
               subtitle={`${z.mitBedarf || 0} von ${z.stattgefunden || 0} Gesprächen`}
               icon={Lightbulb} color="neutral" laedt={loading}
               vergleich={vergleich('bedarfQuote')}
@@ -2845,8 +2845,8 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
               vor sich hat. Diese Vorgänge verschwinden sonst still. */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <Kennzahl
-              label="Ohne Termin in der Zukunft" value={stats.summary?.ohneZukunftstermin || 0}
-              subtitle="offene Vorgänge, heute"
+              label="Kein Termin in Sicht" value={stats.summary?.ohneZukunftstermin || 0}
+              subtitle="offene Vorgänge ohne Termin in der Zukunft"
               icon={CalendarX}
               color={(stats.summary?.ohneZukunftstermin || 0) > 0 ? 'warnung' : 'neutral'}
             />
