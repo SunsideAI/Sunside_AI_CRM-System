@@ -472,3 +472,34 @@ Sitzungs-Helfers (`inhalt` statt `nutzer`) — fiel als 502 im Browsertest auf u
 **Nachweis:** 15/15 über die drei Tabs — Knopfklasse, Position rechts der Filter, gleiche Höhe,
 erste Spalte bleibt beim Scrollen an Ort und Stelle, Unternehmen bleibt sichtbar. Regression:
 Spaltenwahl 7/7, Tabellen 12/12, Konsistenz 47/47.
+
+## Schritt 3: Filter zum Zusammenstellen — 23.09.
+
+Gefiltert wurde bisher mit festen Auswahlfeldern: im Opening fünf, in Setting und Closing je eines,
+und immer nur „ist gleich". Wer alles außer „Kein Interesse" sehen wollte, musste jeden anderen
+Wert einzeln durchgehen.
+
+Jetzt steht neben „Spalten" der Knopf „Filter", in derselben grauen Optik. Ein Filter besteht aus
+Feld, Vergleich und Wert; bis zu sechs gelten zusammen (`shared/filter.js`):
+
+| Feldart | Vergleiche |
+|---|---|
+| Text, Name, Status | ist · ist nicht · enthält · enthält nicht · ist leer · ist gefüllt |
+| Zahl, Geld, Prozent | ist · ist nicht · größer als · kleiner als · ist leer · ist gefüllt |
+| Datum | vor dem · nach dem · ist leer · ist gefüllt |
+
+Gefiltert wird über dieselben Felder wie die Spalten — also auch über alles, was man zusätzlich
+einblenden kann. Werte schlägt die Liste aus dem vor, was gerade drinsteht. Gespeichert wird je
+Benutzer zusammen mit den Spalten in `users.preferences`.
+
+**Wo gerechnet wird:** Setting und Closing haben ihre 615 Datensätze im Browser, dort filtert die
+Oberfläche selbst. Das Opening blättert serverseitig durch 28.853 Leads — dort gehen die Filter
+als Bedingungen mit in die Abfrage (`netlify/functions/leads.js`), sonst würde nur die sichtbare
+Seite durchsucht. Für „meine Leads" läuft die Abfrage dabei über einen Join auf die
+Zuweisungstabelle, weil eine Liste mit tausend IDs die URL sprengt.
+
+**Nachweis (Playwright, Vorschau):** 10/10 — „ist nicht" schließt nachweislich aus, der Zähler am
+Knopf stimmt, bei sechs Filtern ist Hinzufügen gesperrt, „Alle entfernen" stellt den Stand wieder
+her; im Opening geht der Filter an den Server, danach stehen dort nur noch passende Orte, vorher
+waren es andere. Regression grün: Spaltenwahl 7/7, Tabellen 12/12, Scrollen und Knopfoptik 15/15,
+Konsistenz 47/47, Pools 15/15. Die Testeinstellungen sind danach wieder entfernt.
