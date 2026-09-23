@@ -129,14 +129,14 @@ export default function SetterUebergabe({
     if (fehler) fehlerRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [fehler])
 
-  // Eine gefüllte Aktion gibt es, sobald ein Ausgang feststeht - vorher ist
-  // hier nichts zu speichern.
-  const hatHauptaktion = !gesperrt && Boolean(ausgang)
-  useEffect(() => { onHauptaktion?.(hatHauptaktion) }, [hatHauptaktion, onHauptaktion])
-
   const reduziert = reduzierterModus(werte)
   const ergebnis = werte.ergebnis_beratung
   const mitUebergabe = ['Auftrag', 'Nächster Schritt vereinbart'].includes(ergebnis)
+
+  // Eine gefüllte Aktion gibt es, sobald ein Ausgang feststeht - vorher ist
+  // hier nichts zu speichern.
+  const hatHauptaktion = !gesperrt && Boolean(ausgang) && !(mitUebergabe && termin?.start)
+  useEffect(() => { onHauptaktion?.(hatHauptaktion) }, [hatHauptaktion, onHauptaktion])
 
   // Nur die eigenen Spalten gehen an den Server, nie der mitgelesene Kontext.
   const eigene = () => Object.fromEntries(EIGENE_SPALTEN.map(k => [k, werte[k] ?? null]))
@@ -350,15 +350,11 @@ export default function SetterUebergabe({
             </button>
           </div>
         ) : (
-          <div className="space-y-2">
-            <button type="button" onClick={() => setAblauf('felder')} className="fuss-haupt w-full justify-center">
-              <CalendarPlus className="w-4 h-4" /> Termin mit Closer buchen
-            </button>
-            <p className="text-xs text-gray-500">
-              In zwei Schritten: erst die Angaben aus dem Gespräch, dann der Termin.
-              Höchstens eine Woche voraus, immer per Video.
-            </p>
-          </div>
+          // Der Knopf dazu steht unten in der Fußleiste, wie jede Aktion.
+          <p className="text-xs text-gray-500">
+            Weiter geht es in zwei Schritten: erst die Angaben aus dem Gespräch,
+            dann der Termin mit dem Closer. Höchstens eine Woche voraus, immer per Video.
+          </p>
         )
       ) : (
         // Vertagt oder abgesagt: kein Termin, die Angaben stehen direkt hier.
@@ -389,9 +385,14 @@ export default function SetterUebergabe({
       <button onClick={zwischenstand} disabled={laeuft} className="fuss-leise">
         Zwischenstand speichern
       </button>
-      {/* Bei Übergabe sitzt die Hauptaktion im Terminwähler: Sie bucht und
-          übergibt in einem Zug. */}
-      {!mitUebergabe && (
+      {/* Genau eine gefüllte Aktion: Bei Übergabe führt sie in den zweistufigen
+          Ablauf, sonst schließt sie das Gespräch ab. Steht der Termin schon,
+          ist hier nichts mehr zu tun. */}
+      {mitUebergabe ? (!termin?.start && (
+        <button onClick={() => setAblauf('felder')} disabled={laeuft} className="fuss-haupt">
+          <CalendarPlus className="w-4 h-4" /> Termin mit Closer buchen
+        </button>
+      )) : (
         <button onClick={abschliessen} disabled={laeuft} className="fuss-haupt">
           {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
           {knopfText}
