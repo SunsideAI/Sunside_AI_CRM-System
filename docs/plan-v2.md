@@ -316,3 +316,36 @@ Dabei korrigiert: Die Beschriftung „Mit ausgesprochenem Bedarf" wurde in der K
 das Empfehlungsfenster direkt nach einer echten Buchung, die Übergabe mit echter Buchung des
 Abschlussgesprächs und das Hochzählen der Versuche beim Senden. Die Logik dahinter ist per
 Schnittstelle und Node geprüft. Miro-Tickets 9 (teilweise), 16, 17 und 18 sind als gebaut markiert.
+
+## Geführte Übergabe im Setting, 23.09.
+
+Rückmeldung: Im Setting öffnete sich nach „Hat stattgefunden" alles auf derselben Seite. Der
+Setter soll geführt werden wie im Opening — erst die Angaben, dann der Termin.
+
+Jetzt: „Termin mit Closer buchen" schaltet die Schublade auf eine eigene Seite.
+
+| Schritt | Inhalt | Fußleiste |
+|---|---|---|
+| 1 von 2 | Angaben aus dem Gespräch | Zurück · Zwischenstand speichern · **Weiter zum Termin** |
+| 2 von 2 | Termin mit dem Closer, Video fest, höchstens eine Woche | Zurück zu den Angaben, Buchen im Wähler |
+
+Fehlt eine Pflichtangabe, hält Schritt 1 an — vor jeder Calendly-Anfrage. Während des Ablaufs
+zeigt die Schublade nur diesen einen Weg: keine Kontaktdaten, kein Verlauf, keine Mail-Aktion,
+ein einziger Weg zurück je Seite.
+
+Dabei gefunden und behoben:
+
+- Die Schublade hat den Arbeitsbereich beim Seitenwechsel **neu aufgebaut**, dadurch ging der
+  begonnene Schritt samt Eingaben verloren (`b6fe26b`). Die Abschnitte werden jetzt einzeln
+  ausgeblendet, statt den Baum umzubauen.
+- Im Terminwähler standen bis zu drei Wege zurück (Kopfzeile, „Abbrechen", Fußleiste). „Abbrechen"
+  erscheint nur noch, wo es auch einen Empfänger hat.
+- `.fuss-leise` hatte kein Flex-Layout: Das Symbol im Knopf rutschte in eine eigene Zeile.
+
+**Nachweis (Playwright gegen die Vorschau, 23.09.):** 22/22 Prüfungen — Seitenwechsel, Kopfzeilen,
+Fußleisten samt Knopfklassen, Sperre ohne Angaben, erhaltene Eingaben beim Zurückgehen, keine
+Terminart-Auswahl, kein Setter-Häkchen, kein Schreib- oder Buchungsaufruf. Dazu unverändert grün:
+Rollenprüfung Setter-Häkchen 3/3, Schubladen in Opening, Setting und Closing ohne Schreibzugriff.
+
+**Weiterhin nicht im Browser getestet:** die tatsächliche Buchung des Abschlussgesprächs (erzeugt
+einen echten Calendly-Termin) und „Zwischenstand speichern" (schreibt in einen echten Datensatz).
