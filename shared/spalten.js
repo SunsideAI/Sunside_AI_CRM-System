@@ -67,7 +67,7 @@ export const SPALTEN = [
   { schluessel: 'opener', name: 'Opener', art: 'person', ab: 'lg',
     stufen: ['setting', 'closing'] },
   { schluessel: 'setter', name: 'Setter', art: 'person', ab: 'lg',
-    stufen: ['setting', 'closing'] },
+    stufen: ['setting', 'closing'], standard: ['closing'] },
   { schluessel: 'closer', name: 'Closer', art: 'person', ab: 'lg',
     stufen: ['closing'] },
 

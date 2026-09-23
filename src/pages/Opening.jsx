@@ -20,6 +20,9 @@ import TerminPicker from '../components/TerminPicker'
 import { Rollen, Pille, Statistik, webZahlen } from '../components/LeadSchublade'
 import KontaktFelder from '../components/KontaktFelder'
 import LeadPool from '../components/LeadPool'
+import LeadTabelle from '../components/LeadTabelle'
+import { zeileAusLead } from '../utils/zeile'
+import { standardSpalten } from '../../shared/spalten.js'
 import Verlauf from '../components/Verlauf'
 import EmailComposer from '../components/EmailComposer'
 import {
@@ -1275,219 +1278,20 @@ function Opening() {
             </p>
           </div>
         ) : (
-          <>
-            {/* Mobile Card View */}
-            <div className="block md:hidden divide-y divide-outline-variant">
-              {leads.map((lead) => (
-                <div
-                  key={lead.id}
-                  onClick={() => openLead(lead)}
-                  className="p-4 cursor-pointer hover:bg-surface-container active:bg-surface-container-high transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-start gap-3 flex-1 min-w-0">
-                      <div
-                        className={`p-1.5 rounded-lg flex-shrink-0 ${
-                          lead.kontaktiert
-                            ? 'bg-success-container text-success'
-                            : 'bg-surface-container text-outline'
-                        }`}
-                      >
-                        {lead.kontaktiert ? (
-                          <CheckCircle2 className="w-4 h-4" />
-                        ) : (
-                          <Phone className="w-4 h-4" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <h3 className="font-medium text-on-surface truncate">{lead.unternehmensname}</h3>
-                        <p className="text-body-sm text-on-surface-variant truncate">{lead.kategorie}</p>
-                        {lead.stadt && (
-                          <p className="text-body-sm text-outline mt-0.5 flex items-center gap-1">
-                            {lead.land && <span>{getLandFlag(lead.land)}</span>}
-                            {lead.stadt}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    {lead.ergebnis && (
-                      <span className={`badge flex-shrink-0 text-xs ${getErgebnisColor(lead.ergebnis)}`}>
-                        {lead.ergebnis}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Desktop Table View */}
-            <div className="hidden md:block overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-surface-container">
-                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
-                    Unternehmen
-                  </th>
-                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden md:table-cell">
-                    Standort
-                  </th>
-                  {/* Vertriebler-Spalte nur bei "Alle Leads" */}
-                  {isAdmin() && viewMode === 'all' && (
-                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
-                      Vertriebler
-                    </th>
-                  )}
-                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
-                    Kontakt
-                  </th>
-                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
-                    Ergebnis
-                  </th>
-                  <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden xl:table-cell">
-                    Letzte Aktivität
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {leads.map((lead, index) => (
-                  <tr
-                    key={lead.id}
-                    onClick={() => openLead(lead)}
-                    className={`table-row cursor-pointer ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
-                  >
-                    {/* Status-Indikator (nur Anzeige, kein Klick) */}
-                    <td className="px-4 py-4">
-                      <div
-                        className={`p-1.5 rounded-lg inline-flex ${
-                          lead.kontaktiert
-                            ? 'bg-success-container text-success'
-                            : 'bg-surface-container text-outline'
-                        }`}
-                      >
-                        {lead.kontaktiert ? (
-                          <CheckCircle2 className="w-5 h-5" />
-                        ) : (
-                          <Phone className="w-5 h-5" />
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Unternehmen */}
-                    <td className="px-4 py-4">
-                      <div className="font-medium text-on-surface">{lead.unternehmensname}</div>
-                      <div className="text-body-sm text-on-surface-variant">{lead.kategorie}</div>
-                    </td>
-
-                    {/* Standort */}
-                    <td className="px-4 py-4 hidden md:table-cell">
-                      <div className="flex items-center text-on-surface-variant">
-                        {lead.land && (
-                          <span className="mr-1.5 text-base" title={lead.land}>{getLandFlag(lead.land)}</span>
-                        )}
-                        <MapPin className="w-4 h-4 mr-1.5 text-outline" />
-                        {lead.stadt}
-                      </div>
-                    </td>
-
-                    {/* Vertriebler - nur bei "Alle Leads" */}
-                    {isAdmin() && viewMode === 'all' && (
-                      <td className="px-4 py-4 hidden lg:table-cell">
-                        {lead.zugewiesenAn && lead.zugewiesenAn.length > 0 ? (
-                          <div className="flex items-center text-on-surface-variant">
-                            <UserIcon className="w-4 h-4 mr-1.5 text-outline" />
-                            <span className="truncate max-w-[150px]">
-                              {lead.zugewiesenAn.join(', ')}
-                            </span>
-                          </div>
-                        ) : (
-                          <span className="text-outline text-body-sm">—</span>
-                        )}
-                      </td>
-                    )}
-
-                    {/* Kontakt */}
-                    <td className="px-4 py-4 hidden lg:table-cell">
-                      <div className="space-y-1">
-                        {lead.telefon && (
-                          <div className="flex items-center text-body-sm text-on-surface-variant">
-                            <Phone className="w-3.5 h-3.5 mr-1.5 text-outline" />
-                            {lead.telefon}
-                          </div>
-                        )}
-                        {lead.email && (
-                          <div className="flex items-center text-body-sm text-on-surface-variant">
-                            <Mail className="w-3.5 h-3.5 mr-1.5 text-outline" />
-                            <span className="truncate max-w-[150px]">{lead.email}</span>
-                          </div>
-                        )}
-                      </div>
-                    </td>
-
-                    {/* Ergebnis */}
-                    <td className="px-4 py-4">
-                      {lead.ergebnis ? (
-                        <span className={`badge ${getErgebnisColor(lead.ergebnis)}`}>
-                          {lead.ergebnis}
-                        </span>
-                      ) : (
-                        <span className="text-outline text-body-sm">—</span>
-                      )}
-                    </td>
-
-                    {/* Kommentar / Letzter Eintrag */}
-                    <td className="px-4 py-4 hidden xl:table-cell">
-                      {lead.kommentar ? (
-                        (() => {
-                          // Nur den ersten (neuesten) Eintrag anzeigen
-                          const firstLine = lead.kommentar.split('\n')[0]
-                          const historyMatch = firstLine.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
-
-                          if (historyMatch) {
-                            const [, datum, zeit, rest] = historyMatch
-                            // Icon und Text extrahieren
-                            const iconMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬)\s*(.+)$/)
-                            const icon = iconMatch ? iconMatch[1] : ''
-                            let text = iconMatch ? iconMatch[2] : rest
-                            // Username am Ende entfernen für kürzere Anzeige
-                            text = text.replace(/\s*\([^)]+\)$/, '')
-                            // Text kürzen
-                            if (text.length > 30) text = text.substring(0, 30) + '...'
-
-                            return (
-                              <div className="flex items-center gap-2 text-body-sm">
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-surface-container text-on-surface-variant text-label-sm font-mono">
-                                  {datum.substring(0, 6)}
-                                </span>
-                                {icon && <span>{icon}</span>}
-                                <span className="text-on-surface-variant truncate max-w-[120px]">{text}</span>
-                              </div>
-                            )
-                          } else {
-                            // Alter Kommentar ohne History-Format
-                            return (
-                              <div className="flex items-center text-body-sm text-on-surface-variant">
-                                <MessageSquare className="w-4 h-4 mr-1.5 text-outline flex-shrink-0" />
-                                <span className="truncate max-w-[150px]">{firstLine}</span>
-                              </div>
-                            )
-                          }
-                        })()
-                      ) : (
-                        <span className="text-outline text-body-sm">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </>
+          <LeadTabelle
+            stufe="opening"
+            zeilen={leads.map(l => zeileAusLead('opening', l))}
+            auswahl={isAdmin() && viewMode === 'all'
+              ? [...standardSpalten('opening'), 'zustaendig']
+              : null}
+            badgeFarbe={(wert) => getErgebnisColor(wert)}
+            leer="Keine Leads mit diesen Filterkriterien."
+            onZeile={(z) => openLead(z.roh)}
+          />
         )}
 
-        {/* Pagination */}
+        {/* Blättern: Die Leads kommen seitenweise vom Server, eine Gesamtzahl
+            gibt es dort nicht - deshalb nur vor und zurück. */}
         {(hasMore || pageHistory.length > 0) && (
           <div className="flex items-center justify-between px-4 py-3 bg-surface-container/50">
             <button

@@ -24,6 +24,9 @@ import Gespraechsausgang from '../components/Gespraechsausgang'
 import { Rollen, Pille, Statistik, webZahlen } from '../components/LeadSchublade'
 import KontaktFelder from '../components/KontaktFelder'
 import LeadPool from '../components/LeadPool'
+import LeadTabelle from '../components/LeadTabelle'
+import { zeileAusLead } from '../utils/zeile'
+import { standardSpalten } from '../../shared/spalten.js'
 import { Angabe, Angaben } from '../components/Formular'
 
 // Der Termin, der den Closer angeht.
@@ -1796,180 +1799,16 @@ function Closing() {
             </div>
           ) : (
             <>
-              {/* Mobile Card View */}
-              <div className="block md:hidden divide-y divide-outline-variant">
-                {paginatedLeads.map((lead) => (
-                  <div
-                    key={lead.id}
-                    onClick={() => openModal(lead)}
-                    className="p-4 cursor-pointer hover:bg-surface-container active:bg-surface-container-high transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-on-surface truncate">
-                          {safeString(lead.unternehmen) || 'Unbekannt'}
-                        </h3>
-                        <p className="text-body-sm text-on-surface-variant truncate">
-                          {lead.kategorie || 'Unternehmen'}
-                        </p>
-                        {(lead.ansprechpartnerVorname || lead.ansprechpartnerNachname) && (
-                          <p className="text-body-sm text-outline mt-1">
-                            {safeString(lead.ansprechpartnerVorname)} {safeString(lead.ansprechpartnerNachname)}
-                          </p>
-                        )}
-                      </div>
-                      <span className={`badge flex-shrink-0 ${getStatusStyle(lead.status)}`}>
-                        {lead.status || 'Neu'}
-                      </span>
-                    </div>
-                    {closerTermin(lead) && (
-                      <div className="flex items-center gap-1 mt-2 text-body-sm text-on-surface-variant">
-                        <Calendar className="w-3.5 h-3.5" />
-                        {formatDate(closerTermin(lead))}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {/* Desktop Table View */}
-              <div className="hidden md:block overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-surface-container">
-                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
-                      Unternehmen
-                    </th>
-                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden md:table-cell">
-                      Ansprechpartner
-                    </th>
-                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
-                      Termin
-                    </th>
-                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
-                      Status
-                    </th>
-                    {/* Closer-Spalte nur bei "Alle Leads" für Admins */}
-                    {isAdmin() && viewMode === 'all' && (
-                      <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
-                        Closer
-                      </th>
-                    )}
-                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
-                      Coldcaller
-                    </th>
-                    <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden xl:table-cell">
-                      Kontakt
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedLeads.map((lead, index) => (
-                    <tr
-                      key={lead.id}
-                      onClick={() => openModal(lead)}
-                      className={`table-row cursor-pointer ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
-                    >
-                      {/* Status-Indikator */}
-                      <td className="px-4 py-4">
-                        <div
-                          className={`p-1.5 rounded-lg inline-flex ${
-                            lead.status === STATUS.GEWONNEN
-                              ? 'bg-success-container text-success'
-                              : IST_VERLOREN.includes(lead.status)
-                              ? 'bg-error-container text-error'
-                              : lead.status === STATUS.ANGEBOT_ANGEFORDERT || lead.status === STATUS.ANGEBOT_VERSCHICKT
-                              ? 'bg-warning-container text-warning'
-                              : 'bg-surface-container text-outline'
-                          }`}
-                        >
-                          {lead.status === STATUS.GEWONNEN ? (
-                            <CheckCircle className="w-5 h-5" />
-                          ) : IST_VERLOREN.includes(lead.status) ? (
-                            <AlertCircle className="w-5 h-5" />
-                          ) : lead.status === STATUS.ANGEBOT_ANGEFORDERT || lead.status === STATUS.ANGEBOT_VERSCHICKT ? (
-                            <FileText className="w-5 h-5" />
-                          ) : (
-                            <Calendar className="w-5 h-5" />
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Unternehmen */}
-                      <td className="px-4 py-4">
-                        <div className="font-medium text-on-surface">{safeString(lead.unternehmen) || 'Unbekannt'}</div>
-                        <div className="text-body-sm text-on-surface-variant">{lead.kategorie || 'Unternehmen'}</div>
-                      </td>
-
-                      {/* Ansprechpartner */}
-                      <td className="px-4 py-4 hidden md:table-cell">
-                        <div className="flex items-center text-on-surface-variant">
-                          <UserIcon className="w-4 h-4 mr-1.5 text-outline" />
-                          {safeString(lead.ansprechpartnerVorname)} {safeString(lead.ansprechpartnerNachname)}
-                        </div>
-                      </td>
-
-                      {/* Termin */}
-                      <td className="px-4 py-4 hidden lg:table-cell">
-                        <div className="flex items-center text-on-surface-variant">
-                          <Calendar className="w-4 h-4 mr-1.5 text-outline" />
-                          {formatDate(closerTermin(lead))}
-                        </div>
-                      </td>
-
-                      {/* Status Badge */}
-                      <td className="px-4 py-4">
-                        <span className={`badge ${getStatusStyle(lead.status)}`}>
-                          {lead.status || 'Unbekannt'}
-                        </span>
-                      </td>
-
-                      {/* Closer - nur bei "Alle Leads" für Admins */}
-                      {isAdmin() && viewMode === 'all' && (
-                        <td className="px-4 py-4 hidden lg:table-cell">
-                          <div className="flex items-center text-on-surface-variant">
-                            <UserIcon className="w-4 h-4 mr-1.5 text-outline" />
-                            <span className="truncate max-w-[100px]">{safeString(lead.closerName) || '—'}</span>
-                          </div>
-                        </td>
-                      )}
-
-                      {/* Coldcaller */}
-                      <td className="px-4 py-4 hidden lg:table-cell">
-                        <div className="flex items-center text-on-surface-variant">
-                          <Phone className="w-4 h-4 mr-1.5 text-outline" />
-                          <span className="truncate max-w-[100px]">{safeString(lead.setterName) || '—'}</span>
-                        </div>
-                      </td>
-
-                      {/* Kontakt */}
-                      <td className="px-4 py-4 hidden xl:table-cell">
-                        <div className="space-y-1">
-                          {lead.telefon && (
-                            <div className="flex items-center text-body-sm text-on-surface-variant">
-                              <Phone className="w-3.5 h-3.5 mr-1.5 text-outline" />
-                              {lead.telefon}
-                            </div>
-                          )}
-                          {lead.email && (
-                            <div className="flex items-center text-body-sm text-on-surface-variant">
-                              <Mail className="w-3.5 h-3.5 mr-1.5 text-outline" />
-                              <span className="truncate max-w-[150px]">{lead.email}</span>
-                            </div>
-                          )}
-                          {!lead.telefon && !lead.email && (
-                            <span className="text-outline text-body-sm">—</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              </div>
+              <LeadTabelle
+                stufe="closing"
+                zeilen={paginatedLeads.map(l => zeileAusLead('closing', l))}
+                auswahl={isAdmin() && viewMode === 'all'
+                  ? [...standardSpalten('closing'), 'closer']
+                  : null}
+                badgeFarbe={(_, z) => getStatusStyle(z.statusWert)}
+                leer="Keine Leads mit diesen Filterkriterien."
+                onZeile={(z) => openModal(z.roh)}
+              />
 
               {/* Pagination - shared for both views */}
               {filteredLeads.length > LEADS_PER_PAGE && (
