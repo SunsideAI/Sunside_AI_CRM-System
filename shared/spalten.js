@@ -44,8 +44,11 @@ export const SPALTEN = [
     stufen: ['opening', 'setting', 'closing'], standard: ['opening', 'setting', 'closing'] },
   { schluessel: 'ort', name: 'Ort', art: 'text', ab: 'lg',
     stufen: ['opening', 'setting', 'closing'], standard: ['opening', 'setting', 'closing'] },
+  // Kontakt steht nur dort im Standard, wo angerufen wird. Im Closing war die
+  // Spalte so breit, dass Status und Zuständigkeit aus dem Bild rutschten -
+  // beides steht ohnehin in der Schublade.
   { schluessel: 'kontakt', name: 'Kontakt', art: 'kontakt', ab: 'xl',
-    stufen: ['opening', 'setting', 'closing'], standard: ['opening', 'closing'] },
+    stufen: ['opening', 'setting', 'closing'], standard: ['opening'] },
   { schluessel: 'termin', name: 'Termin', art: 'datum',
     stufen: ['setting', 'closing'], standard: ['setting', 'closing'] },
   { schluessel: 'ergebnis', name: 'Ergebnis', art: 'badge',
