@@ -616,6 +616,27 @@ function Opening() {
     }, 800) // 800ms Verzögerung
   }
 
+  // Die Maske wird beim Öffnen des Bearbeitens frisch aus dem Kontakt gefüllt
+  // - wie in Setting und Closing. Vorher stand darin der Stand vom Auswählen
+  // des Kontakts; nach einem Zwischenspeichern oder einer Buchung zeigte das
+  // E-Mail-Feld deshalb nichts an, obwohl eine Adresse hinterlegt war.
+  const bearbeitenStarten = () => {
+    setEditForm(prev => ({
+      ...prev,
+      kontaktiert: selectedLead.kontaktiert,
+      ergebnis: selectedLead.ergebnis,
+      ansprechpartnerVorname: selectedLead.ansprechpartnerVorname || '',
+      ansprechpartnerNachname: selectedLead.ansprechpartnerNachname || '',
+      telefon: selectedLead.telefon || '',
+      email: selectedLead.email || '',
+      website: selectedLead.website || '',
+      ort: selectedLead.stadt || '',
+      emailValidation: false,
+      ansprechpartnerValidation: false
+    }))
+    setEditMode(true)
+  }
+
   // Lead speichern
   const saveLead = async () => {
     if (!selectedLead) return
@@ -2182,7 +2203,7 @@ function Opening() {
                         {selectedLead.ergebnis === 'Beratungsgespräch' ? (
                           // No-Show oder Abgesagt: Setter kann voll bearbeiten
                           (hotLeadData?.status === STATUS.NICHT_ERSCHIENEN || hotLeadData?.status === STATUS.TERMIN_ABGESAGT) && darfNachterminieren(hotLeadData, user) ? (
-                            <button onClick={() => setEditMode(true)} className="fuss-haupt">
+                            <button onClick={bearbeitenStarten} className="fuss-haupt">
                               <Calendar className="w-4 h-4" />
                               Lead neu terminieren
                             </button>
@@ -2194,7 +2215,7 @@ function Opening() {
                             </button>
                           )
                         ) : (
-                          <button onClick={() => setEditMode(true)} className="fuss-haupt">
+                          <button onClick={bearbeitenStarten} className="fuss-haupt">
                             <Edit3 className="w-4 h-4" />
                             Bearbeiten
                           </button>
