@@ -161,6 +161,8 @@ function Opening() {
   const [selectedLead, setSelectedLead] = useState(null)
   const [editMode, setEditMode] = useState(false)
   const tabelle = useTabelle('opening')
+  // Zählt die Ladeläufe, damit eine verspätete Antwort nichts überschreibt.
+  const ladeLaufRef = useRef(0)
   const [kommentarOnlyMode, setKommentarOnlyMode] = useState(false) // Soft Lock: Nur Kommentare für Beratungsgespräch
   const [saving, setSaving] = useState(false)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
@@ -208,7 +210,13 @@ function Opening() {
   const [anfrageError, setAnfrageError] = useState('')
 
   // Leads laden
+  //
+  // Wer schnell umschaltet oder tippt, löst mehrere Abfragen aus. Antworten
+  // kommen nicht in der Reihenfolge zurück, in der sie losgeschickt wurden -
+  // eine alte konnte die neue überschreiben. Deshalb zählt jeder Lauf mit und
+  // nur der jüngste darf schreiben.
   const loadLeads = useCallback(async (newOffset = null, addToHistory = false) => {
+    const meinLauf = ++ladeLaufRef.current
     setLoading(true)
     setError('')
 
@@ -242,6 +250,7 @@ function Opening() {
         throw new Error(data.error || 'Fehler beim Laden')
       }
 
+      if (meinLauf !== ladeLaufRef.current) return
       setLeads(data.leads)
       setHasMore(data.hasMore)
       
