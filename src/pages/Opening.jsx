@@ -631,6 +631,9 @@ function Opening() {
       email: selectedLead.email || '',
       website: selectedLead.website || '',
       ort: selectedLead.stadt || '',
+      // Stand beim Öffnen eine Adresse in der Maske, darf sie nicht leer
+      // gespeichert werden. Woher der Wert kam, ist dabei egal.
+      mailWarDa: Boolean(selectedLead.email),
       emailValidation: false,
       ansprechpartnerValidation: false
     }))
@@ -650,7 +653,7 @@ function Opening() {
     // Eine einmal hinterlegte E-Mail darf nicht leer gespeichert werden —
     // dieselbe Regel in Opening, Setting und Closing. Wo noch keine Adresse
     // steht, blockiert sie nur Terminbuchung und Mailversand, nicht die Arbeit.
-    if (selectedLead.email && !editForm.email?.trim()) {
+    if ((editForm.mailWarDa || selectedLead.email) && !editForm.email?.trim()) {
       setEditForm(prev => ({ ...prev, emailValidation: true }))
       return
     }
