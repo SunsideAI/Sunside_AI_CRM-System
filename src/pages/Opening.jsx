@@ -17,7 +17,8 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '../context/AuthContext'
 import TerminPicker from '../components/TerminPicker'
-import { Rollen, Pille, Statistik } from '../components/LeadSchublade'
+import { Rollen, Pille, Statistik, webZahlen } from '../components/LeadSchublade'
+import KontaktFelder from '../components/KontaktFelder'
 import Verlauf from '../components/Verlauf'
 import EmailComposer from '../components/EmailComposer'
 import {
@@ -522,6 +523,7 @@ function Opening() {
       telefon: lead.telefon || '',
       email: lead.email || '',
       website: lead.website || '',
+      ort: lead.stadt || '',
       // Wiedervorlage - ISO-String zu datetime-local Format konvertieren
       wiedervorlageDatum: isoToLocalDateTimeString(lead.wiedervorlageDatum)
     })
@@ -714,6 +716,9 @@ function Opening() {
       }
       if (editForm.website !== (selectedLead.website || '')) {
         updates.website = editForm.website
+      }
+      if (editForm.ort !== (selectedLead.stadt || '')) {
+        updates.stadt = editForm.ort
       }
       
       // Wiedervorlage nur wenn Ergebnis Wiedervorlage
@@ -1142,6 +1147,7 @@ function Opening() {
                     telefon: lead.telefon || '',
                     email: lead.email || '',
                     website: lead.website || '',
+                    ort: lead.stadt || '',
                     wiedervorlageDatum: ''
                   })
                   setEditMode(true)
@@ -1846,48 +1852,42 @@ function Opening() {
 
                 {/* Contact Buttons (Pill Style) - Edit mode inline */}
                 {editMode ? (
-                  // Beschriftet wie im Closing: Ohne Namen über dem Feld ist
-                  // ein Platzhalter die einzige Erklärung, und der ist weg,
-                  // sobald etwas drinsteht.
-                  <div className="grid grid-cols-1 gap-3">
-                    <label className="feld-label -mb-2">Telefon</label>
-                    <div className="input-field-icon">
-                      <Phone className="h-4 w-4 text-primary flex-shrink-0" />
-                      <input
-                        type="tel"
-                        value={editForm.telefon}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, telefon: e.target.value }))}
-                        placeholder="Telefonnummer eingeben..."
-                      />
-                    </div>
-                    <label className="feld-label -mb-2">E-Mail <span className="text-red-500">*</span></label>
-                    <div className={`input-field-icon${
-                      editForm.emailValidation && !editForm.email?.trim() ? ' fehlt' : ''
-                    }`}>
-                      <Mail className={`h-4 w-4 flex-shrink-0 ${
-                        editForm.emailValidation && !editForm.email?.trim() ? 'text-red-500' : 'text-primary'
-                      }`} />
-                      <input
-                        type="email"
-                        value={editForm.email}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value, emailValidation: false }))}
-                        placeholder="E-Mail eingeben..."
-                      />
-                    </div>
-                    {editForm.emailValidation && !editForm.email?.trim() && (
-                      <p className="text-xs text-red-500 -mt-1">E-Mail ist Pflichtfeld für Terminbuchung</p>
+                  // Dasselbe Bauteil wie in Setting und Closing: gleiche Felder,
+                  // gleiche Reihenfolge, gleiche Beschriftung. Der Name läuft
+                  // weiter über handleAnsprechpartnerChange, weil er hier
+                  // zwischengespeichert wird, sobald er vollständig ist.
+                  <KontaktFelder
+                    werte={{
+                      vorname: editForm.ansprechpartnerVorname,
+                      nachname: editForm.ansprechpartnerNachname,
+                      telefon: editForm.telefon,
+                      email: editForm.email,
+                      website: editForm.website,
+                      ort: editForm.ort
+                    }}
+                    onChange={(w) => {
+                      if (w.vorname !== editForm.ansprechpartnerVorname) {
+                        handleAnsprechpartnerChange('ansprechpartnerVorname', w.vorname)
+                      }
+                      if (w.nachname !== editForm.ansprechpartnerNachname) {
+                        handleAnsprechpartnerChange('ansprechpartnerNachname', w.nachname)
+                      }
+                      setEditForm(prev => ({
+                        ...prev,
+                        telefon: w.telefon, email: w.email, website: w.website, ort: w.ort,
+                        emailValidation: false, ansprechpartnerValidation: false
+                      }))
+                    }}
+                    mailFehlt={Boolean(editForm.emailValidation && !editForm.email?.trim())}
+                    notiz={autoSaving && (
+                      <span className="ml-2 text-xs text-gray-400 font-normal">
+                        <Loader2 className="w-3 h-3 inline animate-spin mr-1" />
+                        Speichert...
+                      </span>
                     )}
-                    <label className="feld-label -mb-2">Website</label>
-                    <div className="input-field-icon">
-                      <Globe className="h-4 w-4 text-primary flex-shrink-0" />
-                      <input
-                        type="url"
-                        value={editForm.website}
-                        onChange={(e) => setEditForm(prev => ({ ...prev, website: e.target.value }))}
-                        placeholder="Website eingeben..."
-                      />
-                    </div>
-                  </div>
+                    nameFehlt={Boolean(editForm.ansprechpartnerValidation
+                      && (!editForm.ansprechpartnerVorname || !editForm.ansprechpartnerNachname))}
+                  />
                 ) : (
                   // Dieselben Pillen wie in Setting und Closing, der Ort
                   // eingeschlossen. Vorher stand er hier als eigenes Feld.
@@ -1926,21 +1926,7 @@ function Opening() {
               {/* Website-Zahlen: derselbe Baustein wie in Setting und Closing,
                   hier offen, weil sie der Einstieg ins Telefonat sind. */}
               <div className="abschnitt-trenner mb-6">
-                <Statistik
-                  anfangsOffen
-                  werte={{
-                    besucher: selectedLead.monatlicheBesuche != null
-                      ? selectedLead.monatlicheBesuche.toLocaleString('de-DE') : null,
-                    mehrwert: selectedLead.mehrwert != null
-                      ? `${selectedLead.mehrwert.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €` : null,
-                    absprungrate: selectedLead.absprungrate != null
-                      ? `${Math.round(parseFloat(selectedLead.absprungrate) * 100)}%` : null,
-                    absprungrateFarbe: selectedLead.absprungrate == null ? undefined
-                      : (parseFloat(selectedLead.absprungrate) * 100) > 60 ? 'text-error'
-                      : (parseFloat(selectedLead.absprungrate) * 100) > 40 ? 'text-warning' : 'text-success',
-                    leads: selectedLead.anzahlLeads ?? null
-                  }}
-                />
+                <Statistik anfangsOffen werte={webZahlen(selectedLead)} />
               </div>
 
               {/* STATUS & NOTIZEN Section */}
@@ -1997,45 +1983,10 @@ function Opening() {
                       )}
                     </div>
 
-                    {/* Ansprechpartner - PFLICHTFELD (vor den Buttons!) */}
-                    <div>
-                      <label className="feld-label">
-                        Ansprechpartner <span className="text-red-500">*</span>
-                        {autoSaving && (
-                          <span className="ml-2 text-xs text-gray-400 font-normal">
-                            <Loader2 className="w-3 h-3 inline animate-spin mr-1" />
-                            Speichert...
-                          </span>
-                        )}
-                      </label>
-                      <div className="grid grid-cols-2 gap-3">
-                        <input
-                          type="text"
-                          value={editForm.ansprechpartnerVorname}
-                          onChange={(e) => {
-                            handleAnsprechpartnerChange('ansprechpartnerVorname', e.target.value)
-                            setEditForm(prev => ({ ...prev, ansprechpartnerValidation: false }))
-                          }}
-                          placeholder="Vorname *"
-                          className={`input-field${
-                            editForm.ansprechpartnerValidation && !editForm.ansprechpartnerVorname ? ' fehlt' : ''
-                          }`}
-                        />
-                        <input
-                          type="text"
-                          value={editForm.ansprechpartnerNachname}
-                          onChange={(e) => {
-                            handleAnsprechpartnerChange('ansprechpartnerNachname', e.target.value)
-                            setEditForm(prev => ({ ...prev, ansprechpartnerValidation: false }))
-                          }}
-                          placeholder="Nachname *"
-                          className={`input-field${
-                            editForm.ansprechpartnerValidation && !editForm.ansprechpartnerNachname ? ' fehlt' : ''
-                          }`}
-                        />
-                      </div>
-                    </div>
-                      
+                    {/* Der Ansprechpartner steht jetzt oben bei den
+                        Kontaktdaten, wie in Setting und Closing. Pflicht bleibt
+                        er: Ohne Namen wird kein Termin gebucht. */}
+
                     {/* Termin buchen Button bei Beratungsgespräch */}
                     {editForm.ergebnis === 'Beratungsgespräch' && (
                       <button

@@ -86,6 +86,28 @@ export function Rollen({ opener, setter, closer }) {
  * Die Zahlen zur Website. Zugeklappt, weil sie selten gebraucht werden;
  * im Opening offen, dort sind sie der Einstieg ins Telefonat.
  */
+/**
+ * Die Website-Zahlen eines Kontakts, fertig zum Anzeigen.
+ *
+ * Stand vorher dreimal verschieden im Code: Opening rechnete Schwellen für die
+ * Farbe, Closing zeigte dieselbe Zahl schwarz und in anderer Reihenfolge,
+ * Setting zeigte sie gar nicht. Formatierung und Schwellen gehören an eine
+ * Stelle, sonst heißt dieselbe Zahl in zwei Tabs etwas anderes.
+ */
+export function webZahlen(lead) {
+  if (!lead) return null
+  const rate = lead.absprungrate == null ? null : parseFloat(lead.absprungrate) * 100
+  return {
+    besucher: lead.monatlicheBesuche != null ? lead.monatlicheBesuche.toLocaleString('de-DE') : null,
+    mehrwert: lead.mehrwert != null
+      ? `${lead.mehrwert.toLocaleString('de-DE', { maximumFractionDigits: 0 })} €` : null,
+    absprungrate: rate == null ? null : `${Math.round(rate)}%`,
+    absprungrateFarbe: rate == null ? undefined
+      : rate > 60 ? 'text-error' : rate > 40 ? 'text-warning' : 'text-success',
+    leads: lead.anzahlLeads ?? null
+  }
+}
+
 export function Statistik({ werte, anfangsOffen = false }) {
   const [offen, setOffen] = useState(anfangsOffen)
   if (!werte) return null

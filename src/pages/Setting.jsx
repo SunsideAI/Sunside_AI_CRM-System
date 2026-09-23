@@ -6,7 +6,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { STATUS, anzeigeName , stufeVonLead, STUFE, STUFE_TEXT } from '../../shared/status.js'
-import LeadSchublade from '../components/LeadSchublade'
+import LeadSchublade, { webZahlen } from '../components/LeadSchublade'
 import GeplatzteTermine from '../components/GeplatzteTermine'
 import SlideDrawer from '../components/SlideDrawer'
 import SetterUebergabe from '../components/SetterUebergabe'
@@ -655,6 +655,7 @@ function Setting() {
           ort: gewaehlt?.ort,
           rollen: { opener: gewaehlt?.openerName, setter: gewaehlt?.setterName, closer: gewaehlt?.closerName }
         }}
+        statistik={webZahlen(gewaehlt)}
         termin={gewaehlt ? {
           datum: terminText(gewaehlt.terminDatum),
           art: gewaehlt.terminart || 'Telefonisch',

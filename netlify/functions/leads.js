@@ -503,6 +503,11 @@ export async function handler(event) {
       if (updates.website !== undefined) {
         fieldsToUpdate.website = updates.website || null
       }
+      // Der Ort war als Einziges der Kontaktdaten nicht zu aendern - im Setting
+      // und Closing ging es laengst, im Opening fehlte das Feld ganz.
+      if (updates.stadt !== undefined) {
+        fieldsToUpdate.stadt = updates.stadt || null
+      }
       if (updates.wiedervorlageDatum !== undefined) {
         fieldsToUpdate.wiedervorlage_datum = updates.wiedervorlageDatum || null
       }

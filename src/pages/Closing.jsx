@@ -21,7 +21,8 @@ import Verlauf from '../components/Verlauf'
 import Uebergabeblatt, { UEBERGABE_2 } from '../components/Uebergabeblatt'
 import Aktionsmenue from '../components/Aktionsmenue'
 import Gespraechsausgang from '../components/Gespraechsausgang'
-import { Rollen, Pille } from '../components/LeadSchublade'
+import { Rollen, Pille, Statistik, webZahlen } from '../components/LeadSchublade'
+import KontaktFelder from '../components/KontaktFelder'
 import { Angabe, Angaben } from '../components/Formular'
 
 // Der Termin, der den Closer angeht.
@@ -157,6 +158,9 @@ function Closing() {
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedLead, setSelectedLead] = useState(null)
   const [editMode, setEditMode] = useState(false)
+  // Ohne E-Mail geht weder Angebot noch Nachfassen raus - dieselbe Sperre wie
+  // im Setting, damit dieselbe Maske überall gleich streng ist.
+  const [mailFehlt, setMailFehlt] = useState(false)
   const [editData, setEditData] = useState({})
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -198,8 +202,6 @@ function Closing() {
   const [releaseReason, setReleaseReason] = useState('')
   const [releasing, setReleasing] = useState(false)
   
-  // Website-Statistiken einklappbar (für Status != Lead)
-  const [showWebsiteStats, setShowWebsiteStats] = useState(false)
   
   // Datei-Upload State
   const [uploading, setUploading] = useState(false)
@@ -989,12 +991,12 @@ function Closing() {
       website: lead.website || '',
       ort: lead.ort || ''
     })
-    setEditMode(false)
+    setEditMode(false); setMailFehlt(false)
   }
 
   const closeModal = () => {
     setSelectedLead(null)
-    setEditMode(false)
+    setEditMode(false); setMailFehlt(false)
     setEditData({})
     setShowAngebotView(false)
     setAngebotData({
@@ -1023,6 +1025,7 @@ function Closing() {
 
   const handleSave = async () => {
     if (!selectedLead) return
+    if (!editData.email?.trim()) { setMailFehlt(true); return }
 
     // Status ist optional - Kommentare können auch ohne Status-Änderung gespeichert werden
     const hasStatusChange = editData.status && editData.status !== selectedLead.status
@@ -1039,7 +1042,7 @@ function Closing() {
       editData.ort !== selectedLead.ort
 
     if (!hasStatusChange && !hasNeuerKommentar && !hasTerminChange && !hasContactChange) {
-      setEditMode(false)
+      setEditMode(false); setMailFehlt(false)
       return // Nichts zu speichern
     }
 
@@ -1153,7 +1156,7 @@ function Closing() {
 
       // UI updaten
       setShowNoShowModal(false)
-      setEditMode(false)
+      setEditMode(false); setMailFehlt(false)
 
       // Lead in lokaler Liste aktualisieren
       setLeads(prev => prev.map(l =>
@@ -1529,7 +1532,7 @@ function Closing() {
         ort: data.ort ?? prev.ort
       }))
       setEditData(prev => ({ ...prev, neuerKommentar: '', kommentar: updatedKommentar }))
-      setEditMode(false)
+      setEditMode(false); setMailFehlt(false)
       showToast('success', data.status === STATUS.GEWONNEN ? 'Deal gewonnen!' : hasTerminChange ? 'Termin verschoben' : 'Änderungen gespeichert')
       
       // Bei Status-Änderung Modal schließen (wie vorher)
@@ -2705,80 +2708,27 @@ function Closing() {
                     {editMode ? (
                       /* Edit Mode: Kontaktdaten bearbeiten */
                       <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <label className="feld-label">Vorname</label>
-                            <input
-                              type="text"
-                              value={editData.ansprechpartnerVorname}
-                              onChange={(e) => handleEditChange('ansprechpartnerVorname', e.target.value)}
-                              placeholder="Vorname..."
-                              className="input-field"
-                            />
-                          </div>
-                          <div>
-                            <label className="feld-label">Nachname</label>
-                            <input
-                              type="text"
-                              value={editData.ansprechpartnerNachname}
-                              onChange={(e) => handleEditChange('ansprechpartnerNachname', e.target.value)}
-                              placeholder="Nachname..."
-                              className="input-field"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="feld-label">E-Mail</label>
-                          <div className="input-field-icon">
-                            <Mail className="h-4 w-4 text-primary flex-shrink-0" />
-                            <input
-                              type="email"
-                              value={editData.email}
-                              onChange={(e) => handleEditChange('email', e.target.value)}
-                              placeholder="E-Mail eingeben..."
-                              
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="feld-label">Telefon</label>
-                          <div className="input-field-icon">
-                            <Phone className="h-4 w-4 text-primary flex-shrink-0" />
-                            <input
-                              type="tel"
-                              value={editData.telefon}
-                              onChange={(e) => handleEditChange('telefon', e.target.value)}
-                              placeholder="Telefon eingeben..."
-                              
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="feld-label">Website</label>
-                          <div className="input-field-icon">
-                            <Globe className="h-4 w-4 text-primary flex-shrink-0" />
-                            <input
-                              type="url"
-                              value={editData.website}
-                              onChange={(e) => handleEditChange('website', e.target.value)}
-                              placeholder="Website eingeben..."
-                              
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="feld-label">Ort</label>
-                          <div className="input-field-icon">
-                            <MapPin className="h-4 w-4 text-primary flex-shrink-0" />
-                            <input
-                              type="text"
-                              value={editData.ort}
-                              onChange={(e) => handleEditChange('ort', e.target.value)}
-                              placeholder="Ort eingeben..."
-                              
-                            />
-                          </div>
-                        </div>
+                        {/* Dieselben Felder in derselben Reihenfolge wie in
+                            Opening und Setting — ein Bauteil, eine Beschriftung. */}
+                        <KontaktFelder
+                          werte={{
+                            vorname: editData.ansprechpartnerVorname,
+                            nachname: editData.ansprechpartnerNachname,
+                            telefon: editData.telefon,
+                            email: editData.email,
+                            website: editData.website,
+                            ort: editData.ort
+                          }}
+                          onChange={(w) => {
+                            handleEditChange('ansprechpartnerVorname', w.vorname)
+                            handleEditChange('ansprechpartnerNachname', w.nachname)
+                            handleEditChange('telefon', w.telefon)
+                            handleEditChange('email', w.email)
+                            handleEditChange('website', w.website)
+                            handleEditChange('ort', w.ort)
+                          }}
+                          mailFehlt={mailFehlt}
+                        />
                         <div>
                           <label className="feld-label">Status</label>
                           <select
@@ -2949,56 +2899,10 @@ function Closing() {
                     />
                   )}
 
-                  {/* WEBSITE-STATISTIKEN Section */}
+                  {/* Dasselbe Bauteil wie in Opening und Setting: gleiche
+                      Reihenfolge, gleiche Farbschwellen, gleiche Darstellung. */}
                   <div className="abschnitt-trenner">
-                    <button
-                      type="button"
-                      onClick={() => setShowWebsiteStats(!showWebsiteStats)}
-                      className="w-full flex items-center justify-between py-2"
-                    >
-                      <h3 className="abschnitt-titel flex items-center gap-2">
-                        <BarChart3 className="w-4 h-4" />
-                        Website-Statistiken
-                      </h3>
-                      <ChevronDown className={`w-5 h-5 text-on-surface-variant transition-transform ${showWebsiteStats ? 'rotate-180' : ''}`} />
-                    </button>
-
-                    {showWebsiteStats && (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-3 p-4 bg-surface-container-lowest rounded-xl border border-outline-variant">
-                        <div>
-                          <p className="text-label-sm text-on-surface-variant">Besucher/Monat</p>
-                          <p className="text-title-md font-semibold text-on-surface">
-                            {selectedLead.monatlicheBesuche
-                              ? selectedLead.monatlicheBesuche.toLocaleString('de-DE')
-                              : '-'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-label-sm text-on-surface-variant">Absprungrate</p>
-                          <p className="text-title-md font-semibold text-on-surface">
-                            {selectedLead.absprungrate !== null && selectedLead.absprungrate !== undefined
-                              ? `${Math.round(selectedLead.absprungrate * 100)}%`
-                              : '-'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-label-sm text-on-surface-variant">Leads/Monat</p>
-                          <p className="text-title-md font-semibold text-on-surface">
-                            {selectedLead.anzahlLeads !== null && selectedLead.anzahlLeads !== undefined
-                              ? selectedLead.anzahlLeads
-                              : '-'}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-label-sm text-on-surface-variant">Mehrwert</p>
-                          <p className="text-title-md font-semibold text-success">
-                            {selectedLead.mehrwert
-                              ? `${selectedLead.mehrwert.toLocaleString('de-DE')} €`
-                              : '-'}
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                    <Statistik werte={webZahlen(selectedLead)} />
                   </div>
 
                   {/* Was Opener und Setter aufgenommen haben.
@@ -3325,7 +3229,7 @@ function Closing() {
                 <>
                   <button
                     type="button"
-                    onClick={() => setEditMode(false)}
+                    onClick={() => { setEditMode(false); setMailFehlt(false) }}
                     className="fuss-leise"
                   >
                     Abbrechen
@@ -3369,7 +3273,7 @@ function Closing() {
 
                   <button
                     type="button"
-                    onClick={() => setEditMode(true)}
+                    onClick={() => { setEditMode(true); setMailFehlt(false) }}
                     className="fuss-haupt"
                   >
                     <Edit3 className="w-4 h-4" />
