@@ -234,6 +234,26 @@
     padding-right: 44px;
   }
 
+  /* Ein Knopf, der aussieht wie ein Auswahlfeld: Er steht in derselben Zeile
+     wie die Filter und öffnet wie diese eine Liste - dann soll er auch nicht
+     wie eine Aktion aussehen. */
+  .filter-knopf {
+    @apply flex items-center px-4 py-2.5 rounded-md transition-all duration-250
+           cursor-pointer text-body-sm whitespace-nowrap;
+    background-color: #F0F3FF;
+    border: 1px solid rgba(202, 196, 208, 0.15);
+    color: #151C27;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2379747E'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 20px;
+    padding-right: 44px;
+  }
+
+  .filter-knopf:hover {
+    background-color: #E8ECFF;
+  }
+
   .select-field:focus {
     background-color: #FFFFFF;
     border-color: #460E74;

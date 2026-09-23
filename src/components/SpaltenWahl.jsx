@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Columns, GripVertical, X, Plus, RotateCcw, Loader2 } from 'lucide-react'
+import { GripVertical, X, Plus, RotateCcw, Loader2 } from 'lucide-react'
 import { spaltenFuer, standardSpalten } from '../../shared/spalten.js'
 
 // Welche Spalten stehen in meiner Liste, und in welcher Reihenfolge?
@@ -54,9 +54,9 @@ export default function SpaltenWahl({ stufe, auswahl, onAendern, speichert = fal
       <button
         type="button"
         onClick={() => setOffen(o => !o)}
-        className="fuss-neben"
+        className="filter-knopf"
       >
-        {speichert ? <Loader2 className="w-4 h-4 animate-spin" /> : <Columns className="w-4 h-4" />}
+        {speichert && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
         Spalten
       </button>
 

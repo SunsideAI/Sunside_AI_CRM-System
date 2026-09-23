@@ -30,6 +30,11 @@ const TOENE = {
 
 const AB = { md: 'hidden md:table-cell', lg: 'hidden lg:table-cell', xl: 'hidden xl:table-cell' }
 
+// Bei vielen Spalten wird waagerecht gescrollt. Damit dann noch zu erkennen
+// ist, zu wem eine Zeile gehört, bleiben Symbol und Unternehmen stehen. Sie
+// brauchen dafür eine eigene Hintergrundfarbe, sonst scheint der Rest durch.
+const HAFTEND = ['sticky left-0 z-20 w-14', 'sticky left-14 z-20']
+
 function datumText(wert, mitZeit = true) {
   if (!wert) return null
   const d = new Date(wert)
@@ -214,13 +219,14 @@ export default function LeadTabelle({
         <table className="w-full">
           <thead>
             <tr className="bg-surface-container">
-              {spalten.map(s => (
+              {spalten.map((s, i) => (
                 <th
                   key={s.schluessel}
                   onClick={() => umschalten(s.schluessel)}
                   className={`px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant
                               uppercase tracking-wider cursor-pointer select-none
-                              hover:text-on-surface ${AB[s.ab] || ''}`}
+                              hover:text-on-surface ${AB[s.ab] || ''}
+                              ${s.fest ? `${HAFTEND[i] || ''} bg-surface-container` : ''}`}
                 >
                   <span className="inline-flex items-center gap-1">
                     {s.name}
@@ -242,9 +248,11 @@ export default function LeadTabelle({
                 className={`table-row cursor-pointer ${
                   i % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
               >
-                {spalten.map(s => (
+                {spalten.map((s, si) => (
                   <td key={s.schluessel}
-                      className={`px-4 py-4 text-body-sm text-on-surface-variant ${AB[s.ab] || ''}`}>
+                      className={`px-4 py-4 text-body-sm text-on-surface-variant ${AB[s.ab] || ''}
+                                  ${s.fest ? `${HAFTEND[si] || ''} ${
+                                    i % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}` : ''}`}>
                     <Zelle spalte={s} zeile={z} badgeFarbe={badgeFarbe} />
                   </td>
                 ))}

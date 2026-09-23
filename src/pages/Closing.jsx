@@ -1757,8 +1757,6 @@ function Closing() {
 
         {/* Zeile 2: Filter */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <SpaltenWahl stufe="closing" auswahl={spalten.auswahl}
-                       onAendern={spalten.aendern} speichert={spalten.speichert} />
           {/* Status-Filter */}
           <select
             value={statusFilter}
@@ -1770,6 +1768,12 @@ function Closing() {
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
+
+          {/* Rechts, weil es die Darstellung steuert und nicht die Auswahl. */}
+          <div className="ml-auto">
+            <SpaltenWahl stufe="closing" auswahl={spalten.auswahl}
+                         onAendern={spalten.aendern} speichert={spalten.speichert} />
+          </div>
         </div>
       </div>
 

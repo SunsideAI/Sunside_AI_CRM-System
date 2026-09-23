@@ -467,8 +467,6 @@ function Setting() {
             trotzdem sichtbar, sie stand vorher auf den Pillen und ist zu
             nützlich, um sie beim Angleichen wegzuwerfen. */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <SpaltenWahl stufe="setting" auswahl={spalten.auswahl}
-                       onAendern={spalten.aendern} speichert={spalten.speichert} />
           <select
             value={filter}
             onChange={e => { setFilter(e.target.value); setSeite(1) }}
@@ -478,6 +476,12 @@ function Setting() {
               <option key={f.wert} value={f.wert}>{f.name} ({zaehler(f.wert)})</option>
             ))}
           </select>
+
+          {/* Rechts, weil es die Darstellung steuert und nicht die Auswahl. */}
+          <div className="ml-auto">
+            <SpaltenWahl stufe="setting" auswahl={spalten.auswahl}
+                         onAendern={spalten.aendern} speichert={spalten.speichert} />
+          </div>
         </div>
       </div>
 

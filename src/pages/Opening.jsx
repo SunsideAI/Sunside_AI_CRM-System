@@ -1115,8 +1115,10 @@ function Opening() {
             </button>
           )}
 
-          <SpaltenWahl stufe="opening" auswahl={spalten.auswahl}
-                       onAendern={spalten.aendern} speichert={spalten.speichert} />
+          <div className="ml-auto">
+            <SpaltenWahl stufe="opening" auswahl={spalten.auswahl}
+                         onAendern={spalten.aendern} speichert={spalten.speichert} />
+          </div>
         </div>
       </div>
       )}
