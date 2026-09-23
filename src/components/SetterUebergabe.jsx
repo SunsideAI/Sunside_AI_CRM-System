@@ -77,7 +77,18 @@ function startwerte(lead) {
   return werte
 }
 
-export default function SetterUebergabe({ lead, onGespeichert, onAblauf }) {
+export default function SetterUebergabe({
+  lead, onGespeichert, onAblauf,
+  // Gesperrt heißt: nur ansehen. Die Schublade macht erst mit „Bearbeiten"
+  // auf - in Opening und Closing ist es genauso, und niemand verstellt mehr
+  // versehentlich den Ausgang eines Gesprächs.
+  gesperrt = false,
+  // Meldet der Schublade, ob hier unten schon eine gefüllte Hauptaktion steht.
+  onHauptaktion,
+  // Wird vor jedem eigenen Speichern aufgerufen, damit geänderte Kontaktdaten
+  // im selben Zug mitgehen. Gibt false zurück, wenn etwas fehlt.
+  vorSpeichern
+}) {
   const status = lead?.status
 
   const [werte, setWerte] = useState(() => startwerte(lead))
@@ -118,6 +129,11 @@ export default function SetterUebergabe({ lead, onGespeichert, onAblauf }) {
     if (fehler) fehlerRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
   }, [fehler])
 
+  // Eine gefüllte Aktion gibt es, sobald ein Ausgang feststeht - vorher ist
+  // hier nichts zu speichern.
+  const hatHauptaktion = !gesperrt && Boolean(ausgang)
+  useEffect(() => { onHauptaktion?.(hatHauptaktion) }, [hatHauptaktion, onHauptaktion])
+
   const reduziert = reduzierterModus(werte)
   const ergebnis = werte.ergebnis_beratung
   const mitUebergabe = ['Auftrag', 'Nächster Schritt vereinbart'].includes(ergebnis)
@@ -128,6 +144,9 @@ export default function SetterUebergabe({ lead, onGespeichert, onAblauf }) {
   // `still` heißt: speichern, aber den Aufrufer nicht benachrichtigen. Sonst
   // schlösse die Schublade mitten im Zug.
   const senden = async (updates, { still = false, meldeAls = null } = {}) => {
+    // Erst die Kontaktdaten, dann das Gespräch: Sonst ginge eine gerade
+    // korrigierte Nummer beim Übergeben verloren.
+    if (vorSpeichern && (await vorSpeichern()) === false) return false
     setLaeuft(true); setFehler(''); setMeldung(''); setOffen([])
     try {
       const antwort = await fetch('/.netlify/functions/hot-leads', {
@@ -302,7 +321,7 @@ export default function SetterUebergabe({ lead, onGespeichert, onAblauf }) {
   // Die Dokumentation: dieselbe Maske, ob der Ausgang gerade gewählt wurde
   // oder der Kontakt schon auf „geführt" steht.
   const dokumentation = (
-    <div className="space-y-4">
+    <fieldset disabled={gesperrt} className="space-y-4 min-w-0 disabled:opacity-70">
       {/* Zuerst das Ergebnis: Es entscheidet, ob ein Abschlussgespräch gebucht
           wird oder der Kontakt beim Setter bleibt. */}
       <UebergabeFelder
@@ -359,7 +378,7 @@ export default function SetterUebergabe({ lead, onGespeichert, onAblauf }) {
       <div className="pt-4 border-t border-outline-variant/50 mt-2">
         <RueckgabeKnopf hotLead={lead} onErledigt={onGespeichert} />
       </div>
-    </div>
+    </fieldset>
   )
 
   // Die Aktionen der Maske: in der Fußleiste der Schublade, sonst hier unten.
@@ -385,7 +404,9 @@ export default function SetterUebergabe({ lead, onGespeichert, onAblauf }) {
   const mitAktionen = (inhalt, knoepfe = aktionen) => (
     <>
       {inhalt}
-      {fussNode ? createPortal(knoepfe, fussNode) : (
+      {/* Nur ansehen heißt: keine Knöpfe. Gespeichert wird erst, wenn die
+          Schublade mit „Bearbeiten" aufgemacht wurde. */}
+      {gesperrt ? null : fussNode ? createPortal(knoepfe, fussNode) : (
         <div className="flex flex-wrap items-center justify-end gap-3 pt-2">{knoepfe}</div>
       )}
     </>
@@ -470,8 +491,9 @@ export default function SetterUebergabe({ lead, onGespeichert, onAblauf }) {
 
       <select
         value={ausgang}
+        disabled={gesperrt}
         onChange={e => { setAusgang(e.target.value); setFehler(''); setMeldung('') }}
-        className="input-field"
+        className="input-field disabled:opacity-60 disabled:cursor-not-allowed"
       >
         {AUSGAENGE.map(a => (
           <option key={a.wert || 'offen'} value={a.wert}>{a.name}</option>

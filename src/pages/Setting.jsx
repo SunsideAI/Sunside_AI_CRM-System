@@ -62,6 +62,9 @@ function Setting() {
   const [formular, setFormular] = useState(null)
   const [speichert, setSpeichert] = useState(false)
   const [mailFehlt, setMailFehlt] = useState(false)
+  // Zeigt die Gesprächsmaske unten schon eine gefüllte Aktion? Dann ist das
+  // die Hauptaktion, und „Speichern" für die Kontaktdaten tritt zurück.
+  const [setterHauptaktion, setSetterHauptaktion] = useState(false)
   // 'meine' oder 'pool' — dieselbe Umschaltung wie im Closing. Der Pool war
   // vorher ein Block ueber der Liste; als eigene Ansicht ist er dort, wo man
   // ihn sucht, und die Zahl daneben sagt, ob sich das Hinsehen lohnt.
@@ -177,11 +180,13 @@ function Setting() {
   const bearbeitenAbbrechen = () => { setBearbeiten(false); setFormular(null); setMailFehlt(false) }
 
   // Speichern schreibt nur, was sich geändert hat — und nur dann.
-  const kontaktSpeichern = async () => {
+  // `still` heißt: Teil eines größeren Zuges (die Gesprächsmaske speichert
+  // gleich selbst), also keine eigene Rückmeldung und kein Neuladen.
+  const kontaktSpeichern = async (still = false) => {
     if (!gewaehlt || !formular) return
     // Dieselbe Regel wie in Opening und Closing: Eine vorhandene Adresse
     // darf nicht geleert werden.
-    if (gewaehlt.email && !formular.email?.trim()) { setMailFehlt(true); return }
+    if (gewaehlt.email && !formular.email?.trim()) { setMailFehlt(true); return false }
 
     const aenderungen = {}
     if (formular.vorname !== (gewaehlt.ansprechpartnerVorname || '')) aenderungen.ansprechpartner_vorname = formular.vorname
@@ -191,7 +196,10 @@ function Setting() {
     if (formular.website !== (gewaehlt.website || '')) aenderungen.website = formular.website
     if (formular.ort !== (gewaehlt.ort || '')) aenderungen.ort = formular.ort
 
-    if (Object.keys(aenderungen).length === 0) { bearbeitenAbbrechen(); return }
+    if (Object.keys(aenderungen).length === 0) {
+      if (!still) bearbeitenAbbrechen()
+      return true
+    }
 
     setSpeichert(true)
     try {
@@ -213,14 +221,27 @@ function Setting() {
         website: formular.website,
         ort: formular.ort
       } : g)
-      bearbeitenAbbrechen()
-      setHinweis('Die Kontaktdaten sind gespeichert.')
-      laden()
+      if (still) {
+        setFormular(null)
+      } else {
+        bearbeitenAbbrechen()
+        setHinweis('Die Kontaktdaten sind gespeichert.')
+        laden()
+      }
+      return true
     } catch (f) {
       setHinweis('Speichern fehlgeschlagen: ' + f.message)
+      return false
     } finally {
       setSpeichert(false)
     }
+  }
+
+  // Für die Gesprächsmaske: erst die Kontaktdaten, dann ihr eigener Schritt.
+  const kontaktMitspeichern = async () => {
+    if (!bearbeiten || !formular) return true
+    if (gewaehlt?.email && !formular.email?.trim()) { setMailFehlt(true); return false }
+    return (await kontaktSpeichern(true)) !== false
   }
 
   const laden = async () => {
@@ -673,29 +694,36 @@ function Setting() {
                 unten — sonst konkurrieren drei Hauptaktionen um dieselbe Ecke.
                 Das Portal bleibt hängen und wird nur versteckt: Ein neues Ziel
                 würde die Knöpfe der Setter-Maske ins Leere hängen. */}
-            {bearbeiten ? (
+            {/* Im geführten Ablauf stehen unten nur dessen Schritt-Knöpfe. */}
+            {ablaufLaeuft ? null : bearbeiten ? (
               <>
                 <button onClick={bearbeitenAbbrechen} disabled={speichert} className="fuss-leise">
                   Abbrechen
                 </button>
-                <button onClick={kontaktSpeichern} disabled={speichert} className="fuss-haupt">
-                  {speichert ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                  Speichern
-                </button>
+                {/* Steht in der Gesprächsmaske schon eine gefüllte Aktion, ist
+                    sie der Abschluss des Zuges und nimmt die Kontaktdaten mit. */}
+                {!setterHauptaktion && (
+                  <button onClick={() => kontaktSpeichern()} disabled={speichert} className="fuss-haupt">
+                    {speichert ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                    Speichern
+                  </button>
+                )}
               </>
-            ) : !ablaufLaeuft && (
+            ) : (
               <>
                 <button onClick={() => setMailOffen(o => !o)} className="fuss-neben">
                   <Mail className="w-4 h-4" /> E-Mail an den Kontakt
                 </button>
-                <button onClick={bearbeitenStarten} className="fuss-neben">
+                <button onClick={bearbeitenStarten} className="fuss-haupt">
                   <Edit3 className="w-4 h-4" /> Bearbeiten
                 </button>
               </>
             )}
             {/* Hier hinein hängt die Setter-Maske ihre Knöpfe (Portal), damit
                 sie unten stehen wie in jeder anderen Schublade. */}
-            <div id="schublade-aktionen" className={bearbeiten ? 'hidden' : 'contents'} />
+            {/* Die Gesprächsmaske hängt ihre Knöpfe hier hinein - sie rendert
+                sie nur, wenn die Schublade zum Bearbeiten offen ist. */}
+            <div id="schublade-aktionen" className="contents" />
           </>
         )}
       >
@@ -803,7 +831,14 @@ function Setting() {
               )
             )}
 
-            <SetterUebergabe lead={gewaehlt} onGespeichert={nachSpeichern} onAblauf={setAblaufLaeuft} />
+            <SetterUebergabe
+              lead={gewaehlt}
+              onGespeichert={nachSpeichern}
+              onAblauf={setAblaufLaeuft}
+              gesperrt={!bearbeiten}
+              onHauptaktion={setSetterHauptaktion}
+              vorSpeichern={kontaktMitspeichern}
+            />
           </>
         )}
       </LeadSchublade>
