@@ -382,7 +382,7 @@ export default function SetterUebergabe({
     <>
       {/* Für den, der mitten im Ausfüllen unterbrochen wird. Schreibt nur die
           Felder; der Ausgang bleibt offen, der Kontakt bleibt in der Liste. */}
-      <button onClick={zwischenstand} disabled={laeuft} className="fuss-leise">
+      <button onClick={zwischenstand} disabled={laeuft} className="fuss-neben">
         Zwischenstand speichern
       </button>
       {/* Genau eine gefüllte Aktion: Bei Übergabe führt sie in den zweistufigen
