@@ -33,8 +33,7 @@ const AUSGAENGE = [
   {
     wert: STATUS.NICHT_ERSCHIENEN,
     name: 'Kunde nicht erschienen',
-    knopf: 'Als nicht erschienen festhalten',
-    hinweis: 'Der Kontakt landet unter „Geplatzt". Von dort lässt sich ein neuer Termin legen.'
+    knopf: 'Als nicht erschienen festhalten'
   },
   {
     wert: STATUS.TERMIN_ABGESAGT,
