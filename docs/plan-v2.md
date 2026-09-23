@@ -349,3 +349,25 @@ Rollenprüfung Setter-Häkchen 3/3, Schubladen in Opening, Setting und Closing o
 
 **Weiterhin nicht im Browser getestet:** die tatsächliche Buchung des Abschlussgesprächs (erzeugt
 einen echten Calendly-Termin) und „Zwischenstand speichern" (schreibt in einen echten Datensatz).
+
+## Gleicher Aufbau in Opening, Setting und Closing, 23.09.
+
+Gemessen mit Playwright über alle drei Schubladen. Gefunden und behoben:
+
+| Befund | Vorher | Jetzt |
+|---|---|---|
+| Website-Zahlen | Opening nutzte das Bauteil, Closing hatte eine eigene Kopie (weißer Kasten, andere Reihenfolge, keine Farbschwellen), Setting zeigte sie gar nicht | Ein Bauteil `Statistik` mit `webZahlen(lead)`; überall dieselbe Stelle, Reihenfolge, Farbe. Ohne Zahlen entfällt der Abschnitt in allen drei gleich |
+| Kontaktdaten ändern | Opening: nur Telefon, E-Mail, Website — kein Ort, Name weiter unten im Arbeitsbereich. Closing: andere Reihenfolge und Beschriftung. Setting: gar nicht änderbar | Ein Bauteil `KontaktFelder`: Ansprechpartner, Telefon, E-Mail (Pflicht), Website, Ort — in allen drei gleich |
+| Ort speichern | Ging nur über Hot-Leads; `leads.js` kannte das Feld nicht | `stadt` ist im Lead-Update ergänzt |
+| E-Mail-Regel | Opening speicherte eine geleerte Adresse, Setting und Closing sperrten unterschiedlich | Eine Regel: Was beim Öffnen in der Maske stand, darf nicht geleert werden. Derselbe Hinweistext überall |
+| Bearbeiten-Maske im Opening | Wurde beim Auswählen des Kontakts gefüllt, nicht beim Bearbeiten — nach Zwischenspeichern stand dort ein alter Stand | `bearbeitenStarten()` füllt aus dem Kontakt, wie in Setting und Closing |
+| Fußleiste | Setting hatte keinen Bearbeiten-Knopf | Überall „Bearbeiten"; im Bearbeiten-Modus überall Abbrechen (leise) + Speichern (gefüllt) |
+
+Gefüllt ist immer genau die Aktion, die in dieser Stufe die Arbeit ist: im Opening und Closing
+„Bearbeiten", im Setting die Dokumentation des Beratungsgesprächs. „Bearbeiten" ist dort deshalb
+eine Nebenaktion (umrandet), sonst stünden zwei gefüllte Knöpfe nebeneinander.
+
+**Nachweis:** 47/47 Prüfungen über die drei Tabs (Abschnittsfolge, Zahlen-Darstellung,
+Knopfklassen, gleiche Kontaktmaske, E-Mail-Regel, Abbrechen ohne Schreibzugriff), dazu unverändert
+grün: geführte Übergabe 22/22, Kontakt-Bearbeitung im Setting 16/16 (mit echtem Speichern und
+Zurückstellen auf dem eigenen Datensatz), Rollenprüfung 3/3.
