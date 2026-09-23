@@ -424,3 +424,39 @@ die Schublade, genau eine gefüllte Aktion mit dem richtigen Wort, keine Fremdfa
 Schreibaufruf. Setter-Pool mit drei Einträgen vollständig durchgespielt; E-Book- und Closer-Pool
 waren leer, dort ist der Leerzustand geprüft (gleiche Komponente, gleicher Aufbau). Regression
 unverändert grün: Konsistenz 47/47, Setting-Seiten 15/15, Sperre 12/12.
+
+## Listen: ein Spaltenkatalog, eine Tabelle, eigene Spalten je Benutzer — 23.09.
+
+**Schritt 1 — angleichen.** Opening, Setting und Closing haben jetzt dieselbe Tabelle
+(`src/components/LeadTabelle.jsx`). Welche Spalten es gibt, steht in `shared/spalten.js`; woher
+die Werte kommen, übersetzt `src/utils/zeile.js` einmal je Stufe. Vorher hieß dieselbe Sache in
+jedem Tab anders (`unternehmensname`/`unternehmen`, `stadt`/`ort`, „Vertriebler"/„Coldcaller"),
+Closing hatte zweimal eine Spalte „Status", und sortieren konnte man nirgends.
+
+| | Standardspalten |
+|---|---|
+| Opening | Art · Unternehmen · Ansprechpartner · Ort · Kontakt · Ergebnis · Letzte Aktivität |
+| Setting | Art · Unternehmen · Ansprechpartner · Ort · Termin · Status |
+| Closing | Art · Unternehmen · Ansprechpartner · Ort · Termin · Status · Zuständig · Setter |
+
+Dazu überall: Klick auf den Spaltenkopf sortiert (zweiter Klick dreht um, Leeres steht hinten),
+Karten statt Tabelle auf schmalen Schirmen, waagerechtes Scrollen bei vielen Spalten.
+
+**Schritt 2 — konfigurierbar.** Über der Liste steht „Spalten": ausblenden, hinzufügen und die
+Reihenfolge per Ziehen ändern. Gespeichert wird je Benutzer in `users.preferences` (die Spalte
+gab es längst, benutzt hat sie niemand) über `netlify/functions/tabellen-spalten.js` — die
+Einstellung gilt damit auf jedem Gerät. „Zurück zum Standard" räumt wieder auf. Art und
+Unternehmen bleiben vorn, damit die Zeile beim Scrollen zuzuordnen bleibt.
+
+Zusätzlich wählbar sind die Felder, die die APIs längst liefern: Quelle, Terminart, Bundesland,
+Opener/Setter/Closer, Website-Zahlen (Besucher, Mehrwert, Absprungrate, Leads), Deal-Werte
+(Paket, Setup, Retainer, Laufzeit) sowie Fristen (Wiedervorlage, zugesagt bis, Angebot verschickt,
+Nachfass-Schritt, Nicht erschienen, Mobilnummer).
+
+**Nachweis (Playwright, Vorschau):** Tabellen 12/12 (Spalten je Stufe, Sortierung dreht um, Klick
+öffnet die Schublade), Spaltenwahl 7/7 (hinzufügen, ausblenden, Reihenfolge per Ziehen, überlebt
+den Seitenwechsel, Zurücksetzen). Regression unverändert grün: Pools 15/15, Konsistenz 47/47,
+Setting-Seiten 15/15, Sperre 12/12.
+
+Dabei gefunden: Die neue Function las die Benutzerkennung aus dem falschen Feld des
+Sitzungs-Helfers (`inhalt` statt `nutzer`) — fiel als 502 im Browsertest auf und ist behoben.
