@@ -18,7 +18,9 @@ import Uebergabeblatt, { UEBERGABE_1 } from '../components/Uebergabeblatt'
 import KontaktFelder from '../components/KontaktFelder'
 import LeadTabelle from '../components/LeadTabelle'
 import SpaltenWahl from '../components/SpaltenWahl'
-import useSpalten from '../hooks/useSpalten'
+import FilterWahl from '../components/FilterWahl'
+import useTabelle from '../hooks/useTabelle'
+import { filtern } from '../../shared/filter.js'
 import { zeileAusLead } from '../utils/zeile'
 
 // Die Arbeitsfläche des Setters — aufgebaut wie Opening und Closing.
@@ -69,7 +71,7 @@ function Setting() {
   // Zeigt die Gesprächsmaske unten schon eine gefüllte Aktion? Dann ist das
   // die Hauptaktion, und „Speichern" für die Kontaktdaten tritt zurück.
   const [setterHauptaktion, setSetterHauptaktion] = useState(false)
-  const spalten = useSpalten('setting')
+  const tabelle = useTabelle('setting')
   // 'meine' oder 'pool' — dieselbe Umschaltung wie im Closing. Der Pool war
   // vorher ein Block ueber der Liste; als eigene Ansicht ist er dort, wo man
   // ihn sucht, und die Zahl daneben sagt, ob sich das Hinsehen lohnt.
@@ -300,12 +302,17 @@ function Setting() {
       || `${l.ansprechpartnerVorname || ''} ${l.ansprechpartnerNachname || ''}`.toLowerCase().includes(suchbegriff))
     .sort((a, b) => new Date(a.terminDatum || 0) - new Date(b.terminDatum || 0))
 
+  // Erst in Zeilen übersetzen, dann die eigenen Filter des Benutzers - sie
+  // arbeiten auf denselben Namen wie die Spalten.
+  const alleZeilen = sichtbar.map(l => zeileAusLead('setting', l))
+  const gefilterteZeilen = filtern(alleZeilen, tabelle.filter, 'setting')
+
   // Blättern wie im Closing: Seite begrenzen, damit ein Filterwechsel nicht
   // auf einer Seite landet, die es nicht mehr gibt.
-  const seitenGesamt = Math.max(1, Math.ceil(sichtbar.length / PRO_SEITE))
+  const seitenGesamt = Math.max(1, Math.ceil(gefilterteZeilen.length / PRO_SEITE))
   const sichereSeite = Math.min(seite, seitenGesamt)
   const beginn = (sichereSeite - 1) * PRO_SEITE
-  const geblaettert = sichtbar.slice(beginn, beginn + PRO_SEITE)
+  const gefiltert = gefilterteZeilen.slice(beginn, beginn + PRO_SEITE)
 
   const zaehler = (wert) => {
     const s = FILTER.find(f => f.wert === wert)?.stufen || []
@@ -478,9 +485,13 @@ function Setting() {
           </select>
 
           {/* Rechts, weil es die Darstellung steuert und nicht die Auswahl. */}
-          <div className="ml-auto">
-            <SpaltenWahl stufe="setting" auswahl={spalten.auswahl}
-                         onAendern={spalten.aendern} speichert={spalten.speichert} />
+          {/* Rechts, weil beides die Darstellung steuert. */}
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <FilterWahl stufe="setting" filter={tabelle.filter}
+                        onAendern={tabelle.filterAendern} zeilen={alleZeilen}
+                        speichert={tabelle.speichert} />
+            <SpaltenWahl stufe="setting" auswahl={tabelle.spalten}
+                         onAendern={tabelle.spaltenAendern} speichert={tabelle.speichert} />
           </div>
         </div>
       </div>
@@ -494,7 +505,7 @@ function Setting() {
           <div className="flex items-center justify-center py-20 text-on-surface-variant">
             <Loader2 className="w-6 h-6 animate-spin mr-2" /> Wird geladen …
           </div>
-        ) : sichtbar.length === 0 ? (
+        ) : gefilterteZeilen.length === 0 ? (
           <div className="py-20 text-center text-on-surface-variant">
             <Calendar className="w-10 h-10 mx-auto mb-3 opacity-40" />
             {filter === 'offen'
@@ -505,8 +516,8 @@ function Setting() {
           <>
           <LeadTabelle
             stufe="setting"
-            auswahl={spalten.auswahl}
-            zeilen={geblaettert.map(l => zeileAusLead('setting', l))}
+            auswahl={tabelle.spalten}
+            zeilen={gefiltert}
             badgeFarbe={(_, z) => z.statusWert === STATUS.BERATUNG_GEFUEHRT
               ? 'bg-success-container text-success'
               : [STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(z.statusWert)
@@ -518,10 +529,10 @@ function Setting() {
             }}
           />
 
-          {sichtbar.length > PRO_SEITE && (
+          {gefilterteZeilen.length > PRO_SEITE && (
             <div className="px-4 md:px-6 py-3 md:py-4 bg-surface-container/50 flex items-center justify-between">
               <span className="text-body-sm text-on-surface-variant">
-                {beginn + 1}-{Math.min(beginn + PRO_SEITE, sichtbar.length)} von {sichtbar.length}
+                {beginn + 1}-{Math.min(beginn + PRO_SEITE, gefilterteZeilen.length)} von {gefilterteZeilen.length}
               </span>
               <div className="flex items-center gap-1 md:gap-2">
                 <button

@@ -8,6 +8,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { auswahlPruefen, STUFE } from '../../shared/spalten.js'
+import { filterPruefen } from '../../shared/filter.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -37,8 +38,14 @@ export async function handler(event) {
     const bisher = (data?.preferences && typeof data.preferences === 'object') ? data.preferences : {}
     const tabellen = bisher.tabellen && typeof bisher.tabellen === 'object' ? bisher.tabellen : {}
 
+    // Aeltere Eintraege waren nur eine Spaltenliste. Sie bleiben gueltig.
+    const lesen = (wert) => Array.isArray(wert) ? { spalten: wert, filter: [] }
+      : { spalten: wert?.spalten || null, filter: wert?.filter || [] }
+
     if (event.httpMethod === 'GET') {
-      return { statusCode: 200, headers: kopf, body: JSON.stringify({ tabellen }) }
+      const gelesen = {}
+      for (const [stufe, wert] of Object.entries(tabellen)) gelesen[stufe] = lesen(wert)
+      return { statusCode: 200, headers: kopf, body: JSON.stringify({ tabellen: gelesen }) }
     }
 
     if (event.httpMethod === 'PATCH') {
@@ -47,15 +54,28 @@ export async function handler(event) {
       if (!STUFEN.includes(stufe)) {
         return { statusCode: 400, headers: kopf, body: JSON.stringify({ error: 'Unbekannte Stufe' }) }
       }
+      const bisherige = lesen(tabellen[stufe])
+
       // Null heisst: zurueck auf den Standard der Stufe.
-      const spalten = koerper.spalten === null ? null : auswahlPruefen(stufe, koerper.spalten)
-      if (koerper.spalten !== null && spalten === null) {
-        return { statusCode: 400, headers: kopf, body: JSON.stringify({ error: 'Spalten fehlen oder sind kein Array' }) }
+      let spalten = bisherige.spalten
+      if ('spalten' in koerper) {
+        spalten = koerper.spalten === null ? null : auswahlPruefen(stufe, koerper.spalten)
+        if (koerper.spalten !== null && spalten === null) {
+          return { statusCode: 400, headers: kopf, body: JSON.stringify({ error: 'Spalten fehlen oder sind kein Array' }) }
+        }
+      }
+
+      let filter = bisherige.filter
+      if ('filter' in koerper) {
+        filter = koerper.filter === null ? [] : filterPruefen(stufe, koerper.filter)
+        if (filter === null) {
+          return { statusCode: 400, headers: kopf, body: JSON.stringify({ error: 'Filter sind kein Array' }) }
+        }
       }
 
       const neu = { ...tabellen }
-      if (spalten === null) delete neu[stufe]
-      else neu[stufe] = spalten
+      if (spalten === null && (!filter || filter.length === 0)) delete neu[stufe]
+      else neu[stufe] = { spalten, filter: filter || [] }
 
       const { error: schreibfehler } = await supabase
         .from('users')

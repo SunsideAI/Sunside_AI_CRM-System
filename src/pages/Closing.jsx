@@ -26,7 +26,9 @@ import KontaktFelder from '../components/KontaktFelder'
 import LeadPool from '../components/LeadPool'
 import LeadTabelle from '../components/LeadTabelle'
 import SpaltenWahl from '../components/SpaltenWahl'
-import useSpalten from '../hooks/useSpalten'
+import FilterWahl from '../components/FilterWahl'
+import useTabelle from '../hooks/useTabelle'
+import { filtern } from '../../shared/filter.js'
 import { zeileAusLead } from '../utils/zeile'
 import { standardSpalten } from '../../shared/spalten.js'
 import { Angabe, Angaben } from '../components/Formular'
@@ -167,7 +169,7 @@ function Closing() {
   // Ohne E-Mail geht weder Angebot noch Nachfassen raus - dieselbe Sperre wie
   // im Setting, damit dieselbe Maske überall gleich streng ist.
   const [mailFehlt, setMailFehlt] = useState(false)
-  const spalten = useSpalten('closing')
+  const tabelle = useTabelle('closing')
   const [editData, setEditData] = useState({})
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -963,10 +965,14 @@ function Closing() {
   }
 
   const filteredLeads = getFilteredLeads()
-  const totalPages = Math.max(1, Math.ceil(filteredLeads.length / LEADS_PER_PAGE))
+  // Erst in Zeilen übersetzen, dann die eigenen Filter des Benutzers - sie
+  // arbeiten auf denselben Namen wie die Spalten.
+  const alleZeilen = filteredLeads.map(l => zeileAusLead('closing', l))
+  const gefilterteZeilen = filtern(alleZeilen, tabelle.filter, 'closing')
+  const totalPages = Math.max(1, Math.ceil(gefilterteZeilen.length / LEADS_PER_PAGE))
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const startIndex = (safeCurrentPage - 1) * LEADS_PER_PAGE
-  const paginatedLeads = filteredLeads.slice(startIndex, startIndex + LEADS_PER_PAGE)
+  const paginatedLeads = gefilterteZeilen.slice(startIndex, startIndex + LEADS_PER_PAGE)
 
   // Event Handlers
   const handleSearchChange = (e) => {
@@ -1770,9 +1776,13 @@ function Closing() {
           </select>
 
           {/* Rechts, weil es die Darstellung steuert und nicht die Auswahl. */}
-          <div className="ml-auto">
-            <SpaltenWahl stufe="closing" auswahl={spalten.auswahl}
-                         onAendern={spalten.aendern} speichert={spalten.speichert} />
+          {/* Rechts, weil beides die Darstellung steuert. */}
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <FilterWahl stufe="closing" filter={tabelle.filter}
+                        onAendern={tabelle.filterAendern} zeilen={alleZeilen}
+                        speichert={tabelle.speichert} />
+            <SpaltenWahl stufe="closing" auswahl={tabelle.spalten}
+                         onAendern={tabelle.spaltenAendern} speichert={tabelle.speichert} />
           </div>
         </div>
       </div>
@@ -1810,8 +1820,8 @@ function Closing() {
             <>
               <LeadTabelle
                 stufe="closing"
-                zeilen={paginatedLeads.map(l => zeileAusLead('closing', l))}
-                auswahl={spalten.auswahl
+                zeilen={paginatedLeads}
+                auswahl={tabelle.spalten
                   || (isAdmin() && viewMode === 'all'
                     ? [...standardSpalten('closing'), 'closer']
                     : null)}
@@ -1821,10 +1831,10 @@ function Closing() {
               />
 
               {/* Pagination - shared for both views */}
-              {filteredLeads.length > LEADS_PER_PAGE && (
+              {gefilterteZeilen.length > LEADS_PER_PAGE && (
                 <div className="px-4 md:px-6 py-3 md:py-4 bg-surface-container/50 flex items-center justify-between">
                   <span className="text-body-sm text-on-surface-variant">
-                    {startIndex + 1}-{Math.min(startIndex + LEADS_PER_PAGE, filteredLeads.length)} von {filteredLeads.length}
+                    {startIndex + 1}-{Math.min(startIndex + LEADS_PER_PAGE, gefilterteZeilen.length)} von {gefilterteZeilen.length}
                   </span>
                   <div className="flex items-center gap-1 md:gap-2">
                     <button

@@ -1,6 +1,7 @@
 // Leads API - Laden und Aktualisieren von Leads - Supabase Version
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
+import { filterPruefen, SPALTE_IN_DB } from '../../shared/filter.js'
 import { darf, verboten, leadBeteiligt } from './utils/zugriff.js'
 
 const supabase = createClient(
@@ -122,6 +123,55 @@ export async function handler(event) {
   }
 
   // Helper: Lead-Record zu Frontend-Format konvertieren
+  /**
+   * Einen Filter in eine Bedingung der Abfrage uebersetzen.
+   * Felder, die aus mehreren Spalten bestehen (Ansprechpartner, Kontakt),
+   * werden ueber beide geprueft.
+   */
+  function filterAnwenden(query, f) {
+    const mehrteilig = {
+      ansprechpartner: ['ansprechpartner_vorname', 'ansprechpartner_nachname'],
+      kontakt: ['telefonnummer', 'mail']
+    }[f.feld]
+    const spalte = SPALTE_IN_DB[f.feld]
+    if (!spalte && !mehrteilig) return query
+
+    const wert = f.wert
+    if (mehrteilig) {
+      const [a, b] = mehrteilig
+      switch (f.vergleich) {
+        case 'ist':
+          return query.or(`${a}.ilike.${wert},${b}.ilike.${wert}`)
+        case 'enthaelt':
+          return query.or(`${a}.ilike.%${wert}%,${b}.ilike.%${wert}%`)
+        case 'ist_nicht':
+        case 'enthaelt_nicht': {
+          const muster = f.vergleich === 'ist_nicht' ? wert : `%${wert}%`
+          return query.not(a, 'ilike', muster).not(b, 'ilike', muster)
+        }
+        case 'leer':
+          return query.is(a, null).is(b, null)
+        case 'nicht_leer':
+          return query.or(`${a}.not.is.null,${b}.not.is.null`)
+        default: return query
+      }
+    }
+
+    switch (f.vergleich) {
+      case 'ist': return query.ilike(spalte, wert)
+      case 'ist_nicht': return query.not(spalte, 'ilike', wert)
+      case 'enthaelt': return query.ilike(spalte, `%${wert}%`)
+      case 'enthaelt_nicht': return query.not(spalte, 'ilike', `%${wert}%`)
+      case 'groesser':
+      case 'nach': return query.gt(spalte, wert)
+      case 'kleiner':
+      case 'vor': return query.lt(spalte, wert)
+      case 'leer': return query.is(spalte, null)
+      case 'nicht_leer': return query.not(spalte, 'is', null)
+      default: return query
+    }
+  }
+
   function formatLead(record, assignmentMap) {
     const assignments = assignmentMap[record.id] || []
 
@@ -155,6 +205,12 @@ export async function handler(event) {
   if (event.httpMethod === 'GET') {
     try {
       const params = event.queryStringParameters || {}
+      // Die frei zusammengestellten Filter des Benutzers. Sie kommen als JSON
+      // und werden hier geprueft - was nicht im Katalog steht, faellt raus.
+      let eigeneFilter = []
+      try {
+        eigeneFilter = filterPruefen('opening', JSON.parse(params.filter || '[]')) || []
+      } catch { eigeneFilter = [] }
       const {
         userName: userNameAnfrage,
         userId: userIdAnfrage,
@@ -197,7 +253,9 @@ export async function handler(event) {
 
       // === RPC-basierter Pfad: skaliert auf beliebig viele Assignments ===
       // Löst das URL-Limit-Problem bei .in('id', [...1200 UUIDs])
-      if (needsUserFilter && userId) {
+      // Mit eigenen Filtern geht es ueber die normale Abfrage: Die SQL-Funktion
+      // kennt nur die fuenf festen Filter von frueher.
+      if (needsUserFilter && userId && eigeneFilter.length === 0) {
         console.log('[Leads] RPC path - userId:', userId, 'airtableId:', airtableId, 'userName:', userName)
 
         let effectiveUserId = userId
@@ -362,9 +420,30 @@ export async function handler(event) {
         query = query.not('wiedervorlage_datum', 'is', null)
       }
 
+      // Eigene Leads: ueber die Zuweisungstabelle verknuepft. Eine Liste mit
+      // tausend IDs in der URL sprengt deren Laenge - ein Join nicht.
+      if (needsUserFilter && userId && eigeneFilter.length > 0) {
+        query = supabase
+          .from('leads')
+          .select('*, lead_assignments!inner(user_id)', { count: 'exact' })
+          .eq('lead_assignments.user_id', userId)
+
+        if (contacted === 'true') query = query.eq('bereits_kontaktiert', true)
+        else if (contacted === 'false') query = query.or('bereits_kontaktiert.is.null,bereits_kontaktiert.eq.false')
+        if (result && result !== 'all') query = query.eq('ergebnis', result)
+        if (land && land !== 'all') query = query.eq('land', land)
+        if (quelle && quelle !== 'all') query = query.eq('quelle', quelle)
+        if (wiedervorlage === 'true') query = query.not('wiedervorlage_datum', 'is', null)
+      }
+
       // Suchfilter
       if (search) {
         query = query.or(`unternehmensname.ilike.%${search}%,stadt.ilike.%${search}%`)
+      }
+
+      // Die eigenen Filter des Benutzers, jeder als eigene Bedingung.
+      for (const f of eigeneFilter) {
+        query = filterAnwenden(query, f)
       }
 
       // Sortierung und Pagination

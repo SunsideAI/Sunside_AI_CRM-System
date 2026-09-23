@@ -22,7 +22,8 @@ import KontaktFelder from '../components/KontaktFelder'
 import LeadPool from '../components/LeadPool'
 import LeadTabelle from '../components/LeadTabelle'
 import SpaltenWahl from '../components/SpaltenWahl'
-import useSpalten from '../hooks/useSpalten'
+import FilterWahl from '../components/FilterWahl'
+import useTabelle from '../hooks/useTabelle'
 import { zeileAusLead } from '../utils/zeile'
 import { standardSpalten } from '../../shared/spalten.js'
 import Verlauf from '../components/Verlauf'
@@ -159,7 +160,7 @@ function Opening() {
   // Modal State
   const [selectedLead, setSelectedLead] = useState(null)
   const [editMode, setEditMode] = useState(false)
-  const spalten = useSpalten('opening')
+  const tabelle = useTabelle('opening')
   const [kommentarOnlyMode, setKommentarOnlyMode] = useState(false) // Soft Lock: Nur Kommentare für Beratungsgespräch
   const [saving, setSaving] = useState(false)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
@@ -227,6 +228,12 @@ function Opening() {
       if (filterLand !== 'all') params.append('land', filterLand)
       if (filterQuelle !== 'all') params.append('quelle', filterQuelle)
       if (newOffset) params.append('offset', newOffset)
+      // Die eigenen Filter des Benutzers wertet der Server aus: Bei knapp
+      // 29.000 Leads reicht es nicht, die geladene Seite zu durchsuchen.
+      const fertigeFilter = (tabelle.filter || []).filter(f =>
+        ['leer', 'nicht_leer'].includes(f.vergleich)
+        || (f.wert !== undefined && f.wert !== null && String(f.wert).trim() !== ''))
+      if (fertigeFilter.length) params.append('filter', JSON.stringify(fertigeFilter))
 
       const response = await fetch(`/.netlify/functions/leads?${params.toString()}`)
       const data = await response.json()
@@ -253,14 +260,14 @@ function Opening() {
     } finally {
       setLoading(false)
     }
-  }, [user?.id, user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle, offset])
+  }, [user?.id, user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle, offset, tabelle.filter])
 
   // Initial laden
   useEffect(() => {
     if (viewMode !== 'ebook') {
       loadLeads()
     }
-  }, [viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle])
+  }, [viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle, tabelle.filter])
 
   // Filter-State in sessionStorage persistieren
   useEffect(() => {
@@ -1115,9 +1122,14 @@ function Opening() {
             </button>
           )}
 
-          <div className="ml-auto">
-            <SpaltenWahl stufe="opening" auswahl={spalten.auswahl}
-                         onAendern={spalten.aendern} speichert={spalten.speichert} />
+          {/* Rechts, weil beides die Darstellung steuert. */}
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <FilterWahl stufe="opening" filter={tabelle.filter}
+                        onAendern={tabelle.filterAendern}
+                        zeilen={leads.map(l => zeileAusLead('opening', l))}
+                        speichert={tabelle.speichert} />
+            <SpaltenWahl stufe="opening" auswahl={tabelle.spalten}
+                         onAendern={tabelle.spaltenAendern} speichert={tabelle.speichert} />
           </div>
         </div>
       </div>
@@ -1289,7 +1301,7 @@ function Opening() {
           <LeadTabelle
             stufe="opening"
             zeilen={leads.map(l => zeileAusLead('opening', l))}
-            auswahl={spalten.auswahl
+            auswahl={tabelle.spalten
               || (isAdmin() && viewMode === 'all'
                 ? [...standardSpalten('opening'), 'zustaendig']
                 : null)}
