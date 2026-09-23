@@ -126,8 +126,16 @@ export function Statistik({ werte, anfangsOffen = false }) {
   )
 }
 
+/**
+ * @param nurArbeit  Während eines geführten Ablaufs (Setting: Übergabe an den
+ *                   Closer) zeigt die Schublade nur den Arbeitsbereich. Sonst
+ *                   stünde der Ablauf zwischen Kontaktdaten und Verlauf, und
+ *                   man sucht beim Ausfüllen die Stelle wieder, an der man war.
+ *                   Im Opening wechselt die Schublade genauso auf eine eigene
+ *                   Seite, sobald der Terminwähler offen ist.
+ */
 export default function LeadSchublade({
-  offen, onClose, titel, untertitel,
+  offen, onClose, titel, untertitel, nurArbeit = false,
   kontakt = {},
   termin,
   statistik,
@@ -143,6 +151,7 @@ export default function LeadSchublade({
     <SlideDrawer isOpen={offen} onClose={onClose} title={titel}
                  untertitel={untertitel || kontakt.kategorie}
                  width={breite} fuss={fuss}>
+      {nurArbeit ? children : (<>
       {/* 1 — Kontaktdaten */}
       <Abschnitt titel="Kontaktdaten" icon={UserIcon}>
         <Angaben>
@@ -223,6 +232,7 @@ export default function LeadSchublade({
           )}
         </Abschnitt>
       )}
+      </>)}
     </SlideDrawer>
   )
 }

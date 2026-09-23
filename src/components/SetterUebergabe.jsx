@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { CheckCircle2, CalendarPlus, Loader2, AlertTriangle, Save, Info } from 'lucide-react'
+import { CheckCircle2, CalendarPlus, Loader2, AlertTriangle, Info, ChevronLeft, ChevronRight } from 'lucide-react'
 import { STATUS } from '../../shared/status.js'
 import {
   UEBERGABE_2, maske, reduzierterModus, istSv, GRUND_REDUZIERT, ANLEITUNG_REDUZIERT
@@ -77,7 +77,7 @@ function startwerte(lead) {
   return werte
 }
 
-export default function SetterUebergabe({ lead, onGespeichert }) {
+export default function SetterUebergabe({ lead, onGespeichert, onAblauf }) {
   const status = lead?.status
 
   const [werte, setWerte] = useState(() => startwerte(lead))
@@ -87,7 +87,10 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
       ? { start: lead.termin_abschlussgespraech, meetingLink: lead.meeting_link_abschluss || null,
           terminart: 'Video' }
       : null)
-  const [waehlerOffen, setWaehlerOffen] = useState(false)
+  // Der geführte Ablauf der Übergabe: erst die Angaben, dann der Termin.
+  // null = normale Maske, 'felder' = Schritt 1, 'termin' = Schritt 2.
+  const [ablauf, setAblaufStand] = useState(null)
+  const setAblauf = (wert) => { setAblaufStand(wert); onAblauf?.(Boolean(wert)) }
   // Steht der Kontakt schon auf „geführt", ist der Ausgang entschieden, und
   // die Maske beginnt direkt bei der Dokumentation.
   const [ausgang, setAusgang] = useState(
@@ -183,7 +186,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
   // auf; die Felder hat er vorher geprüft (vorPruefung), damit kein Termin im
   // Kalender des Kunden steht, zu dem es im CRM nichts gibt.
   const uebergeben = async (gebucht) => {
-    setTermin(gebucht); setWaehlerOffen(false)
+    setTermin(gebucht); setAblauf(null)
     if (!(await gefuehrtSichern())) return
     await senden({
       ...eigene(),
@@ -193,7 +196,7 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
     })
   }
 
-  // Dieselbe Prüfung wie im Backend, nur vor der Buchung.
+  // Dieselbe Prüfung wie im Backend, nur bevor es weitergeht.
   const felderPruefen = () => {
     const pruefung = uebergabePruefen({ ...werte, termin_abschlussgespraech: 'gebucht' }, UEBERGABE_2)
     if (pruefung.vollstaendig) return null
@@ -320,33 +323,20 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
             </div>
             <button
               type="button"
-              onClick={() => { setTermin(null); setWaehlerOffen(true) }}
+              onClick={() => { setTermin(null); setAblauf('felder') }}
               className="text-label-sm text-primary hover:underline shrink-0"
             >
               ändern
             </button>
           </div>
-        ) : waehlerOffen ? (
-          // Wie im Opening: erst der Termin, dann die Angaben, dann ein Zug.
-          // Gebucht wird erst, wenn beides steht.
-          <TerminPicker
-            lead={leadFuerPicker}
-            zweck="abschluss"
-            nurBuchen
-            zusatz={felder}
-            vorPruefung={felderPruefen}
-            knopfText="Termin buchen und an den Closer übergeben"
-            onTerminBooked={uebergeben}
-            onCancel={() => setWaehlerOffen(false)}
-          />
         ) : (
           <div className="space-y-2">
-            <button type="button" onClick={() => setWaehlerOffen(true)} className="fuss-haupt w-full justify-center">
+            <button type="button" onClick={() => setAblauf('felder')} className="fuss-haupt w-full justify-center">
               <CalendarPlus className="w-4 h-4" /> Termin mit Closer buchen
             </button>
             <p className="text-xs text-gray-500">
-              Höchstens eine Woche voraus, immer per Video. Danach fragt die Maske die
-              Angaben aus dem Gespräch ab; gebucht wird erst, wenn beides steht.
+              In zwei Schritten: erst die Angaben aus dem Gespräch, dann der Termin.
+              Höchstens eine Woche voraus, immer per Video.
             </p>
           </div>
         )
@@ -389,14 +379,78 @@ export default function SetterUebergabe({ lead, onGespeichert }) {
       )}
     </>
   )
-  const mitAktionen = (inhalt) => (
+  // Knöpfe gehören in die Fußleiste der Schublade; nur ohne Schublade
+  // (Vorschau, Test) stehen sie unter der Maske.
+  const mitAktionen = (inhalt, knoepfe = aktionen) => (
     <>
       {inhalt}
-      {fussNode ? createPortal(aktionen, fussNode) : (
-        <div className="flex flex-wrap items-center justify-end gap-3 pt-2">{aktionen}</div>
+      {fussNode ? createPortal(knoepfe, fussNode) : (
+        <div className="flex flex-wrap items-center justify-end gap-3 pt-2">{knoepfe}</div>
       )}
     </>
   )
+
+  // Der geführte Ablauf als eigene Seite: Die Schublade zeigt währenddessen
+  // nichts anderes, damit der Setter dem Weg folgt und nicht sucht.
+  const kopf = (nummer, titel, zurueck) => (
+    <div className="space-y-2">
+      <button type="button" onClick={zurueck} className="flex items-center gap-1 text-label-sm text-primary hover:underline">
+        <ChevronLeft className="w-4 h-4" /> Zurück
+      </button>
+      <div>
+        <p className="text-label-sm text-on-surface-variant">Schritt {nummer} von 2</p>
+        <h4 className="abschnitt-titel">{titel}</h4>
+      </div>
+    </div>
+  )
+
+  if (ablauf === 'felder') {
+    return mitAktionen(
+      <div className="space-y-4">
+        {kopf(1, 'Angaben aus dem Gespräch', () => setAblauf(null))}
+        {felder}
+        {fehlerKasten}
+      </div>,
+      <>
+        <button onClick={zwischenstand} disabled={laeuft} className="fuss-leise">
+          Zwischenstand speichern
+        </button>
+        <button
+          onClick={() => {
+            const m = felderPruefen()
+            if (m) { setFehler(m); return }
+            setFehler(''); setAblauf('termin')
+          }}
+          className="fuss-haupt"
+        >
+          Weiter zum Termin <ChevronRight className="w-4 h-4" />
+        </button>
+      </>
+    )
+  }
+
+  if (ablauf === 'termin') {
+    // Die Hauptaktion sitzt im Terminwähler: Sie bucht und übergibt in einem
+    // Zug. Unten steht nur der Weg zurück zu den Angaben.
+    return mitAktionen(
+      <div className="space-y-4">
+        {kopf(2, 'Termin mit dem Closer', () => setAblauf('felder'))}
+        <TerminPicker
+          lead={leadFuerPicker}
+          zweck="abschluss"
+          nurBuchen
+          vorPruefung={felderPruefen}
+          knopfText="Termin buchen und an den Closer übergeben"
+          onTerminBooked={uebergeben}
+          onCancel={() => setAblauf('felder')}
+        />
+        {fehlerKasten}
+      </div>,
+      <button onClick={() => setAblauf('felder')} className="fuss-leise">
+        <ChevronLeft className="w-4 h-4" /> Zurück zu den Angaben
+      </button>
+    )
+  }
 
   // Schon dokumentiert: kein Auswahlfeld mehr, der Ausgang steht fest.
   if (status === STATUS.BERATUNG_GEFUEHRT) {

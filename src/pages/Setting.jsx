@@ -51,6 +51,8 @@ function Setting() {
   const [mailOffen, setMailOffen] = useState(false)
   // Nach der Übergabe: die Bestätigungsmail mit VSL zum eben übergebenen Kontakt.
   const [bestaetigung, setBestaetigung] = useState(null)
+  // Läuft die Übergabe an den Closer, zeigt die Schublade nur diesen Ablauf.
+  const [ablaufLaeuft, setAblaufLaeuft] = useState(false)
   const [terminOffen, setTerminOffen] = useState(false)
   // 'meine' oder 'pool' — dieselbe Umschaltung wie im Closing. Der Pool war
   // vorher ein Block ueber der Liste; als eigene Ansicht ist er dort, wo man
@@ -561,7 +563,8 @@ function Setting() {
           Arbeitsbereich: hier der Ausgang des Beratungsgesprächs. */}
       <LeadSchublade
         offen={!!gewaehlt}
-        onClose={() => { setGewaehlt(null); setMailOffen(false); setTerminOffen(false) }}
+        nurArbeit={ablaufLaeuft}
+        onClose={() => { setGewaehlt(null); setMailOffen(false); setTerminOffen(false); setAblaufLaeuft(false) }}
         titel={gewaehlt?.unternehmen || 'Kontakt'}
         untertitel={[gewaehlt?.kategorie, gewaehlt?.ort].filter(Boolean).join(' · ')}
         kontakt={{
@@ -585,9 +588,13 @@ function Setting() {
         arbeitsIcon={Users}
         fuss={gewaehlt && (
           <>
-            <button onClick={() => setMailOffen(o => !o)} className="fuss-neben">
-              <Mail className="w-4 h-4" /> E-Mail an den Kontakt
-            </button>
+            {/* Während des geführten Ablaufs nur die Schritt-Knöpfe, sonst
+                lenkt die Mail-Aktion vom Weg ab. */}
+            {!ablaufLaeuft && (
+              <button onClick={() => setMailOffen(o => !o)} className="fuss-neben">
+                <Mail className="w-4 h-4" /> E-Mail an den Kontakt
+              </button>
+            )}
             {/* Hier hinein hängt die Setter-Maske ihre Knöpfe (Portal), damit
                 sie unten stehen wie in jeder anderen Schublade. */}
             <div id="schublade-aktionen" className="contents" />
@@ -698,7 +705,7 @@ function Setting() {
               )
             )}
 
-            <SetterUebergabe lead={gewaehlt} onGespeichert={nachSpeichern} />
+            <SetterUebergabe lead={gewaehlt} onGespeichert={nachSpeichern} onAblauf={setAblaufLaeuft} />
           </>
         )}
       </LeadSchublade>
