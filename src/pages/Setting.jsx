@@ -16,6 +16,8 @@ import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
 import Uebergabeblatt, { UEBERGABE_1 } from '../components/Uebergabeblatt'
 import KontaktFelder from '../components/KontaktFelder'
+import LeadTabelle from '../components/LeadTabelle'
+import { zeileAusLead } from '../utils/zeile'
 
 // Die Arbeitsfläche des Setters — aufgebaut wie Opening und Closing.
 //
@@ -492,97 +494,19 @@ function Setting() {
           </div>
         ) : (
           <>
-          <table className="w-full">
-            <thead>
-              <tr className="bg-surface-container">
-                <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
-                  Art
-                </th>
-                <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
-                  Unternehmen
-                </th>
-                <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden md:table-cell">
-                  Ansprechpartner
-                </th>
-                <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider hidden lg:table-cell">
-                  Ort
-                </th>
-                <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
-                  Termin
-                </th>
-                <th className="px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant uppercase tracking-wider">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {geblaettert.map((lead, index) => {
-                const ueberfaellig = istVorbei(lead.terminDatum)
-                  && lead.status === STATUS.BERATUNG_VEREINBART
-                return (
-                  <tr
-                    key={lead.id}
-                    onClick={() => {
-                      setGewaehlt(lead); setMailOffen(false); setTerminOffen(false)
-                      bearbeitenAbbrechen()
-                    }}
-                    className={`table-row cursor-pointer ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
-                  >
-                    <td className="px-4 py-4">
-                      <div className={`p-1.5 rounded-lg inline-flex ${
-                        lead.status === STATUS.BERATUNG_GEFUEHRT
-                          ? 'bg-success-container text-success'
-                          : lead.status === STATUS.BERATUNG_VEREINBART
-                          ? 'bg-secondary-container text-primary'
-                          : 'bg-error-container text-error'
-                      }`}>
-                        {lead.terminart === 'Video'
-                          ? <Video className="w-4 h-4" />
-                          : <Phone className="w-4 h-4" />}
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-4">
-                      <div className="font-medium text-on-surface truncate max-w-[22rem]">
-                        {lead.unternehmen || 'Ohne Namen'}
-                      </div>
-                      {/* Auf schmalen Schirmen fehlen die eigenen Spalten —
-                          dann steht der Ansprechpartner hier mit drunter. */}
-                      <div className="text-body-sm text-on-surface-variant truncate md:hidden">
-                        {[lead.ansprechpartnerVorname, lead.ansprechpartnerNachname].filter(Boolean).join(' ')}
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-4 hidden md:table-cell text-body-sm text-on-surface-variant">
-                      {[lead.ansprechpartnerVorname, lead.ansprechpartnerNachname].filter(Boolean).join(' ') || '—'}
-                    </td>
-
-                    <td className="px-4 py-4 hidden lg:table-cell text-body-sm text-on-surface-variant">
-                      {lead.ort || '—'}
-                    </td>
-
-                    <td className="px-4 py-4">
-                      <div className={`text-body-sm flex items-center gap-1.5 ${
-                        ueberfaellig ? 'text-warning font-medium' : 'text-on-surface-variant'
-                      }`}>
-                        {ueberfaellig && <AlertCircle className="w-4 h-4 shrink-0" />}
-                        {terminText(lead.terminDatum)}
-                      </div>
-                    </td>
-
-                    <td className="px-4 py-4">
-                      <div className="text-body-sm text-on-surface-variant flex items-center gap-1.5">
-                        {lead.status === STATUS.BERATUNG_GEFUEHRT && (
-                          <CheckCircle2 className="w-4 h-4 text-success shrink-0" />
-                        )}
-                        {anzeigeName(lead.status)}
-                      </div>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
+          <LeadTabelle
+            stufe="setting"
+            zeilen={geblaettert.map(l => zeileAusLead('setting', l))}
+            badgeFarbe={(_, z) => z.statusWert === STATUS.BERATUNG_GEFUEHRT
+              ? 'bg-success-container text-success'
+              : [STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(z.statusWert)
+                ? 'bg-error-container text-error'
+                : 'bg-secondary-container text-primary'}
+            onZeile={(z) => {
+              setGewaehlt(z.roh); setMailOffen(false); setTerminOffen(false)
+              bearbeitenAbbrechen()
+            }}
+          />
 
           {sichtbar.length > PRO_SEITE && (
             <div className="px-4 md:px-6 py-3 md:py-4 bg-surface-container/50 flex items-center justify-between">
