@@ -278,7 +278,8 @@ export default function SetterUebergabe({ lead, onGespeichert, onAblauf }) {
   const felder = (
     <div className="space-y-4">
       <div>
-        <h4 className="abschnitt-titel">Übergabe an den Closer</h4>
+        {/* Im geführten Ablauf steht die Überschrift schon im Kopf der Seite. */}
+        {!ablauf && <h4 className="abschnitt-titel">Übergabe an den Closer</h4>}
         <p className="feld-hinweis">
           Der Closer baut sein Strategiepapier aus diesen Angaben. Was hier fehlt,
           fehlt ihm im Gespräch.
@@ -392,27 +393,27 @@ export default function SetterUebergabe({ lead, onGespeichert, onAblauf }) {
 
   // Der geführte Ablauf als eigene Seite: Die Schublade zeigt währenddessen
   // nichts anderes, damit der Setter dem Weg folgt und nicht sucht.
-  const kopf = (nummer, titel, zurueck) => (
-    <div className="space-y-2">
-      <button type="button" onClick={zurueck} className="flex items-center gap-1 text-label-sm text-primary hover:underline">
-        <ChevronLeft className="w-4 h-4" /> Zurück
-      </button>
-      <div>
-        <p className="text-label-sm text-on-surface-variant">Schritt {nummer} von 2</p>
-        <h4 className="abschnitt-titel">{titel}</h4>
-      </div>
+  // Nur die Überschrift: Der Weg zurück steht auf jeder Seite unten in der
+  // Fußleiste, dort wo auch der Weg vorwärts steht.
+  const kopf = (nummer, titel) => (
+    <div>
+      <p className="text-label-sm text-on-surface-variant">Schritt {nummer} von 2</p>
+      <h4 className="abschnitt-titel">{titel}</h4>
     </div>
   )
 
   if (ablauf === 'felder') {
     return mitAktionen(
       <div className="space-y-4">
-        {kopf(1, 'Angaben aus dem Gespräch', () => setAblauf(null))}
+        {kopf(1, 'Angaben aus dem Gespräch')}
         {felder}
         {fehlerKasten}
       </div>,
       <>
-        <button onClick={zwischenstand} disabled={laeuft} className="fuss-leise">
+        <button onClick={() => { setFehler(''); setAblauf(null) }} className="fuss-leise">
+          <ChevronLeft className="w-4 h-4" /> Zurück
+        </button>
+        <button onClick={zwischenstand} disabled={laeuft} className="fuss-neben">
           Zwischenstand speichern
         </button>
         <button
@@ -434,7 +435,7 @@ export default function SetterUebergabe({ lead, onGespeichert, onAblauf }) {
     // Zug. Unten steht nur der Weg zurück zu den Angaben.
     return mitAktionen(
       <div className="space-y-4">
-        {kopf(2, 'Termin mit dem Closer', () => setAblauf('felder'))}
+        {kopf(2, 'Termin mit dem Closer')}
         <TerminPicker
           lead={leadFuerPicker}
           zweck="abschluss"
@@ -442,7 +443,6 @@ export default function SetterUebergabe({ lead, onGespeichert, onAblauf }) {
           vorPruefung={felderPruefen}
           knopfText="Termin buchen und an den Closer übergeben"
           onTerminBooked={uebergeben}
-          onCancel={() => setAblauf('felder')}
         />
         {fehlerKasten}
       </div>,

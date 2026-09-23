@@ -1146,17 +1146,21 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             </button>
           )}
           
-          <button
-            onClick={onCancel}
-            className="w-full py-2 text-gray-600 hover:text-gray-800"
-          >
-            Abbrechen
-          </button>
+          {/* Nur wo es einen Weg zurueck gibt; im gefuehrten Ablauf steht er
+              in der Fussleiste. */}
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="w-full py-2 text-gray-600 hover:text-gray-800"
+            >
+              Abbrechen
+            </button>
+          )}
         </div>
       )}
 
       {/* Abbrechen wenn noch kein Slot gewählt */}
-      {!selectedSlot && (
+      {!selectedSlot && onCancel && (
         <div className="flex justify-end pt-4 border-t">
           <button
             onClick={onCancel}
