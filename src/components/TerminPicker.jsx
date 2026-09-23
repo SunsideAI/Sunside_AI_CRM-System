@@ -1084,7 +1084,9 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             {selectedType === 'video' ? ' (Video)' : ' (Telefon)'}
           </p>
           
-          {!isReschedule && kannSelbstSetten && (
+          {/* Nur beim Beratungsgespräch: Wer bucht, kann es selbst halten.
+              Beim Abschlussgespräch entscheidet das der Closer-Pool. */}
+          {!isReschedule && !nurBuchen && kannSelbstSetten && (
             <label className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg text-sm cursor-pointer">
               <input
                 type="checkbox"
