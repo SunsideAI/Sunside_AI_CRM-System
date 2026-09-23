@@ -460,3 +460,15 @@ Setting-Seiten 15/15, Sperre 12/12.
 
 Dabei gefunden: Die neue Function las die Benutzerkennung aus dem falschen Feld des
 Sitzungs-Helfers (`inhalt` statt `nutzer`) — fiel als 502 im Browsertest auf und ist behoben.
+
+### Nachtrag Spaltenwahl und Scrollen
+
+- Der Knopf „Spalten" sieht jetzt aus wie ein Filter (neue Klasse `.filter-knopf`: gleicher heller
+  Grund, gleiche Höhe, derselbe Pfeil rechts) und steht am rechten Ende der Filterzeile — er
+  steuert die Darstellung, nicht die Auswahl. Das eigene Symbol ist entfallen.
+- Bei vielen Spalten wird waagerecht gescrollt; Symbol und Unternehmen bleiben dabei stehen
+  (`position: sticky`), damit jede Zeile zuzuordnen bleibt.
+
+**Nachweis:** 15/15 über die drei Tabs — Knopfklasse, Position rechts der Filter, gleiche Höhe,
+erste Spalte bleibt beim Scrollen an Ort und Stelle, Unternehmen bleibt sichtbar. Regression:
+Spaltenwahl 7/7, Tabellen 12/12, Konsistenz 47/47.
