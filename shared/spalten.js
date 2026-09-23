@@ -118,10 +118,35 @@ export function standardSpalten(stufe) {
     .map(s => s.schluessel)
 }
 
-/** Aus gespeicherten Schlüsseln die Spalten in Katalogreihenfolge. */
+/**
+ * Aus gespeicherten Schlüsseln die Spalten — in der Reihenfolge, die der
+ * Nutzer selbst gelegt hat. Das Gerüst (Art, Unternehmen) steht immer vorn,
+ * damit die Zeile lesbar bleibt, auch wenn weit nach rechts gescrollt wird.
+ */
 export function spaltenAus(stufe, schluessel) {
-  const gewaehlt = Array.isArray(schluessel) && schluessel.length
-    ? new Set(schluessel)
-    : new Set(standardSpalten(stufe))
-  return spaltenFuer(stufe).filter(s => s.fest || gewaehlt.has(s.schluessel))
+  const alle = spaltenFuer(stufe)
+  const feste = alle.filter(s => s.fest)
+  const waehlbar = new Map(alle.filter(s => !s.fest).map(s => [s.schluessel, s]))
+
+  const liste = Array.isArray(schluessel) && schluessel.length
+    ? schluessel
+    : standardSpalten(stufe)
+
+  const gewaehlt = []
+  for (const k of liste) {
+    const s = waehlbar.get(k)
+    if (s && !gewaehlt.includes(s)) gewaehlt.push(s)
+  }
+  return [...feste, ...gewaehlt]
+}
+
+/** Prüft eine gespeicherte Auswahl: nur bekannte Schlüssel, ohne Dopplungen. */
+export function auswahlPruefen(stufe, schluessel) {
+  if (!Array.isArray(schluessel)) return null
+  const erlaubt = new Set(spaltenFuer(stufe).filter(s => !s.fest).map(s => s.schluessel))
+  const sauber = []
+  for (const k of schluessel) {
+    if (erlaubt.has(k) && !sauber.includes(k)) sauber.push(k)
+  }
+  return sauber
 }

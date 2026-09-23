@@ -25,6 +25,8 @@ import { Rollen, Pille, Statistik, webZahlen } from '../components/LeadSchublade
 import KontaktFelder from '../components/KontaktFelder'
 import LeadPool from '../components/LeadPool'
 import LeadTabelle from '../components/LeadTabelle'
+import SpaltenWahl from '../components/SpaltenWahl'
+import useSpalten from '../hooks/useSpalten'
 import { zeileAusLead } from '../utils/zeile'
 import { standardSpalten } from '../../shared/spalten.js'
 import { Angabe, Angaben } from '../components/Formular'
@@ -165,6 +167,7 @@ function Closing() {
   // Ohne E-Mail geht weder Angebot noch Nachfassen raus - dieselbe Sperre wie
   // im Setting, damit dieselbe Maske überall gleich streng ist.
   const [mailFehlt, setMailFehlt] = useState(false)
+  const spalten = useSpalten('closing')
   const [editData, setEditData] = useState({})
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -1754,6 +1757,8 @@ function Closing() {
 
         {/* Zeile 2: Filter */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <SpaltenWahl stufe="closing" auswahl={spalten.auswahl}
+                       onAendern={spalten.aendern} speichert={spalten.speichert} />
           {/* Status-Filter */}
           <select
             value={statusFilter}
@@ -1802,9 +1807,10 @@ function Closing() {
               <LeadTabelle
                 stufe="closing"
                 zeilen={paginatedLeads.map(l => zeileAusLead('closing', l))}
-                auswahl={isAdmin() && viewMode === 'all'
-                  ? [...standardSpalten('closing'), 'closer']
-                  : null}
+                auswahl={spalten.auswahl
+                  || (isAdmin() && viewMode === 'all'
+                    ? [...standardSpalten('closing'), 'closer']
+                    : null)}
                 badgeFarbe={(_, z) => getStatusStyle(z.statusWert)}
                 leer="Keine Leads mit diesen Filterkriterien."
                 onZeile={(z) => openModal(z.roh)}

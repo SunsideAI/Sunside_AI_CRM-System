@@ -17,6 +17,8 @@ import TerminPicker from '../components/TerminPicker'
 import Uebergabeblatt, { UEBERGABE_1 } from '../components/Uebergabeblatt'
 import KontaktFelder from '../components/KontaktFelder'
 import LeadTabelle from '../components/LeadTabelle'
+import SpaltenWahl from '../components/SpaltenWahl'
+import useSpalten from '../hooks/useSpalten'
 import { zeileAusLead } from '../utils/zeile'
 
 // Die Arbeitsfläche des Setters — aufgebaut wie Opening und Closing.
@@ -67,6 +69,7 @@ function Setting() {
   // Zeigt die Gesprächsmaske unten schon eine gefüllte Aktion? Dann ist das
   // die Hauptaktion, und „Speichern" für die Kontaktdaten tritt zurück.
   const [setterHauptaktion, setSetterHauptaktion] = useState(false)
+  const spalten = useSpalten('setting')
   // 'meine' oder 'pool' — dieselbe Umschaltung wie im Closing. Der Pool war
   // vorher ein Block ueber der Liste; als eigene Ansicht ist er dort, wo man
   // ihn sucht, und die Zahl daneben sagt, ob sich das Hinsehen lohnt.
@@ -464,6 +467,8 @@ function Setting() {
             trotzdem sichtbar, sie stand vorher auf den Pillen und ist zu
             nützlich, um sie beim Angleichen wegzuwerfen. */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <SpaltenWahl stufe="setting" auswahl={spalten.auswahl}
+                       onAendern={spalten.aendern} speichert={spalten.speichert} />
           <select
             value={filter}
             onChange={e => { setFilter(e.target.value); setSeite(1) }}
@@ -496,6 +501,7 @@ function Setting() {
           <>
           <LeadTabelle
             stufe="setting"
+            auswahl={spalten.auswahl}
             zeilen={geblaettert.map(l => zeileAusLead('setting', l))}
             badgeFarbe={(_, z) => z.statusWert === STATUS.BERATUNG_GEFUEHRT
               ? 'bg-success-container text-success'

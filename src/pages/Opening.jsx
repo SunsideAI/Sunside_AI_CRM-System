@@ -21,6 +21,8 @@ import { Rollen, Pille, Statistik, webZahlen } from '../components/LeadSchublade
 import KontaktFelder from '../components/KontaktFelder'
 import LeadPool from '../components/LeadPool'
 import LeadTabelle from '../components/LeadTabelle'
+import SpaltenWahl from '../components/SpaltenWahl'
+import useSpalten from '../hooks/useSpalten'
 import { zeileAusLead } from '../utils/zeile'
 import { standardSpalten } from '../../shared/spalten.js'
 import Verlauf from '../components/Verlauf'
@@ -157,6 +159,7 @@ function Opening() {
   // Modal State
   const [selectedLead, setSelectedLead] = useState(null)
   const [editMode, setEditMode] = useState(false)
+  const spalten = useSpalten('opening')
   const [kommentarOnlyMode, setKommentarOnlyMode] = useState(false) // Soft Lock: Nur Kommentare für Beratungsgespräch
   const [saving, setSaving] = useState(false)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
@@ -1111,6 +1114,9 @@ function Opening() {
               Filter zurücksetzen
             </button>
           )}
+
+          <SpaltenWahl stufe="opening" auswahl={spalten.auswahl}
+                       onAendern={spalten.aendern} speichert={spalten.speichert} />
         </div>
       </div>
       )}
@@ -1281,9 +1287,10 @@ function Opening() {
           <LeadTabelle
             stufe="opening"
             zeilen={leads.map(l => zeileAusLead('opening', l))}
-            auswahl={isAdmin() && viewMode === 'all'
-              ? [...standardSpalten('opening'), 'zustaendig']
-              : null}
+            auswahl={spalten.auswahl
+              || (isAdmin() && viewMode === 'all'
+                ? [...standardSpalten('opening'), 'zustaendig']
+                : null)}
             badgeFarbe={(wert) => getErgebnisColor(wert)}
             leer="Keine Leads mit diesen Filterkriterien."
             onZeile={(z) => openLead(z.roh)}
