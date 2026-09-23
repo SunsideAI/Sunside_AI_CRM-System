@@ -1,13 +1,16 @@
 import { useState, useEffect } from 'react'
-import { Users, Loader2, Send, Check } from 'lucide-react'
+import { Users, Video, Phone, CheckCircle2 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { STATUS } from '../../shared/status.js'
+import LeadPool from './LeadPool'
+import Uebergabeblatt, { UEBERGABE_1 } from './Uebergabeblatt'
 
 // Der Setter-Pool: Beratungsgespräche, für die noch niemand eingeteilt ist.
 //
-// Gleiche Mechanik wie der Closer-Pool (F6), nur eine Stufe früher. Bewerben
-// statt zugreifen - ein Admin entscheidet. Wer den Kontakt selbst am Telefon
-// hatte, wird dem Admin dabei sichtbar markiert.
+// Aufbau, Tabelle und Schublade kommen aus LeadPool und sehen darum aus wie im
+// Opening und im Closing. Anders ist nur die Aktion: Der Setter nimmt sich den
+// Termin selbst, ein Admin muss nichts freigeben (Stand 23.09.2026). Wer den
+// Kontakt selbst am Telefon hatte, wird dabei sichtbar markiert.
 
 // `alsAnsicht` heisst: Der Pool ist die Seite, nicht ein Kasten darueber.
 // Dann traegt die Kopfzeile der Seite den Titel, und hier waere er doppelt.
@@ -22,7 +25,7 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
   const [fehler, setFehler] = useState('')
 
   // Erst fragen, wer hier sitzt: Der Pool gehoert den Settern, und der Server
-  // antwortet allen anderen mit 403. Der Kasten wird ohnehin nicht gezeigt.
+  // antwortet allen anderen mit 403.
   const zustaendig = isSetter() || isAdmin()
   useEffect(() => { if (zustaendig) laden() }, [zustaendig])
 
@@ -46,7 +49,8 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
     }
   }
 
-  const bewerben = async (lead) => {
+  const uebernehmen = async (eintrag, schliessen) => {
+    const lead = eintrag.roh
     setSendet(lead.id); setFehler('')
     try {
       const antwort = await fetch('/.netlify/functions/hot-lead-applications', {
@@ -55,11 +59,12 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
         body: JSON.stringify({ stufe: 'Setter', hotLeadId: lead.id })
       })
       const daten = await antwort.json()
-      if (!antwort.ok) { setFehler(daten.error || 'Bewerbung fehlgeschlagen'); return }
+      if (!antwort.ok) { setFehler(daten.error || 'Übernehmen fehlgeschlagen'); return }
       // Die Function sagt, was passiert ist: direkt übernommen oder beworben.
       // Das hängt am Schalter in den Einstellungen, den das Frontend nicht
       // kennen muss.
       setBeworben(b => ({ ...b, [lead.id]: daten.direkt ? 'uebernommen' : 'beworben' }))
+      schliessen?.()
       onGeaendert?.()
     } catch (e) {
       setFehler('Netzwerkfehler: ' + e.message)
@@ -68,96 +73,69 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
     }
   }
 
-  if (!isSetter() && !isAdmin()) return null
-  if (laedt) {
-    // Als Ansicht traegt der Pool die Hoehe der Seite - wie jede andere Liste
-    // auch, damit der Scrollbalken beim Umschalten nicht springt.
-    return alsAnsicht ? (
-      <div className="card-elevated min-h-[600px] flex items-center justify-center
-                      gap-2 text-on-surface-variant text-sm">
-        <Loader2 className="w-4 h-4 animate-spin" /> Pool wird geladen …
-      </div>
-    ) : (
-      <div className="flex items-center gap-2 text-gray-500 text-sm p-4">
-        <Loader2 className="w-4 h-4 animate-spin" /> Pool wird geladen …
-      </div>
-    )
-  }
-  if (termine.length === 0) {
-    if (!alsAnsicht) return null
-    return (
-      <div className="card-elevated min-h-[600px] flex flex-col items-center justify-center
-                      text-center text-on-surface-variant">
-        <Users className="w-10 h-10 mb-3 opacity-40" />
-        Kein Beratungsgespräch wartet auf einen Setter.
-      </div>
-    )
-  }
+  if (!zustaendig) return null
+  // Als Kasten über dem Kalender: Ist nichts da, steht dort auch nichts.
+  if (!alsAnsicht && !laedt && termine.length === 0) return null
+
+  const eintraege = termine.map(l => ({
+    id: l.id,
+    unternehmen: l.unternehmen,
+    untertitel: [l.kategorie, l.ort].filter(Boolean).join(' · '),
+    ansprechpartner: [l.ansprechpartnerVorname, l.ansprechpartnerNachname].filter(Boolean).join(' '),
+    ort: l.ort,
+    terminDatum: l.terminDatum,
+    art: { icon: l.terminart === 'Video' ? Video : Phone },
+    hinweis: l.openerId === user?.id
+      ? 'dein Erstanruf'
+      : l.openerName ? `gelegt von ${l.openerName}` : null,
+    roh: l
+  }))
+
+  const pool = (
+    <LeadPool
+      eintraege={eintraege}
+      laedt={laedt}
+      fehler={fehler}
+      leerText="Kein Beratungsgespräch wartet auf einen Setter."
+      leerIcon={Users}
+      aktion={{ text: 'Übernehmen', icon: CheckCircle2 }}
+      laufend={sendet}
+      erledigt={beworben}
+      onAktion={uebernehmen}
+      schublade={(e) => ({
+        kontakt: {
+          ansprechpartner: e.ansprechpartner,
+          statusFeld: 'Beratungsgespräch vereinbart',
+          telefon: e.roh.telefon,
+          email: e.roh.email,
+          website: e.roh.website,
+          ort: e.roh.ort,
+          rollen: { opener: e.roh.openerName }
+        },
+        termin: {
+          datum: e.terminDatum && new Date(e.terminDatum).toLocaleString('de-DE', {
+            weekday: 'long', day: '2-digit', month: '2-digit',
+            hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
+          }) + ' Uhr',
+          art: e.roh.terminart || 'Telefonisch'
+        },
+        uebergabe: <Uebergabeblatt lead={e.roh} bereiche={[UEBERGABE_1]} />,
+        verlauf: { hotLeadId: e.roh.id, leadId: e.roh.originalLeadId }
+      })}
+    />
+  )
+
+  if (alsAnsicht) return pool
 
   return (
-    <div className={`card p-5 mb-4 ${alsAnsicht ? 'min-h-[600px]' : ''}`}>
-      {!alsAnsicht && (
-        <div className="flex items-center gap-2 mb-1">
-          <Users className="w-5 h-5 text-primary" />
-          <h3 className="text-title-md font-medium text-on-surface">
-            Beratungsgespräche ohne Setter ({termine.length})
-          </h3>
-        </div>
-      )}
-      <p className="text-xs text-gray-500 mb-3">
-        Wer den Kontakt selbst am Telefon hatte, wird dabei sichtbar markiert.
-        Das ist kein Hindernis, nur Transparenz. Ob ein Admin zuteilt oder direkt
-        übernommen wird, stellen Admins in den Einstellungen ein.
-      </p>
-
-      {fehler && <p className="mb-3 text-sm text-red-600">{fehler}</p>}
-
-      <div className="space-y-2">
-        {termine.map(lead => {
-          const eigeneVorarbeit = lead.openerId === user?.id
-          return (
-            <div key={lead.id}
-                 className="flex items-center justify-between gap-3 p-3 bg-gray-50 rounded-lg">
-              <div className="min-w-0">
-                <div className="font-medium text-sm text-gray-900 truncate">
-                  {lead.unternehmen || 'Ohne Namen'}
-                </div>
-                <div className="text-xs text-gray-500">
-                  {new Date(lead.terminDatum).toLocaleString('de-DE', {
-                    weekday: 'short', day: '2-digit', month: '2-digit',
-                    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
-                  })} Uhr
-                  {lead.openerName && <> · gelegt von {lead.openerName}</>}
-                  {eigeneVorarbeit && (
-                    <span className="ml-2 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded">
-                      dein Erstanruf
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {beworben[lead.id] ? (
-                <span className="flex items-center gap-1 text-sm text-green-700 shrink-0">
-                  <Check className="w-4 h-4" />
-                  {beworben[lead.id] === 'uebernommen' ? 'übernommen' : 'beworben'}
-                </span>
-              ) : (
-                <button
-                  onClick={() => bewerben(lead)}
-                  disabled={sendet === lead.id}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary text-white
-                             rounded-lg hover:bg-primary-container disabled:opacity-50 shrink-0"
-                >
-                  {sendet === lead.id
-                    ? <Loader2 className="w-4 h-4 animate-spin" />
-                    : <Send className="w-4 h-4" />}
-                  Übernehmen
-                </button>
-              )}
-            </div>
-          )
-        })}
+    <div className="mb-4 space-y-2">
+      <div className="flex items-center gap-2">
+        <Users className="w-5 h-5 text-primary" />
+        <h3 className="text-title-md font-medium text-on-surface">
+          Beratungsgespräche ohne Setter ({termine.length})
+        </h3>
       </div>
+      {pool}
     </div>
   )
 }

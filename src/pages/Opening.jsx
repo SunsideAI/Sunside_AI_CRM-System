@@ -19,6 +19,7 @@ import { useAuth } from '../context/AuthContext'
 import TerminPicker from '../components/TerminPicker'
 import { Rollen, Pille, Statistik, webZahlen } from '../components/LeadSchublade'
 import KontaktFelder from '../components/KontaktFelder'
+import LeadPool from '../components/LeadPool'
 import Verlauf from '../components/Verlauf'
 import EmailComposer from '../components/EmailComposer'
 import {
@@ -1513,102 +1514,42 @@ function Opening() {
       </div>
       )}
 
-      {/* E-Book Pool View */}
+      {/* E-Book Pool: derselbe Aufbau wie der Setter- und der Closer-Pool -
+          Tabelle, Klick öffnet die Schublade, Aktion unten in der Fußleiste. */}
       {viewMode === 'ebook' && (
-        <>
-          <div className="card-elevated overflow-hidden min-h-[600px]">
-            {ebookLoading ? (
-              <div className="flex items-center justify-center py-20">
-                <Loader2 className="w-8 h-8 animate-spin text-warning" />
-                <span className="ml-3 text-on-surface-variant">Pool wird geladen...</span>
-              </div>
-            ) : ebookLeads.length === 0 ? (
-              <div className="p-12 text-center">
-                <Flame className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <p className="text-gray-500 text-lg">Keine E-Book Leads im Pool</p>
-                <p className="text-gray-400 mt-1">Neue Leads erscheinen hier automatisch</p>
-              </div>
-            ) : (
-              <div className="space-y-2 p-3">
-                {ebookLeads.map((lead) => (
-                  <div
-                    key={lead.id}
-                    className="p-5 rounded-xl bg-surface-container-lowest hover:bg-surface-container transition-colors"
-                  >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      {/* Lead-Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-3 mb-2">
-                          <h3 className="font-semibold text-gray-900 truncate">
-                            {lead.unternehmensname || 'Unbekanntes Unternehmen'}
-                          </h3>
-                          <span className="px-2 py-0.5 text-xs rounded-full bg-amber-100 text-amber-700">
-                            📚 E-Book
-                          </span>
-                          {lead.kategorie && (
-                            <span className="px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600">
-                              {lead.kategorie}
-                            </span>
-                          )}
-                        </div>
-                        
-                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
-                          {(lead.ansprechpartnerVorname || lead.ansprechpartnerNachname) && (
-                            <span className="flex items-center gap-1">
-                              <UserIcon className="w-3.5 h-3.5" />
-                              {lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}
-                            </span>
-                          )}
-                          {lead.ort && (
-                            <span className="flex items-center gap-1">
-                              <MapPin className="w-3.5 h-3.5" />
-                              {lead.ort}
-                            </span>
-                          )}
-                          {lead.email && (
-                            <span className="flex items-center gap-1">
-                              <Mail className="w-3.5 h-3.5" />
-                              {lead.email}
-                            </span>
-                          )}
-                          {lead.telefon && (
-                            <span className="flex items-center gap-1">
-                              <Phone className="w-3.5 h-3.5" />
-                              {lead.telefon}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Datum */}
-                        {lead.datum && (
-                          <p className="mt-2 text-sm text-gray-400">
-                            Eingegangen am {new Date(lead.datum).toLocaleDateString('de-DE')}
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Übernehmen Button */}
-                      <button
-                        onClick={() => claimEbookLead(lead)}
-                        disabled={claimingLead === lead.id}
-                        className="fuss-haupt"
-                      >
-                        {claimingLead === lead.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <>
-                            <CheckCircle2 className="w-4 h-4 mr-2" />
-                            Übernehmen
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </>
+        <LeadPool
+          laedt={ebookLoading}
+          leerText="Kein E-Book-Lead im Pool. Neue erscheinen hier von allein."
+          leerIcon={Flame}
+          aktion={{ text: 'Übernehmen', icon: CheckCircle2 }}
+          laufend={claimingLead}
+          onAktion={(e, schliessen) => { schliessen?.(); claimEbookLead(e.roh) }}
+          eintraege={ebookLeads.map(l => ({
+            id: l.id,
+            unternehmen: l.unternehmensname,
+            untertitel: [l.kategorie, l.ort].filter(Boolean).join(' · '),
+            ansprechpartner: [l.ansprechpartnerVorname, l.ansprechpartnerNachname]
+              .filter(Boolean).join(' '),
+            ort: l.ort,
+            art: { icon: Flame },
+            hinweis: l.datum
+              ? `Eingegangen am ${new Date(l.datum).toLocaleDateString('de-DE')}`
+              : 'Aus dem E-Book-Funnel',
+            roh: l
+          }))}
+          schublade={(e) => ({
+            kontakt: {
+              ansprechpartner: e.ansprechpartner,
+              kategorie: e.roh.kategorie,
+              telefon: e.roh.telefon,
+              email: e.roh.email,
+              website: e.roh.website,
+              ort: e.roh.ort
+            },
+            statistik: webZahlen(e.roh),
+            verlauf: { leadId: e.roh.id }
+          })}
+        />
       )}
 
       {/* Lead Detail Drawer - Slide-in von rechts */}

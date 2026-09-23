@@ -23,6 +23,7 @@ import Aktionsmenue from '../components/Aktionsmenue'
 import Gespraechsausgang from '../components/Gespraechsausgang'
 import { Rollen, Pille, Statistik, webZahlen } from '../components/LeadSchublade'
 import KontaktFelder from '../components/KontaktFelder'
+import LeadPool from '../components/LeadPool'
 import { Angabe, Angaben } from '../components/Formular'
 
 // Der Termin, der den Closer angeht.
@@ -1667,261 +1668,57 @@ function Closing() {
       {/* ==================== POOL-ANSICHT ==================== */}
       {viewMode === 'pool' ? (
         <>
-          <div className="card-elevated overflow-hidden min-h-[600px]">
-            {loadingPool ? (
-            <div className="flex items-center justify-center py-20">
-              <Loader2 className="w-8 h-8 animate-spin text-secondary" />
-              <span className="ml-3 text-on-surface-variant">Pool wird geladen...</span>
-            </div>
-          ) : poolLeads.length === 0 ? (
-            <div className="p-12 text-center">
-              <Calendar className="w-16 h-16 text-outline-variant mx-auto mb-4" />
-              <p className="text-on-surface-variant text-title-md">Kein Abschlussgespräch wartet auf einen Closer</p>
-              <p className="text-outline mt-1">
-                Hier erscheinen Abschlussgespräche, die ein Setter gebucht hat, sobald eines übergeben wird.
-              </p>
-            </div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="bg-surface-container">
-                  <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Unternehmen</th>
-                  <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Ansprechpartner</th>
-                  <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant hidden md:table-cell">Ort</th>
-                  <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant hidden lg:table-cell">Setter</th>
-                  <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Termin</th>
-                  <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant hidden sm:table-cell">Art</th>
-                </tr>
-              </thead>
-              <tbody>
-                {poolLeads.map((lead, index) => {
-                  const terminDate = closerTermin(lead) ? new Date(closerTermin(lead)) : null
-                  const isPast = terminDate && terminDate < new Date()
-                  return (
-                    <tr
-                      key={lead.id}
-                      onClick={() => setSelectedPoolLead(lead)}
-                      className={`cursor-pointer transition-colors hover:bg-primary-fixed/20 ${
-                        isPast ? 'bg-red-50/50' : index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'
-                      }`}
-                    >
-                      <td className="px-4 py-4">
-                        <div className="font-medium text-on-surface max-w-[200px] truncate">
-                          {lead.unternehmen || 'Unbekannt'}
-                        </div>
-                      </td>
-                      <td className="px-4 py-4 text-body-md text-on-surface-variant">
-                        {lead.ansprechpartnerVorname} {lead.ansprechpartnerNachname}
-                      </td>
-                      <td className="px-4 py-4 text-body-md text-on-surface-variant hidden md:table-cell">
-                        {lead.ort || '-'}
-                      </td>
-                      <td className="px-4 py-4 text-body-md text-on-surface-variant hidden lg:table-cell">
-                        {lead.setterName || '-'}
-                      </td>
-                      <td className="px-4 py-4">
-                        <div className={isPast ? 'text-error font-medium' : ''}>
-                          {terminDate?.toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', timeZone: 'Europe/Berlin' })}
-                        </div>
-                        <div className="text-body-sm text-on-surface-variant">
-                          {terminDate?.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr
-                        </div>
-                        {isPast && <div className="text-label-sm text-error">Verpasst</div>}
-                      </td>
-                      <td className="px-4 py-4 hidden sm:table-cell">
-                        {/* Das Abschlussgespraech ist immer ein Videotermin -
-                            so ist die Terminart in Calendly angelegt. Die
-                            Spalte terminart beschreibt den Telefontermin des
-                            Setters und gilt hier nicht. */}
-                        <span className={`badge ${lead.termin_abschlussgespraech ? 'badge-secondary' : 'badge-primary'}`}>
-                          {lead.termin_abschlussgespraech ? 'Video' : (lead.terminart === 'Video' ? 'Video' : 'Telefon')}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
-        </div>
+          {/* Derselbe Aufbau wie im Opening und im Setting: Tabelle, Klick
+              öffnet die Schublade, Aktion unten. Anders ist hier nur, dass
+              man sich bewirbt statt zu übernehmen - über den Kontakt
+              entscheidet ein Admin. */}
+          <LeadPool
+            laedt={loadingPool}
+            leerText="Kein Abschlussgespräch wartet auf einen Closer."
+            leerIcon={Calendar}
+            aktion={{ text: 'Bewerben', icon: Send }}
+            onAktion={(e, schliessen) => { schliessen?.(); startApplyForLead(e.roh) }}
+            eintraege={poolLeads.map(l => {
+              const wann = closerTermin(l)
+              return {
+                id: l.id,
+                unternehmen: l.unternehmen,
+                untertitel: [l.kategorie, l.ort].filter(Boolean).join(' · '),
+                ansprechpartner: [l.ansprechpartnerVorname, l.ansprechpartnerNachname]
+                  .filter(Boolean).join(' '),
+                ort: l.ort,
+                terminDatum: wann,
+                art: { icon: l.terminart === 'Telefonisch' ? Phone : Video },
+                hinweis: wann && new Date(wann) < new Date()
+                  ? 'Termin verpasst'
+                  : l.setterName ? `gelegt von ${l.setterName}` : null,
+                roh: l
+              }
+            })}
+            schublade={(e) => ({
+              kontakt: {
+                ansprechpartner: e.ansprechpartner,
+                statusFeld: anzeigeName(e.roh.status),
+                telefon: e.roh.telefon,
+                email: e.roh.email,
+                website: e.roh.website,
+                ort: e.roh.ort,
+                rollen: { opener: e.roh.openerName, setter: e.roh.setterName }
+              },
+              termin: {
+                datum: e.terminDatum && new Date(e.terminDatum).toLocaleString('de-DE', {
+                  weekday: 'long', day: '2-digit', month: '2-digit',
+                  hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
+                }) + ' Uhr',
+                art: e.roh.terminart || 'Video',
+                link: e.roh.meeting_link
+              },
+              statistik: webZahlen(e.roh),
+              uebergabe: <Uebergabeblatt lead={e.roh} />,
+              verlauf: { hotLeadId: e.roh.id, leadId: e.roh.originalLeadId }
+            })}
+          />
 
-        {/* Pool Lead Drawer */}
-        {selectedPoolLead && createPortal(
-          <div className="fixed inset-0 bg-scrim/50 z-50 flex justify-end" onClick={() => setSelectedPoolLead(null)}>
-            <div
-              className="w-full max-w-2xl bg-surface h-full overflow-y-auto shadow-xl animate-slide-in-right"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between z-10">
-                <div className="min-w-0 pr-4">
-                  <h2 className="text-title-lg font-semibold text-on-surface truncate">
-                    {selectedPoolLead.unternehmen || 'Lead Details'}
-                  </h2>
-                  {[selectedPoolLead.kategorie, selectedPoolLead.ort].filter(Boolean).length > 0 && (
-                    <p className="text-body-sm text-on-surface-variant truncate mt-0.5">
-                      {[selectedPoolLead.kategorie, selectedPoolLead.ort].filter(Boolean).join(' · ')}
-                    </p>
-                  )}
-                </div>
-                <button onClick={() => setSelectedPoolLead(null)} className="p-2 rounded-lg hover:bg-surface-container flex-shrink-0">
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="p-6 space-y-6">
-                {/* Termin-Badge */}
-                {(() => {
-                  const terminDate = closerTermin(selectedPoolLead) ? new Date(closerTermin(selectedPoolLead)) : null
-                  const isPast = terminDate && terminDate < new Date()
-                  const istVideo = !!selectedPoolLead.termin_abschlussgespraech
-                    || selectedPoolLead.terminart === 'Video'
-                  return terminDate && (
-                    <div className={`text-center p-4 rounded-xl ${isPast ? 'bg-error-container' : 'bg-secondary-container'}`}>
-                      <div className={`text-label-sm font-medium uppercase ${isPast ? 'text-error' : 'text-secondary'}`}>
-                        {terminDate.toLocaleDateString('de-DE', { weekday: 'long', timeZone: 'Europe/Berlin' })}
-                      </div>
-                      <div className={`text-display-sm font-display ${isPast ? 'text-error' : 'text-secondary'}`}>
-                        {terminDate.toLocaleDateString('de-DE', { day: '2-digit', month: 'long', timeZone: 'Europe/Berlin' })}
-                      </div>
-                      <div className={`text-title-md font-medium ${isPast ? 'text-error' : 'text-secondary'}`}>
-                        {terminDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin' })} Uhr
-                      </div>
-                      {isPast && <div className="text-error font-medium mt-1">Termin verpasst</div>}
-                      <div className={`inline-flex items-center gap-1 mt-2 px-3 py-1 rounded-full text-label-sm bg-white/50 ${
-                        istVideo ? 'text-secondary' : 'text-primary'
-                      }`}>
-                        {istVideo ? <Video className="w-3 h-3" /> : <Phone className="w-3 h-3" />}
-                        {selectedPoolLead.termin_abschlussgespraech ? 'Abschlussgespräch' : 'Beratungsgespräch'}
-                      </div>
-                    </div>
-                  )
-                })()}
-
-                {/* Kontaktdaten */}
-                <div className="space-y-3">
-                  <h3 className="abschnitt-titel flex items-center gap-2">
-                    <UserIcon className="w-4 h-4" />
-                    Kontaktdaten
-                  </h3>
-
-                  {(selectedPoolLead.ansprechpartnerVorname || selectedPoolLead.ansprechpartnerNachname) && (
-                    <div className="flex items-center gap-3">
-                      <UserIcon className="w-4 h-4 text-on-surface-variant" />
-                      <span>{selectedPoolLead.ansprechpartnerVorname} {selectedPoolLead.ansprechpartnerNachname}</span>
-                    </div>
-                  )}
-
-                  {selectedPoolLead.telefon && (
-                    <a href={`tel:${selectedPoolLead.telefon}`} className="flex items-center gap-3 text-primary hover:underline">
-                      <Phone className="w-4 h-4" />
-                      <span>{selectedPoolLead.telefon}</span>
-                    </a>
-                  )}
-
-                  {selectedPoolLead.email && (
-                    <a href={`mailto:${selectedPoolLead.email}`} className="flex items-center gap-3 text-primary hover:underline">
-                      <Mail className="w-4 h-4" />
-                      <span>{selectedPoolLead.email}</span>
-                    </a>
-                  )}
-
-                  {selectedPoolLead.ort && (
-                    <div className="flex items-center gap-3 text-on-surface-variant">
-                      <MapPin className="w-4 h-4" />
-                      <span>{selectedPoolLead.ort}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Wer bis hierher gearbeitet hat. Der Opener hat das
-                    Beratungsgespraech gelegt, der Setter hat es gehalten und
-                    das Abschlussgespraech gebucht - zwei Namen, zwei Rollen. */}
-                {(selectedPoolLead.openerName || selectedPoolLead.setterName) && (
-                  <div className="space-y-3 abschnitt-trenner">
-                    <h3 className="abschnitt-titel flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    Vorarbeit
-                  </h3>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {selectedPoolLead.openerName && (
-                        <span className="px-3 py-1.5 bg-surface-container text-on-surface-variant rounded-full text-label-sm">
-                          Opener: {selectedPoolLead.openerName}
-                        </span>
-                      )}
-                      {selectedPoolLead.setterName && (
-                        <span className="px-3 py-1.5 bg-primary-fixed text-primary rounded-full text-label-sm font-medium">
-                          Beratung: {selectedPoolLead.setterName}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* Worauf man sich bewirbt.
-                    Vorher stand hier das rohe Kommentarfeld, Zeile fuer Zeile
-                    selbst zerlegt - und die zwoelf Felder, die der Setter
-                    ausfuellen MUSS, bevor er buchen darf, standen nirgends.
-                    Der Closer entschied ueber einen Termin, ohne zu wissen,
-                    was im Beratungsgespraech herauskam. */}
-                <div className="space-y-3 abschnitt-trenner">
-                  <h3 className="abschnitt-titel flex items-center gap-2">
-                    <ClipboardList className="w-4 h-4" />
-                    Aus dem Beratungsgespräch
-                  </h3>
-                  <Uebergabeblatt lead={selectedPoolLead} bereiche={[UEBERGABE_2]} />
-                </div>
-
-                {/* Die Zeitleiste - dieselbe wie in jeder anderen Lead-Ansicht. */}
-                <div className="space-y-3 abschnitt-trenner">
-                  <h3 className="abschnitt-titel flex items-center gap-2">
-                    <History className="w-4 h-4" />
-                    Verlauf
-                  </h3>
-                  <Verlauf hotLeadId={selectedPoolLead.id} leadId={selectedPoolLead.originalLeadId} />
-
-                  {altbestand(selectedPoolLead.kommentar) && (
-                    <>
-                      <div className="text-label-sm text-on-surface-variant">
-                        Ältere Notizen ohne Datum
-                      </div>
-                      <div className="bg-surface-container-lowest rounded-xl p-4 max-h-[200px] overflow-y-auto">
-                        <p className="text-body-sm text-on-surface whitespace-pre-line">
-                          {altbestand(selectedPoolLead.kommentar)}
-                        </p>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Bewerben Button */}
-                <div className="abschnitt-trenner">
-                  <button
-                    onClick={() => {
-                      setSelectedPoolLead(null)
-                      startApplyForLead(selectedPoolLead)
-                    }}
-                    disabled={claimingLead === selectedPoolLead.id}
-                    className="btn-primary w-full flex items-center justify-center py-3 text-title-md"
-                  >
-                    {claimingLead === selectedPoolLead.id ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <>
-                        <Send className="w-5 h-5 mr-2" />
-                        Auf diesen Lead bewerben
-                      </>
-                    )}
-                  </button>
-                  <p className="text-center text-body-sm text-on-surface-variant mt-3">
-                    Deine Bewerbung wird an einen Admin zur Genehmigung gesendet.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )}
         </>
       ) : (
         /* ==================== NORMALE CLOSING-ANSICHT ==================== */
