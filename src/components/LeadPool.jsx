@@ -32,16 +32,20 @@ export default function LeadPool({
   laufend = null,
   erledigt = {},
   onAktion,
-  schublade
+  schublade,
+  // Als Kasten über einer anderen Seite (Termine) trägt der Pool nicht die
+  // Höhe der Seite - sonst schöbe er den Kalender aus dem Bild.
+  kompakt = false
 }) {
   const [gewaehlt, setGewaehlt] = useState(null)
+  const hoehe = kompakt ? '' : 'min-h-[600px]'
 
   // Die Höhe bleibt gleich, egal ob geladen, leer oder voll: Sonst springt
   // beim Umschalten die Seite.
   if (laedt) {
     return (
-      <div className="card-elevated min-h-[600px] flex items-center justify-center gap-2
-                      text-on-surface-variant text-body-sm">
+      <div className={`card-elevated ${hoehe} flex items-center justify-center gap-2
+                      text-on-surface-variant text-body-sm`}>
         <Loader2 className="w-4 h-4 animate-spin text-primary" /> Pool wird geladen …
       </div>
     )
@@ -49,8 +53,8 @@ export default function LeadPool({
 
   if (!eintraege.length) {
     return (
-      <div className="card-elevated min-h-[600px] flex flex-col items-center justify-center
-                      text-center text-on-surface-variant">
+      <div className={`card-elevated ${hoehe} flex flex-col items-center justify-center
+                      text-center text-on-surface-variant`}>
         <LeerIcon className="w-10 h-10 mb-3 text-outline" />
         <p className="text-body-md">{leerText}</p>
       </div>
@@ -72,7 +76,7 @@ export default function LeadPool({
     <>
       {fehler && <p className="mb-3 text-body-sm text-error">{fehler}</p>}
 
-      <div className="card-elevated overflow-hidden min-h-[600px]">
+      <div className={`card-elevated overflow-hidden ${hoehe}`}>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>

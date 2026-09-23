@@ -93,6 +93,7 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
 
   const pool = (
     <LeadPool
+      kompakt={!alsAnsicht}
       eintraege={eintraege}
       laedt={laedt}
       fehler={fehler}
