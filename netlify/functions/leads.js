@@ -575,4 +575,127 @@ export async function handler(event) {
       if (updates.ergebnis !== undefined) {
         fieldsToUpdate.ergebnis = updates.ergebnis || null
       }
-      if (updates.datum !
+      if (updates.datum !== undefined) {
+        fieldsToUpdate.datum = updates.datum || null
+      }
+      if (updates.ansprechpartnerVorname !== undefined) {
+        fieldsToUpdate.ansprechpartner_vorname = updates.ansprechpartnerVorname || null
+      }
+      if (updates.ansprechpartnerNachname !== undefined) {
+        fieldsToUpdate.ansprechpartner_nachname = updates.ansprechpartnerNachname || null
+      }
+      if (updates.kategorie !== undefined) {
+        fieldsToUpdate.kategorie = updates.kategorie || null
+      }
+      if (updates.telefon !== undefined) {
+        fieldsToUpdate.telefonnummer = updates.telefon || null
+      }
+      if (updates.email !== undefined) {
+        fieldsToUpdate.mail = updates.email || null
+      }
+      if (updates.website !== undefined) {
+        fieldsToUpdate.website = updates.website || null
+      }
+      // Der Ort war als Einziges der Kontaktdaten nicht zu aendern - im Setting
+      // und Closing ging es laengst, im Opening fehlte das Feld ganz.
+      if (updates.stadt !== undefined) {
+        fieldsToUpdate.stadt = updates.stadt || null
+      }
+      if (updates.wiedervorlageDatum !== undefined) {
+        fieldsToUpdate.wiedervorlage_datum = updates.wiedervorlageDatum || null
+      }
+
+      // Automatisch Datum setzen wenn kontaktiert
+      const hasRealUpdates = Object.keys(updates).length > 0
+      if (hasRealUpdates && updates.kontaktiert === true && !updates.datum) {
+        fieldsToUpdate.datum = new Date().toISOString().split('T')[0]
+      }
+
+      // History-Eintrag erstellen
+      if (historyEntry) {
+        const now = new Date()
+        const timestamp = now.toLocaleDateString('de-DE', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          timeZone: 'Europe/Berlin'
+        }) + ', ' + now.toLocaleTimeString('de-DE', {
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'Europe/Berlin'
+        })
+
+        const icons = {
+          'email': '📧',
+          'termin': '📅',
+          'termin_manuell_verschoben': '🔄',
+          'angebot': '💰',
+          'abgeschlossen': '🎉',
+          'verloren': '❌',
+          'kontaktiert': '✅',
+          'nicht_kontaktiert': '↩️',
+          'ergebnis': '📋',
+          'ansprechpartner': '👤',
+          'kommentar': '💬',
+          'wiedervorlage': '🔔',
+          'kontaktdaten': '✏️'
+        }
+        const icon = icons[historyEntry.action] || '📋'
+
+        // Der Name im Verlauf kommt aus der Anmeldung, nicht aus der Anfrage.
+        const newEntry = `[${timestamp}] ${icon} ${historyEntry.details} (${angemeldet.name || historyEntry.userName})`
+
+        fieldsToUpdate.kommentar = currentKommentar
+          ? `${newEntry}\n${currentKommentar}`
+          : newEntry
+      } else if (updates.kommentar !== undefined) {
+        fieldsToUpdate.kommentar = updates.kommentar
+      }
+
+      console.log('PATCH Lead - Fields to update:', JSON.stringify(fieldsToUpdate, null, 2))
+
+      const { data, error } = await supabase
+        .from('leads')
+        .update(fieldsToUpdate)
+        .eq('id', leadId)
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Supabase Update Error:', error)
+        throw new Error(error.message || 'Fehler beim Aktualisieren')
+      }
+
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          success: true,
+          lead: {
+            id: data.id,
+            kontaktiert: data.bereits_kontaktiert === true,
+            ergebnis: data.ergebnis || '',
+            kommentar: data.kommentar || '',
+            datum: data.datum || null,
+            ansprechpartnerVorname: data.ansprechpartner_vorname || '',
+            ansprechpartnerNachname: data.ansprechpartner_nachname || ''
+          }
+        })
+      }
+
+    } catch (error) {
+      console.error('PATCH Lead Error:', error.message)
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: error.message })
+      }
+    }
+  }
+
+  return {
+    statusCode: 405,
+    headers,
+    body: JSON.stringify({ error: 'Method not allowed' })
+  }
+}

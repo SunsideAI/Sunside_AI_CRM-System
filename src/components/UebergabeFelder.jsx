@@ -367,4 +367,14 @@ export function AnfragenBedarf({ werte }) {
   return (
     <div className="p-3 bg-primary-fixed/30 border border-primary-fixed-dim rounded-lg text-sm">
       <div className="text-gray-700">
-        {svSprac
+        {svSprache('Nötige Eigentümeranfragen pro Monat', werte)}: <strong>{proMonat.toLocaleString('de-DE')}</strong>
+        <span className="text-gray-500"> ({bereich})</span>
+      </div>
+      <div className="text-xs text-gray-500 mt-1">
+        Berechnet. Dieselbe Zahl steht später im Strategiepapier.
+      </div>
+    </div>
+  )
+}
+
+export { uebergabePruefen }

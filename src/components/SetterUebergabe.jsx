@@ -414,4 +414,143 @@ export default function SetterUebergabe({
       )
       : (
         <button onClick={abschliessen} disabled={laeuft} className="fuss-haupt">
-          {lae
+          {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+          {knopfText}
+        </button>
+      )
+
+    return mitAktionen(
+      <div className="space-y-4">
+        {kopf('Angaben aus dem Gespräch', 2)}
+        <fieldset disabled={gesperrt} className="space-y-4 min-w-0">{felder}</fieldset>
+        {fehlerKasten}
+        {meldung && <p className="text-sm text-green-700">{meldung}</p>}
+      </div>,
+      <>{zurueckKnopf(fixerAusgang ? null : 'ergebnis')}{zwischenstandKnopf}{weiter}</>
+    )
+  }
+
+  // ── Seite: Termin mit dem Closer ─────────────────────────────────────────
+  if (ablauf === 'termin') {
+    // Die Hauptaktion sitzt im Terminwähler: Sie bucht und übergibt in einem
+    // Zug. Unten steht nur der Weg zurück zu den Angaben.
+    return mitAktionen(
+      <div className="space-y-4">
+        {kopf('Termin mit dem Closer', 3)}
+        <TerminPicker
+          lead={leadFuerPicker}
+          zweck="abschluss"
+          nurBuchen
+          vorPruefung={felderPruefen}
+          knopfText="Termin buchen und an den Closer übergeben"
+          onTerminBooked={uebergeben}
+        />
+        {fehlerKasten}
+      </div>,
+      zurueckKnopf('felder', 'Zurück zu den Angaben')
+    )
+  }
+
+  // ── Seite: Termin verschoben ─────────────────────────────────────────────
+  if (ablauf === 'verschoben') {
+    return mitAktionen(
+      <div className="space-y-4">
+        {kopf('Neuer Termin für das Beratungsgespräch')}
+        <p className="text-xs text-gray-500">
+          Der Status bleibt „Beratungsgespräch vereinbart"; nur Datum und Uhrzeit
+          ändern sich. Das Gespräch bleibt telefonisch.
+        </p>
+        <TerminPicker
+          zweck="beratung"
+          lead={leadFuerPicker}
+          hotLeadId={lead?.id}
+          onTerminBooked={() => { setAusgang(''); setAblauf(null); onGespeichert?.({ verschoben: true }) }}
+        />
+        {fehlerKasten}
+      </div>,
+      zurueckKnopf(null)
+    )
+  }
+
+  // ── Seite: Termin geplatzt (nicht erschienen oder abgesagt) ──────────────
+  if (ablauf === 'geplatzt') {
+    const fall = AUSGAENGE.find(a => a.wert === ausgang)
+    return mitAktionen(
+      <div className="space-y-4">
+        {kopf(fall?.name || 'Termin geplatzt')}
+        <div className="flex gap-2 p-3 bg-primary-fixed/30 border border-primary-fixed-dim rounded-lg
+                        text-body-sm text-on-surface">
+          <Info className="w-4 h-4 shrink-0 mt-0.5 text-primary" />
+          <div className="space-y-1">
+            <p>
+              Der Kontakt geht damit zurück an den Opener: Er steht im Opening unter
+              „Setting-Termine neu vereinbaren" und wartet dort auf einen neuen Termin.
+            </p>
+            <p>
+              Bei dir bleibt er unter „Geplatzt" sichtbar — von dort kannst du selbst
+              ein neues Beratungsgespräch legen.
+            </p>
+            {fall?.hinweis && <p className="text-on-surface-variant">{fall.hinweis}</p>}
+          </div>
+        </div>
+        {fehlerKasten}
+      </div>,
+      <>
+        {zurueckKnopf(null)}
+        <button onClick={() => senden({ status: ausgang })} disabled={laeuft} className="fuss-haupt">
+          {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+          {fall?.knopf}
+        </button>
+      </>
+    )
+  }
+
+  // ── Basisseite ───────────────────────────────────────────────────────────
+  // Schon dokumentiert: Der Ausgang steht fest, es geht direkt um das Ergebnis.
+  if (fixerAusgang) {
+    return mitAktionen(
+      <fieldset disabled={gesperrt} className="space-y-4 min-w-0">
+        {ergebnisFeld}
+        <p className="text-xs text-gray-500">
+          Die Auswahl führt weiter zu den Angaben aus dem Gespräch.
+        </p>
+        {fehlerKasten}
+        {meldung && <p className="text-sm text-green-700">{meldung}</p>}
+        <div className="pt-4 border-t border-outline-variant/50 mt-2">
+          <RueckgabeKnopf hotLead={lead} onErledigt={onGespeichert} />
+        </div>
+      </fieldset>
+    )
+  }
+
+  if (status !== STATUS.BERATUNG_VEREINBART) return null
+
+  return mitAktionen(
+    <fieldset disabled={gesperrt} className="space-y-3 min-w-0">
+      <p className="feld-hinweis mt-0">
+        Direkt nach dem Termin festhalten. Nur so zählen Erscheinungsquote
+        und Termin-Vergütung. Nichts auszuwählen heißt: offen.
+      </p>
+
+      {/* Die Auswahl selbst ist der Weg weiter - einen Knopf daneben braucht
+          es nicht. */}
+      <select
+        value={ausgang}
+        onChange={e => ausgangWaehlen(e.target.value)}
+        className="input-field disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {AUSGAENGE.map(a => (
+          <option key={a.wert || 'offen'} value={a.wert}>{a.name}</option>
+        ))}
+      </select>
+
+      {fehlerKasten}
+      {meldung && <p className="text-sm text-green-700">{meldung}</p>}
+
+      {/* Reicht der Erstanruf nicht aus, geht der Kontakt zurück an den Opener. */}
+      <div className="pt-4 border-t border-outline-variant/50 mt-2">
+        <RueckgabeKnopf hotLead={lead} onErledigt={onGespeichert} />
+      </div>
+    </fieldset>
+  )
+}
