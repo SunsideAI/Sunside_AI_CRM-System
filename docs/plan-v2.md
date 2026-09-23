@@ -400,3 +400,27 @@ ein Weg zurück. Die Vorbelegung des Ergebnisfeldes ist entfallen, sonst führte
 **Nachweis (Playwright, Vorschau):** Seiten je Auswahl 15/15, Sperre und Fußleiste 12/12, geführte
 Übergabe 22/22, Kontakt-Bearbeitung 16/16, Konsistenz über die drei Tabs 47/47 — in allen Läufen
 kein Schreib- oder Buchungsaufruf außer dem einen geprüften Speichern.
+
+## Pools: eine Ansicht für alle drei Stufen — 23.09.
+
+Vorher war jeder Pool anders gebaut: Der Closer-Pool eine Tabelle mit eigener, handgeschriebener
+Schublade, der Setter-Pool graue Kästen, der E-Book-Pool Karten mit orangem Ladebalken und
+amberfarbenem Etikett. In beiden Kästen-Pools gab es **keinen Klick** — wer wissen wollte, wer der
+Kontakt ist, musste ihn erst übernehmen.
+
+Jetzt kommt alles aus `src/components/LeadPool.jsx`:
+
+- dieselbe Tabelle wie in jeder Liste (Art · Unternehmen · Ansprechpartner · Ort · Termin · Hinweis),
+- Klick auf die Zeile öffnet die gewohnte Schublade mit Kontaktdaten, Termin, Website-Zahlen,
+  Übergabe und Verlauf,
+- die Aktion steht unten in der Fußleiste, gefüllt, genau eine,
+- Laden und Leerzustand halten die Höhe, in Hausfarben statt Orange.
+
+Unterschiedlich ist allein die Aktion, wie besprochen: **Übernehmen** im Opening (E-Book) und im
+Setting — dort nimmt man sich den Kontakt selbst —, **Bewerben** im Closing, wo ein Admin zuteilt.
+
+**Nachweis (Playwright, Vorschau):** 15/15 über die drei Tabs — Umschalter, Spalten, Klick öffnet
+die Schublade, genau eine gefüllte Aktion mit dem richtigen Wort, keine Fremdfarben, kein
+Schreibaufruf. Setter-Pool mit drei Einträgen vollständig durchgespielt; E-Book- und Closer-Pool
+waren leer, dort ist der Leerzustand geprüft (gleiche Komponente, gleicher Aufbau). Regression
+unverändert grün: Konsistenz 47/47, Setting-Seiten 15/15, Sperre 12/12.
