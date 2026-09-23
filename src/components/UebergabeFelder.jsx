@@ -282,15 +282,22 @@ function Feld({ feld, werte, setzen, fehlt, rolle }) {
  *                  was aus dem Erstanruf mitkommt (Branche, Vorhaben, Ziele)
  * @param offen     Gate-Felder, die der Server oder die Vorprüfung bemängelt
  * @param einschub  Inhalt, der vor einem Feld erscheint: { [schluessel]: node }
+ * @param nur       nur diese Felder zeigen
+ * @param ohne      diese Felder auslassen
+ *
+ * `nur` und `ohne` braucht das Setting: Das Ergebnis des Gesprächs steht dort
+ * vor der Terminbuchung, alles Übrige danach im Terminwähler.
  */
-export default function UebergabeFelder({ bereich, werte, onChange, offen = [], einschub = {} }) {
+export default function UebergabeFelder({ bereich, werte, onChange, offen = [], einschub = {}, nur = null, ohne = [] }) {
   const [nebenbeiOffen, setNebenbeiOffen] = useState(false)
   const fehlt = new Set(offen.map(o => o.schluessel || o))
   const rolle = bereich.includes('Opener') ? 'Opener' : 'Setter'
 
   const setzen = (schluessel, wert) => onChange({ ...werte, [schluessel]: wert })
 
-  const sichtbar = maske(bereich).filter(f => istSichtbar(f, werte))
+  const sichtbar = maske(bereich)
+    .filter(f => istSichtbar(f, werte))
+    .filter(f => (nur ? nur.includes(f.schluessel) : true) && !ohne.includes(f.schluessel))
 
   // Nach Abschnitten gruppieren, Reihenfolge wie in der Maske.
   const gruppen = []

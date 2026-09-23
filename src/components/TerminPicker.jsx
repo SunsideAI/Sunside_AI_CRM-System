@@ -26,7 +26,20 @@ const toLocalDateString = (date) => {
 // an den Closer: Dort muessen Termin UND die zwoelf Felder in EINEM Zug zum
 // Server, sonst laeuft das Gate ins Leere und der Kontakt bleibt halb
 // geschrieben zurueck.
-function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null, nurBuchen = false }) {
+// Die Art des Gesprächs steht nicht zur Wahl: Das Beratungsgespräch führt der
+// Setter am Telefon, das Abschlussgespräch der Closer per Video (Mailstrecken
+// Teil E: „das Closing läuft per Video, das Setting per Telefon"). Einem Zweck
+// können mehrere Calendly-Terminarten zugeordnet sein, weil der Webhook auch
+// Direktbuchungen einsortieren muss; hier steht, welche davon gebucht wird.
+const ART_JE_ZWECK = { beratung: 'phone', abschluss: 'video' }
+
+// `zusatz` sind Felder, die der Aufrufer in den Terminwähler hängt (im Setting
+// die Angaben aus dem Beratungsgespräch). `vorPruefung` läuft davor und gibt
+// eine Meldung zurück, wenn etwas fehlt: Gebucht wird erst, wenn alles steht,
+// sonst entsteht ein Termin im Kalender des Kunden, zu dem es im CRM nichts
+// gibt.
+function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null, nurBuchen = false,
+                        zusatz = null, vorPruefung = null, knopfText = null }) {
   const { user } = useAuth()
   
   // Modus: Neuer Termin oder Neu-Terminierung eines bestehenden Hot Leads
@@ -156,6 +169,14 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
           }
         }
 
+        // Bleiben mehrere übrig, entscheidet die Art des Gesprächs. Gibt es
+        // die erwartete Art nicht (umbenannt, gelöscht), bleibt die Auswahl
+        // stehen: lieber einmal fragen als gar nicht buchen können.
+        if (zweck && arten.length > 1 && ART_JE_ZWECK[zweck]) {
+          const bevorzugt = arten.filter(a => a.type === ART_JE_ZWECK[zweck])
+          if (bevorzugt.length) arten = bevorzugt
+        }
+
         setEventTypes(arten)
 
         // Bleibt nach dem Einschraenken genau eine Terminart uebrig, gibt es
@@ -278,6 +299,12 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
       return
     }
 
+    // Was der Aufrufer zusätzlich verlangt, ebenfalls vor der Buchung.
+    if (vorPruefung) {
+      const meldung = vorPruefung()
+      if (meldung) { setBuchFehler(meldung); return }
+    }
+
     // Die Uebergabe wird hier geprueft, VOR der Buchung.
     //
     // Vorher stand hier, das Backend weise die Buchung ohne diese Felder ab -
@@ -286,7 +313,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
     // im CRM keinen Kontakt gibt, und der Opener sah nur "Buchung
     // fehlgeschlagen". Ein Termin, den niemand kennt, ist schlimmer als eine
     // Fehlermeldung.
-    if (!isReschedule) {
+    if (!isReschedule && !nurBuchen) {
       const pruefung = uebergabePruefen(uebergabe1, UEBERGABE_1)
       if (!pruefung.vollstaendig) {
         setUebergabeOffen(pruefung.offen)
@@ -852,6 +879,17 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
           <label className="block text-sm font-medium text-gray-700 mb-2">
             {eventTypes.length > 1 ? '2. Datum wählen' : 'Datum wählen'}
           </label>
+
+          {/* Steht die Terminart fest, sagt die Maske trotzdem, was gebucht
+              wird. Sonst weiß der Opener erst nach dem Absenden, ob der Kunde
+              angerufen wird oder einen Meet-Link bekommt. */}
+          {eventTypes.length === 1 && (
+            <p className="flex items-center gap-1.5 -mt-1 mb-3 text-xs text-on-surface-variant">
+              {selectedType === 'phone' ? <Phone className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+              {eventTypes[0].name}
+              {selectedType === 'phone' ? ', telefonisch' : ', per Google Meet'}
+            </p>
+          )}
           
           {/* Wochennavigation */}
           <div className="flex items-center justify-between mb-3">
@@ -1013,7 +1051,12 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             </div>
           </div>
 
-          {/* Übergabe an den Setter */}
+          {/* Was der Aufrufer mitgibt: im Setting die Angaben aus dem
+              Beratungsgespräch, davor die Kontaktdaten. */}
+          {zusatz && <div className="border-t pt-4">{zusatz}</div>}
+
+          {/* Übergabe an den Setter. Im Setting übernimmt `zusatz` diese Rolle. */}
+          {!nurBuchen && (
           <div className="border-t pt-4">
             <h4 className="font-medium text-gray-900 mb-1">
               {eventTypes.length > 1 ? '5. Übergabe an den Setter' : 'Übergabe an den Setter'}
@@ -1029,6 +1072,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
               offen={uebergabeOffen}
             />
           </div>
+          )}
         </div>
       )}
 
@@ -1092,9 +1136,9 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
               ) : (
                 <>
                   <Calendar className="w-5 h-5 mr-2" />
-                  {(kannSelbstSetten && setzeSelbst)
+                  {knopfText || ((kannSelbstSetten && setzeSelbst)
                     ? 'Termin buchen und selbst übernehmen'
-                    : 'Termin buchen und an den Setter-Pool geben'}
+                    : 'Termin buchen und an den Setter-Pool geben')}
                 </>
               )}
             </button>

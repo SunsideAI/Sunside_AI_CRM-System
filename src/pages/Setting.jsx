@@ -584,9 +584,14 @@ function Setting() {
         arbeitsTitel="Beratungsgespräch"
         arbeitsIcon={Users}
         fuss={gewaehlt && (
-          <button onClick={() => setMailOffen(o => !o)} className="fuss-neben">
-            <Mail className="w-4 h-4" /> E-Mail an den Kontakt
-          </button>
+          <>
+            <button onClick={() => setMailOffen(o => !o)} className="fuss-neben">
+              <Mail className="w-4 h-4" /> E-Mail an den Kontakt
+            </button>
+            {/* Hier hinein hängt die Setter-Maske ihre Knöpfe (Portal), damit
+                sie unten stehen wie in jeder anderen Schublade. */}
+            <div id="schublade-aktionen" className="contents" />
+          </>
         )}
       >
         {gewaehlt && bestaetigung?.id === gewaehlt.id && (

@@ -1553,7 +1553,7 @@ function Opening() {
                       <button
                         onClick={() => claimEbookLead(lead)}
                         disabled={claimingLead === lead.id}
-                        className="flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors whitespace-nowrap"
+                        className="fuss-haupt"
                       >
                         {claimingLead === lead.id ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
@@ -2052,9 +2052,9 @@ function Opening() {
                           if (hasError) return
                           setShowTerminPicker(true)
                         }}
-                        className="w-full flex items-center justify-center px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                        className="fuss-haupt w-full justify-center"
                       >
-                        <Calendar className="w-4 h-4 mr-2" />
+                        <Calendar className="w-4 h-4" />
                         Termin mit Setter buchen
                       </button>
                     )}
@@ -2069,9 +2069,9 @@ function Opening() {
                           }
                           setShowEmailComposer(true)
                         }}
-                        className="w-full flex items-center justify-center px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                        className="fuss-neben w-full justify-center"
                       >
-                        <Send className="w-4 h-4 mr-2" />
+                        <Send className="w-4 h-4" />
                         Unterlagen senden
                       </button>
                     )}
