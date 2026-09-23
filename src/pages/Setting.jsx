@@ -179,7 +179,9 @@ function Setting() {
   // Speichern schreibt nur, was sich geändert hat — und nur dann.
   const kontaktSpeichern = async () => {
     if (!gewaehlt || !formular) return
-    if (!formular.email?.trim()) { setMailFehlt(true); return }
+    // Dieselbe Regel wie in Opening und Closing: Eine vorhandene Adresse
+    // darf nicht geleert werden.
+    if (gewaehlt.email && !formular.email?.trim()) { setMailFehlt(true); return }
 
     const aenderungen = {}
     if (formular.vorname !== (gewaehlt.ansprechpartnerVorname || '')) aenderungen.ansprechpartner_vorname = formular.vorname

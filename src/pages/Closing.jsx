@@ -1025,7 +1025,9 @@ function Closing() {
 
   const handleSave = async () => {
     if (!selectedLead) return
-    if (!editData.email?.trim()) { setMailFehlt(true); return }
+    // Dieselbe Regel wie in Opening und Setting: Eine vorhandene Adresse
+    // darf nicht geleert werden.
+    if (selectedLead.email && !editData.email?.trim()) { setMailFehlt(true); return }
 
     // Status ist optional - Kommentare können auch ohne Status-Änderung gespeichert werden
     const hasStatusChange = editData.status && editData.status !== selectedLead.status

@@ -626,6 +626,14 @@ function Opening() {
       return
     }
     
+    // Eine einmal hinterlegte E-Mail darf nicht leer gespeichert werden —
+    // dieselbe Regel in Opening, Setting und Closing. Wo noch keine Adresse
+    // steht, blockiert sie nur Terminbuchung und Mailversand, nicht die Arbeit.
+    if (selectedLead.email && !editForm.email?.trim()) {
+      setEditForm(prev => ({ ...prev, emailValidation: true }))
+      return
+    }
+
     // Validierung: Wiedervorlage benötigt ein Datum
     if (editForm.ergebnis === 'Wiedervorlage' && !editForm.wiedervorlageDatum) {
       alert('Bitte gib ein Datum für die Wiedervorlage an.')

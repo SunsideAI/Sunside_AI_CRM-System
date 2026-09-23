@@ -52,7 +52,8 @@ export default function KontaktFelder({
       </div>
       {mailFehlt && (
         <p className="text-xs text-red-500 -mt-1">
-          Ohne E-Mail geht weder die Bestätigung noch eine Nachfass-Mail raus.
+          Ohne E-Mail geht weder eine Terminbestätigung noch eine Nachfass-Mail
+          raus. Eine hinterlegte Adresse lässt sich deshalb nicht leeren.
         </p>
       )}
 
