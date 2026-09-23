@@ -46,9 +46,33 @@ export function vergleicheFuer(art) {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Für die Server-Abfrage im Opening: Welcher Katalog-Schlüssel liegt in welcher
+// Spalte der Lead-Tabelle? Was hier fehlt, lässt sich dort nicht filtern.
+// ---------------------------------------------------------------------------
+export const SPALTE_IN_DB = {
+  unternehmen: 'unternehmensname',
+  ort: 'stadt',
+  land: 'land',
+  kontaktiert: 'bereits_kontaktiert',
+  ergebnis: 'ergebnis',
+  quelle: 'quelle',
+  wiedervorlage: 'wiedervorlage_datum',
+  besucher: 'monatliche_besuche',
+  mehrwert: 'mehrwert',
+  absprungrate: 'absprungrate',
+  leads_pro_monat: 'anzahl_leads'
+}
+
+// Im Opening rechnet der Server, und er kennt nur die Spalten oben plus die
+// beiden zusammengesetzten Felder. Alles andere wird dort gar nicht erst
+// angeboten - ein Filter, der still nichts tut, ist schlimmer als keiner.
+const IM_OPENING = new Set([...Object.keys(SPALTE_IN_DB), 'ansprechpartner', 'kontakt'])
+
 /** Die Felder, nach denen sich in dieser Stufe filtern lässt. */
 export function filterFelder(stufe) {
-  return spaltenFuer(stufe).filter(s => s.art !== 'verlauf')
+  const alle = spaltenFuer(stufe).filter(s => s.art !== 'verlauf')
+  return stufe === 'opening' ? alle.filter(s => IM_OPENING.has(s.schluessel)) : alle
 }
 
 /** Prüft eine gespeicherte Filterliste: bekannte Felder, passende Vergleiche. */
@@ -122,20 +146,4 @@ export function filtern(zeilen, filter, stufe) {
   if (!filter?.length) return zeilen
   const felder = new Map(filterFelder(stufe).map(s => [s.schluessel, s]))
   return zeilen.filter(z => filter.every(f => passt(z, f, felder.get(f.feld))))
-}
-
-// ---------------------------------------------------------------------------
-// Für die Server-Abfrage im Opening: Welcher Katalog-Schlüssel liegt in welcher
-// Spalte der Lead-Tabelle? Was hier fehlt, lässt sich dort nicht filtern.
-// ---------------------------------------------------------------------------
-export const SPALTE_IN_DB = {
-  unternehmen: 'unternehmensname',
-  ort: 'stadt',
-  ergebnis: 'ergebnis',
-  quelle: 'quelle',
-  wiedervorlage: 'wiedervorlage_datum',
-  besucher: 'monatliche_besuche',
-  mehrwert: 'mehrwert',
-  absprungrate: 'absprungrate',
-  leads_pro_monat: 'anzahl_leads'
 }

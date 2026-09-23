@@ -65,6 +65,11 @@ export const SPALTEN = [
     stufen: ['opening', 'setting', 'closing'] },
   { schluessel: 'terminart', name: 'Terminart', art: 'text', ab: 'lg',
     stufen: ['setting', 'closing'] },
+  // Im Opening steht das Land in den Daten (DE, AT, CH) und ließ sich bisher
+  // nur über das feste Auswahlfeld eingrenzen - im Filter fehlte es ganz.
+  { schluessel: 'land', name: 'Land', art: 'text', ab: 'xl', stufen: ['opening'] },
+  { schluessel: 'kontaktiert', name: 'Kontaktiert', art: 'badge', ab: 'lg',
+    stufen: ['opening'] },
   { schluessel: 'bundesland', name: 'Bundesland', art: 'text', ab: 'xl',
     stufen: ['setting', 'closing'] },
   { schluessel: 'opener', name: 'Opener', art: 'person', ab: 'lg',

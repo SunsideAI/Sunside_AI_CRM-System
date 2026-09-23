@@ -55,6 +55,7 @@ export function zeileAusLead(stufe, lead) {
       land: lead.land || null,
       kontakt: { telefon: lead.telefon || null, email: lead.email || null },
       ergebnis: lead.ergebnis || null,
+      kontaktiert: lead.kontaktiert ? 'Ja' : 'Nein',
       zustaendig: (lead.zugewiesenAn || []).join(', ') || null,
       aktivitaet: letzteAktivitaet(lead.kommentar),
       wiedervorlage: lead.wiedervorlageDatum || null

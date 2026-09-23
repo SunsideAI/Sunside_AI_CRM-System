@@ -137,6 +137,20 @@ export async function handler(event) {
     if (!spalte && !mehrteilig) return query
 
     const wert = f.wert
+
+    // „Kontaktiert" steht in der Liste als Ja oder Nein, in der Datenbank als
+    // Wahrheitswert.
+    if (f.feld === 'kontaktiert') {
+      const ja = String(wert).toLowerCase().startsWith('j')
+      if (f.vergleich === 'ist') {
+        return ja ? query.eq(spalte, true) : query.or(`${spalte}.is.null,${spalte}.eq.false`)
+      }
+      if (f.vergleich === 'ist_nicht') {
+        return ja ? query.or(`${spalte}.is.null,${spalte}.eq.false`) : query.eq(spalte, true)
+      }
+      return query
+    }
+
     if (mehrteilig) {
       const [a, b] = mehrteilig
       switch (f.vergleich) {
