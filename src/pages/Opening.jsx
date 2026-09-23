@@ -163,6 +163,10 @@ function Opening() {
   const tabelle = useTabelle('opening')
   // Zählt die Ladeläufe, damit eine verspätete Antwort nichts überschreibt.
   const ladeLaufRef = useRef(0)
+  // Ansicht und Filter beim Laden immer frisch lesen: Ein Aufruf aus einer
+  // älteren Fassung der Funktion (Debounce, später Effekt) holte sonst den
+  // Stand von vorhin - und überschrieb damit das gerade Gefilterte.
+  const standRef = useRef({ viewMode: 'own', filter: [] })
   const [kommentarOnlyMode, setKommentarOnlyMode] = useState(false) // Soft Lock: Nur Kommentare für Beratungsgespräch
   const [saving, setSaving] = useState(false)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
@@ -209,6 +213,8 @@ function Opening() {
   const [offeneAnfrage, setOffeneAnfrage] = useState(null)
   const [anfrageError, setAnfrageError] = useState('')
 
+  useEffect(() => { standRef.current = { viewMode, filter: tabelle.filter } })
+
   // Leads laden
   //
   // Wer schnell umschaltet oder tippt, löst mehrere Abfragen aus. Antworten
@@ -217,6 +223,7 @@ function Opening() {
   // nur der jüngste darf schreiben.
   const loadLeads = useCallback(async (newOffset = null, addToHistory = false) => {
     const meinLauf = ++ladeLaufRef.current
+    const { viewMode: ansicht, filter: eigeneFilter } = standRef.current
     setLoading(true)
     setError('')
 
@@ -226,7 +233,7 @@ function Opening() {
       params.append('userId', user?.id || '')
       params.append('airtableId', user?.airtable_id || '') // Fallback für alte IDs
       params.append('userRole', isAdmin() ? 'Admin' : 'Setter')
-      params.append('view', viewMode)
+      params.append('view', ansicht)
       params.append('limit', '50')
       
       if (search) params.append('search', search)
@@ -238,7 +245,7 @@ function Opening() {
       if (newOffset) params.append('offset', newOffset)
       // Die eigenen Filter des Benutzers wertet der Server aus: Bei knapp
       // 29.000 Leads reicht es nicht, die geladene Seite zu durchsuchen.
-      const fertigeFilter = (tabelle.filter || []).filter(f =>
+      const fertigeFilter = (eigeneFilter || []).filter(f =>
         ['leer', 'nicht_leer'].includes(f.vergleich)
         || (f.wert !== undefined && f.wert !== null && String(f.wert).trim() !== ''))
       if (fertigeFilter.length) params.append('filter', JSON.stringify(fertigeFilter))
