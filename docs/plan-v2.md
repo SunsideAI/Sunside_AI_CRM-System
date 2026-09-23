@@ -371,3 +371,32 @@ eine Nebenaktion (umrandet), sonst stünden zwei gefüllte Knöpfe nebeneinander
 Knopfklassen, gleiche Kontaktmaske, E-Mail-Regel, Abbrechen ohne Schreibzugriff), dazu unverändert
 grün: geführte Übergabe 22/22, Kontakt-Bearbeitung im Setting 16/16 (mit echtem Speichern und
 Zurückstellen auf dem eigenen Datensatz), Rollenprüfung 3/3.
+
+## Setting: ansehen, bearbeiten, geführt entscheiden — 23.09. (Stand 2)
+
+Zwei Rückmeldungen: Die Knöpfe unten waren farblos, und der Ausgang ließ sich verstellen, ohne
+„Bearbeiten" zu drücken. Dazu die Vorgabe, dass jede Auswahl auf eine eigene Seite führt.
+
+**Ansehen und Bearbeiten.** Die Schublade ist erst einmal nur Ansicht: Das Auswahlfeld und die
+ganze Gesprächsmaske sind gesperrt (ein `fieldset`, kein Feld muss davon wissen), und unten stehen
+„E-Mail an den Kontakt" (umrandet) und **„Bearbeiten" (gefüllt)** — wie in Opening und Closing.
+Erst danach lässt sich etwas ändern. Geänderte Kontaktdaten gehen beim Speichern der Maske
+automatisch mit, damit eine gerade korrigierte Nummer nicht verloren geht.
+
+**Eine Seite je Auswahl.** Kein Knopf neben dem Feld mehr: Die Wahl selbst führt weiter.
+
+| Auswahl | Seite | Aktion unten |
+|---|---|---|
+| Hat stattgefunden | Ergebnis des Gesprächs (1 von 2 bzw. 3) | Zurück · Zwischenstand |
+| → Nächster Schritt / Auftrag | Angaben aus dem Gespräch (2 von 3) | Zurück · Zwischenstand · **Weiter zum Termin** |
+| → weiter | Termin mit dem Closer (3 von 3), Video fest | Zurück zu den Angaben, Buchen im Wähler |
+| → Vertagt / Absage | Angaben aus dem Gespräch (2 von 2) | Zurück · Zwischenstand · **Speichern und abschließen** |
+| Termin verschoben | Neuer Termin, telefonisch | Zurück, Buchen im Wähler |
+| Nicht erschienen / abgesagt | Was jetzt passiert: zurück an den Opener, sichtbar unter „Geplatzt" | Zurück · **Festhalten** |
+
+Während einer solchen Seite zeigt die Schublade nichts anderes — keine Kontaktdaten, kein Verlauf,
+ein Weg zurück. Die Vorbelegung des Ergebnisfeldes ist entfallen, sonst führte die Auswahl nicht.
+
+**Nachweis (Playwright, Vorschau):** Seiten je Auswahl 15/15, Sperre und Fußleiste 12/12, geführte
+Übergabe 22/22, Kontakt-Bearbeitung 16/16, Konsistenz über die drei Tabs 47/47 — in allen Läufen
+kein Schreib- oder Buchungsaufruf außer dem einen geprüften Speichern.
