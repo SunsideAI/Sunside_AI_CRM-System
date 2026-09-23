@@ -151,8 +151,8 @@ export default function LeadSchublade({
     <SlideDrawer isOpen={offen} onClose={onClose} title={titel}
                  untertitel={untertitel || kontakt.kategorie}
                  width={breite} fuss={fuss}>
-      {nurArbeit ? children : (<>
       {/* 1 — Kontaktdaten */}
+      {!nurArbeit && (
       <Abschnitt titel="Kontaktdaten" icon={UserIcon}>
         <Angaben>
           <Angabe name="Ansprechpartner">{kontakt.ansprechpartner || null}</Angabe>
@@ -181,9 +181,10 @@ export default function LeadSchublade({
 
         {kontakt.rollen && <Rollen {...kontakt.rollen} />}
       </Abschnitt>
+      )}
 
       {/* 2 — Termin */}
-      {termin && (
+      {!nurArbeit && termin && (
         <Abschnitt titel="Termin" icon={Calendar}>
           <Angaben>
             <Angabe name="Datum & Uhrzeit">{termin.datum || null}</Angabe>
@@ -201,10 +202,10 @@ export default function LeadSchublade({
       )}
 
       {/* 3 — Website-Zahlen */}
-      <Statistik werte={statistik} />
+      {!nurArbeit && <Statistik werte={statistik} />}
 
       {/* 4 — Übergabe */}
-      {uebergabe && (
+      {!nurArbeit && uebergabe && (
         <Abschnitt titel="Übergabe" icon={ClipboardList}>
           {uebergabe}
         </Abschnitt>
@@ -213,13 +214,13 @@ export default function LeadSchublade({
       {/* 5 — Der Arbeitsbereich. Das Einzige, was sich je Tab unterscheiden
              darf: Hier steht, was in DIESER Stufe zu tun ist. */}
       {children && (
-        <Abschnitt titel={arbeitsTitel} icon={arbeitsIcon}>
+        <Abschnitt titel={nurArbeit ? null : arbeitsTitel} icon={arbeitsIcon}>
           {children}
         </Abschnitt>
       )}
 
       {/* 6 — Verlauf */}
-      {verlauf && (
+      {!nurArbeit && verlauf && (
         <Abschnitt titel="Verlauf" icon={History}>
           <Verlauf hotLeadId={verlauf.hotLeadId} leadId={verlauf.leadId} />
           {verlauf.altbestand && (
@@ -232,7 +233,6 @@ export default function LeadSchublade({
           )}
         </Abschnitt>
       )}
-      </>)}
     </SlideDrawer>
   )
 }
