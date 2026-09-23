@@ -26,9 +26,9 @@ const STUFEN = Object.values(STUFE)
 export async function handler(event) {
   if (event.httpMethod === 'OPTIONS') return { statusCode: 204, headers: kopf, body: '' }
 
-  const pruefung = anmeldungVerlangen(event)
-  if (pruefung.antwort) return pruefung.antwort
-  const benutzerId = pruefung.inhalt.sub
+  const zugang = anmeldungVerlangen(event)
+  if (zugang.antwort) return zugang.antwort
+  const benutzerId = zugang.nutzer.id
 
   try {
     const { data, error } = await supabase
