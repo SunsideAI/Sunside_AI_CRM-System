@@ -111,16 +111,18 @@ export function Statistik({ werte, anfangsOffen = false }) {
         </button>
       }
     >
+      {/* Dieselbe Darstellung wie Kontaktdaten und Termin: Name klein darüber,
+          Wert darunter. Vorher standen die Zahlen groß in einem eigenen weißen
+          Kasten und lasen sich wie ein fremdes Bauteil in der Schublade. Die
+          Farbe bleibt — sie sagt, ob eine Zahl gut oder schlecht ist. */}
       {offen && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 bg-surface-container-lowest
-                        rounded-xl border border-outline-variant">
+        <Angaben>
           {zeilen.map(([name, wert, farbe]) => (
-            <div key={name}>
-              <p className="text-label-sm text-on-surface-variant">{name}</p>
-              <p className={`text-title-md font-medium ${farbe}`}>{wert}</p>
-            </div>
+            <Angabe key={name} name={name}>
+              <span className={farbe}>{wert}</span>
+            </Angabe>
           ))}
-        </div>
+        </Angaben>
       )}
     </Abschnitt>
   )
@@ -133,10 +135,14 @@ export function Statistik({ werte, anfangsOffen = false }) {
  *                   man sucht beim Ausfüllen die Stelle wieder, an der man war.
  *                   Im Opening wechselt die Schublade genauso auf eine eigene
  *                   Seite, sobald der Terminwähler offen ist.
+ * @param kontaktFelder  Die Kontaktdaten zum Ändern. Ist etwas übergeben,
+ *                   stehen im ersten Abschnitt Eingabefelder statt der festen
+ *                   Angaben und Pillen — wie im Opening, wenn dort
+ *                   „Bearbeiten" gedrückt ist. Die Rollen bleiben sichtbar.
  */
 export default function LeadSchublade({
   offen, onClose, titel, untertitel, nurArbeit = false,
-  kontakt = {},
+  kontakt = {}, kontaktFelder = null,
   termin,
   statistik,
   uebergabe,
@@ -154,6 +160,8 @@ export default function LeadSchublade({
       {/* 1 — Kontaktdaten */}
       {!nurArbeit && (
       <Abschnitt titel="Kontaktdaten" icon={UserIcon}>
+        {kontaktFelder || (
+        <>
         <Angaben>
           <Angabe name="Ansprechpartner">{kontakt.ansprechpartner || null}</Angabe>
           {kontakt.statusFeld
@@ -177,6 +185,8 @@ export default function LeadSchublade({
             )}
             {kontakt.ort && <Pille icon={MapPin}>{kontakt.ort}</Pille>}
           </div>
+        )}
+        </>
         )}
 
         {kontakt.rollen && <Rollen {...kontakt.rollen} />}

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import {
   Search, Calendar, Phone, Video, Loader2, User as UserIcon,
-  CheckCircle2, AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight, Lock
+  CheckCircle2, AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight, Lock,
+  Edit3, Save
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { STATUS, anzeigeName , stufeVonLead, STUFE, STUFE_TEXT } from '../../shared/status.js'
@@ -14,6 +15,7 @@ import SetterPool from '../components/SetterPool'
 import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
 import Uebergabeblatt, { UEBERGABE_1 } from '../components/Uebergabeblatt'
+import KontaktFelder from '../components/KontaktFelder'
 
 // Die Arbeitsfläche des Setters — aufgebaut wie Opening und Closing.
 //
@@ -54,6 +56,12 @@ function Setting() {
   // Läuft die Übergabe an den Closer, zeigt die Schublade nur diesen Ablauf.
   const [ablaufLaeuft, setAblaufLaeuft] = useState(false)
   const [terminOffen, setTerminOffen] = useState(false)
+  // Kontaktdaten ändern — derselbe Ablauf wie in Opening und Closing:
+  // „Bearbeiten" macht die Felder auf, unten stehen Abbrechen und Speichern.
+  const [bearbeiten, setBearbeiten] = useState(false)
+  const [formular, setFormular] = useState(null)
+  const [speichert, setSpeichert] = useState(false)
+  const [mailFehlt, setMailFehlt] = useState(false)
   // 'meine' oder 'pool' — dieselbe Umschaltung wie im Closing. Der Pool war
   // vorher ein Block ueber der Liste; als eigene Ansicht ist er dort, wo man
   // ihn sucht, und die Zahl daneben sagt, ob sich das Hinsehen lohnt.
@@ -149,6 +157,67 @@ function Setting() {
       setPoolAnzahl(offen.length)
     } catch {
       // Zahl bleibt, wie sie war — ein Zähler ist kein Grund für eine Meldung.
+    }
+  }
+
+  // Die Kontaktdaten des geöffneten Satzes in die Maske holen.
+  const bearbeitenStarten = () => {
+    setFormular({
+      vorname: gewaehlt?.ansprechpartnerVorname || '',
+      nachname: gewaehlt?.ansprechpartnerNachname || '',
+      telefon: gewaehlt?.telefon || '',
+      email: gewaehlt?.email || '',
+      website: gewaehlt?.website || '',
+      ort: gewaehlt?.ort || ''
+    })
+    setMailFehlt(false)
+    setBearbeiten(true)
+  }
+
+  const bearbeitenAbbrechen = () => { setBearbeiten(false); setFormular(null); setMailFehlt(false) }
+
+  // Speichern schreibt nur, was sich geändert hat — und nur dann.
+  const kontaktSpeichern = async () => {
+    if (!gewaehlt || !formular) return
+    if (!formular.email?.trim()) { setMailFehlt(true); return }
+
+    const aenderungen = {}
+    if (formular.vorname !== (gewaehlt.ansprechpartnerVorname || '')) aenderungen.ansprechpartner_vorname = formular.vorname
+    if (formular.nachname !== (gewaehlt.ansprechpartnerNachname || '')) aenderungen.ansprechpartner_nachname = formular.nachname
+    if (formular.telefon !== (gewaehlt.telefon || '')) aenderungen.telefonnummer = formular.telefon
+    if (formular.email !== (gewaehlt.email || '')) aenderungen.mail = formular.email
+    if (formular.website !== (gewaehlt.website || '')) aenderungen.website = formular.website
+    if (formular.ort !== (gewaehlt.ort || '')) aenderungen.ort = formular.ort
+
+    if (Object.keys(aenderungen).length === 0) { bearbeitenAbbrechen(); return }
+
+    setSpeichert(true)
+    try {
+      const antwort = await fetch('/.netlify/functions/hot-leads', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hotLeadId: gewaehlt.id, updates: aenderungen })
+      })
+      const daten = await antwort.json().catch(() => ({}))
+      if (!antwort.ok) throw new Error(daten.error || 'Unbekannter Fehler')
+
+      // Die offene Schublade zeigt sofort die neuen Werte, die Liste zieht nach.
+      setGewaehlt(g => g ? {
+        ...g,
+        ansprechpartnerVorname: formular.vorname,
+        ansprechpartnerNachname: formular.nachname,
+        telefon: formular.telefon,
+        email: formular.email,
+        website: formular.website,
+        ort: formular.ort
+      } : g)
+      bearbeitenAbbrechen()
+      setHinweis('Die Kontaktdaten sind gespeichert.')
+      laden()
+    } catch (f) {
+      setHinweis('Speichern fehlgeschlagen: ' + f.message)
+    } finally {
+      setSpeichert(false)
     }
   }
 
@@ -430,7 +499,10 @@ function Setting() {
                 return (
                   <tr
                     key={lead.id}
-                    onClick={() => { setGewaehlt(lead); setMailOffen(false); setTerminOffen(false) }}
+                    onClick={() => {
+                      setGewaehlt(lead); setMailOffen(false); setTerminOffen(false)
+                      bearbeitenAbbrechen()
+                    }}
                     className={`table-row cursor-pointer ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}`}
                   >
                     <td className="px-4 py-4">
@@ -564,7 +636,13 @@ function Setting() {
       <LeadSchublade
         offen={!!gewaehlt}
         nurArbeit={ablaufLaeuft}
-        onClose={() => { setGewaehlt(null); setMailOffen(false); setTerminOffen(false); setAblaufLaeuft(false) }}
+        kontaktFelder={bearbeiten && formular && (
+          <KontaktFelder werte={formular} onChange={setFormular} mailFehlt={mailFehlt} />
+        )}
+        onClose={() => {
+          setGewaehlt(null); setMailOffen(false); setTerminOffen(false)
+          setAblaufLaeuft(false); bearbeitenAbbrechen()
+        }}
         titel={gewaehlt?.unternehmen || 'Kontakt'}
         untertitel={[gewaehlt?.kategorie, gewaehlt?.ort].filter(Boolean).join(' · ')}
         kontakt={{
@@ -588,16 +666,33 @@ function Setting() {
         arbeitsIcon={Users}
         fuss={gewaehlt && (
           <>
-            {/* Während des geführten Ablaufs nur die Schritt-Knöpfe, sonst
-                lenkt die Mail-Aktion vom Weg ab. */}
-            {!ablaufLaeuft && (
-              <button onClick={() => setMailOffen(o => !o)} className="fuss-neben">
-                <Mail className="w-4 h-4" /> E-Mail an den Kontakt
-              </button>
+            {/* Beim Ändern der Kontaktdaten steht nur Abbrechen und Speichern
+                unten — sonst konkurrieren drei Hauptaktionen um dieselbe Ecke.
+                Das Portal bleibt hängen und wird nur versteckt: Ein neues Ziel
+                würde die Knöpfe der Setter-Maske ins Leere hängen. */}
+            {bearbeiten ? (
+              <>
+                <button onClick={bearbeitenAbbrechen} disabled={speichert} className="fuss-leise">
+                  Abbrechen
+                </button>
+                <button onClick={kontaktSpeichern} disabled={speichert} className="fuss-haupt">
+                  {speichert ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Speichern
+                </button>
+              </>
+            ) : !ablaufLaeuft && (
+              <>
+                <button onClick={() => setMailOffen(o => !o)} className="fuss-neben">
+                  <Mail className="w-4 h-4" /> E-Mail an den Kontakt
+                </button>
+                <button onClick={bearbeitenStarten} className="fuss-neben">
+                  <Edit3 className="w-4 h-4" /> Bearbeiten
+                </button>
+              </>
             )}
             {/* Hier hinein hängt die Setter-Maske ihre Knöpfe (Portal), damit
                 sie unten stehen wie in jeder anderen Schublade. */}
-            <div id="schublade-aktionen" className="contents" />
+            <div id="schublade-aktionen" className={bearbeiten ? 'hidden' : 'contents'} />
           </>
         )}
       >
