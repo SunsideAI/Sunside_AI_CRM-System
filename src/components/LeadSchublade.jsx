@@ -160,6 +160,12 @@ export default function LeadSchublade({
       {/* 1 — Kontaktdaten */}
       {!nurArbeit && (
       <Abschnitt titel="Kontaktdaten" icon={UserIcon}>
+        {/* Beim Ändern bleibt der Status stehen: Er gehört zum Kontakt, ist
+            aber nichts, was man hier von Hand setzt. */}
+        {kontaktFelder && kontakt.statusFeld && (
+          <Angaben><Angabe name="Status">{kontakt.statusFeld}</Angabe></Angaben>
+        )}
+
         {kontaktFelder || (
         <>
         <Angaben>
