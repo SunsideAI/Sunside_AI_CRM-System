@@ -25,6 +25,11 @@ function letzteAktivitaet(kommentar) {
 
 /** Das Symbol links: Terminart, wo es Termine gibt, sonst der Stand. */
 function symbol(stufe, lead) {
+  if (stufe === 'followup') {
+    // Im Follow-Up sagt das Symbol, ob noch nachgefasst wird.
+    const ruht = ['pausiert', 'beendet'].includes(lead.follow_up_status)
+    return { zeichen: ruht ? 'offen' : 'kontaktiert', ton: ruht ? 'neutral' : 'gut' }
+  }
   if (stufe === 'opening') {
     return lead.kontaktiert ? { zeichen: 'kontaktiert', ton: 'gut' } : { zeichen: 'offen', ton: 'neutral' }
   }
@@ -59,6 +64,30 @@ export function zeileAusLead(stufe, lead) {
       zustaendig: (lead.zugewiesenAn || []).join(', ') || null,
       aktivitaet: letzteAktivitaet(lead.kommentar),
       wiedervorlage: lead.wiedervorlageDatum || null
+    }
+  }
+
+  // Das Follow-Up hat eine eigene Abfrage mit eigenen Feldnamen (snake_case)
+  // und kennt weder Ort noch Website-Zahlen. Es bekommt deshalb seinen eigenen
+  // Zweig - übersetzt wird trotzdem auf dieselben Namen wie überall.
+  if (stufe === 'followup') {
+    return {
+      ...gemeinsam,
+      unternehmen: {
+        titel: lead.unternehmen || 'Ohne Namen',
+        unter: name(lead.ansprechpartner_vorname, lead.ansprechpartner_nachname)
+      },
+      ansprechpartner: name(lead.ansprechpartner_vorname, lead.ansprechpartner_nachname),
+      kontakt: { telefon: lead.telefonnummer || null, email: lead.mail || null },
+      termin: lead.termin_beratungsgespraech || null,
+      status: lead.status ? anzeigeName(lead.status) : null,
+      statusWert: lead.status || null,
+      setter: lead.setter_name || null,
+      closer: lead.closer_name || null,
+      naechster_schritt: lead.follow_up_naechster_schritt || null,
+      bis_wann: lead.follow_up_datum || null,
+      fu_status: lead.follow_up_status || null,
+      notiz: letzteAktivitaet(lead.kommentar)
     }
   }
 

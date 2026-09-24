@@ -2,6 +2,13 @@ import { STATUS, anzeigeName } from '../../shared/status.js'
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import LeadSchublade, { altbestand } from '../components/LeadSchublade'
+import LeadTabelle from '../components/LeadTabelle'
+import SpaltenWahl from '../components/SpaltenWahl'
+import FilterWahl from '../components/FilterWahl'
+import useTabelle from '../hooks/useTabelle'
+import { zeileAusLead, sortiere } from '../utils/zeile'
+import { filtern } from '../../shared/filter.js'
+import { spaltenAus } from '../../shared/spalten.js'
 import * as XLSX from 'xlsx'
 import {
   RotateCcw,
@@ -70,6 +77,9 @@ function FollowUp() {
   // Sort State
   const [sortColumn, setSortColumn] = useState('termin') // Default: nach Beratungsgespräch
   const [sortDirection, setSortDirection] = useState('asc') // 'asc' oder 'desc'
+  // Spalten und Filter des Benutzers, wie in den anderen Listen.
+  const tabelle = useTabelle('followup')
+  const [sortierung, setSortierung] = useState({ spalte: 'termin', ab: false })
 
   // Edit State
   const [editData, setEditData] = useState({
@@ -123,10 +133,13 @@ function FollowUp() {
       if (closerFilter !== 'all') params.append('closerId', closerFilter)
       if (statusFilter !== 'all') params.append('followUpStatus', statusFilter)
       if (searchTerm) params.append('search', searchTerm)
+      // Die Liste kommt am Stück: Es sind einige hundert Kontakte, und
+      // Filtern, Sortieren und Blättern passieren im Browser - so wie in
+      // Setting und Closing, damit sich alles gleich anfühlt.
       params.append('sortBy', sortColumnMap[sortColumn] || 'termin_beratungsgespraech')
       params.append('sortDir', sortDirection)
-      params.append('limit', LEADS_PER_PAGE.toString())
-      params.append('offset', ((currentPage - 1) * LEADS_PER_PAGE).toString())
+      params.append('limit', '2000')
+      params.append('offset', '0')
 
       const response = await fetch(`/.netlify/functions/follow-up?${params.toString()}`)
       const data = await response.json()
@@ -144,7 +157,7 @@ function FollowUp() {
 
   useEffect(() => {
     if (user?.id) loadLeads()
-  }, [user?.id, closerFilter, statusFilter, currentPage, sortColumn, sortDirection])
+  }, [user?.id, closerFilter, statusFilter])
 
   useEffect(() => {
     if (user?.id) {
@@ -156,7 +169,19 @@ function FollowUp() {
     }
   }, [searchTerm])
 
-  const totalPages = Math.ceil(totalLeads / LEADS_PER_PAGE)
+  // Zeilen in die gemeinsame Sprache übersetzen, dann filtern, sortieren und
+  // blättern - genau wie in Setting und Closing.
+  const alleZeilen = leads.map(l => zeileAusLead('followup', l))
+  const gefilterteZeilen = (() => {
+    const gefiltert = filtern(alleZeilen, tabelle.filter, 'followup')
+    const spalte = spaltenAus('followup', tabelle.spalten)
+      .find(x => x.schluessel === sortierung.spalte)
+    return spalte ? sortiere(gefiltert, spalte, sortierung.ab) : gefiltert
+  })()
+  const totalPages = Math.max(1, Math.ceil(gefilterteZeilen.length / LEADS_PER_PAGE))
+  const sichereSeite = Math.min(currentPage, totalPages)
+  const seitenZeilen = gefilterteZeilen.slice(
+    (sichereSeite - 1) * LEADS_PER_PAGE, sichereSeite * LEADS_PER_PAGE)
 
   // Lead auswählen
   const handleSelectLead = async (lead) => {
@@ -453,6 +478,15 @@ function FollowUp() {
             ))}
           </select>
 
+          {/* Rechts, weil beides die Darstellung steuert. */}
+          <div className="ml-auto flex items-center gap-2 sm:gap-3 order-last">
+            <FilterWahl stufe="followup" filter={tabelle.filter}
+                        onAendern={tabelle.filterAendern} zeilen={alleZeilen}
+                        speichert={tabelle.speichert} vollstaendig />
+            <SpaltenWahl stufe="followup" auswahl={tabelle.spalten}
+                         onAendern={tabelle.spaltenAendern} speichert={tabelle.speichert} />
+          </div>
+
           {/* Follow-Up Status Filter */}
           <select
             value={statusFilter}
@@ -474,156 +508,39 @@ function FollowUp() {
 
       {/* Tabelle. min-h wie in den anderen Tabs - siehe Opening. */}
       <div className="card-elevated overflow-hidden min-h-[600px]">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-surface-container">
-                              <th
-                  className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant cursor-pointer hover:bg-surface-container-high select-none"
-                  onClick={() => handleSort('unternehmen')}
-                >
-                  <div className="flex items-center gap-2">
-                    Unternehmen
-                    <SortIcon column="unternehmen" />
-                  </div>
-                </th>
-              
-                              <th
-                  className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant cursor-pointer hover:bg-surface-container-high select-none"
-                  onClick={() => handleSort('closer')}
-                >
-                  <div className="flex items-center gap-2">
-                    Closer
-                    <SortIcon column="closer" />
-                  </div>
-                </th>
-              
-                              <th
-                  className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant cursor-pointer hover:bg-surface-container-high select-none"
-                  onClick={() => handleSort('termin')}
-                >
-                  <div className="flex items-center gap-2">
-                    Beratungsgespräch
-                    <SortIcon column="termin" />
-                  </div>
-                </th>
-              
-                              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Status</th>
-              
-                              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Nächster Schritt</th>
-              
-                              <th
-                  className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant cursor-pointer hover:bg-surface-container-high select-none"
-                  onClick={() => handleSort('bisWann')}
-                >
-                  <div className="flex items-center gap-2">
-                    Bis wann
-                    <SortIcon column="bisWann" />
-                  </div>
-                </th>
-              
-                              <th className="px-4 py-3 text-left text-label-md font-medium text-on-surface-variant">Kommentar</th>
-              
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-16 text-center">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary mx-auto mb-3" />
-                  <p className="text-on-surface-variant">Lädt...</p>
-                </td>
-              </tr>
-            ) : filteredLeads.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-12 text-center">
-                  <RotateCcw className="w-10 h-10 mx-auto mb-3 text-outline-variant" />
-                  <p className="text-title-md mb-1">Keine Leads gefunden</p>
-                  {hasActiveFilters && (
-                    <button onClick={resetFilters} className="text-primary hover:underline mt-2">
-                      Filter zurücksetzen
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ) : (
-              filteredLeads.map((lead, index) => {
-                const overdue = isOverdue(lead.follow_up_datum)
-                return (
-                  <tr
-                    key={lead.id}
-                    onClick={() => handleSelectLead(lead)}
-                    className={`cursor-pointer transition-colors hover:bg-primary-fixed/20 ${index % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'} ${overdue ? 'bg-red-50/30' : ''}`}
-                  >
-                                          <td className="px-4 py-4">
-                        <div className="font-medium text-on-surface">{lead.unternehmen || '-'}</div>
-                        <div className="text-body-sm text-on-surface-variant">
-                          {lead.ansprechpartner_vorname} {lead.ansprechpartner_nachname}
-                        </div>
-                      </td>
-                    
-                                          <td className="px-4 py-4 text-body-md">{lead.closer_name || '-'}</td>
-                    
-                                          <td className="px-4 py-4 text-body-md">
-                        {lead.termin_beratungsgespraech ? (
-                          <div>
-                            <div>{formatDate(lead.termin_beratungsgespraech)}</div>
-                            <div className="text-body-sm text-on-surface-variant">
-                              {new Date(lead.termin_beratungsgespraech).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })} Uhr
-                            </div>
-                          </div>
-                        ) : '-'}
-                      </td>
-                    
-                                          <td className="px-4 py-4">
-                        <span className={`px-2 py-1 rounded-full text-label-sm ${FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)?.color || 'bg-gray-100 text-gray-700'}`}>
-                          {FOLLOW_UP_STATUS_OPTIONS.find(s => s.value === lead.follow_up_status)?.label || 'Aktiv'}
-                        </span>
-                      </td>
-                    
-                                          <td className="px-4 py-4 text-body-md max-w-[200px] truncate">
-                        {lead.follow_up_naechster_schritt || '-'}
-                      </td>
-                    
-                                          <td className="px-4 py-4">
-                        <span className={overdue ? 'text-error font-medium' : ''}>
-                          {formatDate(lead.follow_up_datum)}
-                        </span>
-                      </td>
-                    
-                                          <td className="px-4 py-4 max-w-[250px]">
-                        {(() => {
-                          if (!lead.kommentar) return <span className="text-body-sm text-outline">-</span>
-                          const entries = parseKommentar(lead.kommentar)
-                          const lastEntry = entries[entries.length - 1]
-                          if (!lastEntry) return <span className="text-body-sm text-outline">-</span>
-                          return (
-                            <div className="flex items-start gap-1.5">
-                              <span className="flex-shrink-0 text-sm">{lastEntry.type === 'history' ? lastEntry.emoji : '💬'}</span>
-                              <div className="min-w-0">
-                                <p className="text-body-sm text-on-surface truncate max-w-[200px]">
-                                  {lastEntry.type === 'history' ? lastEntry.text : lastEntry.text}
-                                </p>
-                                {lastEntry.type === 'history' && (
-                                  <p className="text-label-sm text-outline">{lastEntry.datum}</p>
-                                )}
-                              </div>
-                            </div>
-                          )
-                        })()}
-                      </td>
-                    
-                  </tr>
-                )
-              })
-            )}
-          </tbody>
-        </table>
+        {/* Beim Nachladen bleibt die Liste stehen - sonst springt die Seite. */}
+        {loading && gefilterteZeilen.length === 0 ? (
+          <div className="flex items-center justify-center py-20 text-on-surface-variant">
+            <Loader2 className="w-6 h-6 animate-spin mr-2" /> Wird geladen …
+          </div>
+        ) : (
+          <div className={`transition-opacity duration-200 ${loading ? 'opacity-50' : ''}`}>
+            <LeadTabelle
+              stufe="followup"
+              auswahl={tabelle.spalten}
+              zeilen={seitenZeilen}
+              leer="Kein Kontakt im Follow-Up mit diesen Kriterien."
+              badgeFarbe={(wert, z, spalte) => {
+                const liste = spalte.schluessel === 'fu_status'
+                  ? FOLLOW_UP_STATUS_OPTIONS
+                  : HOT_LEAD_STATUS_OPTIONS
+                const schluessel = spalte.schluessel === 'fu_status' ? z.fu_status : z.statusWert
+                return liste.find(o => o.value === schluessel)?.color
+                  || 'bg-surface-container text-on-surface-variant'
+              }}
+              sortierung={sortierung}
+              onSortierung={(spalte) => { setCurrentPage(1); setSortierung(x =>
+                x.spalte === spalte ? { spalte, ab: !x.ab } : { spalte, ab: false }) }}
+              onZeile={(z) => handleSelectLead(z.roh)}
+            />
+          </div>
+        )}
 
         {/* Pagination */}
-        {!loading && leads.length > 0 && totalPages > 1 && (
+        {!loading && gefilterteZeilen.length > 0 && totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-outline-variant">
             <span className="text-body-sm text-on-surface-variant">
-              Seite {currentPage} von {totalPages}
+              Seite {sichereSeite} von {totalPages} · {gefilterteZeilen.length} Kontakte
             </span>
             <div className="flex gap-2">
               <button

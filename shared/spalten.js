@@ -13,7 +13,8 @@
 export const STUFE = {
   OPENING: 'opening',
   SETTING: 'setting',
-  CLOSING: 'closing'
+  CLOSING: 'closing',
+  FOLLOWUP: 'followup'
 }
 
 // art:
@@ -38,26 +39,27 @@ export const SPALTEN = [
   // bzw. Kontaktiert). Filtern lässt sich darüber nicht - es trägt keinen
   // eigenen Wert, sondern nur ein Icon.
   { schluessel: 'art', name: 'Art', art: 'symbol', fest: true, ohneFilter: true,
-    stufen: ['opening', 'setting', 'closing'] },
+    stufen: ['opening', 'setting', 'closing', 'followup'] },
   { schluessel: 'unternehmen', name: 'Unternehmen', art: 'titel', fest: true,
-    stufen: ['opening', 'setting', 'closing'] },
+    stufen: ['opening', 'setting', 'closing', 'followup'] },
 
   // ── Standard je Stufe ────────────────────────────────────────────────────
   { schluessel: 'ansprechpartner', name: 'Ansprechpartner', art: 'text', ab: 'md',
-    stufen: ['opening', 'setting', 'closing'], standard: ['opening', 'setting', 'closing'] },
+    stufen: ['opening', 'setting', 'closing', 'followup'],
+    standard: ['opening', 'setting', 'closing'] },
   { schluessel: 'ort', name: 'Ort', art: 'text', ab: 'lg',
     stufen: ['opening', 'setting', 'closing'], standard: ['opening', 'setting', 'closing'] },
   // Kontakt steht nur dort im Standard, wo angerufen wird. Im Closing war die
   // Spalte so breit, dass Status und Zuständigkeit aus dem Bild rutschten -
   // beides steht ohnehin in der Schublade.
   { schluessel: 'kontakt', name: 'Kontakt', art: 'kontakt', ab: 'xl',
-    stufen: ['opening', 'setting', 'closing'], standard: ['opening'] },
+    stufen: ['opening', 'setting', 'closing', 'followup'], standard: ['opening'] },
   { schluessel: 'termin', name: 'Termin', art: 'datum',
-    stufen: ['setting', 'closing'], standard: ['setting', 'closing'] },
+    stufen: ['setting', 'closing', 'followup'], standard: ['setting', 'closing', 'followup'] },
   { schluessel: 'ergebnis', name: 'Ergebnis', art: 'badge',
     stufen: ['opening'], standard: ['opening'] },
   { schluessel: 'status', name: 'Status', art: 'badge',
-    stufen: ['setting', 'closing'], standard: ['setting', 'closing'] },
+    stufen: ['setting', 'closing', 'followup'], standard: ['setting', 'closing', 'followup'] },
   { schluessel: 'zustaendig', name: 'Vertriebler', art: 'person', ab: 'lg',
     stufen: ['opening'] },
   { schluessel: 'aktivitaet', name: 'Letzte Aktivität', art: 'verlauf', ab: 'xl',
@@ -78,9 +80,9 @@ export const SPALTEN = [
   { schluessel: 'opener', name: 'Opener', art: 'person', ab: 'lg',
     stufen: ['setting', 'closing'] },
   { schluessel: 'setter', name: 'Setter', art: 'person', ab: 'lg',
-    stufen: ['setting', 'closing'], standard: ['closing'] },
+    stufen: ['setting', 'closing', 'followup'], standard: ['closing'] },
   { schluessel: 'closer', name: 'Closer', art: 'person', ab: 'lg',
-    stufen: ['closing'], standard: ['closing'] },
+    stufen: ['closing', 'followup'], standard: ['closing', 'followup'] },
 
   // ── Wählbar: Website-Zahlen ──────────────────────────────────────────────
   { schluessel: 'besucher', name: 'Besucher/Monat', art: 'zahl', ab: 'lg',
@@ -111,7 +113,17 @@ export const SPALTEN = [
   { schluessel: 'no_shows', name: 'Nicht erschienen', art: 'zahl', ab: 'xl',
     stufen: ['setting', 'closing'] },
   { schluessel: 'mobilnummer', name: 'Mobilnummer', art: 'text', ab: 'xl',
-    stufen: ['setting', 'closing'] }
+    stufen: ['setting', 'closing'] },
+
+  // ── Nur im Follow-Up: Was als Nächstes ansteht ───────────────────────────
+  { schluessel: 'naechster_schritt', name: 'Nächster Schritt', art: 'text',
+    stufen: ['followup'], standard: ['followup'] },
+  { schluessel: 'bis_wann', name: 'Bis wann', art: 'tag',
+    stufen: ['followup'], standard: ['followup'] },
+  { schluessel: 'fu_status', name: 'Nachfassen', art: 'badge', ab: 'lg',
+    stufen: ['followup'], standard: ['followup'] },
+  { schluessel: 'notiz', name: 'Kommentar', art: 'verlauf', ab: 'xl',
+    stufen: ['followup'] }
 ]
 
 /** Alle Spalten, die in dieser Stufe überhaupt zur Wahl stehen. */

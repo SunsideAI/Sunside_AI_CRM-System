@@ -114,7 +114,7 @@ function Zelle({ spalte, zeile, badgeFarbe }) {
     case 'badge':
       return (
         <span className={`inline-flex px-2.5 py-1 rounded-full text-label-sm whitespace-nowrap ${
-          badgeFarbe?.(wert, zeile) || 'bg-surface-container text-on-surface-variant'}`}>
+          badgeFarbe?.(wert, zeile, spalte) || 'bg-surface-container text-on-surface-variant'}`}>
           {wert}
         </span>
       )
