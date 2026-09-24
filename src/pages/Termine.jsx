@@ -1,5 +1,5 @@
-import { STATUS } from '../../shared/status.js'
-import SetterUebergabe from '../components/SetterUebergabe'
+import { STATUS, anzeigeName } from '../../shared/status.js'
+import LeadSchublade from '../components/LeadSchublade'
 import SetterPool from '../components/SetterPool'
 import EmailComposer from '../components/EmailComposer'
 import { useState, useEffect } from 'react'
@@ -635,348 +635,98 @@ function Termine() {
         </div>
       </div>
 
-      {/* Termin-Detail Drawer */}
-      {selectedEvent && (
-        <div className="fixed inset-0 z-50">
-          <div className="fixed inset-0 bg-scrim/50" onClick={() => setSelectedEvent(null)} />
-          <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-surface shadow-xl flex flex-col overflow-hidden">
-            {/* Header */}
-            <div className="sticky top-0 bg-surface border-b border-outline-variant px-6 py-4 flex items-center justify-between z-10 flex-shrink-0">
-              <h2 className="text-title-lg font-semibold text-on-surface truncate">{selectedEvent.title}</h2>
-              <button onClick={() => setSelectedEvent(null)} className="p-2 hover:bg-surface-container rounded-lg transition-colors flex-shrink-0">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
+      {/* Der Kalender zeigt, was ansteht - gearbeitet wird in den Tabs.
+          Deshalb steht hier nur, was zum Termin zu wissen ist: wer, wann, wie
+          und wer dabei ist. Die Dokumentation des Gesprächs stand früher mit
+          in dieser Schublade; sie gehört ins Setting und ist dort seit dem
+          Umbau auch geführt. */}
+      <LeadSchublade
+        offen={Boolean(selectedEvent)}
+        onClose={() => { setSelectedEvent(null); setMailOffen(false) }}
+        titel={selectedEvent?.title || 'Termin'}
+        untertitel={[
+          selectedEvent?.source === 'wiedervorlage' ? 'Wiedervorlage' : 'Beratungsgespräch',
+          selectedEvent?.ort
+        ].filter(Boolean).join(' · ')}
+        kontakt={selectedEvent ? {
+          ansprechpartner: selectedEvent.ansprechpartner || null,
+          statusFeld: selectedEvent.status ? anzeigeName(selectedEvent.status) : null,
+          telefon: selectedEvent.telefon,
+          email: selectedEvent.email,
+          website: selectedEvent.lead?.website,
+          ort: selectedEvent.ort,
+          rollen: {
+            opener: selectedEvent.lead?.openerName,
+            setter: selectedEvent.setterName,
+            closer: selectedEvent.closerName
+          }
+        } : {}}
+        termin={selectedEvent ? {
+          datum: selectedEvent.start
+            ? new Date(selectedEvent.start).toLocaleString('de-DE', {
+                weekday: 'long', day: '2-digit', month: '2-digit',
+                hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
+              }) + ' Uhr'
+            : null,
+          art: selectedEvent.source === 'wiedervorlage'
+            ? 'Wiedervorlage, telefonisch'
+            : (selectedEvent.terminart || 'Telefonisch'),
+          link: selectedEvent.lead?.meeting_link,
+          zusatz: selectedEvent.source === 'beratungsgespraech' && !selectedEvent.closerName && (
+            <p className="text-body-sm text-on-surface-variant">
+              Für das Abschlussgespräch ist noch kein Closer eingeteilt.
+            </p>
+          )
+        } : null}
+        verlauf={selectedEvent ? {
+          hotLeadId: selectedEvent.hotLeadId,
+          leadId: selectedEvent.leadId || selectedEvent.lead?.originalLeadId
+        } : null}
+        arbeitsTitel="E-Mail an den Kontakt"
+        arbeitsIcon={Mail}
+        fuss={selectedEvent && (
+          <>
+            <button onClick={() => setMailOffen(o => !o)} className="fuss-neben">
+              <Mail className="w-4 h-4" /> E-Mail an den Kontakt
+            </button>
+            {/* Gearbeitet wird in der Stufe, zu der der Termin gehört. */}
+            <button
+              onClick={() => {
+                const ziel = selectedEvent.source === 'wiedervorlage' ? '/opening'
+                  : selectedEvent.isMyClosing ? '/closing' : '/setting'
+                setSelectedEvent(null); setMailOffen(false)
+                routerNavigate(ziel, { state: { openLeadId: selectedEvent.hotLeadId } })
+              }}
+              className="fuss-haupt"
+            >
+              <Building2 className="w-4 h-4" />
+              {selectedEvent.source === 'wiedervorlage' ? 'Im Opening öffnen'
+                : selectedEvent.isMyClosing ? 'Im Closing öffnen' : 'Im Setting öffnen'}
+            </button>
+          </>
+        )}
+      >
+        {selectedEvent && mailOffen && (
+          <EmailComposer
+            hotLeadId={selectedEvent.hotLeadId}
+            lead={{
+              id: selectedEvent.lead?.originalLeadId || selectedEvent.leadId || selectedEvent.hotLeadId,
+              unternehmensname: selectedEvent.unternehmen,
+              email: selectedEvent.email,
+              telefon: selectedEvent.telefon,
+              ort: selectedEvent.ort,
+              ansprechpartnerVorname: selectedEvent.lead?.ansprechpartnerVorname,
+              ansprechpartnerNachname: selectedEvent.lead?.ansprechpartnerNachname
+            }}
+            user={user}
+            inline={true}
+            kategorie="Setting"
+            onClose={() => setMailOffen(false)}
+            onSent={() => setMailOffen(false)}
+          />
+        )}
+      </LeadSchublade>
 
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              {/* Die Strecke des Kontakts — dieselbe Ansicht wie in Opening
-                  und Setting. */}
-              <details className="border border-outline-variant rounded-xl">
-                <summary className="px-4 py-2 cursor-pointer text-label-lg text-on-surface">
-                  Verlauf
-                </summary>
-                <div className="px-4 pb-4">
-                  <Verlauf hotLeadId={selectedEvent.hotLeadId} />
-                </div>
-              </details>
-
-
-
-              {/* TERMIN-INFO Section */}
-              <div className="space-y-3">
-                <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
-                  Termin
-                </h3>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-body-sm text-on-surface-variant">Datum & Zeit</p>
-                    <p className="text-body-md text-on-surface">{formatDateLong(selectedEvent.start)}</p>
-                    <p className="text-body-sm text-on-surface-variant">{formatTime(selectedEvent.start, selectedEvent.source)} - {formatTime(selectedEvent.end, selectedEvent.source)}</p>
-                  </div>
-                  <div>
-                    <p className="text-body-sm text-on-surface-variant">Terminart</p>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {selectedEvent.source === 'beratungsgespraech' && (
-                        <span className={`inline-flex items-center px-2 py-1 rounded-full text-label-sm ${
-                          selectedEvent.terminart === 'Video'
-                            ? 'bg-secondary-container text-primary'
-                            : 'bg-blue-100 text-blue-700'
-                        }`}>
-                          {selectedEvent.terminart === 'Video' ? <Video className="w-3 h-3 mr-1" /> : <Phone className="w-3 h-3 mr-1" />}
-                          {selectedEvent.terminart || 'Telefonisch'}
-                        </span>
-                      )}
-                      {selectedEvent.source === 'wiedervorlage' && (
-                        <span className="inline-flex items-center px-2 py-1 rounded-full text-label-sm bg-orange-100 text-orange-700">
-                          <PhoneCall className="w-3 h-3 mr-1" />
-                          Wiedervorlage
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {selectedEvent.source === 'beratungsgespraech' && (
-                <>
-                  {/* KONTAKTDATEN Section */}
-                  <div className="space-y-3 abschnitt-trenner">
-                    <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
-                      Kontaktdaten
-                    </h3>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      {selectedEvent.ansprechpartner && (
-                        <div>
-                          <p className="text-body-sm text-on-surface-variant">Ansprechpartner</p>
-                          <p className="text-body-md text-on-surface">{selectedEvent.ansprechpartner}</p>
-                        </div>
-                      )}
-                      {selectedEvent.unternehmen && (
-                        <div>
-                          <p className="text-body-sm text-on-surface-variant">Unternehmen</p>
-                          <p className="text-body-md text-on-surface">{selectedEvent.unternehmen}</p>
-                          {selectedEvent.ort && <p className="text-body-sm text-on-surface-variant">{selectedEvent.ort}</p>}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Contact Pills */}
-                    {selectedEvent.telefon && (
-                      <div className="flex flex-wrap gap-2">
-                        <a
-                          href={`tel:${selectedEvent.telefon}`}
-                          className="flex items-center gap-2 px-3 py-2 bg-surface-container rounded-lg hover:bg-surface-container-high transition-colors"
-                        >
-                          <Phone className="h-4 w-4 text-primary" />
-                          <span className="text-body-sm">{selectedEvent.telefon}</span>
-                        </a>
-                      </div>
-                    )}
-
-                    {/* Setter Tag */}
-                    {selectedEvent.setterName && (
-                      <div className="flex flex-wrap gap-2">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-label-sm">
-                          Gebucht von: {selectedEvent.setterName}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* NOTIZEN Section */}
-                  {selectedEvent.kommentar && (
-                    <div className="space-y-3 abschnitt-trenner">
-                      <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
-                        Notizen
-                      </h3>
-                        <div className="bg-gray-50 rounded-lg p-3 max-h-[200px] overflow-y-auto">
-                          <div className="space-y-2">
-                            {(() => {
-                              const lines = selectedEvent.kommentar.split('\n').filter(line => line.trim())
-                              const groups = []
-                              let currentPlainGroup = []
-
-                              lines.forEach((line) => {
-                                const historyMatch = line.match(/^\[(\d{2}\.\d{2}\.\d{4}),?\s*(\d{2}:\d{2})\]\s*(.+)$/)
-                                if (historyMatch) {
-                                  if (currentPlainGroup.length > 0) {
-                                    groups.push({ type: 'plain', lines: currentPlainGroup })
-                                    currentPlainGroup = []
-                                  }
-                                  groups.push({ type: 'history', match: historyMatch })
-                                } else {
-                                  currentPlainGroup.push(line)
-                                }
-                              })
-                              if (currentPlainGroup.length > 0) {
-                                groups.push({ type: 'plain', lines: currentPlainGroup })
-                              }
-
-                              return groups.map((group, index) => {
-                                if (group.type === 'history') {
-                                  const [, datum, zeit, rest] = group.match
-                                  const emojiMatch = rest.match(/^(📧|📅|✅|↩️|📋|👤|💬|🎯|📞|❌|✉️|📄|⭐)\s*(.+)$/)
-                                  const emoji = emojiMatch ? emojiMatch[1] : '📋'
-                                  let text = emojiMatch ? emojiMatch[2] : rest
-                                  const userMatch = text.match(/\(([^)]+)\)$/)
-                                  const userName = userMatch ? userMatch[1] : null
-                                  if (userMatch) text = text.replace(/\s*\([^)]+\)$/, '')
-
-                                  return (
-                                    <div key={index} className="flex items-start gap-2 text-sm">
-                                      <span className="flex-shrink-0">{emoji}</span>
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-gray-700">{text}</p>
-                                        <p className="text-xs text-gray-400 mt-0.5">
-                                          {datum}, {zeit}{userName && ` • ${userName}`}
-                                        </p>
-                                      </div>
-                                    </div>
-                                  )
-                                } else {
-                                  return (
-                                    <div key={index} className="flex items-start gap-2 text-sm">
-                                      <span className="flex-shrink-0">💬</span>
-                                      <div className="text-gray-700">
-                                        {group.lines.map((line, i) => <p key={i}>{line}</p>)}
-                                      </div>
-                                    </div>
-                                  )
-                                }
-                              })
-                            })()}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Status Tags */}
-                    <div className="space-y-3 abschnitt-trenner">
-                      <h3 className="text-label-lg font-medium text-on-surface-variant uppercase tracking-wide">
-                        Status
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {selectedEvent.closerName && (
-                          <span className="px-3 py-1.5 bg-primary-fixed text-primary rounded-full text-label-sm">
-                            Closer: {selectedEvent.closerName}
-                          </span>
-                        )}
-                        {selectedEvent.isMyClosing && (
-                          <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-label-sm">
-                            Mein Closing
-                          </span>
-                        )}
-                        {selectedEvent.isMyBooking && !selectedEvent.isMyClosing && (
-                          <span className="px-2 py-1 bg-secondary-container text-primary rounded-full text-label-sm">
-                            Von mir gebucht
-                          </span>
-                        )}
-                        {!selectedEvent.closerName && (
-                          <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-label-sm">
-                            Im Pool
-                          </span>
-                        )}
-                        {selectedEvent.status && selectedEvent.status !== STATUS.BERATUNG_VEREINBART && (
-                          <span className={`px-2 py-1 rounded-full text-label-sm ${
-                            selectedEvent.status.toLowerCase().includes('abgesagt')
-                              ? 'bg-red-100 text-red-700'
-                              : selectedEvent.status.toLowerCase().includes('verschoben')
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
-                            {selectedEvent.status}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Schreiben geht immer - unabhängig von der Stufe und
-                        davon, wer den Termin hält. */}
-                    <div className="border-t pt-4 mt-4">
-                      {mailOffen ? (
-                        <EmailComposer
-                          hotLeadId={selectedEvent.hotLeadId}
-                          lead={{
-                            id: selectedEvent.lead?.originalLeadId || selectedEvent.hotLeadId,
-                            unternehmensname: selectedEvent.unternehmen,
-                            email: selectedEvent.email,
-                            telefon: selectedEvent.telefon,
-                            ort: selectedEvent.ort,
-                            ansprechpartnerVorname: selectedEvent.lead?.ansprechpartnerVorname,
-                            ansprechpartnerNachname: selectedEvent.lead?.ansprechpartnerNachname
-                          }}
-                          user={user}
-                          inline={true}
-                          kategorie="Setting"
-                          onClose={() => setMailOffen(false)}
-                          onSent={() => setMailOffen(false)}
-                        />
-                      ) : (
-                        <button
-                          onClick={() => setMailOffen(true)}
-                          className="flex items-center gap-2 px-4 py-2 border border-primary-fixed-dim
-                                     text-primary rounded-lg hover:bg-primary-fixed/30"
-                        >
-                          <Mail className="w-4 h-4" />
-                          E-Mail an den Kontakt
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Was der Setter nach dem Gespräch tut. Nur für den, der
-                        den Termin hält - und für Admins. */}
-                    {(selectedEvent.isMySetting || isAdmin()) && selectedEvent.lead && (
-                      <SetterUebergabe
-                        lead={selectedEvent.lead}
-                        onGespeichert={() => { setSelectedEvent(null); setMailOffen(false); loadTermine() }}
-                      />
-                    )}
-                  </>
-                )}
-
-                {/* Wiedervorlage Details */}
-                {selectedEvent.source === 'wiedervorlage' && (
-                  <>
-                    {selectedEvent.ansprechpartner && (
-                      <div className="flex items-start gap-3">
-                        <User className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <div className="font-medium text-sm">Ansprechpartner</div>
-                          <div className="text-gray-600">{selectedEvent.ansprechpartner}</div>
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedEvent.unternehmen && (
-                      <div className="flex items-start gap-3">
-                        <Building2 className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <div className="font-medium text-sm">Unternehmen</div>
-                          <div className="text-gray-600">{selectedEvent.unternehmen}</div>
-                          {selectedEvent.ort && <div className="text-gray-500 text-sm">{selectedEvent.ort}</div>}
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedEvent.telefon && (
-                      <div className="flex items-start gap-3">
-                        <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <a href={`tel:${selectedEvent.telefon}`} className="text-primary hover:underline">
-                            {selectedEvent.telefon}
-                          </a>
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedEvent.kommentar && (
-                      <div className="pt-3 border-t">
-                        <div className="text-sm font-medium text-gray-700 mb-1">Notizen</div>
-                        <div className="text-sm text-gray-600 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg max-h-40 overflow-y-auto">{selectedEvent.kommentar}</div>
-                      </div>
-                    )}
-
-                    {selectedEvent.zugewiesenAn && (
-                      <div className="pt-3 border-t">
-                        <div className="text-sm text-gray-500">
-                          Zugewiesen an: <span className="font-medium">{selectedEvent.zugewiesenAn}</span>
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="pt-6">
-                      <a
-                        href="/opening"
-                        className="btn-primary w-full inline-flex items-center justify-center gap-2"
-                      >
-                        <PhoneCall className="w-4 h-4" />
-                        Zum Opening
-                      </a>
-                    </div>
-                  </>
-                )}
-
-              <div className="flex gap-3 mt-6 pt-6">
-                {selectedEvent.isMyClosing && (
-                  <button
-                    onClick={() => {
-                      setSelectedEvent(null)
-                      routerNavigate('/closing', { state: { openLeadId: selectedEvent.hotLeadId } })
-                    }}
-                    className="btn-primary flex-1 flex items-center justify-center gap-2"
-                  >
-                    <Building2 className="w-4 h-4" />
-                    Zum Closing
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
