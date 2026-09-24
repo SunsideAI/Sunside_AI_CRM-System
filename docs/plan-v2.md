@@ -503,3 +503,27 @@ Knopf stimmt, bei sechs Filtern ist Hinzufügen gesperrt, „Alle entfernen" ste
 her; im Opening geht der Filter an den Server, danach stehen dort nur noch passende Orte, vorher
 waren es andere. Regression grün: Spaltenwahl 7/7, Tabellen 12/12, Scrollen und Knopfoptik 15/15,
 Konsistenz 47/47, Pools 15/15. Die Testeinstellungen sind danach wieder entfernt.
+
+### Nachtrag: Land, Kontaktiert und das Merken der Filter
+
+- **Land** fehlte im Filter und ist ergänzt (Opening), dazu **Kontaktiert** (Ja/Nein). In der
+  Datenbank stehen die vollen Namen „Deutschland", „Österreich", „Schweiz" — die Vorschlagsliste
+  bietet genau diese an.
+- Im Opening werden nur Felder angeboten, die der Server auch beantworten kann. „Letzte Aktivität"
+  und „Zuständig" stehen dort nicht zur Wahl: Ein Filter, der still nichts tut, ist schlimmer als
+  keiner.
+- **Gemerkt wird bis zur Änderung.** Filter und Spalten liegen in `users.preferences`; nach dem
+  Neuladen geht der gespeicherte Filter wieder in die Abfrage und steht unverändert im Panel.
+
+Dabei behoben: Im Opening konnte eine verspätete Antwort einer älteren Abfrage das gerade
+gefilterte Ergebnis überschreiben. Jeder Ladelauf zählt jetzt mit, und nur der jüngste darf
+schreiben; Ansicht und Filter werden beim Laden frisch gelesen statt aus der Fassung von vorhin.
+
+**Nachweis:** 8/8 (Land im Filter, nur serverfähige Felder, Land filtert nachweislich, Filter
+überlebt das Neuladen in Abfrage und Panel, Setting nach Seitenwechsel), dazu Filter 10/10,
+Spalten 7/7, Tabellen 12/12, Konsistenz 47/47.
+
+**Wichtiger Befund am Rande:** Mehrere Dateien lagen im Repository **abgeschnitten** — `leads.js`
+endete mitten im Code, ebenso `SetterUebergabe.jsx` und `UebergabeFelder.jsx`. Ursache ist die
+iCloud-Auslagerung auf dem Desktop: Beim Committen wurde nur der geladene Teil erfasst. Der
+vollständige Stand ist wiederhergestellt; vor jedem Push gehört ein Blick auf `git diff HEAD`.
