@@ -551,3 +551,18 @@ Arbeitsbereich:
 Termin mit Zeitraum und Verlauf stehen drin, keine Dokumentationsmaske und kein Auswahlfeld mehr,
 Fußleiste mit genau einer gefüllten Aktion, keine Fehler in der Konsole. Regression: Pools 15/15,
 Konsistenz 47/47, Setting-Seiten 15/15, Pool-Kasten über dem Kalender unverändert.
+
+### Nachtrag: ruhige Liste beim Filtern
+
+Beim Einstellen eines Filters sprang die Seite zweimal: Der Knopf „Filter" wurde breiter, sobald
+der Speicher-Spinner darin auftauchte, und im Opening ersetzte ein großer Ladebalken kurz die
+ganze Tabelle.
+
+- Die Knöpfe „Filter" und „Spalten" haben jetzt eine feste Mindestbreite und zeigen keinen
+  Spinner mehr; dass gerade gespeichert wird, steht still in `aria-busy`.
+- Beim Nachladen bleibt die Liste stehen und blendet nur leicht ab (200 ms). Den großen Spinner
+  gibt es nur noch, solange überhaupt nichts geladen ist — in Opening, Setting und Closing gleich.
+
+**Nachweis:** 6/6 — während des Tippens im Filter gemessen: Die Breite des Knopfs ändert sich
+nicht, der Tabellenkopf bleibt auf derselben Höhe, und die Tabelle verschwindet zwischendurch
+nicht. Regression: Filter 10/10, Spalten 7/7, Tabellen 12/12, Scrollen 15/15, Konsistenz 47/47.
