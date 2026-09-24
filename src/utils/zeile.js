@@ -113,3 +113,25 @@ export function sortierwert(zeile, spalte) {
     default: return String(wert).toLowerCase()
   }
 }
+
+/**
+ * Zeilen nach einer Spalte sortieren. Leeres steht immer hinten, egal in
+ * welcher Richtung — sonst füllt eine Spalte voller Lücken den Anfang.
+ *
+ * Sortiert wird über die ganze Liste, nicht nur über die sichtbare Seite:
+ * Eine Sortierung, die bei Zeile zehn aufhört, ist keine.
+ */
+export function sortiere(zeilen, spalte, ab = false) {
+  if (!spalte) return zeilen
+  const richtung = ab ? -1 : 1
+  return [...zeilen].sort((a, b) => {
+    const x = sortierwert(a, spalte)
+    const y = sortierwert(b, spalte)
+    if (x === null && y === null) return 0
+    if (x === null) return 1
+    if (y === null) return -1
+    if (x < y) return -1 * richtung
+    if (x > y) return 1 * richtung
+    return 0
+  })
+}

@@ -269,7 +269,7 @@ export async function handler(event) {
       // Löst das URL-Limit-Problem bei .in('id', [...1200 UUIDs])
       // Mit eigenen Filtern geht es ueber die normale Abfrage: Die SQL-Funktion
       // kennt nur die fuenf festen Filter von frueher.
-      if (needsUserFilter && userId && eigeneFilter.length === 0) {
+      if (needsUserFilter && userId && eigeneFilter.length === 0 && !params.sort) {
         console.log('[Leads] RPC path - userId:', userId, 'airtableId:', airtableId, 'userName:', userName)
 
         let effectiveUserId = userId
@@ -436,7 +436,7 @@ export async function handler(event) {
 
       // Eigene Leads: ueber die Zuweisungstabelle verknuepft. Eine Liste mit
       // tausend IDs in der URL sprengt deren Laenge - ein Join nicht.
-      if (needsUserFilter && userId && eigeneFilter.length > 0) {
+      if (needsUserFilter && userId && (eigeneFilter.length > 0 || params.sort)) {
         query = supabase
           .from('leads')
           .select('*, lead_assignments!inner(user_id)', { count: 'exact' })
@@ -461,11 +461,16 @@ export async function handler(event) {
       }
 
       // Sortierung und Pagination
+      //
+      // Sortiert wird auf dem Server: Die Seite kennt nur 50 der 28.853 Leads,
+      // eine Sortierung im Browser waere also eine Sortierung der Seite.
       const pageSize = 50
       const offsetNum = parseInt(offset) || 0
+      const sortSpalte = SPALTE_IN_DB[params.sort] || 'unternehmensname'
+      const aufsteigend = params.dir !== 'ab'
 
       query = query
-        .order('unternehmensname', { ascending: true })
+        .order(sortSpalte, { ascending: aufsteigend, nullsFirst: false })
         .range(offsetNum, offsetNum + pageSize - 1)
 
       const { data: leadsData, error, count } = await query

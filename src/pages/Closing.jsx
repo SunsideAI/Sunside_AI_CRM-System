@@ -29,8 +29,8 @@ import SpaltenWahl from '../components/SpaltenWahl'
 import FilterWahl from '../components/FilterWahl'
 import useTabelle from '../hooks/useTabelle'
 import { filtern } from '../../shared/filter.js'
-import { zeileAusLead } from '../utils/zeile'
-import { standardSpalten } from '../../shared/spalten.js'
+import { zeileAusLead, sortiere } from '../utils/zeile'
+import { standardSpalten, spaltenAus } from '../../shared/spalten.js'
 import { Angabe, Angaben } from '../components/Formular'
 
 // Der Termin, der den Closer angeht.
@@ -170,6 +170,8 @@ function Closing() {
   // im Setting, damit dieselbe Maske überall gleich streng ist.
   const [mailFehlt, setMailFehlt] = useState(false)
   const tabelle = useTabelle('closing')
+  // Sortiert wird über die ganze Liste, nicht nur über die sichtbare Seite.
+  const [sortierung, setSortierung] = useState({ spalte: null, ab: false })
   const [editData, setEditData] = useState({})
   const [saving, setSaving] = useState(false)
   const [refreshing, setRefreshing] = useState(false)
@@ -968,7 +970,12 @@ function Closing() {
   // Erst in Zeilen übersetzen, dann die eigenen Filter des Benutzers - sie
   // arbeiten auf denselben Namen wie die Spalten.
   const alleZeilen = filteredLeads.map(l => zeileAusLead('closing', l))
-  const gefilterteZeilen = filtern(alleZeilen, tabelle.filter, 'closing')
+  const gefilterteZeilen = (() => {
+    const gefiltert = filtern(alleZeilen, tabelle.filter, 'closing')
+    const spalte = spaltenAus('closing', tabelle.spalten)
+      .find(x => x.schluessel === sortierung.spalte)
+    return spalte ? sortiere(gefiltert, spalte, sortierung.ab) : gefiltert
+  })()
   const totalPages = Math.max(1, Math.ceil(gefilterteZeilen.length / LEADS_PER_PAGE))
   const safeCurrentPage = Math.min(currentPage, totalPages)
   const startIndex = (safeCurrentPage - 1) * LEADS_PER_PAGE
@@ -1823,6 +1830,9 @@ function Closing() {
               <LeadTabelle
                 stufe="closing"
                 zeilen={paginatedLeads}
+                sortierung={sortierung}
+                onSortierung={(spalte) => { setCurrentPage(1); setSortierung(s =>
+                  s.spalte === spalte ? { spalte, ab: !s.ab } : { spalte, ab: false }) }}
                 auswahl={tabelle.spalten
                   || (isAdmin() && viewMode === 'all'
                     ? [...standardSpalten('closing'), 'closer']

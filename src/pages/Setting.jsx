@@ -21,7 +21,8 @@ import SpaltenWahl from '../components/SpaltenWahl'
 import FilterWahl from '../components/FilterWahl'
 import useTabelle from '../hooks/useTabelle'
 import { filtern } from '../../shared/filter.js'
-import { zeileAusLead } from '../utils/zeile'
+import { zeileAusLead, sortiere } from '../utils/zeile'
+import { spaltenAus } from '../../shared/spalten.js'
 
 // Die Arbeitsfläche des Setters — aufgebaut wie Opening und Closing.
 //
@@ -72,6 +73,9 @@ function Setting() {
   // die Hauptaktion, und „Speichern" für die Kontaktdaten tritt zurück.
   const [setterHauptaktion, setSetterHauptaktion] = useState(false)
   const tabelle = useTabelle('setting')
+  // Sortiert wird über die ganze Liste, nicht nur über die zehn sichtbaren
+  // Zeilen - sonst wäre es keine Sortierung, sondern ein Umsortieren der Seite.
+  const [sortierung, setSortierung] = useState({ spalte: null, ab: false })
   // 'meine' oder 'pool' — dieselbe Umschaltung wie im Closing. Der Pool war
   // vorher ein Block ueber der Liste; als eigene Ansicht ist er dort, wo man
   // ihn sucht, und die Zahl daneben sagt, ob sich das Hinsehen lohnt.
@@ -305,7 +309,12 @@ function Setting() {
   // Erst in Zeilen übersetzen, dann die eigenen Filter des Benutzers - sie
   // arbeiten auf denselben Namen wie die Spalten.
   const alleZeilen = sichtbar.map(l => zeileAusLead('setting', l))
-  const gefilterteZeilen = filtern(alleZeilen, tabelle.filter, 'setting')
+  const gefilterteZeilen = (() => {
+    const gefiltert = filtern(alleZeilen, tabelle.filter, 'setting')
+    const spalte = spaltenAus('setting', tabelle.spalten)
+      .find(x => x.schluessel === sortierung.spalte)
+    return spalte ? sortiere(gefiltert, spalte, sortierung.ab) : gefiltert
+  })()
 
   // Blättern wie im Closing: Seite begrenzen, damit ein Filterwechsel nicht
   // auf einer Seite landet, die es nicht mehr gibt.
@@ -519,6 +528,9 @@ function Setting() {
             stufe="setting"
             auswahl={tabelle.spalten}
             zeilen={gefiltert}
+            sortierung={sortierung}
+            onSortierung={(spalte) => { setSeite(1); setSortierung(s =>
+              s.spalte === spalte ? { spalte, ab: !s.ab } : { spalte, ab: false }) }}
             badgeFarbe={(_, z) => z.statusWert === STATUS.BERATUNG_GEFUEHRT
               ? 'bg-success-container text-success'
               : [STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(z.statusWert)

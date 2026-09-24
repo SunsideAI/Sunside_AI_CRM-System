@@ -25,7 +25,8 @@ import SpaltenWahl from '../components/SpaltenWahl'
 import FilterWahl from '../components/FilterWahl'
 import useTabelle from '../hooks/useTabelle'
 import { zeileAusLead } from '../utils/zeile'
-import { standardSpalten } from '../../shared/spalten.js'
+import { standardSpalten, spaltenFuer } from '../../shared/spalten.js'
+import { SPALTE_IN_DB } from '../../shared/filter.js'
 import Verlauf from '../components/Verlauf'
 import EmailComposer from '../components/EmailComposer'
 import {
@@ -166,7 +167,9 @@ function Opening() {
   // Ansicht und Filter beim Laden immer frisch lesen: Ein Aufruf aus einer
   // älteren Fassung der Funktion (Debounce, später Effekt) holte sonst den
   // Stand von vorhin - und überschrieb damit das gerade Gefilterte.
-  const standRef = useRef({ viewMode: 'own', filter: [] })
+  const standRef = useRef({ viewMode: 'own', filter: [], sortierung: { spalte: null, ab: false } })
+  // Sortiert wird auf dem Server - im Browser lägen nur 50 von 28.853 Leads.
+  const [sortierung, setSortierung] = useState({ spalte: null, ab: false })
   const [kommentarOnlyMode, setKommentarOnlyMode] = useState(false) // Soft Lock: Nur Kommentare für Beratungsgespräch
   const [saving, setSaving] = useState(false)
   const [showTerminPicker, setShowTerminPicker] = useState(false)
@@ -213,7 +216,7 @@ function Opening() {
   const [offeneAnfrage, setOffeneAnfrage] = useState(null)
   const [anfrageError, setAnfrageError] = useState('')
 
-  useEffect(() => { standRef.current = { viewMode, filter: tabelle.filter } })
+  useEffect(() => { standRef.current = { viewMode, filter: tabelle.filter, sortierung } })
 
   // Leads laden
   //
@@ -223,7 +226,7 @@ function Opening() {
   // nur der jüngste darf schreiben.
   const loadLeads = useCallback(async (newOffset = null, addToHistory = false) => {
     const meinLauf = ++ladeLaufRef.current
-    const { viewMode: ansicht, filter: eigeneFilter } = standRef.current
+    const { viewMode: ansicht, filter: eigeneFilter, sortierung: sort } = standRef.current
     setLoading(true)
     setError('')
 
@@ -249,6 +252,10 @@ function Opening() {
         ['leer', 'nicht_leer'].includes(f.vergleich)
         || (f.wert !== undefined && f.wert !== null && String(f.wert).trim() !== ''))
       if (fertigeFilter.length) params.append('filter', JSON.stringify(fertigeFilter))
+      if (sort?.spalte) {
+        params.append('sort', sort.spalte)
+        params.append('dir', sort.ab ? 'ab' : 'auf')
+      }
 
       const response = await fetch(`/.netlify/functions/leads?${params.toString()}`)
       const data = await response.json()
@@ -276,14 +283,14 @@ function Opening() {
     } finally {
       setLoading(false)
     }
-  }, [user?.id, user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle, offset, tabelle.filter])
+  }, [user?.id, user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle, offset, tabelle.filter, sortierung])
 
   // Initial laden
   useEffect(() => {
     if (viewMode !== 'ebook') {
       loadLeads()
     }
-  }, [viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle, tabelle.filter])
+  }, [viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle, tabelle.filter, sortierung])
 
   // Filter-State in sessionStorage persistieren
   useEffect(() => {
@@ -1329,6 +1336,17 @@ function Opening() {
             badgeFarbe={(wert) => getErgebnisColor(wert)}
             leer="Keine Leads mit diesen Filterkriterien."
             onZeile={(z) => openLead(z.roh)}
+            sortierung={sortierung}
+            onSortierung={(spalte) => {
+              setOffset(null); setPageHistory([])
+              setSortierung(s => s.spalte === spalte ? { spalte, ab: !s.ab } : { spalte, ab: false })
+            }}
+            // Was der Server nicht kennt, lässt sich hier nicht sortieren -
+            // auch nicht die zusammengesetzten Felder (Ansprechpartner,
+            // Kontakt), für die es keine einzelne Spalte gibt.
+            nichtSortierbar={spaltenFuer('opening')
+              .map(x => x.schluessel)
+              .filter(k => !SPALTE_IN_DB[k])}
           />
           </div>
         )}

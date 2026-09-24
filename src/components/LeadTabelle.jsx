@@ -1,10 +1,10 @@
 import { useState, useMemo } from 'react'
 import {
   Phone, Mail, Video, CheckCircle2, Circle, User as UserIcon,
-  Calendar, AlertCircle, ChevronUp, ChevronDown, MessageSquare
+  Calendar, AlertCircle, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare
 } from 'lucide-react'
 import { spaltenAus } from '../../shared/spalten.js'
-import { sortierwert } from '../utils/zeile.js'
+import { sortiere } from '../utils/zeile.js'
 
 // Die Liste einer Stufe — eine Tabelle für Opening, Setting und Closing.
 //
@@ -152,31 +152,37 @@ function Zelle({ spalte, zeile, badgeFarbe }) {
  * @param badgeFarbe (wert, zeile) => Tailwind-Klassen für Status/Ergebnis
  * @param leer       Was steht da, wenn nichts gefunden wurde
  */
+/**
+ * @param sortierung   { spalte, ab } — wird sie übergeben, sortiert die Seite
+ *                     selbst (über alle Zeilen, nicht nur die sichtbaren) und
+ *                     bekommt Klicks über onSortierung gemeldet.
+ * @param onSortierung (spalte) => void
+ * @param nichtSortierbar  Schlüssel, nach denen sich hier nicht sortieren
+ *                     lässt (im Opening alles, was der Server nicht kennt).
+ */
 export default function LeadTabelle({
-  stufe, zeilen = [], auswahl = null, onZeile, badgeFarbe, leer = 'Nichts gefunden.'
+  stufe, zeilen = [], auswahl = null, onZeile, badgeFarbe, leer = 'Nichts gefunden.',
+  sortierung: vonAussen = null, onSortierung = null, nichtSortierbar = []
 }) {
-  const [sortierung, setSortierung] = useState({ spalte: null, ab: false })
+  const [eigene, setEigene] = useState({ spalte: null, ab: false })
+  const sortierung = vonAussen || eigene
   const spalten = useMemo(() => spaltenAus(stufe, auswahl), [stufe, auswahl])
 
+  // Sortiert die Seite selbst (kontrolliert), bleibt die Liste hier, wie sie
+  // kommt - sonst würde zweimal sortiert.
   const sortiert = useMemo(() => {
-    const s = spalten.find(x => x.schluessel === sortierung.spalte)
-    if (!s) return zeilen
-    const richtung = sortierung.ab ? -1 : 1
-    return [...zeilen].sort((a, b) => {
-      const x = sortierwert(a, s)
-      const y = sortierwert(b, s)
-      // Leeres steht immer hinten, egal in welcher Richtung.
-      if (x === null && y === null) return 0
-      if (x === null) return 1
-      if (y === null) return -1
-      if (x < y) return -1 * richtung
-      if (x > y) return 1 * richtung
-      return 0
-    })
-  }, [zeilen, spalten, sortierung])
+    if (vonAussen) return zeilen
+    const s = spalten.find(x => x.schluessel === eigene.spalte)
+    return s ? sortiere(zeilen, s, eigene.ab) : zeilen
+  }, [zeilen, spalten, eigene, vonAussen])
 
-  const umschalten = (schluessel) => setSortierung(s =>
-    s.spalte === schluessel ? { spalte: schluessel, ab: !s.ab } : { spalte: schluessel, ab: false })
+  const umschalten = (schluessel) => {
+    if (nichtSortierbar.includes(schluessel)) return
+    if (onSortierung) { onSortierung(schluessel); return }
+    setEigene(s => s.spalte === schluessel
+      ? { spalte: schluessel, ab: !s.ab }
+      : { spalte: schluessel, ab: false })
+  }
 
   if (!zeilen.length) {
     return (
@@ -223,17 +229,26 @@ export default function LeadTabelle({
                 <th
                   key={s.schluessel}
                   onClick={() => umschalten(s.schluessel)}
+                  title={nichtSortierbar.includes(s.schluessel)
+                    ? 'Nach dieser Spalte lässt sich hier nicht sortieren'
+                    : 'Sortieren — noch ein Klick dreht die Richtung'}
                   className={`px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant
-                              uppercase tracking-wider cursor-pointer select-none
-                              hover:text-on-surface ${AB[s.ab] || ''}
+                              uppercase tracking-wider select-none group ${AB[s.ab] || ''}
+                              ${nichtSortierbar.includes(s.schluessel)
+                                ? 'cursor-default' : 'cursor-pointer hover:text-on-surface'}
                               ${s.fest ? `${HAFTEND[i] || ''} bg-surface-container` : ''}`}
                 >
                   <span className="inline-flex items-center gap-1">
                     {s.name}
-                    {sortierung.spalte === s.schluessel && (
+                    {/* Das Doppelpfeilchen sagt: Hier lässt sich sortieren. Beim
+                        aktiven Feld zeigt der Pfeil die Richtung. */}
+                    {sortierung.spalte === s.schluessel ? (
                       sortierung.ab
-                        ? <ChevronDown className="w-3.5 h-3.5" />
-                        : <ChevronUp className="w-3.5 h-3.5" />
+                        ? <ChevronDown className="w-3.5 h-3.5 text-primary" />
+                        : <ChevronUp className="w-3.5 h-3.5 text-primary" />
+                    ) : !nichtSortierbar.includes(s.schluessel) && (
+                      <ChevronsUpDown className="w-3.5 h-3.5 text-outline opacity-0
+                                                 group-hover:opacity-100 transition-opacity" />
                     )}
                   </span>
                 </th>
