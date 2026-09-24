@@ -514,6 +514,7 @@ function Setting() {
           </div>
         ) : (
           <>
+          <div className={`transition-opacity duration-200 ${laedt ? 'opacity-50' : ''}`}>
           <LeadTabelle
             stufe="setting"
             auswahl={tabelle.spalten}
@@ -528,6 +529,7 @@ function Setting() {
               bearbeitenAbbrechen()
             }}
           />
+          </div>
 
           {gefilterteZeilen.length > PRO_SEITE && (
             <div className="px-4 md:px-6 py-3 md:py-4 bg-surface-container/50 flex items-center justify-between">

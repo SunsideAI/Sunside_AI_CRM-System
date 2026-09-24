@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { GripVertical, X, Plus, RotateCcw, Loader2 } from 'lucide-react'
+import { GripVertical, X, Plus, RotateCcw } from 'lucide-react'
 import { spaltenFuer, standardSpalten } from '../../shared/spalten.js'
 
 // Welche Spalten stehen in meiner Liste, und in welcher Reihenfolge?
@@ -51,12 +51,14 @@ export default function SpaltenWahl({ stufe, auswahl, onAendern, speichert = fal
 
   return (
     <div className="relative" ref={kasten}>
+      {/* Gleiche Regel wie beim Filter-Knopf: feste Breite, kein Spinner,
+          der das Layout verschiebt. */}
       <button
         type="button"
         onClick={() => setOffen(o => !o)}
-        className="filter-knopf"
+        aria-busy={speichert}
+        className="filter-knopf min-w-[7rem] justify-start"
       >
-        {speichert && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
         Spalten
       </button>
 

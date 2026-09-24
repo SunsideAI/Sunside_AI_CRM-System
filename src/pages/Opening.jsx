@@ -1298,7 +1298,11 @@ function Opening() {
           lang - und der Scrollbalken verhaelt sich in jedem Tab anders. */}
       {viewMode !== 'ebook' && (
       <div className="card-elevated overflow-hidden min-h-[600px]">
-        {loading ? (
+        {/* Beim Nachladen bleibt die Liste stehen und blendet nur ab. Vorher
+            sprang die Seite bei jeder Filteränderung: Tabelle weg, Spinner da,
+            Tabelle wieder da. Den großen Spinner gibt es nur, solange noch gar
+            nichts geladen ist. */}
+        {loading && leads.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16">
             <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
             <p className="text-on-surface-variant">Leads werden geladen...</p>
@@ -1314,6 +1318,7 @@ function Opening() {
             </p>
           </div>
         ) : (
+          <div className={`transition-opacity duration-200 ${loading ? 'opacity-50' : ''}`}>
           <LeadTabelle
             stufe="opening"
             zeilen={leads.map(l => zeileAusLead('opening', l))}
@@ -1325,6 +1330,7 @@ function Opening() {
             leer="Keine Leads mit diesen Filterkriterien."
             onZeile={(z) => openLead(z.roh)}
           />
+          </div>
         )}
 
         {/* Blättern: Die Leads kommen seitenweise vom Server, eine Gesamtzahl

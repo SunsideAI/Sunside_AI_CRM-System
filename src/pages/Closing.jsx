@@ -1790,7 +1790,8 @@ function Closing() {
       {/* Lead-Liste */}
       <div className="card-elevated overflow-hidden min-h-[600px]">
         <div>
-          {loading ? (
+          {/* Beim Nachladen bleibt die Liste stehen - sonst springt die Seite. */}
+          {loading && paginatedLeads.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
               <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
               <p className="text-on-surface-variant">Leads werden geladen...</p>
@@ -1818,6 +1819,7 @@ function Closing() {
             </div>
           ) : (
             <>
+              <div className={`transition-opacity duration-200 ${loading ? 'opacity-50' : ''}`}>
               <LeadTabelle
                 stufe="closing"
                 zeilen={paginatedLeads}
@@ -1829,6 +1831,7 @@ function Closing() {
                 leer="Keine Leads mit diesen Filterkriterien."
                 onZeile={(z) => openModal(z.roh)}
               />
+              </div>
 
               {/* Pagination - shared for both views */}
               {gefilterteZeilen.length > LEADS_PER_PAGE && (

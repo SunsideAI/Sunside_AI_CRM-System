@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useId } from 'react'
-import { Plus, X, Loader2 } from 'lucide-react'
+import { Plus, X } from 'lucide-react'
 import { filterFelder, vergleicheFuer, VERGLEICHE, MAX_FILTER } from '../../shared/filter.js'
 
 // Filter bauen: Feld, Vergleich, Wert — und davon bis zu sechs.
@@ -68,8 +68,15 @@ export default function FilterWahl({ stufe, filter = [], onAendern, zeilen = [],
 
   return (
     <div className="relative" ref={kasten}>
-      <button type="button" onClick={() => setOffen(o => !o)} className="filter-knopf">
-        {speichert && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+      {/* Der Knopf hält seine Breite: Ein Spinner, der beim Speichern
+          auftaucht, schiebt sonst die ganze Zeile hin und her. Dass gerade
+          geschrieben wird, zeigt er still über aria-busy. */}
+      <button
+        type="button"
+        onClick={() => setOffen(o => !o)}
+        aria-busy={speichert}
+        className="filter-knopf min-w-[7.5rem] justify-start"
+      >
         Filter{filter.length ? ` · ${filter.length}` : ''}
       </button>
 
