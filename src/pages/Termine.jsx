@@ -666,16 +666,48 @@ function Termine() {
             ? new Date(selectedEvent.start).toLocaleString('de-DE', {
                 weekday: 'long', day: '2-digit', month: '2-digit',
                 hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
-              }) + ' Uhr'
+              })
+              + (selectedEvent.end
+                ? ' – ' + new Date(selectedEvent.end).toLocaleTimeString('de-DE', {
+                    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
+                  })
+                : '')
+              + ' Uhr'
             : null,
           art: selectedEvent.source === 'wiedervorlage'
             ? 'Wiedervorlage, telefonisch'
             : (selectedEvent.terminart || 'Telefonisch'),
           link: selectedEvent.lead?.meeting_link,
-          zusatz: selectedEvent.source === 'beratungsgespraech' && !selectedEvent.closerName && (
-            <p className="text-body-sm text-on-surface-variant">
-              Für das Abschlussgespräch ist noch kein Closer eingeteilt.
-            </p>
+          // Die Kennzeichen aus der Kalenderfarbe, damit die Schublade
+          // dasselbe sagt wie der Eintrag im Raster.
+          zusatz: (
+            <div className="flex flex-wrap gap-2">
+              {selectedEvent.isMyClosing && (
+                <span className="px-2.5 py-1 rounded-full text-label-sm bg-success-container text-success">
+                  Mein Closing
+                </span>
+              )}
+              {selectedEvent.isMySetting && (
+                <span className="px-2.5 py-1 rounded-full text-label-sm bg-secondary-container text-primary">
+                  Mein Beratungsgespräch
+                </span>
+              )}
+              {selectedEvent.isMyBooking && !selectedEvent.isMyClosing && !selectedEvent.isMySetting && (
+                <span className="px-2.5 py-1 rounded-full text-label-sm bg-primary-fixed text-primary">
+                  Von mir gebucht
+                </span>
+              )}
+              {selectedEvent.source === 'beratungsgespraech' && !selectedEvent.closerName && (
+                <span className="px-2.5 py-1 rounded-full text-label-sm bg-surface-container text-on-surface-variant">
+                  Abschlussgespräch noch ohne Closer
+                </span>
+              )}
+              {selectedEvent.zugewiesenAn && (
+                <span className="px-2.5 py-1 rounded-full text-label-sm bg-surface-container text-on-surface-variant">
+                  Zugewiesen an {selectedEvent.zugewiesenAn}
+                </span>
+              )}
+            </div>
           )
         } : null}
         verlauf={selectedEvent ? {
