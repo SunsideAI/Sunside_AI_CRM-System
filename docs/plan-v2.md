@@ -527,3 +527,27 @@ Spalten 7/7, Tabellen 12/12, Konsistenz 47/47.
 endete mitten im Code, ebenso `SetterUebergabe.jsx` und `UebergabeFelder.jsx`. Ursache ist die
 iCloud-Auslagerung auf dem Desktop: Beim Committen wurde nur der geladene Teil erfasst. Der
 vollständige Stand ist wiederhergestellt; vor jedem Push gehört ein Blick auf `git diff HEAD`.
+
+## Kalender: informieren statt dokumentieren — 24.09.
+
+Die Seitenansicht im Kalender enthielt die komplette Setter-Maske: Ausgang wählen, zwölf
+Übergabefelder, Zwischenstand speichern. Der Kalender war damit ein zweites Setting — mit dem
+Unterschied, dass die Maske dort seit dem Umbau der Schubladen nicht mehr in eine Fußleiste
+hängen konnte und entsprechend zerrissen aussah.
+
+Jetzt ist die Seitenansicht dieselbe Schublade wie überall (`LeadSchublade`), nur ohne
+Arbeitsbereich:
+
+- **Kontaktdaten** mit Ansprechpartner, Status, Telefon, E-Mail, Ort und den Rollen
+  (Opener · Setter · Closer)
+- **Termin** mit Tag, Zeitraum und Art, dazu die Kennzeichen aus dem Kalenderraster
+  („Mein Closing", „Mein Beratungsgespräch", „Von mir gebucht", „Abschlussgespräch noch ohne
+  Closer", bei Wiedervorlagen „Zugewiesen an …")
+- **Verlauf**
+- Unten: „E-Mail an den Kontakt" und — gefüllt — „Im Setting öffnen" bzw. „Im Closing öffnen",
+  bei Wiedervorlagen „Im Opening öffnen". Gearbeitet wird in der Stufe, zu der der Termin gehört.
+
+**Nachweis (Playwright, Vorschau):** 8/8 — Termin im Raster öffnet die Schublade, Kontaktdaten,
+Termin mit Zeitraum und Verlauf stehen drin, keine Dokumentationsmaske und kein Auswahlfeld mehr,
+Fußleiste mit genau einer gefüllten Aktion, keine Fehler in der Konsole. Regression: Pools 15/15,
+Konsistenz 47/47, Setting-Seiten 15/15, Pool-Kasten über dem Kalender unverändert.
