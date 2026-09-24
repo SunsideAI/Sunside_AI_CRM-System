@@ -19,7 +19,13 @@ import { filterFelder, vergleicheFuer, VERGLEICHE, MAX_FILTER } from '../../shar
  * @param zeilen    für Wertvorschläge aus dem, was gerade in der Liste steht
  * @param speichert Spinner, solange geschrieben wird
  */
-export default function FilterWahl({ stufe, filter = [], onAendern, zeilen = [], speichert = false }) {
+export default function FilterWahl({
+  stufe, filter = [], onAendern, zeilen = [], speichert = false,
+  // Liegt die ganze Liste im Browser (Setting, Closing), lässt sich sagen,
+  // welche Felder gerade überhaupt Werte tragen. Im Opening sind nur 50 von
+  // 28.853 Leads geladen - dort wäre so eine Aussage schlicht falsch.
+  vollstaendig = false
+}) {
   const [offen, setOffen] = useState(false)
   const kasten = useRef(null)
   const listenId = useId()
@@ -33,6 +39,14 @@ export default function FilterWahl({ stufe, filter = [], onAendern, zeilen = [],
 
   const felder = filterFelder(stufe)
   const spalteVon = (schluessel) => felder.find(f => f.schluessel === schluessel)
+
+  /** Trägt dieses Feld in der aktuellen Liste irgendeinen Wert? */
+  const hatWerte = (schluessel) => zeilen.some(z => {
+    const w = z?.[schluessel]
+    if (w === null || w === undefined || w === '') return false
+    if (typeof w === 'object') return Object.values(w).some(x => x !== null && x !== undefined && x !== '')
+    return true
+  })
 
   const aendern = (i, teil) => {
     const neu = filter.map((f, x) => x === i ? { ...f, ...teil } : f)
@@ -100,8 +114,12 @@ export default function FilterWahl({ stufe, filter = [], onAendern, zeilen = [],
                   onChange={(e) => aendern(i, { feld: e.target.value })}
                   className="select-field w-auto min-w-[8.5rem] text-body-sm py-2"
                 >
+                  {/* „ohne Werte" sagt, was sonst erst der leere Filter zeigt:
+                      Dieses Feld ist in der Liste nirgends gefüllt. */}
                   {felder.map(s => (
-                    <option key={s.schluessel} value={s.schluessel}>{s.name}</option>
+                    <option key={s.schluessel} value={s.schluessel}>
+                      {s.name}{vollstaendig && !hatWerte(s.schluessel) ? ' — ohne Werte' : ''}
+                    </option>
                   ))}
                 </select>
 

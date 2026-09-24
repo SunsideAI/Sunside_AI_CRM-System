@@ -34,7 +34,10 @@ export const STUFE = {
 // steht sie immer.
 export const SPALTEN = [
   // ── Das Gerüst: steht überall und lässt sich nicht abwählen ──────────────
-  { schluessel: 'art', name: 'Art', art: 'symbol', fest: true,
+  // Das Symbol links fasst zusammen, was daneben in Worten steht (Terminart
+  // bzw. Kontaktiert). Filtern lässt sich darüber nicht - es trägt keinen
+  // eigenen Wert, sondern nur ein Icon.
+  { schluessel: 'art', name: 'Art', art: 'symbol', fest: true, ohneFilter: true,
     stufen: ['opening', 'setting', 'closing'] },
   { schluessel: 'unternehmen', name: 'Unternehmen', art: 'titel', fest: true,
     stufen: ['opening', 'setting', 'closing'] },
@@ -55,8 +58,8 @@ export const SPALTEN = [
     stufen: ['opening'], standard: ['opening'] },
   { schluessel: 'status', name: 'Status', art: 'badge',
     stufen: ['setting', 'closing'], standard: ['setting', 'closing'] },
-  { schluessel: 'zustaendig', name: 'Zuständig', art: 'person', ab: 'lg',
-    stufen: ['opening', 'setting', 'closing'], standard: ['closing'] },
+  { schluessel: 'zustaendig', name: 'Vertriebler', art: 'person', ab: 'lg',
+    stufen: ['opening'] },
   { schluessel: 'aktivitaet', name: 'Letzte Aktivität', art: 'verlauf', ab: 'xl',
     stufen: ['opening'], standard: ['opening'] },
 
@@ -77,7 +80,7 @@ export const SPALTEN = [
   { schluessel: 'setter', name: 'Setter', art: 'person', ab: 'lg',
     stufen: ['setting', 'closing'], standard: ['closing'] },
   { schluessel: 'closer', name: 'Closer', art: 'person', ab: 'lg',
-    stufen: ['closing'] },
+    stufen: ['closing'], standard: ['closing'] },
 
   // ── Wählbar: Website-Zahlen ──────────────────────────────────────────────
   { schluessel: 'besucher', name: 'Besucher/Monat', art: 'zahl', ab: 'lg',

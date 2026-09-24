@@ -1780,7 +1780,7 @@ function Closing() {
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <FilterWahl stufe="closing" filter={tabelle.filter}
                         onAendern={tabelle.filterAendern} zeilen={alleZeilen}
-                        speichert={tabelle.speichert} />
+                        speichert={tabelle.speichert} vollstaendig />
             <SpaltenWahl stufe="closing" auswahl={tabelle.spalten}
                          onAendern={tabelle.spaltenAendern} speichert={tabelle.speichert} />
           </div>

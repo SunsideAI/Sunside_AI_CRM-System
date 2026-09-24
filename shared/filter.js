@@ -69,9 +69,15 @@ export const SPALTE_IN_DB = {
 // angeboten - ein Filter, der still nichts tut, ist schlimmer als keiner.
 const IM_OPENING = new Set([...Object.keys(SPALTE_IN_DB), 'ansprechpartner', 'kontakt'])
 
-/** Die Felder, nach denen sich in dieser Stufe filtern lässt. */
+/**
+ * Die Felder, nach denen sich in dieser Stufe filtern lässt.
+ *
+ * Draußen bleibt, was keinen eigenen Wert trägt: das Symbol „Art" (es zeigt
+ * nur, was unter Terminart bzw. Kontaktiert schon in Worten steht) und die
+ * letzte Aktivität (ein Textschnipsel aus dem Verlauf).
+ */
 export function filterFelder(stufe) {
-  const alle = spaltenFuer(stufe).filter(s => s.art !== 'verlauf')
+  const alle = spaltenFuer(stufe).filter(s => s.art !== 'verlauf' && !s.ohneFilter)
   return stufe === 'opening' ? alle.filter(s => IM_OPENING.has(s.schluessel)) : alle
 }
 
