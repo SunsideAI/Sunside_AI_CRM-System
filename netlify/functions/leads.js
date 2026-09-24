@@ -685,4 +685,22 @@ export async function handler(event) {
             ansprechpartnerVorname: data.ansprechpartner_vorname || '',
             ansprechpartnerNachname: data.ansprechpartner_nachname || ''
           }
-     
+        })
+      }
+
+    } catch (error) {
+      console.error('PATCH Lead Error:', error.message)
+      return {
+        statusCode: 500,
+        headers,
+        body: JSON.stringify({ error: error.message })
+      }
+    }
+  }
+
+  return {
+    statusCode: 405,
+    headers,
+    body: JSON.stringify({ error: 'Method not allowed' })
+  }
+}
