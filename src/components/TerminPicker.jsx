@@ -1,6 +1,6 @@
 import { STATUS } from '../../shared/status.js'
 import { UEBERGABE_1, uebergabePruefen, zielAbleiten, BRANCHE } from '../../shared/felder.js'
-import { istSetter, istLeitung } from '../../shared/rollen.js'
+import { istSetter, istCloser, istLeitung } from '../../shared/rollen.js'
 import UebergabeFelder from './UebergabeFelder'
 import { useState, useEffect, useRef } from 'react'
 import { Calendar, Clock, Loader2, Check, ChevronLeft, ChevronRight, Mail, Phone, Video, Users, User } from 'lucide-react'
@@ -120,7 +120,16 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
   // Wer den Termin legt, ist im neuen Prozess der Opener - nicht automatisch
   // auch der Setter. Nur wer die Setter-Rolle trägt, kann das Gespräch selbst
   // übernehmen; sonst geht es in den Setter-Pool.
-  const kannSelbstSetten = istSetter(userRoles) || istLeitung(userRoles)
+  // Beim Beratungsgespräch braucht es die Setter-Rolle, beim
+  // Abschlussgespräch die des Closers. Wer beides in einer Person ist, soll
+  // den Termin, den er gerade selbst legt, auch selbst halten dürfen - wer
+  // die Rolle nicht hat, sieht die Frage gar nicht erst, und der Server
+  // weist sie zusätzlich ab.
+  const fuerAbschluss = zweck === 'abschluss'
+  const kannSelbstHalten = fuerAbschluss
+    ? (istCloser(userRoles) || istLeitung(userRoles))
+    : (istSetter(userRoles) || istLeitung(userRoles))
+  const kannSelbstSetten = kannSelbstHalten
   const [setzeSelbst, setSetzeSelbst] = useState(false)
 
   // Calendly Event Types laden
@@ -379,7 +388,9 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
         onTerminBooked?.({
           start: selectedSlot.start,
           meetingLink,
-          terminart: selectedType === 'video' ? 'Video' : 'Telefonisch'
+          terminart: selectedType === 'video' ? 'Video' : 'Telefonisch',
+          // Der Aufrufer schreibt selbst - er braucht die Antwort mit.
+          selbstHalten: Boolean(kannSelbstHalten && setzeSelbst)
         })
         setBooking(false)
         return
@@ -1084,9 +1095,9 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             {selectedType === 'video' ? ' (Video)' : ' (Telefon)'}
           </p>
           
-          {/* Nur beim Beratungsgespräch: Wer bucht, kann es selbst halten.
-              Beim Abschlussgespräch entscheidet das der Closer-Pool. */}
-          {!isReschedule && !nurBuchen && kannSelbstSetten && (
+          {/* Wer bucht, kann das Gespräch selbst halten - sofern er die Rolle
+              dafür trägt. Ohne Haken geht es in den Pool der nächsten Stufe. */}
+          {!isReschedule && kannSelbstHalten && (
             <label className="flex items-start gap-2 p-3 bg-gray-50 rounded-lg text-sm cursor-pointer">
               <input
                 type="checkbox"
@@ -1095,9 +1106,12 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
                 className="mt-0.5 w-4 h-4 rounded text-primary focus:ring-primary"
               />
               <span className="text-gray-700">
-                Ich halte das Beratungsgespräch selbst
+                {fuerAbschluss
+                  ? 'Ich halte das Abschlussgespräch selbst'
+                  : 'Ich halte das Beratungsgespräch selbst'}
                 <span className="block text-xs text-gray-500">
-                  Ohne Haken geht der Termin in den Setter-Pool und wird dort besetzt.
+                  Ohne Haken geht der Termin in den {fuerAbschluss ? 'Closer' : 'Setter'}-Pool
+                  und wird dort besetzt.
                 </span>
               </span>
             </label>
@@ -1138,7 +1152,9 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
               ) : (
                 <>
                   <Calendar className="w-5 h-5 mr-2" />
-                  {knopfText || ((kannSelbstSetten && setzeSelbst)
+                  {(kannSelbstHalten && setzeSelbst && knopfText)
+                    ? knopfText.replace('an den Closer übergeben', 'selbst übernehmen')
+                    : knopfText || ((kannSelbstSetten && setzeSelbst)
                     ? 'Termin buchen und selbst übernehmen'
                     : 'Termin buchen und an den Setter-Pool geben')}
                 </>

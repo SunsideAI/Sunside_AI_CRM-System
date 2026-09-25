@@ -778,8 +778,16 @@ export async function handler(event) {
         if (!(await leadBeteiligt(supabase, angemeldet, originalLeadId))) {
           return verboten('Dieser Lead gehört nicht zu deinen', 'nicht_beteiligt')
         }
+        // Fremde Closer vergibt die Bewerbung. Sich selbst eintragen darf
+        // dagegen, wer die Closer-Rolle traegt - genau wie beim Setter. Wer
+        // Setter und Closer ist, soll das Abschlussgespraech nicht erst im
+        // Pool suchen muessen, das er gerade selbst gelegt hat.
         if (closerId || closerName) {
-          return verboten('Den Closer vergibt die Bewerbung, nicht das Buchen')
+          const selbstCloser = (closerId && closerId === angemeldet.id) ||
+            (!closerId && closerName && closerName === angemeldet.name)
+          if (!selbstCloser || !darf.closing(angemeldet)) {
+            return verboten('Einen fremden Closer vergibt die Bewerbung, nicht das Buchen')
+          }
         }
         if (setterId || setterName) {
           const selbst = (setterId && setterId === angemeldet.id) ||
@@ -1128,9 +1136,18 @@ export async function handler(event) {
       // Termins an die Stufe davor. Wer eine Zuteilung loescht, verschafft
       // sich keinen Vorteil; nur das Setzen bleibt dem Bewerbungsweg
       // vorbehalten.
+      // Sich selbst eintragen ist keine Zuteilung: Wer die Rolle traegt und
+      // den Kontakt ohnehin bearbeitet, darf den Schritt uebernehmen, den er
+      // gerade selbst vorbereitet hat. Fremde Namen bleiben dem Bewerbungsweg
+      // vorbehalten.
+      const selbstErlaubt = {
+        closerId: darf.closing(angemeldet),
+        setterId: darf.setting(angemeldet)
+      }
       for (const feld of ['closerId', 'setterId', 'openerId', 'reaktivierungBearbeiterId']) {
         const wert = fields[fieldMap[feld]]
-        if (wert !== undefined && wert !== null && !angemeldet.istAdmin) {
+        const setztSichSelbst = wert === angemeldet.id && selbstErlaubt[feld]
+        if (wert !== undefined && wert !== null && !angemeldet.istAdmin && !setztSichSelbst) {
           return {
             statusCode: 403,
             headers: corsHeaders,

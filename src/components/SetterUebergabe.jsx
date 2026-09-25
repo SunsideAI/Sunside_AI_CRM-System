@@ -9,6 +9,7 @@ import UebergabeFelder, { AnfragenBedarf, uebergabePruefen } from './UebergabeFe
 import FragenVorschlag from './FragenVorschlag'
 import RueckgabeKnopf from './RueckgabeKnopf'
 import TerminPicker from './TerminPicker'
+import { useAuth } from '../context/AuthContext'
 
 // Die Ansicht des Setters: Ausgang festhalten, dokumentieren, Abschlussgespräch
 // legen. Sie hängt am Termin und nicht in der Closing-Ansicht, weil der Setter
@@ -86,6 +87,7 @@ export default function SetterUebergabe({
   // im selben Zug mitgehen. Gibt false zurück, wenn etwas fehlt.
   vorSpeichern
 }) {
+  const { user: nutzer } = useAuth()
   const status = lead?.status
 
   const [werte, setWerte] = useState(() => startwerte(lead))
@@ -227,6 +229,10 @@ export default function SetterUebergabe({
       ...eigene(),
       termin_abschlussgespraech: new Date(gebucht.start).toISOString(),
       meeting_link_abschluss: gebucht.meetingLink || null,
+      // Hält der Setter das Abschlussgespräch selbst, trägt er sich gleich als
+      // Closer ein - sonst geht der Termin in den Closer-Pool. Die Rolle prüft
+      // der Terminwähler, und der Server prüft sie noch einmal.
+      ...(gebucht.selbstHalten ? { closerName: nutzer?.vor_nachname || nutzer?.name } : {}),
       status: STATUS.ABSCHLUSS_VEREINBART
     })
   }
