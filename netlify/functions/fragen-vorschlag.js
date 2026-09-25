@@ -20,7 +20,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { darf, verboten, hotLeadVerlangen } from './utils/zugriff.js'
-import { BRANCHE, ZIEL } from '../../shared/felder.js'
+import { BRANCHE } from '../../shared/felder.js'
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
 
@@ -55,9 +55,7 @@ function fallBeschreiben(lead) {
   const branche = lead.berufsgruppe === BRANCHE.ANDERE
     ? `andere Branche${lead.branche_andere ? ` (${lead.branche_andere})` : ''}`
     : lead.berufsgruppe || 'unbekannt'
-  const ziel = lead.ziel && lead.ziel !== ZIEL.OFFEN
-    ? lead.ziel
-    : (lead.ziele || []).filter(z => z !== ZIEL.OFFEN).join(', ') || 'noch nicht besprochen'
+  const ziel = lead.ziel || (lead.ziele || []).join(', ') || 'noch nicht besprochen'
   return [
     `Branche: ${branche}`,
     `Konkretes eigenes Vorhaben: ${lead.vorhaben === true ? 'ja' : 'nein'}`,

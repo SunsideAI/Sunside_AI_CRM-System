@@ -1529,8 +1529,8 @@ function Opening() {
                 // Beratungsgespräch.
                 <div className="space-y-4">
                   <div className="p-3 bg-success-container rounded-lg text-body-sm text-on-surface">
-                    Der Termin steht. Jetzt die Mail mit dem passenden Video hinterher,
-                    solange das Gespräch frisch ist. Bitte vor dem Senden anpassen.
+                    Der Termin steht. Jetzt die Mail mit dem passenden Testimonial-Video
+                    hinterher, solange das Gespräch frisch ist. Bitte vor dem Senden anpassen.
                   </div>
                   <EmailComposer
                     hotLeadId={segmentMail.hotLeadId}
@@ -1983,14 +1983,6 @@ function Opening() {
                   </div>
                 ) : (
                   <div className="w-full flex flex-col gap-3">
-                    {/* Warnung bei Beratungsgespräch ohne Termin */}
-                    {editMode && editForm.ergebnis === 'Beratungsgespräch' && (
-                      <div className="flex items-center p-3 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 text-sm">
-                        <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
-                        <span>Bitte buche zuerst einen Termin über den Button "Termin mit Setter buchen".</span>
-                      </div>
-                    )}
-                    
                     <div className="flex items-center justify-end gap-3">
                     {editMode ? (
                       <>

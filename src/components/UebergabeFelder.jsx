@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { HelpCircle, ChevronDown, ChevronRight } from 'lucide-react'
 import {
-  maske, uebergabePruefen, istSichtbar, istGate, beschriftung, svSprache,
+  maske, uebergabePruefen, istSichtbar, istGate, beschriftung, brancheSprache,
   noetigeAnfragen, ABSCHNITT_UNTERTITEL, ZIEL, AUSWAHL
 } from '../../shared/felder.js'
 
@@ -108,18 +108,15 @@ function Eingabe({ feld, wert, werte, setzen, fehlt, abgeschaltet }) {
           className={klasse('select-field')}
         >
           <option value="">Bitte wählen</option>
-          {optionen.map(o => <option key={o} value={o}>{svSprache(o, werte)}</option>)}
+          {optionen.map(o => <option key={o} value={o}>{brancheSprache(o, werte)}</option>)}
         </select>
       )
 
     case 'mehrfach': {
       const gewaehlt = Array.isArray(wert) ? wert : []
-      // „Noch nicht besprochen" schließt die anderen aus und umgekehrt.
-      const umschalten = (o) => {
-        if (gewaehlt.includes(o)) return setzen(s, gewaehlt.filter(x => x !== o))
-        if (o === ZIEL.OFFEN) return setzen(s, [ZIEL.OFFEN])
-        return setzen(s, gewaehlt.filter(x => x !== ZIEL.OFFEN).concat(o))
-      }
+      const umschalten = (o) => gewaehlt.includes(o)
+        ? setzen(s, gewaehlt.filter(x => x !== o))
+        : setzen(s, gewaehlt.concat(o))
       return (
         <div className={`space-y-1.5 ${fehlt ? 'p-2 rounded-lg border border-red-400 bg-red-50' : ''}`}>
           {optionen.map(o => (
@@ -130,7 +127,7 @@ function Eingabe({ feld, wert, werte, setzen, fehlt, abgeschaltet }) {
                 onChange={() => umschalten(o)}
                 className="w-4 h-4 rounded text-primary focus:ring-primary"
               />
-              <span>{svSprache(o, werte)}</span>
+              <span>{brancheSprache(o, werte)}</span>
             </label>
           ))}
         </div>
@@ -367,7 +364,7 @@ export function AnfragenBedarf({ werte }) {
   return (
     <div className="p-3 bg-primary-fixed/30 border border-primary-fixed-dim rounded-lg text-sm">
       <div className="text-gray-700">
-        {svSprache('Nötige Eigentümeranfragen pro Monat', werte)}: <strong>{proMonat.toLocaleString('de-DE')}</strong>
+        {brancheSprache('Nötige Eigentümeranfragen pro Monat', werte)}: <strong>{proMonat.toLocaleString('de-DE')}</strong>
         <span className="text-gray-500"> ({bereich})</span>
       </div>
       <div className="text-xs text-gray-500 mt-1">

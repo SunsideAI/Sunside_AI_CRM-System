@@ -48,8 +48,7 @@ export const VERSAND = {
 export const SEGMENT = {
   EIGENTUEMER: 'Mehr Eigentümer-Anfragen',
   KAEUFER:     'Mehr Kaufinteressenten',
-  ZEIT:        'Zeitersparnis und Entlastung',
-  OFFEN:       'Noch nicht besprochen'
+  ZEIT:        'Zeitersparnis und Entlastung'
 }
 
 /**
@@ -340,6 +339,10 @@ export function haekchenA(lead) {
 /**
  * Bewusstseinsstufe und Tiefe nach der Formel aus Teil A.
  * C sticht: Wer von sich aus nach Preis, Ablauf oder Start fragt, ist Stufe 5.
+ *
+ * Das Häkchen dafür ist im Erstanruf seit der Revision vom 25.09. gestrichen.
+ * Die Regel bleibt, damit Altkontakte ihre Stufe behalten; neue erreichen
+ * Stufe 5 nur noch, wenn das Feld anderswo gesetzt wird.
  */
 export function stufeUndTiefe(lead) {
   const a = haekchenA(lead)

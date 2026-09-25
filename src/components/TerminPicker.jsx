@@ -1073,8 +1073,9 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
               {eventTypes.length > 1 ? '5. Übergabe an den Setter' : 'Übergabe an den Setter'}
             </h4>
             <p className="text-xs text-gray-500 mb-4">
-              Diese Angaben steuern, welche Mail und welches Video der Kunde bekommt
-              und ob die Erinnerung vor dem Termin zugestellt werden kann.
+              Füll diese Felder direkt nach dem Anruf aus. Daraus wählt das System die
+              Mail mit dem passenden Video für den Makler. Der Setter sieht alles vor
+              dem Gespräch und muss nichts doppelt fragen.
             </p>
             <UebergabeFelder
               bereich={UEBERGABE_1}

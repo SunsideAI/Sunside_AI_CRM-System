@@ -5,7 +5,7 @@
 // steht nur die Regel: eine Empfehlung mit einer Zeile Begründung, und die
 // Zuordnung der Platzhalter zu den Feldern.
 
-import { BRANCHE, ZIEL, noetigeAnfragen } from './felder.js'
+import { BRANCHE, noetigeAnfragen } from './felder.js'
 import { segmentMailFassung, empfehlung as nachfassEmpfehlung, HOECHSTENS_VERSUCHE } from './mailstrecken.js'
 
 const SEGMENT_NAME = {
@@ -145,7 +145,7 @@ export function platzhalterWerte({ lead = {}, absender = '', links = {}, schlues
     'Gesprächsdatum': datum(lead.termin_abschlussgespraech || lead.termin_beratungsgespraech),
     'Region': ort,
     'Ort': ort,
-    'Ziel': lead.ziel && lead.ziel !== ZIEL.OFFEN ? lead.ziel : null
+    'Ziel': lead.ziel || null
   }
   return Object.fromEntries(Object.entries(werte).filter(([, w]) => w !== null && w !== ''))
 }

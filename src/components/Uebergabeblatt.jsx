@@ -1,5 +1,5 @@
 import {
-  FELDER, UEBERGABE_1, UEBERGABE_2, maske, uebergabePruefen, beschriftung, svSprache
+  FELDER, UEBERGABE_1, UEBERGABE_2, maske, uebergabePruefen, beschriftung, brancheSprache
 } from '../../shared/felder.js'
 
 // Was die Vorstufe aufgenommen hat, zum Lesen, nicht zum Ändern.
@@ -22,7 +22,7 @@ function Wert({ feld, wert, lead }) {
   if (feld.art === 'checkbox') return <>Ja</>
   if (feld.art === 'liste') return <>{wert.join(', ')}</>
   if (feld.art === 'mehrfach') {
-    return <>{wert.map(w => svSprache(w, lead) + (w === lead?.ziel_prioritaet ? ' (priorisiert)' : '')).join(', ')}</>
+    return <>{wert.map(w => brancheSprache(w, lead) + (w === lead?.ziel_prioritaet ? ' (priorisiert)' : '')).join(', ')}</>
   }
   if (feld.art === 'zahl') {
     const herkunft = lead?.zahlen_kennzeichen?.[feld.schluessel]
@@ -30,7 +30,7 @@ function Wert({ feld, wert, lead }) {
   }
   // Freitext steht wörtlich da, dafür wurde er wörtlich aufgenommen.
   if (feld.art === 'freitext') return <>„{String(wert)}"</>
-  return <>{svSprache(String(wert), lead)}</>
+  return <>{brancheSprache(String(wert), lead)}</>
 }
 
 function Block({ titel, bereich, lead }) {
@@ -101,7 +101,7 @@ export default function Uebergabeblatt({ lead, bereiche = [UEBERGABE_1, UEBERGAB
       {anfragen ? (
         <div className="p-3 bg-primary-fixed/30 border border-primary-fixed-dim rounded-lg">
           <div className="text-body-sm text-on-surface">
-            {svSprache('Nötige Eigentümeranfragen pro Monat', lead)}: <strong>{Number(anfragen).toLocaleString('de-DE')}</strong>
+            {brancheSprache('Nötige Eigentümeranfragen pro Monat', lead)}: <strong>{Number(anfragen).toLocaleString('de-DE')}</strong>
             {lead?.anfragen_bereich && (
               <span className="text-on-surface-variant"> ({lead.anfragen_bereich})</span>
             )}

@@ -26,14 +26,29 @@ export const BRANCHE = {
 export const ZIEL = {
   EIGENTUEMER: 'Mehr Eigentümer-Anfragen',
   KAEUFER: 'Mehr Kaufinteressenten',
-  ZEIT: 'Zeitersparnis und Entlastung',
-  OFFEN: 'Noch nicht besprochen'
+  ZEIT: 'Zeitersparnis und Entlastung'
+}
+
+/**
+ * Welche Ziele in welcher Branche zur Wahl stehen (Revision 25.09.).
+ *
+ * „Noch nicht besprochen" gibt es nicht mehr: Das Ziel entscheidet über Video
+ * und Mail, es muss im Erstanruf geklaert werden. Kaufinteressenten gibt es
+ * nur beim Makler - ein Sachverstaendiger vermittelt keine, und bei „andere"
+ * waere es geraten. Gespeichert wird in allen Branchen derselbe Wert; wie er
+ * heisst, sagt brancheSprache().
+ */
+export function zieleFuerBranche(branche) {
+  if (branche === BRANCHE.MAKLER || !branche) {
+    return [ZIEL.EIGENTUEMER, ZIEL.KAEUFER, ZIEL.ZEIT]
+  }
+  return [ZIEL.EIGENTUEMER, ZIEL.ZEIT]
 }
 
 /** Auswahllisten. */
 export const AUSWAHL = {
   berufsgruppe: [BRANCHE.MAKLER, BRANCHE.SV, BRANCHE.ANDERE],
-  ziel: [ZIEL.EIGENTUEMER, ZIEL.KAEUFER, ZIEL.ZEIT, ZIEL.OFFEN],
+  ziel: [ZIEL.EIGENTUEMER, ZIEL.KAEUFER, ZIEL.ZEIT],
   vorerfahrung: [
     'Anbieter beauftragt',
     'Eigenes Werkzeug im Einsatz',
@@ -61,19 +76,18 @@ export const AUSWAHL = {
 // ---------------------------------------------------------------------------
 
 const echteZiele = (werte) =>
-  (Array.isArray(werte?.ziele) ? werte.ziele : []).filter(z => z && z !== ZIEL.OFFEN)
+  (Array.isArray(werte?.ziele) ? werte.ziele : []).filter(Boolean)
 
 /**
  * Leitet aus der Mehrfachauswahl des Openers das Arbeits-Ziel ab.
  *
- *   ein Ziel genannt               -> dieses Ziel, gilt als priorisiert
- *   mehrere, eines priorisiert     -> das priorisierte
- *   mehrere ohne Vorrang           -> kein Arbeits-Ziel; der Setter fragt nach
- *   nur „Noch nicht besprochen"    -> „Noch nicht besprochen"
+ *   ein Ziel genannt            -> dieses Ziel, gilt als priorisiert
+ *   mehrere, eines priorisiert  -> das priorisierte
  *
- * `ziel` steuert Mail, Video und Zahlenblock. Bleibt es bei mehreren Zielen
- * ohne Vorrang leer, wählt der Opener die Mail von Hand, statt dass das System
- * eines der Ziele rät.
+ * `ziel` steuert Mail, Video und Zahlenblock. Bei mehreren Zielen ist das
+ * priorisierte deshalb Pflicht (Revision 25.09.) - vorher konnte der Opener
+ * die Frage offen lassen, und das System hatte nichts, woran es die Mail
+ * festmachen konnte.
  */
 export function zielAbleiten(werte) {
   const ziele = echteZiele(werte)
@@ -81,7 +95,6 @@ export function zielAbleiten(werte) {
   let ziel = null
   if (prio) ziel = prio
   else if (ziele.length === 1) ziel = ziele[0]
-  else if (ziele.length === 0 && (werte?.ziele || []).includes(ZIEL.OFFEN)) ziel = ZIEL.OFFEN
   return {
     ziel,
     ziel_prioritaet: prio,
@@ -94,7 +107,7 @@ export function zielStatus(lead) {
   const ziele = echteZiele(lead)
   if (ziele.length === 0) {
     // Altbestand ohne Mehrfachauswahl: ein gesetztes Ziel zählt als genannt.
-    if (lead?.ziel && lead.ziel !== ZIEL.OFFEN) return lead.ziel_priorisiert ? 'priorisiert' : 'genannt'
+    if (lead?.ziel) return lead.ziel_priorisiert ? 'priorisiert' : 'genannt'
     return 'nicht_erhoben'
   }
   if (ziele.length === 1 || lead?.ziel_prioritaet) return 'priorisiert'
@@ -148,18 +161,32 @@ export const ANLEITUNG_REDUZIERT = {
 }
 
 /**
- * Sprache für Sachverständige (Feedback 21.09.): Aus Eigentümeranfragen werden
- * Bewertungsanfragen, in Feldnamen, Fragesätzen, Hilfetexten und Auswahllisten.
+ * Sprache je Branche (Feedback 21.09., erweitert 25.09.).
+ *
+ * Beim Sachverständigen werden aus Eigentümeranfragen Bewertungsanfragen, bei
+ * „andere" heißt dasselbe schlicht „Anfragen" - wir wissen dort nicht, wer
+ * anfragt. Betroffen sind Feldnamen, Fragesätze, Hilfetexte und Auswahllisten.
  * Nur die Anzeige ändert sich, gespeichert wird weiter der Standardwert.
  */
-export function svSprache(text, lead) {
-  if (!text || !istSv(lead)) return text
-  return String(text)
-    .replace(/Eigentümeranfragen/g, 'Bewertungsanfragen')
-    .replace(/Eigentümer-Anfragen/g, 'Bewertungsanfragen')
-    .replace(/Eigentümeranfrage/g, 'Bewertungsanfrage')
-    .replace(/Ihre Eigentümer/g, 'Ihre Auftraggeber')
+export function brancheSprache(text, lead) {
+  if (!text) return text
+  if (istSv(lead)) {
+    return String(text)
+      .replace(/Eigentümeranfragen/g, 'Bewertungsanfragen')
+      .replace(/Eigentümer-Anfragen/g, 'Bewertungsanfragen')
+      .replace(/Eigentümeranfrage/g, 'Bewertungsanfrage')
+      .replace(/Ihre Eigentümer/g, 'Ihre Auftraggeber')
+  }
+  if (lead?.berufsgruppe === BRANCHE.ANDERE) {
+    return String(text)
+      .replace(/Mehr Eigentümer-Anfragen/g, 'Mehr Anfragen')
+      .replace(/Eigentümeranfragen/g, 'Anfragen')
+      .replace(/Eigentümer-Anfragen/g, 'Anfragen')
+      .replace(/Eigentümeranfrage/g, 'Anfrage')
+  }
+  return text
 }
+
 
 // ---------------------------------------------------------------------------
 // Die Spalten
@@ -184,12 +211,13 @@ export const FELDER = {
     hilfe: 'Wer entscheidet? Name und Rolle im Büro.'
   },
   ziele: {
-    name: 'Was der Kunde erreichen will', art: 'mehrfach', optionen: AUSWAHL.ziel,
+    name: 'Was der Kunde erreichen will', art: 'mehrfach',
+    optionen: w => zieleFuerBranche(w?.berufsgruppe),
     hilfe: 'Alle Ziele, die im Telefonat gefallen sind. Sie bestimmen Video, Mails und Unterlagen bis zum Abschluss. Nennt der Kunde mehrere, entscheidet das priorisierte Ziel.'
   },
   ziel_prioritaet: {
     name: 'Priorisiertes Ziel', art: 'auswahl',
-    hilfe: 'Nur setzen, wenn der Kunde selbst ein Ziel als wichtigstes nennt. Danach richten sich Testimonial und VSL. Leer heißt: mehrere Themen ohne klaren Vorrang, der Setter fragt nach.'
+    hilfe: 'Danach richtet sich das Video in der ersten Mail. Hat der Makler selbst ein Ziel vorgezogen, wähl es und setz „selbst so gesagt" auf Ja. Sonst entscheidest du nach seiner Klage: Sichtbarkeit oder Anfragen heißt Eigentümer, Erreichbarkeit oder Verwaltung heißt Zeitersparnis.'
   },
   ziel: {
     name: 'Ziel bestätigt oder korrigiert', art: 'auswahl', optionen: AUSWAHL.ziel,
@@ -197,7 +225,7 @@ export const FELDER = {
   },
   schmerzpunkt_wortlaut: {
     name: 'Größtes Problem, in den Worten des Kunden', art: 'freitext',
-    hilfe: 'Wörtlich mitschreiben, nicht zusammenfassen. Der Satz wird in Gesprächen und Mails wiederverwendet. Mehrere Probleme sind in Ordnung.'
+    hilfe: 'Am besten in seinen eigenen Worten, so wie er es gesagt hat. Weißt du es nicht mehr genau, schreib es sinngemäß auf, aber aus seiner Sicht und in seiner Sprache. Der Satz taucht später in Gesprächen und Mails wieder auf. Mehrere Probleme sind in Ordnung.'
   },
   vorerfahrung: {
     name: 'Bisherige Versuche und Anbieter zur Lösung des Problems', art: 'auswahl', optionen: AUSWAHL.vorerfahrung,
@@ -212,12 +240,8 @@ export const FELDER = {
     hilfe: 'Wichtige Zusatzinfos aus dem Telefonat oder eine kurze Zusammenfassung. Der Setter liest es vor seinem Gespräch.'
   },
   vorhaben: {
-    name: 'Kunde hat ein konkretes eigenes Vorhaben', art: 'janein',
-    hilfe: 'Ja heißt: Er kommt mit einem fertigen Plan statt mit einem Problem. Dann geht statt der Standard-Mail die Vorhaben-Mail raus, die das Vorhaben wörtlich aufgreift. Im Setting ist dann nur das Notizfeld offen.'
-  },
-  fragt_nach_konditionen: {
-    name: 'Kunde fragt von sich aus nach Preis, Ablauf oder Starttermin', art: 'checkbox',
-    hilfe: 'Nur anhaken, wenn er selbst gefragt hat. Das stuft ihn als weit fortgeschritten ein und steuert, welches Material er später bekommt.'
+    name: 'Will etwas Neues aufbauen (eigenes Vorhaben)', art: 'janein',
+    hilfe: '„Ja" nur, wenn er etwas Neues aufbauen will, das es bei ihm noch nicht gibt: eine neue Zielgruppe, ein neues Geschäftsfeld oder ein bestimmtes Werkzeug, das er sich vorstellt. Beispiel: „Ich will Auswanderer aus Ungarn als Käufer gewinnen." Will er mehr von dem, was er schon macht, ist das ein Ziel oben, auch mit Ort oder Zahl. „Mehr Eigentümer in Berlin" heißt also Nein. Im Zweifel Nein, der Setter kann umstellen.'
   },
   mobilnummer: {
     name: 'Mobilnummer', art: 'telefon',
@@ -359,10 +383,11 @@ const nichtReduziert = (w) => !reduzierterModus(w)
 const MASKE_1 = [
   { spalte: 'berufsgruppe', pflicht: true },
   { spalte: 'branche_andere', pflicht: true, sichtbar: w => w?.berufsgruppe === BRANCHE.ANDERE },
-  { spalte: 'entscheider', pflicht: false },
   { spalte: 'ziele', pflicht: true },
   {
-    spalte: 'ziel_prioritaet', optional: true,
+    // Pflicht, sobald es etwas zu priorisieren gibt: An diesem Feld haengt,
+    // welches Testimonial und welcher VSL rausgehen (Revision 25.09.).
+    spalte: 'ziel_prioritaet', pflicht: true,
     sichtbar: w => echteZiele(w).length > 1,
     optionen: w => echteZiele(w)
   },
@@ -374,12 +399,8 @@ const MASKE_1 = [
     wertHinweis: { 'Nicht gefragt': 'Kam im Gespräch nicht vor. Der Setter fragt im Beratungsgespräch danach.' }
   },
   { spalte: 'vorerfahrung_wortlaut', optional: true, sichtbar: w => ['Anbieter beauftragt', 'Eigenes Werkzeug im Einsatz', 'Beides'].includes(w?.vorerfahrung) },
-  {
-    spalte: 'notizen_erstanruf', optional: true,
-    frage: () => ({ hinweis: 'Vor dem Auflegen ankündigen, was gleich kommt, zum Beispiel: „Ich schicke Ihnen gleich noch ein kurzes Video von einem Kunden, der vor derselben Frage stand."' })
-  },
+  { spalte: 'notizen_erstanruf', optional: true },
   { spalte: 'vorhaben', pflicht: true },
-  { spalte: 'fragt_nach_konditionen', optional: true },
   { spalte: 'mobilnummer', pflicht: true },
   { spalte: 'termin_bestaetigt', optional: true }
 ]
@@ -578,12 +599,12 @@ function stufe(feld, werte) {
 export function beschriftung(feld, werte) {
   const frage = feld.frage ? feld.frage(werte) : null
   return {
-    name: svSprache(feld.name, werte),
-    hilfe: svSprache(feld.hilfe, werte),
+    name: brancheSprache(feld.name, werte),
+    hilfe: brancheSprache(feld.hilfe, werte),
     frage: frage && {
-      vorsatz: svSprache(frage.vorsatz, werte) || null,
-      satz: svSprache(frage.satz, werte) || null,
-      hinweis: svSprache(frage.hinweis, werte) || null
+      vorsatz: brancheSprache(frage.vorsatz, werte) || null,
+      satz: brancheSprache(frage.satz, werte) || null,
+      hinweis: brancheSprache(frage.hinweis, werte) || null
     }
   }
 }

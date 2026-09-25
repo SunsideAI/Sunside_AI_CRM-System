@@ -85,6 +85,10 @@ const htmlToMarkdown = (html) => {
 // Übergabefeldern; aus ihm füllen sich die Platzhalter der Mailstrecken-Datei
 // ({Schmerzpunkt im Wortlaut}, {Zuwachs} …). Gesendet wird nie automatisch.
 function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie = null, hotLeadId = null, anlass = null, kontakt = null }) {
+  // Die Textvorschläge kommen aus der Übergabe des Setters. Im Opening gibt es
+  // die noch nicht - dort stand der Block nur im Weg (Revision 25.09.).
+  const zeigeBausteine = anlass !== 'opening' && kategorie !== 'Opening'
+
   const [templates, setTemplates] = useState([])
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [loading, setLoading] = useState(true)
@@ -521,12 +525,14 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
           </div>
         )}
 
-        <MailBausteine
-          hotLeadId={hotLeadId}
-          onBetreff={setBetreff}
-          onEinfuegen={bausteinEinfuegen}
-          onEntwurf={entwurfUebernehmen}
-        />
+        {zeigeBausteine && (
+          <MailBausteine
+            hotLeadId={hotLeadId}
+            onBetreff={setBetreff}
+            onEinfuegen={bausteinEinfuegen}
+            onEntwurf={entwurfUebernehmen}
+          />
+        )}
 
         {(empfehlung || gewaehlteVorlage?.hinweis) && (
           <div className="space-y-2">
@@ -842,12 +848,14 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
             </div>
           )}
 
-          <MailBausteine
-            hotLeadId={hotLeadId}
-            onBetreff={setBetreff}
-            onEinfuegen={bausteinEinfuegen}
-            onEntwurf={entwurfUebernehmen}
-          />
+          {zeigeBausteine && (
+            <MailBausteine
+              hotLeadId={hotLeadId}
+              onBetreff={setBetreff}
+              onEinfuegen={bausteinEinfuegen}
+              onEntwurf={entwurfUebernehmen}
+            />
+          )}
 
           {(empfehlung || gewaehlteVorlage?.hinweis) && (
             <div className="space-y-2">
