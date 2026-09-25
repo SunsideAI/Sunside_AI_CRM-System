@@ -1034,7 +1034,6 @@ function Closing() {
     setShowEmailComposer(false)
     setShowTerminPicker(false)
     setShowAbschlussForm(false)
-    setShowWebsiteStats(false)
     setShowReleaseConfirm(false)
     setReleaseReason('')
   }

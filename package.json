@@ -12,7 +12,7 @@
     "migrate:csv": "node supabase/migrate-from-csv.js",
     "migrate:csv:clear": "node supabase/migrate-from-csv.js --clear",
     "migrate:csv:dry": "node supabase/migrate-from-csv.js --dry-run",
-    "pruefe": "node scripts/pruefe-wachen.mjs && npx oxlint --deny no-undef src/ netlify/ shared/"
+    "pruefe": "node scripts/pruefe-wachen.mjs && node scripts/pruefe-zuteilung.mjs && npx oxlint --deny no-undef src/ netlify/ shared/"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

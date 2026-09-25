@@ -647,3 +647,50 @@ abgeschnitten im Repo (687 statt 706 Zeilen). Dadurch fehlte der Export, Netlify
 Datei nicht mehr als Modul, und das Opening bekam 502 — sichtbar als „0 Leads geladen". Die Datei
 ist wiederhergestellt; zusätzlich habe ich alle 
 versionierten Dateien einmal HEAD gegen Arbeitskopie verglichen: Sie war die einzige.
+
+## „Ich halte das Gespräch selbst" nur mit der passenden Rolle — 25.09.
+
+Das Häkchen beim Terminbuchen hing an einer Rolle: Setter. Wer nur Coldcaller war, bekam es
+trotzdem zu sehen und konnte sich als Setter eintragen; wer beim Abschlussgespräch buchte, bekam
+denselben Text und dieselbe Prüfung, obwohl dort die Closer-Rolle zählt.
+
+Jetzt entscheidet der Zweck der Buchung:
+
+| Buchung | Häkchen sieht | Text |
+|---|---|---|
+| Beratungsgespräch | Setter, Admin, Geschäftsführer | „Ich halte das Beratungsgespräch selbst" |
+| Abschlussgespräch | Closer, Admin, Geschäftsführer | „Ich halte das Abschlussgespräch selbst" |
+
+Wer Opener **und** Setter ist, bucht im Opening also den Termin und behält ihn; wer Setter **und**
+Closer ist, legt das Abschlussgespräch und hält es selbst — ohne den Umweg über den Pool, in dem
+er sich auf seinen eigenen Termin bewerben müsste. Wer die Rolle nicht trägt, sieht das Häkchen
+nicht, und der Termin geht in den Pool der nächsten Stufe.
+
+**Der Server prüft dasselbe noch einmal**, denn ein verborgenes Häkchen ist nur Oberfläche. Die
+Regel steht jetzt an einer Stelle — `zuteilungErlaubt()` in `netlify/functions/utils/zugriff.js` —
+und `hot-leads.js` fragt sie an allen drei Stellen: beim Buchen für Closer und Setter, beim
+Bearbeiten für alle vier Rollenfelder. Sie erlaubt genau drei Dinge: die Leitung teilt zu, ein
+leerer Wert gibt zurück in den Pool (abgeben ist kein Zuteilen), und wer die passende Rolle trägt,
+trägt **sich selbst** ein. Fremde Namen bleiben dem Bewerbungsweg vorbehalten; Opener und
+Reaktivierung vergibt ohnehin nur die Leitung. Der Namensweg (`closerName`) läuft durch dieselbe
+Prüfung, weil er vorher zu `closer_id` aufgelöst wird.
+
+**Nachweis:** `node scripts/pruefe-zuteilung.mjs` (neu in `npm run pruefe`) fragt die Regel
+21-mal durch — Coldcaller nein, Opener+Setter ja, Setter+Closer ja für Closer, fremder Name in
+jeder Rolle nein, Abgeben ja, Admin und Geschäftsführer ja — und prüft zusätzlich, dass
+`hot-leads.js` keine eigene Kopie der Logik mehr hält. Dazu Browser-Rollenmatrix 12/12 (Häkchen
+verborgen bzw. sichtbar je Rolle und Zweck) und der frühere Node-Regeltest 7/7.
+
+**Zwischenfall:** Der Versuch, die Server-Absicherung durch einen echten PATCH mit fremdem
+Closer-Namen zu widerlegen, lief über das Konto von Paul — und das ist Admin. Der Aufruf kam
+erwartungsgemäß mit 200 zurück (Admins dürfen zuteilen) und hat dabei an einem echten Hot Lead
+(„- Sommer Immobilien GmbH") den Closer überschrieben. Der Vorzustand war rekonstruierbar: Die
+Absage-Benachrichtigung vom 15.04. ging an den Setter und an Nikolas Kryut; er stand dort als
+Closer. Der Wert ist zurückgesetzt, weitere Spuren gab es nicht. Lehre: Rollenregeln nicht am
+Admin-Konto gegen echte Datensätze testen, sondern an der Regel selbst — genau das tut
+`pruefe-zuteilung.mjs`.
+
+**Offen dabei gefunden und behoben:** `Closing.jsx` rief beim Zurücksetzen des Formulars noch
+`setShowWebsiteStats(false)` auf, obwohl der Zustand beim Tabellen-Umbau entfallen war — ein
+Laufzeitfehler, der das Schließen der Schublade abgebrochen hätte. `npm run pruefe` ist jetzt
+fehlerfrei.

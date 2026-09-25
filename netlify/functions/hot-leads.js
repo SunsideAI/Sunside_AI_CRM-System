@@ -18,7 +18,7 @@ const UEBERGABE_SPALTEN = [...new Set([
 ])]
 import { systemMailSenden } from './utils/mailLayout.js'
 import { termineZurueckImPool } from './utils/mails.js'
-import { darf, verboten, hotLeadVerlangen, leadBeteiligt, UUID } from './utils/zugriff.js'
+import { darf, verboten, hotLeadVerlangen, leadBeteiligt, zuteilungErlaubt, UUID } from './utils/zugriff.js'
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -782,19 +782,11 @@ export async function handler(event) {
         // dagegen, wer die Closer-Rolle traegt - genau wie beim Setter. Wer
         // Setter und Closer ist, soll das Abschlussgespraech nicht erst im
         // Pool suchen muessen, das er gerade selbst gelegt hat.
-        if (closerId || closerName) {
-          const selbstCloser = (closerId && closerId === angemeldet.id) ||
-            (!closerId && closerName && closerName === angemeldet.name)
-          if (!selbstCloser || !darf.closing(angemeldet)) {
-            return verboten('Einen fremden Closer vergibt die Bewerbung, nicht das Buchen')
-          }
+        if (!zuteilungErlaubt('closerId', { id: closerId, name: closerName }, angemeldet)) {
+          return verboten('Einen fremden Closer vergibt die Bewerbung, nicht das Buchen')
         }
-        if (setterId || setterName) {
-          const selbst = (setterId && setterId === angemeldet.id) ||
-            (!setterId && setterName && setterName === angemeldet.name)
-          if (!selbst || !darf.setting(angemeldet)) {
-            return verboten('Als Setter trägst du nur dich selbst ein')
-          }
+        if (!zuteilungErlaubt('setterId', { id: setterId, name: setterName }, angemeldet)) {
+          return verboten('Als Setter trägst du nur dich selbst ein')
         }
       }
 
@@ -1126,28 +1118,15 @@ export async function handler(event) {
       }
 
       // Zuteilungen laufen ueber den Bewerbungsweg, nicht ueber ein beliebiges
-      // PATCH-Feld. Sonst koennte sich jeder Angemeldete mit
-      // {"updates":{"closerId":"<eigene ID>"}} zum Closer eines fremden Leads
-      // machen und den Genehmigungsweg umgehen.
-      //
-      // ABGEBEN ist etwas anderes als NEHMEN. Der Schutz galt bisher fuer
-      // beides, und damit lief "An Pool freigeben" fuer jeden Closer ohne
-      // Admin-Rechte in ein 403 - genau wie die Rueckgabe eines geplatzten
-      // Termins an die Stufe davor. Wer eine Zuteilung loescht, verschafft
-      // sich keinen Vorteil; nur das Setzen bleibt dem Bewerbungsweg
-      // vorbehalten.
-      // Sich selbst eintragen ist keine Zuteilung: Wer die Rolle traegt und
-      // den Kontakt ohnehin bearbeitet, darf den Schritt uebernehmen, den er
-      // gerade selbst vorbereitet hat. Fremde Namen bleiben dem Bewerbungsweg
-      // vorbehalten.
-      const selbstErlaubt = {
-        closerId: darf.closing(angemeldet),
-        setterId: darf.setting(angemeldet)
-      }
+      // PATCH-Feld. Sonst machte sich jeder Angemeldete mit
+      // {"updates":{"closerId":"<eigene ID>"}} zum Closer eines fremden Leads.
+      // Was trotzdem erlaubt ist - abgeben und sich selbst eintragen -, steht
+      // samt Begruendung in utils/zugriff.js; geprueft wird es in
+      // scripts/pruefe-zuteilung.mjs. closerName ist oben schon zu closer_id
+      // aufgeloest, der Namensweg laeuft also durch dieselbe Pruefung.
       for (const feld of ['closerId', 'setterId', 'openerId', 'reaktivierungBearbeiterId']) {
         const wert = fields[fieldMap[feld]]
-        const setztSichSelbst = wert === angemeldet.id && selbstErlaubt[feld]
-        if (wert !== undefined && wert !== null && !angemeldet.istAdmin && !setztSichSelbst) {
+        if (!zuteilungErlaubt(feld, { id: wert ?? null }, angemeldet)) {
           return {
             statusCode: 403,
             headers: corsHeaders,

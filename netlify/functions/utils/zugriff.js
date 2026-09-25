@@ -95,3 +95,32 @@ export async function hotLeadVerlangen(supabase, nutzer, hotLeadId) {
   }
   return verboten('Dieser Kontakt gehört nicht zu deinen', 'nicht_beteiligt')
 }
+
+/**
+ * Darf der Angemeldete dieses Zuteilungsfeld auf diesen Wert setzen?
+ *
+ * Zuteilen heisst: einen Namen in eine Rolle am Hot Lead schreiben. Das laeuft
+ * ueber den Bewerbungsweg, nicht ueber ein beliebiges Feld - sonst machte sich
+ * jeder Angemeldete mit einem PATCH zum Closer eines fremden Deals.
+ *
+ * Drei Ausnahmen, und nur diese:
+ *   - Die Leitung teilt zu (istAdmin).
+ *   - Abgeben ist kein Zuteilen: ein leerer Wert gibt zurueck in den Pool.
+ *   - Sich selbst eintragen, wenn die Rolle passt. Wer Setter UND Closer ist,
+ *     soll das Abschlussgespraech nicht erst im Pool suchen muessen, das er
+ *     gerade selbst gelegt hat. Opener und Reaktivierung bleiben aussen vor:
+ *     dort vergibt nur die Leitung.
+ *
+ * @param feld  'closerId' | 'setterId' | 'openerId' | 'reaktivierungBearbeiterId'
+ * @param wert  { id, name } - je nachdem, was der Aufruf mitbringt
+ */
+export function zuteilungErlaubt(feld, wert, angemeldet) {
+  if (angemeldet?.istAdmin) return true
+  const id = wert?.id ?? null
+  const name = wert?.name ?? null
+  if (!id && !name) return true
+  const rolle = { closerId: darf.closing, setterId: darf.setting }[feld]
+  if (!rolle) return false
+  const selbst = id ? id === angemeldet?.id : name === angemeldet?.name
+  return Boolean(selbst && rolle(angemeldet))
+}
