@@ -10,7 +10,7 @@
 
 import fs from 'node:fs'
 import {
-  STATUS, STUFE, STATUS_JE_STUFE, statusFuerStufe, stufeVonLead, uebergangErlaubt
+  STATUS, STUFE, STATUS_JE_STUFE, statusFuerStufe, stufeVonLead, uebergangErlaubt, anzeigeName
 } from '../shared/status.js'
 
 const befunde = []
@@ -50,7 +50,19 @@ for (const von of closing) {
   }
 }
 
-// 4. Die Seiten muessen die Liste auch benutzen.
+// 4. Kein Status heisst im Closing "Beratungsgespraech". Altkontakte liegen
+//    beim Closer und tragen trotzdem einen Beratungs-Status - dort hilft nur
+//    die Anzeige, denn einen Abschlusstermin haben sie nicht.
+for (const s of [...closing, ...BERATUNG]) {
+  sagt(!anzeigeName(s, STUFE.CLOSING).includes('Beratungsgespräch'),
+    `Im Closing heisst "${s}" nicht Beratungsgespraech (ist: "${anzeigeName(s, STUFE.CLOSING)}")`)
+}
+sagt(anzeigeName(STATUS.BERATUNG_VEREINBART, STUFE.SETTING) === STATUS.BERATUNG_VEREINBART,
+  'Im Setting heisst das Beratungsgespraech weiter so')
+sagt(anzeigeName('Lead', STUFE.CLOSING) === 'Termin vereinbart',
+  'Altwert "Lead" heisst im Closing "Termin vereinbart"')
+
+// 5. Die Seiten muessen die Liste auch benutzen.
 const closingSeite = fs.readFileSync('src/pages/Closing.jsx', 'utf8')
 sagt(!/zweck="beratung"/.test(closingSeite), 'Closing bucht kein Beratungsgespraech')
 sagt(/zweck="abschluss"/.test(closingSeite), 'Closing bucht das Abschlussgespraech')

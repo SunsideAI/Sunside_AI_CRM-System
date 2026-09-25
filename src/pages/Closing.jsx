@@ -979,7 +979,11 @@ function Closing() {
   // bleiben, auch wenn sich der Status hier nicht mehr setzen lässt.
   const filterStatusOptionen = (() => {
     const vorhanden = new Set(leads.map(l => l.status).filter(Boolean))
-    return STATUS_OPTIONS.filter(opt => CLOSING_STATUS.includes(opt.value) || vorhanden.has(opt.value))
+    return STATUS_OPTIONS
+      .filter(opt => CLOSING_STATUS.includes(opt.value) || vorhanden.has(opt.value))
+      // Beschriftet wie in der Liste: im Closing heisst ein Beratungs-Status
+      // der Altkontakte "Termin vereinbart".
+      .map(opt => ({ ...opt, label: anzeigeName(opt.value, STUFE.CLOSING) }))
   })()
 
   const filteredLeads = getFilteredLeads()
@@ -1732,7 +1736,7 @@ function Closing() {
             schublade={(e) => ({
               kontakt: {
                 ansprechpartner: e.ansprechpartner,
-                statusFeld: anzeigeName(e.roh.status),
+                statusFeld: anzeigeName(e.roh.status, STUFE.CLOSING),
                 telefon: e.roh.telefon,
                 email: e.roh.email,
                 website: e.roh.website,
@@ -2474,7 +2478,7 @@ function Closing() {
                           <Angabe name="Ansprechpartner">
                             {`${safeString(selectedLead.ansprechpartnerVorname)} ${safeString(selectedLead.ansprechpartnerNachname)}`.trim() || null}
                           </Angabe>
-                          <Angabe name="Status">{anzeigeName(selectedLead.status) || null}</Angabe>
+                          <Angabe name="Status">{anzeigeName(selectedLead.status, STUFE.CLOSING) || null}</Angabe>
                         </Angaben>
 
                         {/* Dieselben Pillen wie in Opening und Setting. */}

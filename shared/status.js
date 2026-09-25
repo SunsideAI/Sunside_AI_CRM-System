@@ -106,8 +106,26 @@ export const ANZEIGE = {
   [STATUS.ANGEBOT_VERSCHICKT]:  'Angebot verschickt, wartet auf Unterschrift'
 }
 
-export function anzeigeName(status) {
+/**
+ * Wie ein Status in einer Stufe heisst.
+ *
+ * Im Closing gibt es kein Beratungsgespraech - das ist das Setting. Kontakte
+ * von vor dem OSC-Umbau tragen trotzdem einen Beratungs-Status, obwohl sie
+ * beim Closer liegen: Damals gab es nur einen Termin, und der war seiner. Die
+ * Migration laesst das bewusst stehen (Geschichte wird nicht erfunden), also
+ * darf hier nur die Anzeige helfen: Im Closing heisst es "Termin vereinbart"
+ * statt "Beratungsgespraech vereinbart". Ein Abschlussgespraech daraus zu
+ * machen waere eine Behauptung - einen Abschlusstermin haben diese Kontakte
+ * nicht.
+ */
+const ANZEIGE_IM_CLOSING = {
+  [STATUS.BERATUNG_VEREINBART]: 'Termin vereinbart',
+  [STATUS.BERATUNG_GEFUEHRT]:   'Termin geführt'
+}
+
+export function anzeigeName(status, stufe = null) {
   const s = normalisiere(status)
+  if (stufe === STUFE.CLOSING && ANZEIGE_IM_CLOSING[s]) return ANZEIGE_IM_CLOSING[s]
   return ANZEIGE[s] || s || 'Unbekannt'
 }
 

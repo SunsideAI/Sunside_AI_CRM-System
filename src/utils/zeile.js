@@ -106,7 +106,9 @@ export function zeileAusLead(stufe, lead) {
     kontakt: { telefon: lead.telefon || null, email: lead.email || null },
     termin: termin || null,
     terminart: lead.terminart || null,
-    status: lead.status ? anzeigeName(lead.status) : null,
+    // Die Stufe entscheidet, wie der Status heisst: Im Closing steht bei
+    // Altkontakten "Termin vereinbart", nicht "Beratungsgespraech vereinbart".
+    status: lead.status ? anzeigeName(lead.status, stufe) : null,
     statusWert: lead.status || null,
     zustaendig: (stufe === 'closing' ? lead.closerName : lead.setterName) || null,
     opener: lead.openerName || null,
