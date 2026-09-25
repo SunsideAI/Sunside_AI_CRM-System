@@ -221,3 +221,48 @@ export function ruecknahmeZiel(von) {
   if (v === STATUS.BERATUNG_GEFUEHRT) return STATUS.BERATUNG_VEREINBART
   return null
 }
+
+/**
+ * Welche Status in einer Stufe ueberhaupt vorkommen - fuer Statuswahl und
+ * Statusfilter der Listen.
+ *
+ * Im Closing gibt es kein Beratungsgespraech: Das ist das Setting. Beide
+ * Beratungs-Status standen dort trotzdem im Auswahlfeld und im Filter. Der
+ * Filter fand damit nie etwas, und die Auswahl war schlimmer als nutzlos -
+ * ein Klick auf "Beratungsgespraech vereinbart" schob den Kontakt aus dem
+ * Closing zurueck ins Setting.
+ *
+ * Gewonnen und Verloren stehen beim Closer: Er setzt sie. Die beiden
+ * geplatzten Termine stehen in beiden Stufen, weil sie in beiden vorkommen -
+ * wer sie behandelt, entscheidet der Closer am Kontakt (stufeVonLead).
+ *
+ * Das Follow-Up bekommt hier bewusst keine eigene Liste: Es ist eine Sicht
+ * quer durch den Prozess, dort kommen auch Beratungs-Status vor.
+ */
+export const STATUS_JE_STUFE = {
+  [STUFE.SETTING]: [
+    STATUS.BERATUNG_VEREINBART,
+    STATUS.BERATUNG_GEFUEHRT,
+    STATUS.TERMIN_ABGESAGT,
+    STATUS.NICHT_ERSCHIENEN,
+    STATUS.VERLOREN_WIEDERVORLAGE,
+    STATUS.VERLOREN_ENDGUELTIG
+  ],
+  [STUFE.CLOSING]: [
+    STATUS.ABSCHLUSS_VEREINBART,
+    STATUS.IM_ABSCHLUSS,
+    STATUS.ANGEBOT_ANGEFORDERT,
+    STATUS.ANGEBOT_VERSCHICKT,
+    STATUS.WIRD_NACHGEFASST,
+    STATUS.GEWONNEN,
+    STATUS.TERMIN_ABGESAGT,
+    STATUS.NICHT_ERSCHIENEN,
+    STATUS.VERLOREN_WIEDERVORLAGE,
+    STATUS.VERLOREN_ENDGUELTIG
+  ]
+}
+
+/** Die Status einer Stufe, oder alle, wenn die Stufe keine eigene Liste hat. */
+export function statusFuerStufe(stufe) {
+  return STATUS_JE_STUFE[stufe] || Object.values(STATUS)
+}

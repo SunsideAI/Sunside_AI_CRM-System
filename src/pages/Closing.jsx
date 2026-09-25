@@ -1,4 +1,4 @@
-import { STATUS, IST_VERLOREN, anzeigeName } from '../../shared/status.js'
+import { STATUS, STUFE, IST_VERLOREN, anzeigeName, statusFuerStufe } from '../../shared/status.js'
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
@@ -136,7 +136,10 @@ const TEXTBAUSTEINE = [
   'Die Setup-Gebühr wird in zwei Raten abgerechnet: 50 % bei Auftragserteilung, 50 % nach Livegang.',
 ]
 
-// Status-Optionen für Dropdown (alle DB-Enum-Werte: hot_lead_status_type)
+// Optik und Beschriftung aller Status. Welche davon im Closing überhaupt
+// vorkommen, sagt shared/status.js - die Beratungs-Status gehören ins Setting
+// und standen hier nur im Weg. Die Liste bleibt vollständig, damit ein
+// Altdatensatz mit einem Setting-Status seine Farbe behält.
 const STATUS_OPTIONS = [
   { value: STATUS.BERATUNG_VEREINBART,  label: 'Beratungsgespräch vereinbart', color: 'bg-blue-100 text-blue-700' },
   { value: STATUS.BERATUNG_GEFUEHRT,    label: 'Beratungsgespräch geführt',    color: 'bg-sky-100 text-sky-700' },
@@ -152,8 +155,12 @@ const STATUS_OPTIONS = [
   { value: STATUS.VERLOREN_ENDGUELTIG,  label: 'Verloren, endgültig',          color: 'bg-red-100 text-red-700' }
 ]
 
-// Status-Optionen die manuell gewählt werden können (ohne "Angebot" - wird automatisch gesetzt)
-const SELECTABLE_STATUS_OPTIONS = STATUS_OPTIONS.filter(opt => opt.value !== STATUS.ANGEBOT_ANGEFORDERT)
+// Was im Closing zur Wahl steht: die Status dieser Stufe, ohne "Angebot" -
+// das setzt die Angebots-Automatisierung selbst. Ein Beratungsgespräch lässt
+// sich hier nicht mehr setzen; es ist Sache des Settings.
+const CLOSING_STATUS = statusFuerStufe(STUFE.CLOSING)
+const SELECTABLE_STATUS_OPTIONS = STATUS_OPTIONS
+  .filter(opt => CLOSING_STATUS.includes(opt.value) && opt.value !== STATUS.ANGEBOT_ANGEFORDERT)
 
 function Closing() {
   const { user, isAdmin, isCloser, isGeschaeftsfuehrer } = useAuth()
@@ -966,6 +973,15 @@ function Closing() {
     return filtered
   }
 
+  // Der Statusfilter zeigt die Status dieser Stufe - und dazu, was im Bestand
+  // wirklich vorkommt. Bestandsdaten von vor dem Umbau tragen noch einen
+  // Beratungs-Status, obwohl der Closer sie hält; sie sollen filterbar
+  // bleiben, auch wenn sich der Status hier nicht mehr setzen lässt.
+  const filterStatusOptionen = (() => {
+    const vorhanden = new Set(leads.map(l => l.status).filter(Boolean))
+    return STATUS_OPTIONS.filter(opt => CLOSING_STATUS.includes(opt.value) || vorhanden.has(opt.value))
+  })()
+
   const filteredLeads = getFilteredLeads()
   // Erst in Zeilen übersetzen, dann die eigenen Filter des Benutzers - sie
   // arbeiten auf denselben Namen wie die Spalten.
@@ -1609,7 +1625,7 @@ function Closing() {
           </h1>
           <p className="mt-2 text-body-md text-on-surface-variant">
             {viewMode === 'pool'
-              ? 'Offene Beratungsgespräche - noch kein Closer zugewiesen'
+              ? 'Offene Abschlussgespräche - noch kein Closer zugewiesen'
               : viewMode === 'own'
                 ? 'Deine Leads im Closing-Prozess'
                 : 'Alle Leads im Closing-Prozess'
@@ -1708,7 +1724,7 @@ function Closing() {
                 terminDatum: wann,
                 art: { icon: l.terminart === 'Telefonisch' ? Phone : Video },
                 hinweis: wann && new Date(wann) < new Date()
-                  ? 'Termin verpasst'
+                  ? 'Abschlussgespräch verpasst'
                   : l.setterName ? `gelegt von ${l.setterName}` : null,
                 roh: l
               }
@@ -1776,7 +1792,7 @@ function Closing() {
             className="select-field w-full sm:w-auto sm:min-w-[140px] text-body-sm py-2.5"
           >
             <option value="all">Alle Status</option>
-            {STATUS_OPTIONS.map(option => (
+            {filterStatusOptionen.map(option => (
               <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
@@ -2317,7 +2333,8 @@ function Closing() {
                     const terminDate = new Date(selectedLead.terminDatum)
                     const isInPast = terminDate < new Date()
                     const isAbgesagt = selectedLead.status === STATUS.TERMIN_ABGESAGT
-                    const headerText = isInPast || isAbgesagt ? 'Neuen Termin buchen' : 'Termin verschieben'
+                    const headerText = isInPast || isAbgesagt
+                      ? 'Neues Abschlussgespräch buchen' : 'Abschlussgespräch verschieben'
                     
                     return (
                       <div className="flex items-center gap-3 mb-6">
@@ -2332,11 +2349,13 @@ function Closing() {
                     )
                   })()}
 
-                  {/* Auch hier wird ein Beratungsgespraech neu gelegt: Der
-                      Waehler schreibt termin_beratungsgespraech, nicht den
-                      Abschlusstermin. */}
+                  {/* Im Closing wird ein ABSCHLUSSgespraech gelegt. Vorher
+                      stand hier der Zweck 'beratung': Der Waehler schrieb den
+                      Beratungstermin des Setters, setzte den Status auf
+                      "Beratungsgespraech vereinbart" - und warf den Kontakt
+                      damit zurueck ins Setting. */}
                   <TerminPicker
-                    zweck="beratung"
+                    zweck="abschluss"
                     lead={{
                       id: selectedLead.originalLeadId,
                       unternehmen: selectedLead.unternehmen,
@@ -2352,7 +2371,7 @@ function Closing() {
                     onTerminBooked={(result) => {
                       setShowTerminPicker(false)
                       setSelectedLead(null)
-                      showToast('success', `Neuer Termin gebucht für ${selectedLead.unternehmen}`)
+                      showToast('success', `Abschlussgespräch gebucht für ${selectedLead.unternehmen}`)
                       loadLeads()
                     }}
                     onCancel={() => setShowTerminPicker(false)}
@@ -2489,11 +2508,11 @@ function Closing() {
                     />
                   </div>
 
-                  {/* TERMIN Section */}
+                  {/* ABSCHLUSSGESPRÄCH Section */}
                   <div className="space-y-3 abschnitt-trenner">
                     <h3 className="abschnitt-titel flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    Termin
+                    Abschlussgespräch
                   </h3>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -2926,14 +2945,19 @@ function Closing() {
                         && !IST_VERLOREN.includes(selectedLead.status) && {
                           name: new Date(closerTermin(selectedLead)) < new Date()
                             || selectedLead.status === STATUS.TERMIN_ABGESAGT
-                            ? 'Neuen Termin buchen' : 'Termin verschieben',
+                            ? 'Neues Abschlussgespräch buchen' : 'Abschlussgespräch verschieben',
                           icon: CalendarPlus,
                           onClick: () => setShowTerminPicker(true)
                         },
                       { name: 'Unterlagen versenden', icon: Paperclip,
                         onClick: () => setShowEmailComposer(true) },
-                      { name: selectedLead.status === STATUS.BERATUNG_VEREINBART
-                          ? 'Angebot versenden' : 'Neues Angebot',
+                      // "Neues Angebot" erst, wenn schon eines draussen ist.
+                      // Der Test hing an "Beratungsgespraech vereinbart" - ein
+                      // Status, den es im Closing nicht gibt; deshalb stand hier
+                      // immer "Neues Angebot", auch beim ersten.
+                      { name: selectedLead.angebot_verschickt_am
+                          || selectedLead.status === STATUS.ANGEBOT_VERSCHICKT
+                          ? 'Neues Angebot' : 'Angebot versenden',
                         icon: Send, onClick: () => setShowAngebotView(true) },
                       selectedLead.closerName && {
                         name: 'An Pool freigeben', icon: UserMinus, warnung: true,
@@ -3054,7 +3078,7 @@ function Closing() {
               {/* Lead-Details */}
               <div className="bg-surface-container rounded-lg p-3 text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-on-surface-variant">Termin:</span>
+                  <span className="text-on-surface-variant">Abschlussgespräch:</span>
                   <span className="font-medium">
                     {closerTermin(applyingLead)
                       ? new Date(closerTermin(applyingLead)).toLocaleString('de-DE', {
@@ -3145,7 +3169,7 @@ function Closing() {
                 {noShowKeepInClosing
                   ? <>Der Lead wird als nicht erschienen markiert und bleibt in <strong>deinem</strong> Closing. Der Setter wird nicht benachrichtigt.</>
                   : selectedLead.setterName
-                    ? <>Der Lead wird als nicht erschienen markiert. <strong>{selectedLead.setterName}</strong> wird benachrichtigt und kann einen neuen Termin buchen.</>
+                    ? <>Der Lead wird als nicht erschienen markiert. <strong>{selectedLead.setterName}</strong> wird benachrichtigt und kann ein neues Abschlussgespräch buchen.</>
                     : 'Der Lead wird als nicht erschienen markiert. Es ist kein Setter zugeordnet.'
                 }
               </p>
@@ -3166,7 +3190,7 @@ function Closing() {
               {/* Lead-Details */}
               <div className="bg-surface-container rounded-lg p-3 text-sm space-y-1">
                 <div className="flex justify-between">
-                  <span className="text-on-surface-variant">Geplanter Termin:</span>
+                  <span className="text-on-surface-variant">Geplantes Abschlussgespräch:</span>
                   <span className="font-medium">
                     {closerTermin(selectedLead)
                       ? new Date(closerTermin(selectedLead)).toLocaleString('de-DE', {
