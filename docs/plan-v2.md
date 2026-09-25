@@ -621,3 +621,29 @@ Filter 10/10, Filterfelder 10/10, Konsistenz 47/47.
 
 Die Sortierregeln der Datenbank (Umlaute wie Grundbuchstaben, Satzzeichen schwächer gewichtet)
 bildet der Test bewusst nicht nach — geprüft wird die Richtung, nicht die Collation.
+
+## Follow-Up auf denselben Stand — 24.09.
+
+Die letzte Lead-Liste ohne den neuen Aufbau: eigene Tabelle mit sieben fest verdrahteten Spalten,
+Sortierung nur nach vier davon, keine Spaltenwahl, keine frei zusammenstellbaren Filter.
+
+Jetzt kommt auch sie aus `LeadTabelle`, mit Spalten aus dem Katalog (Stufe `followup`):
+Art · Unternehmen · Termin · Status · Closer · Nächster Schritt · Bis wann · Nachfassen — dazu
+wählbar Ansprechpartner, Kontakt, Setter und der letzte Kommentar. Filter und Spalten liegen wie
+überall in `users.preferences`.
+
+Weil die Follow-Up-Abfrage eigene Feldnamen liefert (`follow_up_datum`, `closer_name`, …), hat sie
+in `src/utils/zeile.js` einen eigenen Zweig bekommen — übersetzt wird auf dieselben Namen wie in
+den anderen Stufen. Die Liste kommt jetzt am Stück (585 Kontakte), gefiltert, sortiert und
+geblättert wird im Browser, wie in Setting und Closing. Das Symbol links zeigt, ob noch
+nachgefasst wird.
+
+**Nachweis (Playwright, Vorschau):** 9/9 — Spalten aus dem Katalog samt der eigenen Felder, beide
+Knöpfe in Filter-Optik, Sortierung alphabetisch und umkehrbar, Klick öffnet die Schublade, keine
+Fehler in der Konsole. Regression: Tabellen 12/12, Filter 10/10, Sortierung 9/9, Konsistenz 47/47.
+
+**Zwischenfall:** Mit dem Follow-Up-Commit landete `netlify/functions/leads.js` wieder
+abgeschnitten im Repo (687 statt 706 Zeilen). Dadurch fehlte der Export, Netlify erkannte die
+Datei nicht mehr als Modul, und das Opening bekam 502 — sichtbar als „0 Leads geladen". Die Datei
+ist wiederhergestellt; zusätzlich habe ich alle 
+versionierten Dateien einmal HEAD gegen Arbeitskopie verglichen: Sie war die einzige.
