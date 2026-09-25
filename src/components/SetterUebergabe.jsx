@@ -130,7 +130,9 @@ export default function SetterUebergabe({
 
   const reduziert = reduzierterModus(werte)
   const ergebnis = werte.ergebnis_beratung
-  const mitUebergabe = ['Auftrag', 'Nächster Schritt vereinbart'].includes(ergebnis)
+  // „Abschlussgespräch vereinbart" führt zwingend über den Terminwähler: ohne
+  // gebuchten Termin gibt es nichts zu übergeben (Revision 25.09.).
+  const mitUebergabe = ergebnis === 'Abschlussgespräch vereinbart'
 
   // Steht der Kontakt schon auf „geführt", gibt es keinen Ausgang mehr zu
   // wählen - die Maske beginnt dann beim Ergebnis.
@@ -261,7 +263,12 @@ export default function SetterUebergabe({
       return
     }
 
-    if (ergebnis === 'Absage') {
+    if (ergebnis === 'Nicht geeignet') {
+      if (!String(werte.verlust_grund || '').trim()) {
+        setFehler('Bitte kurz begründen, warum der Kontakt nicht geeignet ist.')
+        setOffen([{ schluessel: 'verlust_grund', name: 'Warum nicht geeignet' }])
+        return
+      }
       if (!(await gefuehrtSichern())) return
       await senden({ ...eigene(), status: STATUS.VERLOREN_ENDGUELTIG })
     }
@@ -276,8 +283,8 @@ export default function SetterUebergabe({
     ? 'Speichern und an den Closer übergeben'
     : ergebnis === 'Vertagt ohne festen Schritt'
       ? 'Speichern, ich fasse binnen 48 Stunden nach'
-      : ergebnis === 'Absage'
-        ? 'Speichern und als Absage abschließen'
+      : ergebnis === 'Nicht geeignet'
+        ? 'Speichern und aussortieren'
         : 'Speichern'
 
   const fehlerKasten = fehler && (
@@ -394,8 +401,8 @@ export default function SetterUebergabe({
         {kopf('Ergebnis des Gesprächs', 1)}
         <fieldset disabled={gesperrt} className="space-y-4 min-w-0">{ergebnisFeld}</fieldset>
         <p className="text-xs text-gray-500">
-          Die Auswahl führt weiter: Bei einem nächsten Schritt zum Termin mit dem
-          Closer, sonst zu den Angaben aus dem Gespräch.
+          Die Auswahl führt weiter: Beim vereinbarten Abschlussgespräch bis zum
+          Termin mit dem Closer, sonst zu den Angaben aus dem Gespräch.
         </p>
         {fehlerKasten}
       </div>,

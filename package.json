@@ -12,7 +12,7 @@
     "migrate:csv": "node supabase/migrate-from-csv.js",
     "migrate:csv:clear": "node supabase/migrate-from-csv.js --clear",
     "migrate:csv:dry": "node supabase/migrate-from-csv.js --dry-run",
-    "pruefe": "node scripts/pruefe-wachen.mjs && node scripts/pruefe-zuteilung.mjs && node scripts/pruefe-stufen.mjs && node scripts/pruefe-erstanruf.mjs && npx oxlint --deny no-undef src/ netlify/ shared/"
+    "pruefe": "node scripts/pruefe-wachen.mjs && node scripts/pruefe-zuteilung.mjs && node scripts/pruefe-stufen.mjs && node scripts/pruefe-erstanruf.mjs && node scripts/pruefe-beratung.mjs && npx oxlint --deny no-undef src/ netlify/ shared/"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",
@@ -29,11 +29,4 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.2.0",
-    "autoprefixer": "^10.4.16",
-    "csv-parse": "^6.2.1",
-    "postcss": "^8.4.32",
-    "tailwindcss": "^3.3.6",
-    "vite": "^5.0.0",
-    "oxlint": "^1.82.0"
-  }
-}
+    "autoprefixer": "^

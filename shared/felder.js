@@ -57,8 +57,15 @@ export const AUSWAHL = {
     'Nicht gefragt'
   ],
   kennzeichen: ['vom Kunden genannt', 'geschätzt'],
-  // Ausgang des Beratungsgesprächs und des Abschlussgesprächs: dieselben vier
-  // Werte, aber zwei Spalten, denn jedes Gespräch hat seinen eigenen Ausgang.
+  // Der Ausgang des Beratungsgesprächs. „Auftrag" kann es hier nicht geben -
+  // nach dem Setting ist niemand Kunde (Revision 25.09.). Entweder steht das
+  // Abschlussgespräch, oder es wird nachgefasst, oder der Kontakt passt nicht.
+  ausgang_beratung: [
+    'Abschlussgespräch vereinbart',
+    'Vertagt ohne festen Schritt',
+    'Nicht geeignet'
+  ],
+  // Der Ausgang des Abschlussgesprächs: Dort ist der Auftrag der Regelfall.
   gespraechsausgang: [
     'Auftrag',
     'Nächster Schritt vereinbart',
@@ -328,8 +335,12 @@ export const FELDER = {
     hilfe: 'Wer aus seinem Team dazukommt, Besonderheiten des Büros, vereinbarte Ausnahmen, Stimmung im Gespräch. Wozu: Damit du nichts unterschlagen musst, was nicht in ein Feld passt. Der Closer liest es vor dem Termin.'
   },
   ergebnis_beratung: {
-    name: 'Ergebnis des Gesprächs', art: 'auswahl', optionen: AUSWAHL.gespraechsausgang,
-    hilfe: 'Bis auf die klare Absage endet jedes Beratungsgespräch mit einem Abschlusstermin. Kam ausnahmsweise keiner zustande, fasst du binnen 48 Stunden nach. Kannst du die Handlung nicht mit Datum benennen, ist es „Vertagt ohne festen Schritt". Wozu: Das Feld entscheidet, was das System als Nächstes tut, und ist die Grundlage der Quote, an der wir sehen, ob der Prozess trägt.'
+    name: 'Ergebnis des Gesprächs', art: 'auswahl', optionen: AUSWAHL.ausgang_beratung,
+    hilfe: 'Der Regelfall ist das vereinbarte Abschlussgespräch; dafür buchst du gleich den Termin, ohne ihn geht es nicht weiter. Kam ausnahmsweise keiner zustande, der Kunde bleibt aber interessiert, ist es „Vertagt ohne festen Schritt" — dann fasst du binnen 48 Stunden nach. „Nicht geeignet" nur, wenn er wirklich nicht zu uns passt, mit Begründung. Wozu: Das Feld entscheidet, was das System als Nächstes tut, und ist die Grundlage der Quote, an der wir sehen, ob der Prozess trägt.'
+  },
+  verlust_grund: {
+    name: 'Warum nicht geeignet', art: 'freitext', zeilen: 2,
+    hilfe: 'In einem Satz: Was spricht gegen eine Zusammenarbeit? Kein Budget, zu klein, falsche Erwartung, jemand anderes entscheidet. Wozu: Ohne Grund lässt sich später nicht unterscheiden, ob wir die Falschen anrufen oder die Richtigen falsch ansprechen.'
   },
   material_versendet: {
     name: 'Versendete Unterlagen und Videos', art: 'liste',
@@ -557,7 +568,12 @@ const MASKE_2 = [
   },
   {
     spalte: 'ergebnis_beratung', abschnitt: ABSCHNITT.ABSCHLUSS, pflicht: false,
-    frage: () => ({ hinweis: 'Erst nach dem Gespräch. „Nächster Schritt vereinbart" nur, wenn du die zugesagte Handlung mit Datum benennen kannst.' })
+    frage: () => ({ hinweis: 'Erst nach dem Gespräch. „Abschlussgespräch vereinbart" heißt: Der Termin wird gleich gebucht.' })
+  },
+  {
+    // Wer aussortiert, sagt warum. Sonst steht am Ende eine Quote ohne Lehre.
+    spalte: 'verlust_grund', abschnitt: ABSCHNITT.ABSCHLUSS, pflicht: true,
+    sichtbar: w => w?.ergebnis_beratung === 'Nicht geeignet'
   },
   { spalte: 'material_versendet', abschnitt: ABSCHNITT.ABSCHLUSS, optional: true, anzeige: true, sichtbar: nichtReduziert }
 ]

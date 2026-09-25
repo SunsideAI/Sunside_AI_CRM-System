@@ -1254,6 +1254,26 @@ export async function handler(event) {
         }
       }
 
+      // „Abschlussgespraech vereinbart" als Ergebnis behauptet einen Termin.
+      // Ohne gebuchten Termin ist das eine leere Zusage - der Kontakt laege
+      // beim Setter, waehrend die Quote ihn als uebergeben zaehlt
+      // (Revision 25.09.). Vertagt und nicht geeignet brauchen keinen.
+      if (fields.ergebnis_beratung === 'Abschlussgespräch vereinbart'
+          && !fields.termin_abschlussgespraech) {
+        const { data: stand } = await supabase
+          .from('hot_leads').select('termin_abschlussgespraech').eq('id', hotLeadId).maybeSingle()
+        if (!stand?.termin_abschlussgespraech) {
+          return {
+            statusCode: 422,
+            headers: corsHeaders,
+            body: JSON.stringify({
+              error: 'termin_fehlt',
+              message: 'Für „Abschlussgespräch vereinbart" muss der Termin gebucht sein.'
+            })
+          }
+        }
+      }
+
       // Übergabe 2: das Abschlussgespräch wird erst gebucht, wenn der Setter
       // dokumentiert hat. Der Closer bereitet sein Strategiepapier daraus vor -
       // ohne die Felder hat er nichts in der Hand.
