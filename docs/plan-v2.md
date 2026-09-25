@@ -694,3 +694,62 @@ Admin-Konto gegen echte Datensätze testen, sondern an der Regel selbst — gena
 `setShowWebsiteStats(false)` auf, obwohl der Zustand beim Tabellen-Umbau entfallen war — ein
 Laufzeitfehler, der das Schließen der Schublade abgebrochen hätte. `npm run pruefe` ist jetzt
 fehlerfrei.
+
+## Im Closing ist immer vom Abschlussgespräch die Rede — 25.09.
+
+Die Stufen tragen je einen Termin: Das Beratungsgespräch hält der Setter, das
+Abschlussgespräch der Closer. Im Closing stand trotzdem an mehreren Stellen das
+falsche Wort — und an einer davon war es kein Wort, sondern ein Fehler.
+
+**Der Fehler:** Der Terminwähler wurde im Closing mit dem Zweck „beratung"
+geöffnet. Ein dort neu gebuchter Termin schrieb damit `termin_beratungsgespraech`
+(überschrieb also den Termin des Setters), setzte den Status auf
+„Beratungsgespräch vereinbart" — und weil `stufeVonLead` diesen Status dem
+Setting zuordnet, fiel der Kontakt aus dem Closing zurück. Jetzt bucht das
+Closing mit dem Zweck „abschluss": `termin_abschlussgespraech`,
+`meeting_link_abschluss`, Status „Abschlussgespräch vereinbart". Sichtbar wird
+das auch im Kalenderfenster, das nun die Calendly-Art „Abschlussgespräch, per
+Google Meet" lädt statt der Beratungsart.
+
+**Eine Quelle für die Stufen:** `STATUS_JE_STUFE` und `statusFuerStufe()` in
+`shared/status.js` sagen, welcher Status zu welcher Stufe gehört. Die
+Statuswahl im Closing bietet nur noch dessen Status an — vorher ließ sich dort
+„Beratungsgespräch vereinbart" wählen, was den Kontakt ins Setting zurückschob.
+Der Statusfilter nimmt zusätzlich, was im Bestand wirklich vorkommt: Altfälle
+sollen filterbar bleiben.
+
+**Die Altfälle:** 128 Kontakte mit Closer tragen noch einen Status von vor dem
+Umbau (109-mal „Lead", 19-mal „Termin verschoben"). Die Status-Migration bildet
+beides bewusst auf „Beratungsgespräch vereinbart" ab — ob das Gespräch
+stattfand, weiß niemand, und ein Abschlussgespräch haben sie nicht. Also hilft
+nur die Anzeige: `anzeigeName(status, stufe)` nennt einen Beratungs-Status im
+Closing „Termin vereinbart" bzw. „Termin geführt". Im Setting bleibt es beim
+vollen Wort. Farben hängen weiter am Rohwert.
+
+Dazu die Wortwahl: Closer-Pool („Offene Abschlussgespräche"), Abschnitt in der
+Schublade, Aktionen („Neues Abschlussgespräch buchen" / „Abschlussgespräch
+verschieben"), No-Show- und Bewerbungsdialog, Toast und der Hinweis
+„Abschlussgespräch verpasst". Unberührt bleiben die Nachrichtentypen „Termin
+abgesagt" und „Termin verschoben" (sie sind Werte des `message_type`-Enums) und
+die Rückblickzeile, die den vorangegangenen Beratungstermin des Setters nennt.
+
+**Nebenbei:** „Angebot versenden" hing an einem Status, den es im Closing nicht
+gibt — der Eintrag hieß deshalb immer „Neues Angebot". Er folgt jetzt dem
+Angebotsstand.
+
+**Nachweis:** `node scripts/pruefe-stufen.mjs` (neu in `npm run pruefe`) hält
+die Stufenlisten gegen `stufeVonLead` und die Übergangsmatrix, prüft jeden
+Statusnamen der Stufe und dass die Seiten die Listen benutzen. Playwright gegen
+die Vorschau 10/10: keine Zeile im Closing sagt „Beratungsgespräch" — in
+Liste, Filter, Schublade, Pool und der Admin-Ansicht „Alle Leads" —, die
+Altkontakte stehen dort als „Termin vereinbart", und die Gegenprobe im Setting
+zeigt, dass dort weiter vom Beratungsgespräch die Rede ist. Keine
+Konsolenfehler.
+
+**Offen, weil es eine Entscheidung über Daten ist:** Der Spaltenvorgabewert von
+`hot_leads.status` in der Datenbank ist noch `'Lead'`; neue Hot Leads ohne
+gesetzten Status bekommen also weiter den Altwert (zuletzt am 25.09.). Die
+Migration `20260913_osc_statuskette.sql` setzt den Vorgabewert auf
+„Beratungsgespräch vereinbart" und bildet die Altwerte ab — sie ist noch nicht
+gelaufen. Sie gehört zum Go-live-Paket, zusammen mit
+`20260918_osc_rollenzuschnitt.sql`.
