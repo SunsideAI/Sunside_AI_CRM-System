@@ -753,3 +753,60 @@ Migration `20260913_osc_statuskette.sql` setzt den Vorgabewert auf
 „Beratungsgespräch vereinbart" und bildet die Altwerte ab — sie ist noch nicht
 gelaufen. Sie gehört zum Go-live-Paket, zusammen mit
 `20260918_osc_rollenzuschnitt.sql`.
+
+## Revision nach der Live-Demo: die Felder des Erstanrufs — 25.09.
+
+Aus dem Test vom 25.09. (Feedback v3, Abschnitt „Live Demo / Revision"). Der
+Opener füllt die Felder, aus denen die erste Mail und das Video entstehen —
+entsprechend genau ist der Schnitt.
+
+**Das Ziel darf nicht mehr offen bleiben.** „Noch nicht besprochen" ist als
+Auswahl verschwunden: An dieser Antwort hing, welches Testimonial und welcher
+VSL rausgehen, und „offen" heißt dort schlicht, dass niemand etwas verschicken
+kann. Dazu wird das **priorisierte Ziel Pflicht, sobald mehr als ein Ziel**
+genannt wurde.
+
+**Die Ziele richten sich nach der Branche** (`zieleFuerBranche`), die
+Beschriftung nach `brancheSprache` — die frühere `svSprache`, die jetzt zwei
+Fälle kennt:
+
+| Branche | Auswahl |
+|---|---|
+| Makler | Mehr Eigentümer-Anfragen · Mehr Kaufinteressenten · Zeitersparnis und Entlastung |
+| Sachverständiger | Mehr Bewertungsanfragen · Zeitersparnis und Entlastung |
+| andere | Mehr Anfragen · Zeitersparnis und Entlastung |
+
+Gespeichert wird in allen drei Fällen derselbe Wert; nur der Name wechselt.
+Kaufinteressenten gibt es nur beim Makler — ein Sachverständiger vermittelt
+keine, und bei „andere" wäre es geraten.
+
+**Gestrichen:** „Ansprechpartner und Funktion" (der Setter hat weiterhin „Wer
+das mitentscheidet"), „Kunde fragt von sich aus nach Preis, Ablauf oder
+Starttermin" samt Feld, der Opener-Hinweis über dem Notizfeld, die gelbe
+Warnung „Bitte buche zuerst einen Termin…" (der Schutz beim Speichern bleibt)
+und der Vorschlagsblock im Mailfenster des Openings — er speist sich aus der
+Übergabe des Setters, die es dort noch nicht gibt.
+
+**Neu formuliert:** „Will etwas Neues aufbauen (eigenes Vorhaben)" samt
+Tooltip, die Tooltips für das priorisierte Ziel und für das Problem in den
+Worten des Kunden, der Text über der Übergabe und der Hinweis nach der Buchung
+(„Testimonial-Video").
+
+**Folge, die im Blick bleiben muss:** Die Bewusstseinsstufe kannte eine Stufe 5
+für den, der von sich aus nach Preis oder Start fragt. Das Häkchen dafür ist
+jetzt weg; die Regel bleibt für Altkontakte stehen, neue erreichen Stufe 5
+nicht mehr über den Erstanruf.
+
+**Nachweis:** `node scripts/pruefe-erstanruf.mjs` (neu in `npm run pruefe`)
+prüft 14 Punkte — gestrichene Felder, Benennungen, die drei Branchenlisten und
+die Pflicht des priorisierten Ziels. Playwright in der Vorschau 14/14: im
+echten Buchungsdialog, nach Wahl eines Zeitfensters, mit Umschalten der Branche
+von Makler auf Sachverständiger auf „andere". Keine Konsolenfehler.
+
+Nebenbei geprüft, weil im Feedback „Calendly Buchung ist fehlgeschlagen" steht:
+Die Terminarten und die freien Zeiten kommen sauber (14 bis 15 Zeitfenster je
+Tag ab dem 28.09.). Der gemeldete Fehler lag also nicht an der Verfügbarkeit.
+
+**Noch nicht angefasst, wie besprochen:** Schritt 3 der Übergabe, die Optionen
+für das Ergebnis des Gesprächs und das Material (Testimonial- und VSL-Links,
+Signatur).
