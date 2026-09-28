@@ -916,3 +916,14 @@ Vermerk schon bei „Was der Kunde erreichen will".
 
 **Nachweis:** `pruefe-beratung.mjs` deckt die Maske, alle sechs Übergabesätze,
 die sieben Fragen und den Mailversand ab; Playwright in der Vorschau 8/8.
+
+### Entschieden: Der Setter bucht das Abschlussgespräch (Paul, 28.09.)
+
+Im Feedback vom 25.09. stand, Schritt 3 „Termin mit dem Closer" könne entfallen
+und der Closer setze den Termin nach der Übernahme selbst. Nach Abwägung bleibt
+es, wie es ist: Der Setter bucht den Termin am Ende des Gesprächs und übergibt
+in einem Zug. Das deckt sich mit dem Satz, den er dem Kunden sagt („Dafür
+blocken wir 45 Minuten fest ein"), mit der Regel „ohne Termin kein
+Abschlussgespräch vereinbart" und mit dem Haken „Ich halte das
+Abschlussgespräch selbst". Der Closer übernimmt den Termin aus dem Pool und
+schickt von dort sein VSL. Der Punkt ist damit erledigt, nicht offen.
