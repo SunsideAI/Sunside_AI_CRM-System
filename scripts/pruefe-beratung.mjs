@@ -49,6 +49,18 @@ sagt(/ergebnis_beratung === 'Abschlussgespräch vereinbart'[\s\S]{0,120}termin_a
 sagt(/STATUS\.ABSCHLUSS_VEREINBART[\s\S]{0,600}termin_abschlussgespraech/.test(server),
   'Und den Status ohne Termin ebenso')
 
+// 5. Die Reihenfolge der Seiten: erst die Fragen, das Ergebnis am Ende.
+const reihenfolge = ['Angaben aus dem Gespräch', 'Ergebnis des Gesprächs', 'Termin mit dem Closer']
+  .map(t => seite.indexOf(`kopf('${t}'`))
+sagt(reihenfolge.every((i, n) => i > -1 && (n === 0 || i > reihenfolge[n - 1])),
+  'Seitenfolge: Angaben (1), Ergebnis (2), Termin (3)')
+sagt(/kopf\('Angaben aus dem Gespräch', 1\)/.test(seite), 'Die Angaben sind Schritt 1')
+sagt(/kopf\('Ergebnis des Gesprächs', 2\)/.test(seite), 'Das Ergebnis ist Schritt 2')
+sagt(/BERATUNG_GEFUEHRT\) setAblauf\('felder'\)/.test(seite),
+  '„Setting starten" führt direkt zu den Fragen')
+sagt(/name: 'Setting starten'/.test(seite), 'Der Ausgang heißt „Setting starten"')
+sagt(!/Noch offen, bitte Ausgang wählen/.test(seite), '„Noch offen, bitte Ausgang wählen" ist weg')
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')

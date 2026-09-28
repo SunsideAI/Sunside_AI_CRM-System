@@ -25,11 +25,11 @@ const VERSCHOBEN = 'verschoben'
 
 // Deckungsgleich mit UEBERGAENGE[BERATUNG_VEREINBART] in shared/status.js.
 const AUSGAENGE = [
-  { wert: '', name: 'Noch offen, bitte Ausgang wählen' },
+  { wert: '', name: 'Bitte wählen' },
   {
     wert: STATUS.BERATUNG_GEFUEHRT,
-    name: 'Hat stattgefunden',
-    hinweis: 'Unten eintragen, was im Gespräch herauskam. Gespeichert wird erst am Ende.'
+    name: 'Setting starten',
+    hinweis: 'Öffnet die Fragen, auch schon vor dem Anruf. Gespeichert wird erst am Ende.'
   },
   {
     wert: STATUS.NICHT_ERSCHIENEN,
@@ -212,16 +212,17 @@ export default function SetterUebergabe({
   // sich in einer langen Maske die passende Stelle zu suchen.
   const ausgangWaehlen = (wert) => {
     setAusgang(wert); setFehler(''); setMeldung('')
-    if (wert === STATUS.BERATUNG_GEFUEHRT) setAblauf('ergebnis')
+    // Zuerst die Fragen, das Ergebnis steht am Ende (Revision 25.09.).
+    if (wert === STATUS.BERATUNG_GEFUEHRT) setAblauf('felder')
     else if (wert === VERSCHOBEN) setAblauf('verschoben')
     else if ([STATUS.NICHT_ERSCHIENEN, STATUS.TERMIN_ABGESAGT].includes(wert)) setAblauf('geplatzt')
     else setAblauf(null)
   }
 
-  // Dasselbe eine Stufe tiefer: Das gewählte Ergebnis öffnet die Angaben.
+  // Das Ergebnis ist der letzte Schritt: Es öffnet keine Seite mehr, sondern
+  // entscheidet nur, welcher Knopf unten steht.
   const ergebnisWaehlen = (neu) => {
     setWerte(neu); setOffen([]); setFehler('')
-    if (neu.ergebnis_beratung) setAblauf('felder')
   }
 
   const uebergeben = async (gebucht) => {
@@ -394,24 +395,32 @@ export default function SetterUebergabe({
     </button>
   )
 
-  // ── Seite: Ergebnis des Gesprächs ────────────────────────────────────────
-  if (ablauf === 'ergebnis') {
+  // ── Seite 1: Angaben aus dem Gespräch ────────────────────────────────────
+  // Zuerst die Fragen, das Ergebnis steht am Ende: Wie es ausgegangen ist,
+  // weiß der Setter erst, wenn er alles mitgeschrieben hat (Revision 25.09.).
+  if (ablauf === 'felder') {
     return mitAktionen(
       <div className="space-y-4">
-        {kopf('Ergebnis des Gesprächs', 1)}
-        <fieldset disabled={gesperrt} className="space-y-4 min-w-0">{ergebnisFeld}</fieldset>
-        <p className="text-xs text-gray-500">
-          Die Auswahl führt weiter: Beim vereinbarten Abschlussgespräch bis zum
-          Termin mit dem Closer, sonst zu den Angaben aus dem Gespräch.
-        </p>
+        {kopf('Angaben aus dem Gespräch', 1)}
+        <fieldset disabled={gesperrt} className="space-y-4 min-w-0">{felder}</fieldset>
         {fehlerKasten}
+        {meldung && <p className="text-sm text-green-700">{meldung}</p>}
       </div>,
-      <>{zurueckKnopf(null)}{zwischenstandKnopf}</>
+      <>
+        {zurueckKnopf(null, 'Zurück zum Ausgang')}
+        {zwischenstandKnopf}
+        <button
+          onClick={() => { setFehler(''); setAblauf('ergebnis') }}
+          className="fuss-haupt"
+        >
+          Weiter zum Ergebnis <ChevronRight className="w-4 h-4" />
+        </button>
+      </>
     )
   }
 
-  // ── Seite: Angaben aus dem Gespräch ──────────────────────────────────────
-  if (ablauf === 'felder') {
+  // ── Seite 2: Ergebnis des Gesprächs ──────────────────────────────────────
+  if (ablauf === 'ergebnis') {
     const weiter = mitUebergabe
       ? (
         <button
@@ -426,7 +435,7 @@ export default function SetterUebergabe({
         </button>
       )
       : (
-        <button onClick={abschliessen} disabled={laeuft} className="fuss-haupt">
+        <button onClick={abschliessen} disabled={laeuft || !ergebnis} className="fuss-haupt">
           {laeuft ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
           {knopfText}
         </button>
@@ -434,12 +443,16 @@ export default function SetterUebergabe({
 
     return mitAktionen(
       <div className="space-y-4">
-        {kopf('Angaben aus dem Gespräch', 2)}
-        <fieldset disabled={gesperrt} className="space-y-4 min-w-0">{felder}</fieldset>
+        {kopf('Ergebnis des Gesprächs', 2)}
+        <fieldset disabled={gesperrt} className="space-y-4 min-w-0">{ergebnisFeld}</fieldset>
+        <p className="text-xs text-gray-500">
+          Beim vereinbarten Abschlussgespräch geht es weiter zum Termin mit dem
+          Closer; ohne Termin lässt sich das nicht abschließen.
+        </p>
         {fehlerKasten}
         {meldung && <p className="text-sm text-green-700">{meldung}</p>}
       </div>,
-      <>{zurueckKnopf(fixerAusgang ? null : 'ergebnis')}{zwischenstandKnopf}{weiter}</>
+      <>{zurueckKnopf('felder', 'Zurück zu den Angaben')}{zwischenstandKnopf}{weiter}</>
     )
   }
 
@@ -460,7 +473,7 @@ export default function SetterUebergabe({
         />
         {fehlerKasten}
       </div>,
-      zurueckKnopf('felder', 'Zurück zu den Angaben')
+      zurueckKnopf('ergebnis', 'Zurück zum Ergebnis')
     )
   }
 
@@ -519,20 +532,29 @@ export default function SetterUebergabe({
   }
 
   // ── Basisseite ───────────────────────────────────────────────────────────
-  // Schon dokumentiert: Der Ausgang steht fest, es geht direkt um das Ergebnis.
+  // Schon dokumentiert: Der Ausgang steht fest, es geht direkt um die Angaben.
+  // Das Ergebnis kommt danach, wie im geführten Ablauf auch.
   if (fixerAusgang) {
     return mitAktionen(
-      <fieldset disabled={gesperrt} className="space-y-4 min-w-0">
-        {ergebnisFeld}
-        <p className="text-xs text-gray-500">
-          Die Auswahl führt weiter zu den Angaben aus dem Gespräch.
-        </p>
-        {fehlerKasten}
-        {meldung && <p className="text-sm text-green-700">{meldung}</p>}
-        <div className="pt-4 border-t border-outline-variant/50 mt-2">
-          <RueckgabeKnopf hotLead={lead} onErledigt={onGespeichert} />
-        </div>
-      </fieldset>
+      <>
+        <fieldset disabled={gesperrt} className="space-y-4 min-w-0">
+          {felder}
+          {fehlerKasten}
+          {meldung && <p className="text-sm text-green-700">{meldung}</p>}
+          <div className="pt-4 border-t border-outline-variant/50 mt-2">
+            <RueckgabeKnopf hotLead={lead} onErledigt={onGespeichert} />
+          </div>
+        </fieldset>
+      </>,
+      <>
+        {zwischenstandKnopf}
+        <button
+          onClick={() => { setFehler(''); setAblauf('ergebnis') }}
+          className="fuss-haupt"
+        >
+          Weiter zum Ergebnis <ChevronRight className="w-4 h-4" />
+        </button>
+      </>
     )
   }
 
@@ -541,8 +563,10 @@ export default function SetterUebergabe({
   return mitAktionen(
     <fieldset disabled={gesperrt} className="space-y-3 min-w-0">
       <p className="feld-hinweis mt-0">
-        Direkt nach dem Termin festhalten. Nur so zählen Erscheinungsquote
-        und Termin-Vergütung. Nichts auszuwählen heißt: offen.
+        Als Erstes ausfüllen. Mit „Setting starten" öffnest du die Fragen, auch schon
+        vor dem Anruf. Gezählt wird der Termin erst, wenn du am Ende das Ergebnis des
+        Gesprächs einträgst. Geht er nicht ran oder hat abgesagt, stell hier auf den
+        passenden Ausgang um.
       </p>
 
       {/* Die Auswahl selbst ist der Weg weiter - einen Knopf daneben braucht
