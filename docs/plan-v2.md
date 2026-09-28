@@ -879,3 +879,40 @@ bekommt ihn nicht doppelt.
 **Nachweis (Vorschau):** 4/4 — die Signatur beginnt mit „Mit freundlichen
 Grüßen / Paul Probodziak", der Mailtext endet mit „Ich freue mich darauf!", und
 weder Gruß noch Name stehen doppelt.
+
+## Setting: der Rest der Revision — 28.09.
+
+Nach Ablauf und Ausgängen jetzt die Inhalte der Maske.
+
+**Weggefallen:** „Nur wenn es im Gespräch fiel" (Aufträge im Jahr, Provision je
+Auftrag) — beides war optional und gehört, wenn es zur Sprache kommt, ins
+Notizfeld. Und „Versendete Unterlagen und Videos": Das System schreibt beim
+Senden ohnehin mit, in der Maske stand die Liste nur im Weg. Beide Spalten
+bleiben lesbar, sie sind nur aus der Maske heraus.
+
+**Neu an ihrer Stelle: der Satz zum Übergeben.** Er steht am Ende der Angaben,
+dort, wo der Setter ihn im Gespräch spricht, und richtet sich nach dem Segment:
+
+| Segment | Was der Closer bis zum Termin vorbereitet |
+|---|---|
+| Eigentümer | Konzept mit SEO- und GEO-Analyse und Mehrwertkalkulation |
+| Kaufinteressenten | Kalkulation und eine Muster-Anzeige für ein Objekt |
+| Zeitersparnis | Automatisierungs-Kurzanalyse: die drei größten Zeitfresser |
+| Sachverständige | dieselbe Analyse, bezogen auf den Gutachtenprozess |
+| andere Branche | je nach Ziel: Anfragengewinnung oder Entlastung im Tagesgeschäft |
+
+**Das Closer-Gerüst** steht jetzt im Setting, wo die Standardfragen nicht
+passen (andere Branche oder eigenes Vorhaben): die sieben Fragen in genau der
+Reihenfolge aus dem Feedback, über dem Notizfeld. Der Hinweis über den Angaben
+nennt dieses Notizfeld ausdrücklich — es ist der Ausweg, wenn das Gespräch eine
+andere Wendung nimmt.
+
+**Mail an den Closer:** Wird das Abschlussgespräch vereinbart, geht sie raus —
+an den Closer, wenn einer feststeht, sonst an alle, die sich darauf bewerben
+können. Scheitert der Versand, bleibt die Übergabe trotzdem stehen.
+
+Im Übergabeblatt steht „Priorisiertes Ziel" nicht mehr doppelt; es trägt seinen
+Vermerk schon bei „Was der Kunde erreichen will".
+
+**Nachweis:** `pruefe-beratung.mjs` deckt die Maske, alle sechs Übergabesätze,
+die sieben Fragen und den Mailversand ab; Playwright in der Vorschau 8/8.
