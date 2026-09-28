@@ -26,6 +26,30 @@ export function neuerTerminImPool({ gebuchtVon, unternehmen, ansprechpartner, da
   }
 }
 
+/**
+ * Der Setter hat übergeben: Das Abschlussgespräch steht.
+ *
+ * Geht an den Closer, wenn einer feststeht - sonst an alle, die sich darauf
+ * bewerben können. Die Mail nennt, was der Closer bis dahin vorbereitet.
+ */
+export function abschlussgespraechVereinbart({ setterName, unternehmen, ansprechpartner, datum, imPool }) {
+  return {
+    betreff: betreff('Closing', `Abschlussgespräch vereinbart: ${unternehmen || 'Kontakt'}`),
+    mail: systemMail({
+      bereich: 'Closing', ton: 'aktion', zustand: 'Zu erledigen',
+      titel: imPool ? 'Ein Abschlussgespräch wartet im Pool' : 'Dein Abschlussgespräch steht',
+      einleitung: imPool
+        ? `${fett(setterName || 'Ein Setter')} hat übergeben. Noch ist kein Closer eingeteilt.`
+        : `${fett(setterName || 'Ein Setter')} hat das Beratungsgespräch geführt und an dich übergeben.`,
+      fakten: [['Unternehmen', unternehmen], ['Ansprechpartner', ansprechpartner], ['Abschlussgespräch', datum]],
+      knopf: imPool ? ['Im Closer-Pool bewerben', '/closing'] : ['Zur Übergabe', '/closing'],
+      grund: imPool
+        ? 'Du bekommst diese Mail, weil du Closer oder in der Leitung bist.'
+        : 'Du bekommst diese Mail, weil du als Closer eingetragen bist.'
+    })
+  }
+}
+
 /** Ein Closer hat einen Termin zurück in den Closer-Pool gegeben. */
 export function terminWiederFrei({ freigegebenVon, unternehmen, ansprechpartner, datum, art }) {
   return {

@@ -144,6 +144,52 @@ function kurzZiel(ziel, lead) {
 export const istSv = (lead) => lead?.berufsgruppe === BRANCHE.SV
 
 /**
+ * Der Satz, mit dem der Setter an den Closer übergibt.
+ *
+ * Er steht am Ende des Gesprächs und kündigt an, was bis zum Abschlusstermin
+ * vorbereitet wird. Welcher es ist, entscheidet das Ziel - beim Makler das
+ * Konzept mit SEO- und GEO-Analyse, beim Kaufinteressenten die Muster-Anzeige,
+ * bei Zeitersparnis die Automatisierungs-Kurzanalyse. Wörtlich aus dem
+ * Feedback vom 25.09.; vorher stand an dieser Stelle die Liste der versendeten
+ * Unterlagen, die ohnehin nur wiederholte, was das System selbst einträgt.
+ */
+const UEBERGABE_SATZ = {
+  eigentuemer: 'Damit habe ich ein gutes Bild von Ihrer Situation. Als Nächstes setze ich Sie mit unserem absoluten KI-Experten zusammen. Der macht den ganzen Tag nichts anderes als KI für Maklerbüros. Bis zu Ihrem Termin erarbeitet er ein individuelles Konzept für Ihr Büro. Darin steckt eine SEO- und GEO-Analyse für Ihre Region, also welche Eigentümer bei Google und in den KI-Suchen nach Verkauf und Bewertung suchen und wo Sie dabei stehen. Und eine Mehrwertkalkulation mit Ihren Zahlen, in der genau die Anfragen im Monat stehen, über die wir eben gesprochen haben. Dafür blocken wir 45 Minuten fest ein.',
+  kaeufer: 'Damit habe ich ein gutes Bild von Ihrer Situation. Als Nächstes setze ich Sie mit unserem absoluten KI-Experten zusammen. Bis zu Ihrem Termin erarbeitet er ein individuelles Konzept für Ihr Büro, mit einer Kalkulation mit Ihren Zahlen und einer Muster-Anzeige für eines Ihrer Objekte, damit Sie sehen, wie das bei Ihren Immobilien aussieht. Dafür blocken wir 45 Minuten fest ein.',
+  automatisierung: 'Damit habe ich ein gutes Bild von Ihrer Situation. Als Nächstes setze ich Sie mit unserem absoluten KI-Experten zusammen. Bis zu Ihrem Termin erarbeitet er Ihre Automatisierungs-Kurzanalyse: Ihre drei größten Zeitfresser aus unserem Gespräch und was davon KI übernehmen kann. Dafür blocken wir 45 Minuten fest ein.',
+  sachverstaendige: 'Damit habe ich ein gutes Bild von Ihrer Situation. Als Nächstes setze ich Sie mit unserem absoluten KI-Experten zusammen. Bis zu Ihrem Termin erarbeitet er Ihre Automatisierungs-Kurzanalyse: Ihre größten Zeitfresser im Gutachtenprozess und was davon KI übernehmen kann. Dafür blocken wir 45 Minuten fest ein.',
+  andere_anfragen: 'Damit habe ich ein gutes Bild von Ihrer Situation. Als Nächstes setze ich Sie mit unserem absoluten KI-Experten zusammen. Der baut den ganzen Tag KI-Lösungen, die Unternehmen mehr Anfragen bringen. Bis zu Ihrem Termin erarbeitet er ein individuelles Konzept für Ihr Unternehmen. Darin steckt eine SEO- und GEO-Analyse für Ihre Region, also wer bei Google und in den KI-Suchen nach Ihrer Leistung sucht und wo Sie dabei stehen. Dafür blocken wir 45 Minuten fest ein.',
+  andere_entlastung: 'Damit habe ich ein gutes Bild von Ihrer Situation. Als Nächstes setze ich Sie mit unserem absoluten KI-Experten zusammen. Der baut den ganzen Tag KI-Lösungen, die Büros im Tagesgeschäft entlasten. Bis zu Ihrem Termin erarbeitet er Ihre Automatisierungs-Kurzanalyse: Ihre drei größten Zeitfresser aus unserem Gespräch und was davon KI übernehmen kann. Dafür blocken wir 45 Minuten fest ein.'
+}
+
+/** Welcher Übergabesatz zu diesem Kontakt gehört. */
+export function uebergabeSatz(lead) {
+  const ziel = lead?.ziel || lead?.ziel_prioritaet
+  if (istSv(lead)) return UEBERGABE_SATZ.sachverstaendige
+  if (lead?.berufsgruppe === BRANCHE.ANDERE) {
+    return ziel === ZIEL.ZEIT ? UEBERGABE_SATZ.andere_entlastung : UEBERGABE_SATZ.andere_anfragen
+  }
+  if (ziel === ZIEL.KAEUFER) return UEBERGABE_SATZ.kaeufer
+  if (ziel === ZIEL.ZEIT) return UEBERGABE_SATZ.automatisierung
+  return UEBERGABE_SATZ.eigentuemer
+}
+
+/**
+ * Die Merkliste des Closer-Gerüsts, in genau dieser Reihenfolge (Feedback
+ * 25.09.). Sie steht im Setting, wenn die Standardfragen nicht passen: andere
+ * Branche oder eigenes Vorhaben.
+ */
+export const GERUEST_FRAGEN = [
+  'Was ist sein Ziel?',
+  'Was ist sein Problem?',
+  'Was hat er schon probiert, um es zu lösen?',
+  'Was bräuchte er, damit das besser läuft?',
+  'Woran würde er in einem halben Jahr festmachen, dass es sich gelohnt hat?',
+  'Was ist sein Budget?',
+  'Wer ist noch Entscheider?'
+]
+
+/**
  * Reduzierter Modus im Beratungsgespräch (Entscheidung Niklas, 20.09.):
  * andere Branche oder eigenes Vorhaben. Dann passen die Standardfragen nicht,
  * die Maske zeigt nur Notizen, Termin, Mobilnummer und Ergebnis, und es
@@ -318,6 +364,7 @@ export const FELDER = {
     name: 'Was er bereit wäre zu investieren', art: 'freitext', zeilen: 1,
     hilfe: 'Zweite Möglichkeit, wenn er ausweicht: „Angenommen, wir bekommen das hin … Was haben Sie sich dafür an Budget vorgestellt? Ich frage, weil es ein bisschen wie beim Autokauf ist: Fiat oder Porsche, beides bringt Sie ans Ziel, das eine schneller." Keine Preise nennen, seine Zahl ist ein Rahmen, kein Angebot. Weicht er aus, genau das notieren („ausgewichen") und nicht verhandeln.'
   },
+  // Altbestand: nicht mehr in der Maske (Revision 25.09.), aber lesbar.
   ist_auftraege: {
     name: 'Aufträge im letzten Jahr', art: 'zahl', min: 0,
     hilfe: 'Wozu: Nur damit das Konzept „von 20 auf 28" heißen kann statt „8 mehr". Fehlt die Zahl, funktioniert es trotzdem.'
@@ -342,9 +389,11 @@ export const FELDER = {
     name: 'Warum nicht geeignet', art: 'freitext', zeilen: 2,
     hilfe: 'In einem Satz: Was spricht gegen eine Zusammenarbeit? Kein Budget, zu klein, falsche Erwartung, jemand anderes entscheidet. Wozu: Ohne Grund lässt sich später nicht unterscheiden, ob wir die Falschen anrufen oder die Richtigen falsch ansprechen.'
   },
+  // Altbestand: Das System schreibt weiter mit, was versendet wurde - in der
+  // Maske stand es nur im Weg (Revision 25.09.).
   material_versendet: {
     name: 'Versendete Unterlagen und Videos', art: 'liste',
-    hilfe: 'Füllt das System beim Senden automatisch aus. Vor dem Abschlussgespräch kurz prüfen.'
+    hilfe: 'Füllt das System beim Senden automatisch aus.'
   },
 
   // ---- Altbestand: nicht mehr in einer Maske, aber lesbar ----
@@ -420,7 +469,6 @@ const ABSCHNITT = {
   ZIEL: 'Anlass und Ziel',
   PROBLEM: 'Problem und Versuche',
   ZAHLEN: 'Zahlen und Entscheidung',
-  NEBENBEI: 'Nur wenn es im Gespräch fiel',
   ABSCHLUSS: 'Abschluss des Gesprächs'
 }
 
@@ -534,18 +582,6 @@ const MASKE_2 = [
     }
   },
   {
-    spalte: 'ist_auftraege', abschnitt: ABSCHNITT.NEBENBEI, optional: true,
-    // Bei Kaufinteressenten steht dieselbe Frage schon im Hauptblock.
-    sichtbar: w => nichtReduziert(w) && w?.ziel !== ZIEL.KAEUFER,
-    frage: (w) => ({ satz: istSv(w)
-      ? '„Wie viele Gutachten erstellen Sie heute im Jahr?"'
-      : '„Wie viele Objekte bringen Sie heute im Jahr auf den Markt?"' })
-  },
-  {
-    spalte: 'provision_je_auftrag', abschnitt: ABSCHNITT.NEBENBEI, optional: true, sichtbar: nichtReduziert,
-    frage: () => ({ satz: '„Was verdienen Sie im Schnitt an einem Auftrag?"' })
-  },
-  {
     spalte: 'offene_huerde', abschnitt: ABSCHNITT.ABSCHLUSS, optional: true, sichtbar: nichtReduziert,
     frage: () => ({
       vorsatz: '„Wenn wir Ihnen nächste Woche zeigen, wie genau das bei Ihnen läuft, können wir dann gemeinsam starten?"',
@@ -575,7 +611,6 @@ const MASKE_2 = [
     spalte: 'verlust_grund', abschnitt: ABSCHNITT.ABSCHLUSS, pflicht: true,
     sichtbar: w => w?.ergebnis_beratung === 'Nicht geeignet'
   },
-  { spalte: 'material_versendet', abschnitt: ABSCHNITT.ABSCHLUSS, optional: true, anzeige: true, sichtbar: nichtReduziert }
 ]
 
 const MASKEN = { [UEBERGABE_1]: MASKE_1, [UEBERGABE_2]: MASKE_2 }

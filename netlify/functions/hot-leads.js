@@ -17,7 +17,7 @@ const UEBERGABE_SPALTEN = [...new Set([
   ...Object.keys(FELDER), ...SPALTEN_UEBERGABE, 'fragen_vorschlag', 'fragen_vorschlag_am'
 ])]
 import { systemMailSenden } from './utils/mailLayout.js'
-import { termineZurueckImPool } from './utils/mails.js'
+import { termineZurueckImPool, abschlussgespraechVereinbart } from './utils/mails.js'
 import { darf, verboten, hotLeadVerlangen, leadBeteiligt, zuteilungErlaubt, UUID } from './utils/zugriff.js'
 
 const supabase = createClient(
@@ -1377,6 +1377,53 @@ export async function handler(event) {
         if (kommentarError) {
           console.error('Update Kommentar in leads Error:', kommentarError)
           // Kein throw - Hot Lead ist bereits gespeichert
+        }
+      }
+
+      // Übergeben heißt: Jemand wartet auf diesen Termin. Steht der Closer
+      // fest, bekommt er die Mail; sonst alle, die sich darauf bewerben können
+      // (Feedback 25.09.: „Mail an den Closer schicken, wenn Abschlussgespräch
+      // vereinbart").
+      if (fields.status === STATUS.ABSCHLUSS_VEREINBART && data && process.env.RESEND_API_KEY) {
+        try {
+          const lead = data.original_lead || {}
+          const unternehmen = arrayToString(data.unternehmen) || arrayToString(lead.unternehmensname) || 'Kontakt'
+          const ansprechpartner = [
+            arrayToString(data.ansprechpartner_vorname) || arrayToString(lead.ansprechpartner_vorname),
+            arrayToString(data.ansprechpartner_nachname) || arrayToString(lead.ansprechpartner_nachname)
+          ].filter(Boolean).join(' ')
+          const datum = data.termin_abschlussgespraech
+            ? new Date(data.termin_abschlussgespraech).toLocaleString('de-DE', {
+                weekday: 'short', day: '2-digit', month: '2-digit',
+                hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
+              }) + ' Uhr'
+            : null
+
+          let empfaenger = []
+          if (data.closer_id) {
+            const { data: closer } = await supabase
+              .from('users').select('email, email_geschaeftlich').eq('id', data.closer_id).maybeSingle()
+            const an = closer?.email_geschaeftlich || closer?.email
+            if (an) empfaenger = [an]
+          } else {
+            const { data: alle } = await supabase
+              .from('users').select('email, email_geschaeftlich, rollen, status').eq('status', true)
+            empfaenger = (alle || [])
+              .filter(u => (u.rollen || []).some(r => /closer|admin|gesch/i.test(r)))
+              .map(u => u.email_geschaeftlich || u.email)
+              .filter(Boolean)
+          }
+
+          const { betreff: b, mail } = abschlussgespraechVereinbart({
+            setterName: angemeldet.name,
+            unternehmen, ansprechpartner, datum,
+            imPool: !data.closer_id
+          })
+          for (const an of empfaenger) await systemMailSenden({ an, betreff: b, mail })
+        } catch (mailFehler) {
+          // Die Übergabe steht schon in der Datenbank; eine Mail, die nicht
+          // rausgeht, darf sie nicht zurücknehmen.
+          console.error('Mail an den Closer fehlgeschlagen:', mailFehler)
         }
       }
 

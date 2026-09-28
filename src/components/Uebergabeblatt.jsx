@@ -36,6 +36,10 @@ function Wert({ feld, wert, lead }) {
 function Block({ titel, bereich, lead }) {
   const eintraege = maske(bereich)
     .filter(f => !(bereich === UEBERGABE_2 && f.schluessel === 'mobilnummer'))
+    // „Priorisiertes Ziel" steht schon in „Was der Kunde erreichen will", dort
+    // mit dem Zusatz „(priorisiert)". Zweimal dasselbe liest niemand
+    // (Feedback 25.09.).
+    .filter(f => !(bereich === UEBERGABE_1 && f.schluessel === 'ziel_prioritaet'))
     // Was gefüllt ist, wird gezeigt, auch wenn das Feld heute ausgeblendet wäre:
     // Korrigiert der Setter das Ziel, bleibt die alte Zahl lesbar.
     .filter(f => hatWert(lead?.[f.schluessel], f.art))

@@ -61,6 +61,32 @@ sagt(/BERATUNG_GEFUEHRT\) setAblauf\('felder'\)/.test(seite),
 sagt(/name: 'Setting starten'/.test(seite), 'Der Ausgang heißt „Setting starten"')
 sagt(!/Noch offen, bitte Ausgang wählen/.test(seite), '„Noch offen, bitte Ausgang wählen" ist weg')
 
+// 6. Was die Revision im Setting sonst verlangt
+import { maske as maske2, UEBERGABE_2 as U2, uebergabeSatz, GERUEST_FRAGEN } from '../shared/felder.js'
+const settingFelder = maske2(U2).map(f => f.schluessel)
+for (const weg of ['ist_auftraege', 'provision_je_auftrag', 'material_versendet']) {
+  sagt(!settingFelder.includes(weg), `Setting-Maske ohne "${weg}"`)
+}
+sagt(GERUEST_FRAGEN.length === 7 && GERUEST_FRAGEN[0].startsWith('Was ist sein Ziel'),
+  'Die sieben Fragen des Gerüsts stehen in ihrer Reihenfolge')
+const satz = (lead) => uebergabeSatz(lead)
+sagt(satz({ ziel: 'Mehr Eigentümer-Anfragen' }).includes('SEO- und GEO-Analyse'),
+  'Eigentümer: Konzept mit SEO- und GEO-Analyse')
+sagt(satz({ ziel: 'Mehr Kaufinteressenten' }).includes('Muster-Anzeige'),
+  'Kaufinteressenten: Muster-Anzeige')
+sagt(satz({ ziel: 'Zeitersparnis und Entlastung' }).includes('Automatisierungs-Kurzanalyse'),
+  'Zeitersparnis: Automatisierungs-Kurzanalyse')
+sagt(satz({ berufsgruppe: 'Sachverständiger' }).includes('Gutachtenprozess'),
+  'Sachverständige: Zeitfresser im Gutachtenprozess')
+sagt(satz({ berufsgruppe: 'andere' }).includes('mehr Anfragen bringen'),
+  'andere Branche: Anfragengewinnung')
+sagt(satz({ berufsgruppe: 'andere', ziel: 'Zeitersparnis und Entlastung' }).includes('im Tagesgeschäft entlasten'),
+  'andere Branche mit Zeitersparnis: Entlastung')
+sagt(/uebergabeSatz\(/.test(seite), 'Die Setter-Maske zeigt den Übergabesatz')
+sagt(/GERUEST_FRAGEN/.test(seite), 'Die Setter-Maske zeigt die Gerüstfragen')
+sagt(/Am Ende der Seite findest du ein Notizfeld/.test(seite), 'Der Hinweis auf das Notizfeld steht')
+sagt(/abschlussgespraechVereinbart/.test(server), 'Der Server schickt die Mail an den Closer')
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')

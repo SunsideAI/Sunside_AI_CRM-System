@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom'
 import { CheckCircle2, Loader2, AlertTriangle, Info, ChevronLeft, ChevronRight } from 'lucide-react'
 import { STATUS } from '../../shared/status.js'
 import {
-  UEBERGABE_2, maske, reduzierterModus, istSv, GRUND_REDUZIERT, ANLEITUNG_REDUZIERT
+  UEBERGABE_2, maske, reduzierterModus, istSv, GRUND_REDUZIERT, ANLEITUNG_REDUZIERT,
+  uebergabeSatz, GERUEST_FRAGEN
 } from '../../shared/felder.js'
 import UebergabeFelder, { AnfragenBedarf, uebergabePruefen } from './UebergabeFelder'
 import FragenVorschlag from './FragenVorschlag'
@@ -316,6 +317,12 @@ export default function SetterUebergabe({
             <p className="mt-1 text-xs">
               <span className="font-medium">Bitte mitschreiben:</span> {ANLEITUNG_REDUZIERT[reduziert]}
             </p>
+            {/* Die Merkliste des Gerüsts, in genau dieser Reihenfolge. Wo die
+                Standardfragen nicht passen, ist sie der Faden durchs Gespräch
+                (Feedback 25.09.). */}
+            <ol className="mt-2 space-y-0.5 text-xs list-decimal list-inside">
+              {GERUEST_FRAGEN.map(f => <li key={f}>{f}</li>)}
+            </ol>
           </div>
         </div>
       )}
@@ -331,7 +338,9 @@ export default function SetterUebergabe({
         {!ablauf && <h4 className="abschnitt-titel">Übergabe an den Closer</h4>}
         <p className="feld-hinweis">
           Der Closer baut sein Strategiepapier aus diesen Angaben. Was hier fehlt,
-          fehlt ihm im Gespräch.
+          fehlt ihm im Gespräch. Am Ende der Seite findest du ein Notizfeld:
+          Nimmt das Gespräch eine andere Wendung, kannst du darauf ausweichen,
+          und Sonderthemen gehören ebenfalls dorthin.
         </p>
       </div>
 
@@ -345,6 +354,15 @@ export default function SetterUebergabe({
       />
 
       <AnfragenBedarf werte={werte} />
+
+      {/* Der Satz zum Übergeben. Er gehört ans Ende: Hier hört das Gespräch
+          auf, und genau das sagt der Setter dem Kunden zum Schluss. Was
+          versendet wurde, schreibt das System selbst mit - die Liste stand
+          hier nur im Weg (Feedback 25.09.). */}
+      <div className="p-3 rounded-lg border border-primary-fixed-dim bg-primary-fixed/20">
+        <p className="text-label-sm text-primary mb-1">So übergibst du an den Closer</p>
+        <p className="text-body-sm text-on-surface italic">„{uebergabeSatz(werte)}"</p>
+      </div>
     </div>
   )
 
