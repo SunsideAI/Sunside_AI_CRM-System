@@ -130,6 +130,27 @@ export function anzeigeName(status, stufe = null) {
 }
 
 /**
+ * Wie der Stand DIESES Kontakts heisst - nicht nur, wie sein Statusfeld heisst.
+ *
+ * Beides kann auseinanderlaufen: Eine Terminverschiebung setzt den Status auf
+ * einen Beratungswert zurueck, auch wenn die Uebergabe an den Closer laengst
+ * steht. Dann zeigte die Liste „Beratungsgespräch vereinbart" bei einem
+ * Kontakt, der ein gebuchtes Abschlussgespraech hat. Hinkt der Status der
+ * Uebergabe hinterher, gilt die Uebergabe.
+ *
+ * Nur fuer die beiden Beratungswerte: Ein Kontakt, der im Closing schon beim
+ * Angebot steht, behaelt selbstverstaendlich seinen eigenen Stand.
+ */
+export function anzeigeNameVonLead(lead, stufe = null) {
+  const s = normalisiere(lead?.status)
+  if (anCloserUebergeben(lead)
+      && (s === STATUS.BERATUNG_VEREINBART || s === STATUS.BERATUNG_GEFUEHRT)) {
+    return ANZEIGE[STATUS.ABSCHLUSS_VEREINBART] || STATUS.ABSCHLUSS_VEREINBART
+  }
+  return anzeigeName(s, stufe)
+}
+
+/**
  * Übergangsmatrix, gleichlautend zu status_uebergang_erlaubt() in der
  * Datenbank. Der Code prüft für eine verständliche Fehlermeldung, die
  * Datenbank prüft, damit es niemand umgehen kann.
@@ -178,6 +199,26 @@ export const STUFE = {
   VERLOREN: 'verloren'
 }
 
+/**
+ * Ist die Übergabe an den Closer vollzogen?
+ *
+ * Der Status allein genügt dafür nicht. Am 28.09.2026 stand ein längst
+ * übergebener Kontakt wieder unter „Anstehend" im Setting: Sein Status war
+ * durch eine Terminverschiebung auf einen Beratungswert zurückgefallen,
+ * während Ergebnis, Abschlusstermin und Closer längst gesetzt waren. Die
+ * Sperre hing am Status und griff deshalb nicht — der Setter hätte am Kontakt
+ * des Closers weiterarbeiten können.
+ *
+ * Gemessen wird am Ergebnis des Beratungsgesprächs, nicht am Abschlusstermin:
+ * Der Termin bleibt auch nach einer Rücknahme als Information stehen, das
+ * Ergebnis räumt die Rücknahme mit ab. Sonst käme ein zurückgeholter Kontakt
+ * nie wieder ins Setting.
+ */
+export function anCloserUebergeben(lead) {
+  const ergebnis = lead?.ergebnis_beratung ?? lead?.ergebnisBeratung
+  return ergebnis === 'Abschlussgespräch vereinbart'
+}
+
 export function stufeVonLead(lead) {
   const s = normalisiere(lead?.status)
   if (!s) return STUFE.OPENING
@@ -188,7 +229,9 @@ export function stufeVonLead(lead) {
   if (s === STATUS.NICHT_ERSCHIENEN || s === STATUS.TERMIN_ABGESAGT) {
     return (lead.closer_id || lead.closerId) ? STUFE.CLOSING : STUFE.SETTING
   }
-  if (s === STATUS.BERATUNG_VEREINBART || s === STATUS.BERATUNG_GEFUEHRT) return STUFE.SETTING
+  if (s === STATUS.BERATUNG_VEREINBART || s === STATUS.BERATUNG_GEFUEHRT) {
+    return anCloserUebergeben(lead) ? STUFE.CLOSING : STUFE.SETTING
+  }
 
   return STUFE.CLOSING
 }

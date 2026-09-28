@@ -685,9 +685,17 @@ export async function handler(event) {
           }
         }
 
+        // Ein Schritt zurueck nimmt auch die Uebergabe zurueck: Seit der
+        // Stufenbestimmung am Ergebnis haengt (siehe anCloserUebergeben),
+        // bliebe der Kontakt sonst im Closing stehen, obwohl sein Status
+        // wieder im Setting liegt. Der Abschlusstermin bleibt als Information
+        // erhalten.
+        const zurueckFelder = { status: ziel, zuletzt_geaendert_von: angemeldet.id }
+        if (ziel === STATUS.BERATUNG_GEFUEHRT) zurueckFelder.ergebnis_beratung = null
+
         const { error: zurueckError } = await supabase
           .from('hot_leads')
-          .update({ status: ziel, zuletzt_geaendert_von: angemeldet.id })
+          .update(zurueckFelder)
           .eq('id', hotLeadId)
 
         if (zurueckError) throw new Error(zurueckError.message)
@@ -1092,7 +1100,7 @@ export async function handler(event) {
       if (!angemeldet.istAdmin && Object.keys(fields).length > 0) {
         const { data: lage } = await supabase
           .from('hot_leads')
-          .select('status, setter_id, closer_id, opener_id, reaktivierung_bearbeiter_id')
+          .select('status, setter_id, closer_id, opener_id, reaktivierung_bearbeiter_id, ergebnis_beratung')
           .eq('id', hotLeadId)
           .maybeSingle()
 

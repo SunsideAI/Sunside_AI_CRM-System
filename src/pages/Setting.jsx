@@ -5,7 +5,7 @@ import {
   Edit3, Save
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { STATUS, anzeigeName , stufeVonLead, STUFE, STUFE_TEXT } from '../../shared/status.js'
+import { STATUS, anzeigeNameVonLead, stufeVonLead, STUFE, STUFE_TEXT } from '../../shared/status.js'
 import LeadSchublade, { webZahlen } from '../components/LeadSchublade'
 import GeplatzteTermine from '../components/GeplatzteTermine'
 import SlideDrawer from '../components/SlideDrawer'
@@ -42,11 +42,23 @@ const MEINE_STUFEN = [
   STATUS.NICHT_ERSCHIENEN
 ]
 
+// Die Reiter fragen die Stufe, nicht den Status. Ein Kontakt, dessen Übergabe
+// steht, gehört in keine Arbeitsliste des Setters mehr - auch dann nicht, wenn
+// sein Status durch eine Terminverschiebung wieder auf einem Beratungswert
+// steht. Genau so stand am 28.09.2026 ein längst übergebener Kontakt unter
+// „Anstehend", voll bearbeitbar.
+const imSetting = (l) => stufeVonLead(l) === STUFE.SETTING
+
 const FILTER = [
-  { wert: 'offen',    name: 'Anstehend',   stufen: [STATUS.BERATUNG_VEREINBART] },
-  { wert: 'zu_tun',   name: 'Zu dokumentieren', stufen: [STATUS.BERATUNG_GEFUEHRT] },
-  { wert: 'geplatzt', name: 'Geplatzt',    stufen: [STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN] },
-  { wert: 'alle',     name: 'Alle',        stufen: MEINE_STUFEN }
+  { wert: 'offen',      name: 'Anstehend',
+    trifft: l => imSetting(l) && l.status === STATUS.BERATUNG_VEREINBART },
+  { wert: 'zu_tun',     name: 'Zu dokumentieren',
+    trifft: l => imSetting(l) && l.status === STATUS.BERATUNG_GEFUEHRT },
+  { wert: 'geplatzt',   name: 'Geplatzt',
+    trifft: l => imSetting(l) && [STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(l.status) },
+  { wert: 'uebergeben', name: 'Übergeben',
+    trifft: l => stufeVonLead(l) === STUFE.CLOSING },
+  { wert: 'alle',       name: 'Alle', trifft: () => true }
 ]
 
 function Setting() {
@@ -268,7 +280,11 @@ function Setting() {
       const daten = await antwort.json()
       if (!antwort.ok) throw new Error(daten.error || 'Laden fehlgeschlagen')
 
-      setKontakte((daten.hotLeads || []).filter(l => MEINE_STUFEN.includes(l.status)))
+      // Die eigenen Setting-Kontakte plus die, die schon beim Closer liegen:
+      // Letztere füllen den Reiter „Übergeben". Was gewonnen oder verloren
+      // ist, bleibt draussen - das ist keine Ansicht des Setters mehr.
+      setKontakte((daten.hotLeads || []).filter(l =>
+        MEINE_STUFEN.includes(l.status) || stufeVonLead(l) === STUFE.CLOSING))
     } catch (e) {
       setFehler(e.message)
     } finally {
@@ -294,11 +310,11 @@ function Setting() {
     )
   }
 
-  const stufen = FILTER.find(f => f.wert === filter)?.stufen || MEINE_STUFEN
+  const trifft = FILTER.find(f => f.wert === filter)?.trifft || (() => true)
   const suchbegriff = suche.trim().toLowerCase()
 
   const sichtbar = kontakte
-    .filter(l => stufen.includes(l.status))
+    .filter(trifft)
     .filter(l => !suchbegriff
       || (l.unternehmen || '').toLowerCase().includes(suchbegriff)
       || `${l.ansprechpartnerVorname || ''} ${l.ansprechpartnerNachname || ''}`.toLowerCase().includes(suchbegriff))
@@ -322,8 +338,8 @@ function Setting() {
   const gefiltert = gefilterteZeilen.slice(beginn, beginn + PRO_SEITE)
 
   const zaehler = (wert) => {
-    const s = FILTER.find(f => f.wert === wert)?.stufen || []
-    return kontakte.filter(l => s.includes(l.status)).length
+    const f = FILTER.find(x => x.wert === wert)?.trifft
+    return f ? kontakte.filter(f).length : 0
   }
 
   const terminText = (iso) => {
@@ -614,7 +630,7 @@ function Setting() {
         kontakt={{
           ansprechpartner: [gewaehlt?.ansprechpartnerVorname, gewaehlt?.ansprechpartnerNachname]
             .filter(Boolean).join(' '),
-          statusFeld: gewaehlt ? anzeigeName(gewaehlt.status) : null,
+          statusFeld: gewaehlt ? anzeigeNameVonLead(gewaehlt) : null,
           telefon: gewaehlt?.telefon,
           email: gewaehlt?.email,
           website: gewaehlt?.website,
@@ -631,7 +647,7 @@ function Setting() {
         verlauf={gewaehlt && { hotLeadId: gewaehlt.id, leadId: gewaehlt.originalLeadId }}
         arbeitsTitel="Beratungsgespräch"
         arbeitsIcon={Users}
-        fuss={gewaehlt && (
+        fuss={(gewaehlt && !gesperrt) ? (
           <>
             {/* Beim Ändern der Kontaktdaten steht nur Abbrechen und Speichern
                 unten — sonst konkurrieren drei Hauptaktionen um dieselbe Ecke.
@@ -668,7 +684,7 @@ function Setting() {
                 sie nur, wenn die Schublade zum Bearbeiten offen ist. */}
             <div id="schublade-aktionen" className="contents" />
           </>
-        )}
+        ) : null}
       >
         {gewaehlt && gesperrt && (
           <div className="space-y-4">
