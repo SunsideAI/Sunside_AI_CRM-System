@@ -67,20 +67,39 @@ function Frage({ frage, rolle }) {
   )
 }
 
-/** „Vom Kunden genannt" oder „geschätzt", auf derselben Zeile wie die Zahl. */
+/**
+ * Woher die Zahl stammt: vom Kunden genannt oder geschätzt.
+ *
+ * Das stand als Auswahlfeld neben der Zahl, gleich breit und gleich laut, mit
+ * „Herkunft?" darin. Zwei Werte brauchen kein Auswahlfeld: Als Paar kleiner
+ * Schalter stehen beide Möglichkeiten da, der gewählte ist zu sehen, und die
+ * Zahl daneben behält das Gewicht. Noch einmal auf den aktiven Schalter nimmt
+ * die Angabe zurück.
+ */
 function Kennzeichen({ schluessel, werte, onChange, disabled }) {
   const alle = werte?.zahlen_kennzeichen || {}
+  const jetzt = alle[schluessel] || ''
+  const kurz = { 'vom Kunden genannt': 'genannt', 'geschätzt': 'geschätzt' }
+
   return (
-    <select
-      value={alle[schluessel] || ''}
-      disabled={disabled}
-      onChange={e => onChange({ ...alle, [schluessel]: e.target.value || undefined })}
-      className="select-field w-40 shrink-0"
-      aria-label="Herkunft der Zahl"
-    >
-      <option value="">Herkunft?</option>
-      {AUSWAHL.kennzeichen.map(k => <option key={k} value={k}>{k}</option>)}
-    </select>
+    <div className="flex items-center gap-1 shrink-0" role="group" aria-label="Woher die Zahl stammt">
+      {AUSWAHL.kennzeichen.map(k => (
+        <button
+          key={k}
+          type="button"
+          disabled={disabled}
+          aria-pressed={jetzt === k}
+          title={k === 'vom Kunden genannt' ? 'Der Kunde hat diese Zahl selbst genannt' : 'Die Zahl ist geschätzt'}
+          onClick={() => onChange({ ...alle, [schluessel]: jetzt === k ? undefined : k })}
+          className={`px-3 py-2 rounded-lg text-label-md transition-colors disabled:opacity-60
+                      ${jetzt === k
+                        ? 'bg-primary text-on-primary'
+                        : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'}`}
+        >
+          {kurz[k] || k}
+        </button>
+      ))}
+    </div>
   )
 }
 
@@ -253,8 +272,8 @@ function Feld({ feld, werte, setzen, fehlt, rolle }) {
       {hilfeOffen && hilfe && <HilfeText text={hilfe} />}
 
       {feld.kennzeichen ? (
-        <div className="flex gap-2">
-          <div className="flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex-1 min-w-[10rem]">
             <Eingabe feld={feld} wert={wert} werte={werte} setzen={setzen} fehlt={fehlt} abgeschaltet={abgeschaltet} />
           </div>
           <Kennzeichen
