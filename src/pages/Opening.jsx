@@ -571,31 +571,29 @@ function Opening() {
   }
 
   // Hot-Lead-Daten für Beratungsgespräch-Leads laden (für No-Show Setter-Bearbeitung)
-  useEffect(() => {
-    const loadHotLeadData = async () => {
-      if (!selectedLead || selectedLead.ergebnis !== 'Beratungsgespräch') {
-        setHotLeadData(null)
-        return
-      }
-
-      setLoadingHotLead(true)
-      try {
-        const response = await fetch(`/.netlify/functions/hot-leads?originalLeadId=${selectedLead.id}`)
-        if (response.ok) {
-          const data = await response.json()
-          if (data.hotLeads && data.hotLeads.length > 0) {
-            setHotLeadData(data.hotLeads[0])
-          }
-        }
-      } catch (err) {
-        console.warn('Hot-Lead-Daten laden fehlgeschlagen:', err)
-      } finally {
-        setLoadingHotLead(false)
-      }
+  const hotLeadLaden = useCallback(async () => {
+    if (!selectedLead || selectedLead.ergebnis !== 'Beratungsgespräch') {
+      setHotLeadData(null)
+      return
     }
 
-    loadHotLeadData()
-  }, [selectedLead?.id, selectedLead?.ergebnis])
+    setLoadingHotLead(true)
+    try {
+      const response = await fetch(`/.netlify/functions/hot-leads?originalLeadId=${selectedLead.id}`)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.hotLeads && data.hotLeads.length > 0) {
+          setHotLeadData(data.hotLeads[0])
+        }
+      }
+    } catch (err) {
+      console.warn('Hot-Lead-Daten laden fehlgeschlagen:', err)
+    } finally {
+      setLoadingHotLead(false)
+    }
+  }, [selectedLead?.id, selectedLead?.ergebnis]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { hotLeadLaden() }, [hotLeadLaden])
 
   // Auto-Save für Ansprechpartner-Felder (mit Debounce)
   const autoSaveAnsprechpartner = useCallback(async (leadId, vorname, nachname) => {
@@ -925,6 +923,17 @@ function Opening() {
     if (!lead?.email) return false
     const ergebnis = String(lead.ergebnis || '').toLowerCase()
     return ergebnis.includes('beratungsgespräch') || ergebnis.includes('unterlage')
+  }
+
+  // Nach der Buchung schlägt das CRM die Mail mit dem passenden Testimonial
+  // vor. Wer das Fenster schließt, ohne zu senden, soll beim nächsten Klick
+  // wieder dort landen - und nicht vor einem leeren Formular stehen. Ist die
+  // Segment-Mail dagegen schon raus, ist es eine gewöhnliche Mail.
+  const segmentMailOffen = (lead, hot) => {
+    if (!hot?.id) return false
+    if (!String(lead?.ergebnis || '').toLowerCase().includes('beratungsgespräch')) return false
+    const versendet = Array.isArray(hot.material_versendet) ? hot.material_versendet : []
+    return !versendet.some(m => /segment/i.test(String(m)))
   }
 
   return (
@@ -1550,8 +1559,8 @@ function Opening() {
                     inline={true}
                     kategorie="Opening"
                     anlass="opening"
-                    onClose={() => { setSegmentMail(null); setSelectedLead(null); setEditMode(false) }}
-                    onSent={() => { setSegmentMail(null); setSelectedLead(null); setEditMode(false) }}
+                    onClose={() => { setSegmentMail(null); setEditMode(false) }}
+                    onSent={() => { setSegmentMail(null); setEditMode(false); hotLeadLaden() }}
                   />
                 </div>
               ) : showEmailComposer ? (
@@ -2030,7 +2039,12 @@ function Opening() {
                             Empfehlungsfenster einmal schliesst, kam sonst nicht
                             mehr an den Kontakt heran. */}
                         {darfMailen(selectedLead) && (
-                          <button onClick={() => setShowEmailComposer(true)} className="fuss-neben">
+                          <button
+                            onClick={() => segmentMailOffen(selectedLead, hotLeadData)
+                              ? setSegmentMail({ hotLeadId: hotLeadData.id, kontakt: hotLeadData })
+                              : setShowEmailComposer(true)}
+                            className="fuss-neben"
+                          >
                             <Mail className="w-4 h-4" />
                             E-Mail an den Kontakt
                           </button>
