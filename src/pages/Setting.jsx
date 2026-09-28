@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   Search, Calendar, Phone, Video, Loader2, User as UserIcon,
-  CheckCircle2, AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight, Lock,
+  AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight, Lock,
   Edit3, Save
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
@@ -18,6 +18,7 @@ import Uebergabeblatt, { UEBERGABE_1 } from '../components/Uebergabeblatt'
 import KontaktFelder from '../components/KontaktFelder'
 import LeadTabelle from '../components/LeadTabelle'
 import SpaltenWahl from '../components/SpaltenWahl'
+import { useMeldung } from '../components/Meldungen'
 import FilterWahl from '../components/FilterWahl'
 import useTabelle from '../hooks/useTabelle'
 import { filtern } from '../../shared/filter.js'
@@ -50,6 +51,7 @@ const FILTER = [
 
 function Setting() {
   const { user, isSetter, isAdmin } = useAuth()
+  const meldung = useMeldung()
 
   const [kontakte, setKontakte] = useState([])
   const [laedt, setLaedt] = useState(true)
@@ -81,7 +83,6 @@ function Setting() {
   const [ansicht, setAnsicht] = useState('meine')
   const [poolAnzahl, setPoolAnzahl] = useState(0)
   const [seite, setSeite] = useState(1)
-  const [hinweis, setHinweis] = useState('')
   // Nachterminierung eines geplatzten Abschlussgespraechs
   const [neuTerminLead, setNeuTerminLead] = useState(null)
   const [neuladen, setNeuladen] = useState(0)
@@ -104,7 +105,6 @@ function Setting() {
       setGewaehlt(g => (g ? { ...g, ...updates } : g))
       setFilter('zu_tun')
       setSeite(1)
-      setHinweis('')
       return
     }
 
@@ -115,7 +115,7 @@ function Setting() {
       // Bestätigungsmail mit dem VSL schickt der Closer, sobald er den Termin
       // übernommen hat (Entscheidung 28.09.). Also dieselbe Rückmeldung wie
       // im Opening nach der Buchung - eine Meldung, kein Mailfenster.
-      setHinweis(`${name} ist an den Closer übergeben. Das Abschlussgespräch steht im Closer-Pool.`)
+      meldung.erfolg(`${name} ist an den Closer übergeben. Das Abschlussgespräch steht im Closer-Pool.`)
       setGewaehlt(null)
       return
     }
@@ -126,13 +126,13 @@ function Setting() {
     if ([STATUS.NICHT_ERSCHIENEN, STATUS.TERMIN_ABGESAGT].includes(updates?.status)) {
       setFilter('geplatzt')
       setSeite(1)
-      setHinweis(updates.status === STATUS.NICHT_ERSCHIENEN
+      meldung.erfolg(updates.status === STATUS.NICHT_ERSCHIENEN
         ? `${name} ist nicht erschienen und steht jetzt unter „Geplatzt".`
         : `Die Absage für ${name} ist festgehalten. Der Kontakt steht unter „Geplatzt".`)
     }
 
     if (updates?.verschoben) {
-      setHinweis(`Der Termin mit ${name} ist neu gelegt.`)
+      meldung.erfolg(`Der Termin mit ${name} ist neu gelegt.`)
     }
 
     // Vertagt: kein Abschlusstermin, der Setter fasst selbst nach. Der Kontakt
@@ -140,11 +140,11 @@ function Setting() {
     if (updates?.vertagt) {
       setFilter('zu_tun')
       setSeite(1)
-      setHinweis(`${name} ist gespeichert und bleibt unter „Zu dokumentieren". Bitte binnen 48 Stunden nachfassen.`)
+      meldung.erfolg(`${name} ist gespeichert und bleibt unter „Zu dokumentieren". Bitte binnen 48 Stunden nachfassen.`)
     }
 
     if (updates?.status === STATUS.VERLOREN_ENDGUELTIG) {
-      setHinweis(`${name} ist als Absage abgeschlossen.`)
+      meldung.erfolg(`${name} ist als Absage abgeschlossen.`)
     }
 
     setGewaehlt(null)
@@ -234,12 +234,12 @@ function Setting() {
         setFormular(null)
       } else {
         bearbeitenAbbrechen()
-        setHinweis('Die Kontaktdaten sind gespeichert.')
+        meldung.erfolg('Die Kontaktdaten sind gespeichert.')
         laden()
       }
       return true
     } catch (f) {
-      setHinweis('Speichern fehlgeschlagen: ' + f.message)
+      meldung.fehler('Speichern fehlgeschlagen: ' + f.message)
       return false
     } finally {
       setSpeichert(false)
@@ -413,20 +413,6 @@ function Setting() {
         <div className="bg-error-container rounded-xl p-4 text-error">{fehler}</div>
       )}
 
-      {hinweis && (
-        <div className="flex items-start gap-3 bg-success-container rounded-xl p-4">
-          <CheckCircle2 className="w-5 h-5 text-success shrink-0 mt-0.5" />
-          <p className="text-body-md text-on-surface flex-1">{hinweis}</p>
-          <button
-            type="button"
-            onClick={() => setHinweis('')}
-            aria-label="Meldung schließen"
-            className="text-on-surface-variant hover:text-on-surface shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
 
       {/* Geplatzte Abschlussgespraeche - der Setter hat sie gelegt, also legt
           er sie neu. Spiegelbild zum Opening, wo geplatzte Beratungsgespraeche
@@ -602,7 +588,7 @@ function Setting() {
             onTerminBooked={() => {
               setNeuTerminLead(null)
               setNeuladen(n => n + 1)
-              setHinweis(`Neues Abschlussgespräch für ${neuTerminLead.unternehmen} ist gebucht.`)
+              meldung.erfolg(`Neues Abschlussgespräch für ${neuTerminLead.unternehmen} ist gebucht.`)
               laden()
             }}
             onCancel={() => setNeuTerminLead(null)}

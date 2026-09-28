@@ -43,7 +43,14 @@ const eigene = alle.filter(d =>
   d !== 'src/components/Meldungen.jsx' && /fixed top-4 right-4/.test(fs.readFileSync(d, 'utf8')))
 sagt(eigene.length === 0, `Nur ein Ort für die Meldungen (${eigene.join(', ') || 'keine anderen'})`)
 
-// 3. Und das Bauteil haengt ueber allen Seiten.
+// 3. Auch kein eigenes Erfolgsbanner im Seitenfluss: das Setting hatte eines,
+//    gleiche Aufgabe, anderes Aussehen, und es blieb stehen statt zu gehen.
+const banner = alle.filter(d =>
+  d !== 'src/components/Meldungen.jsx' &&
+  /aria-label="Meldung schließen"/.test(fs.readFileSync(d, 'utf8')))
+sagt(banner.length === 0, `Keine zweite Bestätigung im Seitenfluss (${banner.join(', ') || 'keine'})`)
+
+// 4. Und das Bauteil haengt ueber allen Seiten.
 const app = appDatei && fs.existsSync(appDatei) ? fs.readFileSync(appDatei, 'utf8') : ''
 sagt(/MeldungenProvider/.test(app), 'Der Provider umschließt die Seiten')
 
