@@ -21,7 +21,8 @@ const corsHeaders = {
 
 // Was das CRM sehen und aendern darf. Alles andere bleibt unsichtbar.
 const ERLAUBT = {
-  bewerbung_pflicht_setter: { art: 'schalter' },
+  // Im Setting bewirbt sich niemand mehr (Entscheidung 25.09.), der Schalter
+  // dafuer ist entfallen. Im Closing entscheidet die Leitung weiter.
   bewerbung_pflicht_closer: { art: 'schalter' },
   // Phase 5: die Nachfass-Erinnerungen im stündlichen Lauf. Aus bis zum Go-live.
   osc_fristen_aktiv: { art: 'schalter' },

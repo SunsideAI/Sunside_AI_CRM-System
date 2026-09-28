@@ -60,9 +60,9 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
       })
       const daten = await antwort.json()
       if (!antwort.ok) { setFehler(daten.error || 'Übernehmen fehlgeschlagen'); return }
-      // Die Function sagt, was passiert ist: direkt übernommen oder beworben.
-      // Das hängt am Schalter in den Einstellungen, den das Frontend nicht
-      // kennen muss.
+      // Im Setting wird immer direkt übernommen (Entscheidung 25.09.). Die
+      // Function bestätigt es; die Antwort bleibt allgemein, damit das
+      // Frontend nichts über den Weg dahinter wissen muss.
       setBeworben(b => ({ ...b, [lead.id]: daten.direkt ? 'uebernommen' : 'beworben' }))
       schliessen?.()
       onGeaendert?.()

@@ -243,16 +243,20 @@ export async function handler(event) {
       const closerName = closerData?.vor_nachname || 'Ein Closer'
       const bewerbungId = generateBewerbungId()
 
-      // Schalter aus den Einstellungen: Muss auf dieser Stufe ueberhaupt
-      // beworben werden? Ist er aus, wird direkt uebernommen - aber weiterhin
-      // als genehmigte Bewerbung protokolliert, damit nachvollziehbar bleibt,
-      // wer wann zugegriffen hat. Fehlt der Eintrag, gilt "an": ein fehlender
-      // Schalter darf keine Tuer oeffnen.
-      const schalter = stufe === STUFE.SETTER
-        ? 'bewerbung_pflicht_setter' : 'bewerbung_pflicht_closer'
-      const { data: einstellung } = await supabase
-        .from('einstellungen').select('wert').eq('schluessel', schalter).maybeSingle()
-      const bewerbungNoetig = (einstellung?.wert ?? 'an') !== 'aus'
+      // Im Setting bewirbt sich niemand mehr: Ein Beratungsgespraech im Pool
+      // nimmt sich der Setter, der Zeit hat (Entscheidung 25.09.). Nur das
+      // Abschlussgespraech laeuft weiter ueber die Bewerbung, dort entscheidet
+      // die Leitung. Uebernommen wird trotzdem protokolliert, damit
+      // nachvollziehbar bleibt, wer wann zugegriffen hat.
+      //
+      // Fuer das Closing gilt der Schalter weiter. Fehlt er, gilt "an": ein
+      // fehlender Schalter darf keine Tuer oeffnen.
+      let bewerbungNoetig = false
+      if (stufe !== STUFE.SETTER) {
+        const { data: einstellung } = await supabase
+          .from('einstellungen').select('wert').eq('schluessel', 'bewerbung_pflicht_closer').maybeSingle()
+        bewerbungNoetig = (einstellung?.wert ?? 'an') !== 'aus'
+      }
 
       if (!bewerbungNoetig) {
         const feld = stufe === STUFE.SETTER ? 'setter_id' : 'closer_id'
@@ -284,8 +288,8 @@ export async function handler(event) {
           kommentar: kommentar || null,
           status: 'Genehmigt',
           admin_kommentar: konflikt
-            ? 'Direkt uebernommen (Bewerbung fuer diese Stufe nicht erforderlich). Hinweis: hat diesen Kontakt selbst qualifiziert.'
-            : 'Direkt uebernommen (Bewerbung fuer diese Stufe nicht erforderlich).',
+            ? 'Direkt uebernommen. Hinweis: hat diesen Kontakt selbst qualifiziert.'
+            : 'Direkt uebernommen.',
           bearbeitet_am: new Date().toISOString()
         })
 

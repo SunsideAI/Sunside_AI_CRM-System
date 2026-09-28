@@ -8,11 +8,6 @@ import { Loader2, UserCheck, AlertTriangle } from 'lucide-react'
 // kann Tempo wichtiger sein als Auswahl, beim Closing umgekehrt.
 
 const TEXTE = {
-  bewerbung_pflicht_setter: {
-    titel: 'Beratungsgespräche: Bewerbung nötig',
-    an:  'Setter bewerben sich, ein Admin teilt zu.',
-    aus: 'Setter übernehmen Beratungsgespräche direkt. Wer zuerst kommt, bekommt den Termin.'
-  },
   bewerbung_pflicht_closer: {
     titel: 'Abschlussgespräche: Bewerbung nötig',
     an:  'Closer bewerben sich, ein Admin teilt zu.',
