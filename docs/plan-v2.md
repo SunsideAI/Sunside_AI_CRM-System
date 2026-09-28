@@ -857,3 +857,25 @@ Commits davor. Ich habe daraufhin zweimal gegen den alten Stand getestet und
 daraus geschlossen, die neue Serverprüfung greife nicht. Seitdem gilt: vor jedem
 Test gegen die Vorschau den Bundle-Hash vergleichen, und nach jedem Commit alle
 versionierten Dateien gegen die Arbeitskopie prüfen, nicht nur die geänderten.
+
+## Die Signatur trägt wieder Gruß und Namen — 28.09.
+
+Im Mailfenster begann die Signatur mit „KI-Entwicklung für Immobilienmakler" —
+Gruß und Name fehlten. Der Code war nicht schuld: `signaturHtml()` lässt beides
+weg, wenn die Mail selbst schon mit einem Gruß endet, damit beim Empfänger
+nicht zweimal „Viele Grüße" steht.
+
+Die Ursache lagen in den Vorlagen: 13 der 23 endeten auf „Viele Grüße
+{Absender}" und nahmen der Signatur damit ihre Aufgabe. Im bestehenden CRM
+liefert die Signatur den Abschluss, die Vorlage endet mit dem letzten Satz.
+Genau so ist es jetzt: Der Abschluss ist aus den 13 Vorlagen entfernt (Segment-
+und Nachfass-Mails), gesichert in `archiv_email_templates_20260928`.
+
+Beim Empfänger steht damit wieder: letzter Satz — „Mit freundlichen Grüßen" —
+Name — „KI-Entwicklung für Immobilienmakler" — Firmenblock. Die Regel im Code
+bleibt als Sicherung für frei geschriebene Mails: Wer selbst einen Gruß tippt,
+bekommt ihn nicht doppelt.
+
+**Nachweis (Vorschau):** 4/4 — die Signatur beginnt mit „Mit freundlichen
+Grüßen / Paul Probodziak", der Mailtext endet mit „Ich freue mich darauf!", und
+weder Gruß noch Name stehen doppelt.
