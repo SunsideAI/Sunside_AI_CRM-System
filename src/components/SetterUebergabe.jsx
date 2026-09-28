@@ -171,7 +171,9 @@ export default function SetterUebergabe({
         } else if (antwort.status === 409) {
           setFehler(daten.error)
         } else {
-          setFehler(daten.error || daten.message || 'Konnte nicht gespeichert werden')
+          // Die Meldung zuerst: `error` ist der Schluessel fuer das Programm
+          // („termin_fehlt"), und den bekam bisher der Setter zu lesen.
+          setFehler(daten.message || daten.error || 'Konnte nicht gespeichert werden')
         }
         return false
       }

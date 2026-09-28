@@ -44,10 +44,12 @@ sagt(/mitUebergabe = ergebnis === 'Abschlussgespräch vereinbart'/.test(seite),
 sagt(!/'Auftrag'|'Absage'/.test(seite), 'Keine alten Ausgänge mehr im Ablauf')
 
 const server = fs.readFileSync('netlify/functions/hot-leads.js', 'utf8')
-sagt(/ergebnis_beratung === 'Abschlussgespräch vereinbart'[\s\S]{0,120}termin_abschlussgespraech/.test(server),
-  'Der Server weist das Ergebnis ohne gebuchten Termin ab')
+// Das Ergebnis darf vor der Buchung gesetzt sein: Der Setter waehlt es, bevor
+// er den Waehler oeffnet. Bindend ist der Status - er wechselt nur mit Termin.
 sagt(/STATUS\.ABSCHLUSS_VEREINBART[\s\S]{0,600}termin_abschlussgespraech/.test(server),
-  'Und den Status ohne Termin ebenso')
+  'Der Server laesst den Status nicht ohne gebuchten Termin zu')
+sagt(!/error: 'termin_fehlt'/.test(server),
+  'Kein zweites Gate auf dem Ergebnisfeld, das den Weg zum Waehler abschneidet')
 
 // 5. Die Reihenfolge der Seiten: erst die Fragen, das Ergebnis am Ende.
 const reihenfolge = ['Angaben aus dem Gespräch', 'Ergebnis des Gesprächs', 'Termin mit dem Closer']
