@@ -398,6 +398,28 @@
      links davon. `whitespace-nowrap` auf den Knöpfen ist hier kein Detail:
      In einer 500 px breiten Schublade brach sonst „An Pool freigeben" mitten
      im Wort um, und die Knöpfe schoben sich ineinander. */
+  /* Das Mail-Feld: Knopfzeile und Schreibfläche sind ein Feld, nicht zwei.
+     Vorher war die Leiste grau (bg-gray-50, graue Ränder) und die Fläche in
+     der Hausfarbe - oben grau, unten blau. */
+  .editor-feld {
+    @apply rounded-md overflow-hidden transition-all duration-250;
+    background-color: #F0F3FF;
+    border: 1px solid rgba(202, 196, 208, 0.15);
+  }
+  .editor-feld:focus-within {
+    border-color: rgba(103, 80, 164, 0.35);
+  }
+  .editor-leiste {
+    @apply flex items-center gap-1 px-2 py-1.5 border-b border-outline-variant/40;
+  }
+  .editor-knopf {
+    @apply p-1.5 rounded-md text-on-surface-variant hover:bg-surface-container
+           transition-colors;
+  }
+  .editor-flaeche {
+    @apply w-full px-4 py-3 overflow-y-auto outline-none text-body-md text-on-surface;
+  }
+
   .schublade-fuss {
     @apply shrink-0 flex flex-wrap items-center justify-end gap-2 sm:gap-3
            px-4 sm:px-6 py-3 sm:py-4 border-t border-outline-variant bg-surface;

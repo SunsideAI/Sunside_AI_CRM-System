@@ -629,90 +629,92 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
         <div>
           <label className="feld-label">Nachricht</label>
           
-          {/* Formatierungs-Toolbar */}
-          <div className="flex items-center gap-1 p-1.5 bg-gray-50 rounded-t-lg border border-b-0 border-gray-300">
-            <button
-              type="button"
-              onClick={formatBold}
-              className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
-              title="Fettgedruckt (Strg+B)"
-            >
-              <Bold className="w-4 h-4" />
-            </button>
-            
-            <button
-              type="button"
-              onClick={formatList}
-              className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
-              title="Aufzählung"
-            >
-              <List className="w-4 h-4" />
-            </button>
-            
-            <div className="relative">
+          {/* Knopfzeile und Schreibfläche sind ein Feld. */}
+          <div className="editor-feld">
+            <div className="editor-leiste">
               <button
                 type="button"
-                onClick={openLinkPopup}
-                className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
-                title="Link einfügen"
+                onClick={formatBold}
+                className="editor-knopf"
+                title="Fettgedruckt (Strg+B)"
               >
-                <LinkIcon className="w-4 h-4" />
+                <Bold className="w-4 h-4" />
               </button>
+            
+              <button
+                type="button"
+                onClick={formatList}
+                className="editor-knopf"
+                title="Aufzählung"
+              >
+                <List className="w-4 h-4" />
+              </button>
+            
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={openLinkPopup}
+                  className="editor-knopf"
+                  title="Link einfügen"
+                >
+                  <LinkIcon className="w-4 h-4" />
+                </button>
               
-              {/* Link-Popup */}
-              {showLinkPopup && (
-                <div className="absolute top-full left-0 mt-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-64">
-                  <div className="space-y-2">
-                    <input
-                      type="text"
-                      value={linkText}
-                      onChange={(e) => setLinkText(e.target.value)}
-                      placeholder="Anzeigename"
-                      className="input-field"
-                      autoFocus
-                    />
-                    <input
-                      type="url"
-                      value={linkUrl}
-                      onChange={(e) => setLinkUrl(e.target.value)}
-                      placeholder="https://..."
-                      className="input-field"
-                    />
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setShowLinkPopup(false)
-                          setSavedSelection(null)
-                        }}
-                        className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800"
-                      >
-                        Abbrechen
-                      </button>
-                      <button
-                        type="button"
-                        onClick={insertLink}
-                        disabled={!linkUrl || !linkText}
-                        className="px-2 py-1 text-xs bg-sunside-primary text-white rounded hover:bg-primary-container disabled:opacity-50"
-                      >
-                        Einfügen
-                      </button>
+                {/* Link-Popup */}
+                {showLinkPopup && (
+                  <div className="absolute top-full left-0 mt-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-64">
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        value={linkText}
+                        onChange={(e) => setLinkText(e.target.value)}
+                        placeholder="Anzeigename"
+                        className="input-field"
+                        autoFocus
+                      />
+                      <input
+                        type="url"
+                        value={linkUrl}
+                        onChange={(e) => setLinkUrl(e.target.value)}
+                        placeholder="https://..."
+                        className="input-field"
+                      />
+                      <div className="flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShowLinkPopup(false)
+                            setSavedSelection(null)
+                          }}
+                          className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800"
+                        >
+                          Abbrechen
+                        </button>
+                        <button
+                          type="button"
+                          onClick={insertLink}
+                          disabled={!linkUrl || !linkText}
+                          className="px-2 py-1 text-xs bg-sunside-primary text-white rounded hover:bg-primary-container disabled:opacity-50"
+                        >
+                          Einfügen
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
           
-          {/* WYSIWYG Editor */}
-          <div
-            ref={editorRef}
-            contentEditable
-            onInput={handleEditorInput}
-            className="textarea-field rounded-b-lg min-h-[144px] max-h-[200px] overflow-y-auto"
-            style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', lineHeight: '1.4' }}
-            data-placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
-          />
+            {/* WYSIWYG Editor */}
+            <div
+              ref={editorRef}
+              contentEditable
+              onInput={handleEditorInput}
+              className="editor-flaeche min-h-[144px] max-h-[220px]"
+              style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', lineHeight: '1.4' }}
+              data-placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
+            />
+          </div>
           <style>{`
             [contenteditable]:empty:before {
               content: attr(data-placeholder);
@@ -895,90 +897,92 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
               Nachricht
             </label>
             
-            {/* Formatierungs-Toolbar */}
-            <div className="flex items-center gap-1 p-1.5 bg-gray-50 rounded-t-lg border border-b-0 border-gray-300">
-              <button
-                type="button"
-                onClick={formatBold}
-                className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
-                title="Fettgedruckt (Strg+B)"
-              >
-                <Bold className="w-4 h-4" />
-              </button>
-              
-              <button
-                type="button"
-                onClick={formatList}
-                className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
-                title="Aufzählung"
-              >
-                <List className="w-4 h-4" />
-              </button>
-              
-              <div className="relative">
+            {/* Knopfzeile und Schreibfläche sind ein Feld. */}
+            <div className="editor-feld">
+              <div className="editor-leiste">
                 <button
                   type="button"
-                  onClick={openLinkPopup}
-                  className="p-1.5 bg-white border border-gray-300 rounded hover:bg-gray-100"
-                  title="Link einfügen"
+                  onClick={formatBold}
+                  className="editor-knopf"
+                  title="Fettgedruckt (Strg+B)"
                 >
-                  <LinkIcon className="w-4 h-4" />
+                  <Bold className="w-4 h-4" />
                 </button>
+              
+                <button
+                  type="button"
+                  onClick={formatList}
+                  className="editor-knopf"
+                  title="Aufzählung"
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={openLinkPopup}
+                    className="editor-knopf"
+                    title="Link einfügen"
+                  >
+                    <LinkIcon className="w-4 h-4" />
+                  </button>
                 
-                {/* Link-Popup */}
-                {showLinkPopup && (
-                  <div className="absolute top-full left-0 mt-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-64">
-                    <div className="space-y-2">
-                      <input
-                        type="text"
-                        value={linkText}
-                        onChange={(e) => setLinkText(e.target.value)}
-                        placeholder="Anzeigename"
-                        className="input-field"
-                        autoFocus
-                      />
-                      <input
-                        type="url"
-                        value={linkUrl}
-                        onChange={(e) => setLinkUrl(e.target.value)}
-                        placeholder="https://..."
-                        className="input-field"
-                      />
-                      <div className="flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShowLinkPopup(false)
-                            setSavedSelection(null)
-                          }}
-                          className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800"
-                        >
-                          Abbrechen
-                        </button>
-                        <button
-                          type="button"
-                          onClick={insertLink}
-                          disabled={!linkUrl || !linkText}
-                          className="px-2 py-1 text-xs bg-sunside-primary text-white rounded hover:bg-primary-container disabled:opacity-50"
-                        >
-                          Einfügen
-                        </button>
+                  {/* Link-Popup */}
+                  {showLinkPopup && (
+                    <div className="absolute top-full left-0 mt-2 p-3 bg-white border border-gray-200 rounded-lg shadow-lg z-50 w-64">
+                      <div className="space-y-2">
+                        <input
+                          type="text"
+                          value={linkText}
+                          onChange={(e) => setLinkText(e.target.value)}
+                          placeholder="Anzeigename"
+                          className="input-field"
+                          autoFocus
+                        />
+                        <input
+                          type="url"
+                          value={linkUrl}
+                          onChange={(e) => setLinkUrl(e.target.value)}
+                          placeholder="https://..."
+                          className="input-field"
+                        />
+                        <div className="flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowLinkPopup(false)
+                              setSavedSelection(null)
+                            }}
+                            className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800"
+                          >
+                            Abbrechen
+                          </button>
+                          <button
+                            type="button"
+                            onClick={insertLink}
+                            disabled={!linkUrl || !linkText}
+                            className="px-2 py-1 text-xs bg-sunside-primary text-white rounded hover:bg-primary-container disabled:opacity-50"
+                          >
+                            Einfügen
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
             
-            {/* WYSIWYG Editor */}
-            <div
-              ref={modalEditorRef}
-              contentEditable
-              onInput={handleEditorInput}
-              className="textarea-field rounded-b-lg min-h-[240px] max-h-[300px] overflow-y-auto"
-              style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', lineHeight: '1.4' }}
-              data-placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
-            />
+              {/* WYSIWYG Editor */}
+              <div
+                ref={modalEditorRef}
+                contentEditable
+                onInput={handleEditorInput}
+                className="editor-flaeche min-h-[240px] max-h-[320px]"
+                style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt', lineHeight: '1.4' }}
+                data-placeholder="E-Mail-Text eingeben oder Vorlage auswählen..."
+              />
+            </div>
             <p className="text-xs text-gray-400 mt-1">
               Platzhalter: {'{{ansprechpartner}}'}, {'{{ansprechpartner_vorname}}'}, {'{{firma}}'}, {'{{stadt}}'}, {'{{setter_name}}'}, {'{{setter_vorname}}'}, {'{{setter_email}}'}, {'{{setter_telefon}}'}
             </p>

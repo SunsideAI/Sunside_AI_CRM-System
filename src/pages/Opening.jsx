@@ -917,6 +917,16 @@ function Opening() {
     return ergebnis.includes('unterlage') || ergebnis.includes('unterlagen')
   }
 
+  // Wann der Mail-Knopf in der Fußleiste steht: nur dort, wo dem Kunden
+  // wirklich etwas zugesagt ist - nach dem gebuchten Beratungsgespräch das
+  // Testimonial-Video, bei „Unterlage bereitstellen" die Unterlagen. Bei
+  // „Nicht erreicht" oder „Kein Interesse" gibt es nichts zu schicken.
+  const darfMailen = (lead) => {
+    if (!lead?.email) return false
+    const ergebnis = String(lead.ergebnis || '').toLowerCase()
+    return ergebnis.includes('beratungsgespräch') || ergebnis.includes('unterlage')
+  }
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -2019,7 +2029,7 @@ function Opening() {
                             Moment direkt nach der Buchung: Wer das
                             Empfehlungsfenster einmal schliesst, kam sonst nicht
                             mehr an den Kontakt heran. */}
-                        {selectedLead.email && (
+                        {darfMailen(selectedLead) && (
                           <button onClick={() => setShowEmailComposer(true)} className="fuss-neben">
                             <Mail className="w-4 h-4" />
                             E-Mail an den Kontakt
