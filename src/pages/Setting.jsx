@@ -5,7 +5,7 @@ import {
   Edit3, Save
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { STATUS, anzeigeNameVonLead, stufeVonLead, STUFE, STUFE_TEXT } from '../../shared/status.js'
+import { STATUS, anzeigeNameVonLead, stufeVonLead, anCloserUebergeben, STUFE, STUFE_TEXT } from '../../shared/status.js'
 import LeadSchublade, { webZahlen } from '../components/LeadSchublade'
 import GeplatzteTermine from '../components/GeplatzteTermine'
 import SlideDrawer from '../components/SlideDrawer'
@@ -54,10 +54,17 @@ const FILTER = [
     trifft: l => imSetting(l) && l.status === STATUS.BERATUNG_VEREINBART },
   { wert: 'zu_tun',     name: 'Zu dokumentieren',
     trifft: l => imSetting(l) && l.status === STATUS.BERATUNG_GEFUEHRT },
+  // Geplatzt fragt nicht nach der Stufe: Ein Termin, den der Closer behalten
+  // hat, ist trotzdem geplatzt und gehoert in diese Liste - gesperrt, aber
+  // sichtbar. Ohne diese Ausnahme stand die Liste leer, obwohl zwei abgesagte
+  // Termine da waren.
   { wert: 'geplatzt',   name: 'Geplatzt',
-    trifft: l => imSetting(l) && [STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(l.status) },
+    trifft: l => [STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(l.status) },
+  // Uebergeben heisst: Der Setter hat das Abschlussgespraech vereinbart. Nicht
+  // jeder Kontakt, der irgendwie im Closing liegt - sonst sammelt die Liste
+  // geplatzte Termine und Altbestand ohne dokumentierte Uebergabe ein.
   { wert: 'uebergeben', name: 'Übergeben',
-    trifft: l => stufeVonLead(l) === STUFE.CLOSING },
+    trifft: l => anCloserUebergeben(l) },
   { wert: 'alle',       name: 'Alle', trifft: () => true }
 ]
 
@@ -284,7 +291,7 @@ function Setting() {
       // Letztere füllen den Reiter „Übergeben". Was gewonnen oder verloren
       // ist, bleibt draussen - das ist keine Ansicht des Setters mehr.
       setKontakte((daten.hotLeads || []).filter(l =>
-        MEINE_STUFEN.includes(l.status) || stufeVonLead(l) === STUFE.CLOSING))
+        MEINE_STUFEN.includes(l.status) || anCloserUebergeben(l)))
     } catch (e) {
       setFehler(e.message)
     } finally {

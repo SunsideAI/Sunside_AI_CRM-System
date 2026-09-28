@@ -92,6 +92,32 @@ sagt(/const imSetting = \(l\) => stufeVonLead\(l\) === STUFE\.SETTING/.test(seit
 sagt(/fuss=\{\(gewaehlt && !gesperrt\) \?/.test(seite),
   'Ein gesperrter Kontakt hat keine Aktionen im Fuss')
 
+// 9. Die Reiter muessen nachrechenbar sein. Der erste Umbau am 28.09. sortierte
+//    jeden Kontakt im Closing unter „Übergeben" ein - damit standen dort auch
+//    geplatzte Termine und Altbestand ohne dokumentierte Uebergabe, waehrend
+//    „Geplatzt" leer blieb, obwohl zwei abgesagte Termine da waren.
+const filterBlock = seite.match(/const FILTER = \[[\s\S]*?\n\]/)?.[0] || ''
+sagt(/wert: 'geplatzt',[\s\S]{0,200}?trifft: l => \[STATUS\.TERMIN_ABGESAGT/.test(filterBlock),
+  'Geplatzt fragt nicht nach der Stufe')
+sagt(/wert: 'uebergeben',[\s\S]{0,200}?trifft: l => anCloserUebergeben\(l\)/.test(filterBlock),
+  'Uebergeben fragt nach der Uebergabe, nicht nach der Stufe')
+
+// Und die Probe an den echten Faellen aus dem Bestand vom 28.09.
+const geplatztBeimCloser = {
+  status: STATUS.TERMIN_ABGESAGT, ergebnis_beratung: null,
+  setter_id: SETTER, closer_id: CLOSER
+}
+sagt(stufeVonLead(geplatztBeimCloser) === STUFE.CLOSING,
+  'Ein geplatzter Termin beim Closer bleibt gesperrt')
+sagt(!anCloserUebergeben(geplatztBeimCloser),
+  'Aber er gilt nicht als uebergeben')
+
+const altbestandImClosing = {
+  status: STATUS.ANGEBOT_VERSCHICKT, ergebnis_beratung: null, closer_id: CLOSER
+}
+sagt(!anCloserUebergeben(altbestandImClosing),
+  'Altbestand im Closing ohne Ergebnis gilt nicht als uebergeben')
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')
