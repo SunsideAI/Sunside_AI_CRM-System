@@ -279,9 +279,12 @@ function Opening() {
       setOffset(data.offset)
 
     } catch (err) {
-      setError(err.message)
+      if (meinLauf === ladeLaufRef.current) setError(err.message)
     } finally {
-      setLoading(false)
+      // Nur der aktuelle Lauf beendet das Laden. Ein überholter Lauf, der hier
+      // `false` setzte, ließ die Liste kurz „Keine Leads gefunden" zeigen,
+      // während der neue noch lud.
+      if (meinLauf === ladeLaufRef.current) setLoading(false)
     }
   }, [user?.id, user?.vor_nachname, isAdmin, viewMode, search, filterContacted, filterResult, filterVertriebler, filterLand, filterQuelle, offset, tabelle.filter, sortierung])
 
@@ -1338,7 +1341,7 @@ function Opening() {
             <Loader2 className="w-10 h-10 animate-spin text-primary mb-4" />
             <p className="text-on-surface-variant">Leads werden geladen...</p>
           </div>
-        ) : leads.length === 0 ? (
+        ) : !loading && leads.length === 0 ? (
           <div className="text-center py-12 text-on-surface-variant">
             <Building2 className="w-12 h-12 mx-auto mb-4 text-outline-variant" />
             <p className="text-title-md mb-2">Keine Leads gefunden</p>
