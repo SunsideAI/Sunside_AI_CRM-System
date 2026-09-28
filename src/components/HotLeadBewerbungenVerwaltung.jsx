@@ -16,13 +16,14 @@ import {
   Building2,
   User
 } from 'lucide-react'
+import { useMeldung } from './Meldungen'
 
 function HotLeadBewerbungenVerwaltung({ meldeAktualisieren }) {
+  const meldung = useMeldung()
   const { user } = useAuth()
   const [bewerbungen, setBewerbungen] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [successMessage, setSuccessMessage] = useState('')
   const [processing, setProcessing] = useState(null)
   const [filterStatus, setFilterStatus] = useState('Offen')
   // Beworben wird sich nur noch auf Abschlussgespraeche. Im Setting nimmt
@@ -93,14 +94,13 @@ function HotLeadBewerbungenVerwaltung({ meldeAktualisieren }) {
       }
 
       if (status === 'Genehmigt') {
-        setSuccessMessage(stufe === 'Setter'
+        meldung.erfolg(stufe === 'Setter'
           ? 'Bewerbung genehmigt! Das Beratungsgespräch wurde dem Setter zugeteilt.'
           : 'Bewerbung genehmigt! Der Lead wurde dem Closer zugewiesen.')
       } else {
-        setSuccessMessage('Bewerbung wurde abgelehnt.')
+        meldung.erfolg('Bewerbung wurde abgelehnt.')
       }
 
-      setTimeout(() => setSuccessMessage(''), 5000)
 
       await loadBewerbungen()
       setExpandedId(null)
@@ -141,21 +141,6 @@ function HotLeadBewerbungenVerwaltung({ meldeAktualisieren }) {
 
   return (
     <div className="space-y-6">
-      {/* Erfolgs-Toast */}
-      {successMessage && (
-        <div className="fixed top-4 right-4 z-50">
-          <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg shadow-lg">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-            <span className="text-green-800 font-medium">{successMessage}</span>
-            <button
-              onClick={() => setSuccessMessage('')}
-              className="ml-2 text-green-600 hover:text-green-800"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Header mit Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

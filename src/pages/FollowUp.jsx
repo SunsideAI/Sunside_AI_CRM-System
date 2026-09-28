@@ -24,6 +24,7 @@ import {
   Download,
   ArrowUpDown
 } from 'lucide-react'
+import { useMeldung } from '../components/Meldungen'
 
 // Follow-Up Status Optionen
 const FOLLOW_UP_STATUS_OPTIONS = [
@@ -57,6 +58,7 @@ const TERMIN_FILTER_OPTIONS = [
 ]
 
 function FollowUp() {
+  const meldung = useMeldung()
   const { user, isAdmin } = useAuth()
 
   // State
@@ -247,7 +249,7 @@ function FollowUp() {
       setEditData(prev => ({ ...prev, neuerKommentar: '' }))
     } catch (err) {
       console.error('Save error:', err)
-      alert('Fehler beim Speichern: ' + err.message)
+      meldung.fehler('Konnte nicht gespeichert werden: ' + err.message)
     } finally {
       setSaving(false)
     }
@@ -269,7 +271,7 @@ function FollowUp() {
       const exportLeads = data.leads || []
 
       if (exportLeads.length === 0) {
-        alert('Keine Daten zum Exportieren.')
+        meldung.hinweis('In dieser Auswahl steht nichts zum Ausgeben.')
         return
       }
 
@@ -294,7 +296,7 @@ function FollowUp() {
       XLSX.writeFile(wb, `Follow-Up_${dateStr}.xlsx`)
     } catch (err) {
       console.error('Export error:', err)
-      alert('Fehler beim Export')
+      meldung.fehler('Der Export ist fehlgeschlagen.')
     } finally {
       setExporting(false)
     }

@@ -13,13 +13,14 @@ import {
   MessageSquare,
   CheckCircle
 } from 'lucide-react'
+import { useMeldung } from './Meldungen'
 
 function LeadAnfragenVerwaltung({ meldeAktualisieren }) {
+  const meldung = useMeldung()
   const { user } = useAuth()
   const [anfragen, setAnfragen] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [successMessage, setSuccessMessage] = useState('') // Erfolgs-Toast
   const [processing, setProcessing] = useState(null) // ID der Anfrage die bearbeitet wird
   const [filterStatus, setFilterStatus] = useState('Offen')
   const [expandedId, setExpandedId] = useState(null)
@@ -102,15 +103,14 @@ function LeadAnfragenVerwaltung({ meldeAktualisieren }) {
       
       // Erfolgsmeldung mit Anzahl zugewiesener Leads
       if (status !== 'Abgelehnt' && data.zugewieseneLeads > 0) {
-        setSuccessMessage(`${data.zugewieseneLeads} Leads wurden erfolgreich zugewiesen!`)
+        meldung.erfolg(`${data.zugewieseneLeads} Leads wurden erfolgreich zugewiesen!`)
       } else if (status !== 'Abgelehnt' && data.zugewieseneLeads === 0) {
-        setSuccessMessage('Anfrage genehmigt, aber keine freien Leads verfügbar.')
+        meldung.erfolg('Anfrage genehmigt, aber keine freien Leads verfügbar.')
       } else if (status === 'Abgelehnt') {
-        setSuccessMessage('Anfrage wurde abgelehnt.')
+        meldung.erfolg('Anfrage wurde abgelehnt.')
       }
       
       // Toast nach 5 Sekunden ausblenden
-      setTimeout(() => setSuccessMessage(''), 5000)
       
       // Erfolgreich - Liste neu laden
       await loadAnfragen()
@@ -147,21 +147,6 @@ function LeadAnfragenVerwaltung({ meldeAktualisieren }) {
 
   return (
     <div className="space-y-6">
-      {/* Erfolgs-Toast */}
-      {successMessage && (
-        <div className="fixed top-4 right-4 z-50">
-          <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg shadow-lg">
-            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-            <span className="text-green-800 font-medium">{successMessage}</span>
-            <button 
-              onClick={() => setSuccessMessage('')}
-              className="ml-2 text-green-600 hover:text-green-800"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Header mit Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

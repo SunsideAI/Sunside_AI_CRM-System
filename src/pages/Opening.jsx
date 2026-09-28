@@ -60,6 +60,7 @@ import {
   Lock,
   Flame
 } from 'lucide-react'
+import { useMeldung } from '../components/Meldungen'
 
 // Helper: Lokales Datum als YYYY-MM-DDTHH:MM für datetime-local inputs (ohne UTC-Konvertierung)
 const toLocalDateTimeString = (date) => {
@@ -123,6 +124,7 @@ function altbestand(kommentar) {
 }
 
 function Opening() {
+  const meldung = useMeldung()
   const { user, isAdmin } = useAuth()
 
   // Filter-State aus sessionStorage wiederherstellen
@@ -684,7 +686,7 @@ function Opening() {
     
     // Validierung: Beratungsgespräch erfordert Termin-Buchung
     if (editForm.ergebnis === 'Beratungsgespräch') {
-      alert('Bitte buche zuerst einen Termin über den "Termin mit Setter buchen" Button.')
+      meldung.hinweis('Buche zuerst einen Termin über „Termin mit Setter buchen".')
       return
     }
     
@@ -698,7 +700,7 @@ function Opening() {
 
     // Validierung: Wiedervorlage benötigt ein Datum
     if (editForm.ergebnis === 'Wiedervorlage' && !editForm.wiedervorlageDatum) {
-      alert('Bitte gib ein Datum für die Wiedervorlage an.')
+      meldung.hinweis('Für die Wiedervorlage fehlt noch das Datum.')
       return
     }
     
@@ -855,7 +857,7 @@ function Opening() {
       setEditMode(false)
 
     } catch (err) {
-      alert(err.message)
+      meldung.fehler(err.message)
     } finally {
       setSaving(false)
     }
@@ -905,7 +907,7 @@ function Opening() {
       setKommentarOnlyMode(false)
       
     } catch (err) {
-      alert(err.message)
+      meldung.fehler(err.message)
     } finally {
       setSaving(false)
     }
@@ -1286,7 +1288,7 @@ function Opening() {
                       e.stopPropagation()
                       // Email-Validierung
                       if (!lead.email || !lead.email.trim()) {
-                        alert('E-Mail fehlt! Bitte zuerst eine E-Mail-Adresse beim Lead hinterlegen.')
+                        meldung.hinweis('Ohne E-Mail-Adresse lässt sich nichts schicken. Bitte zuerst eintragen.')
                         return
                       }
                       // Hot-Lead-Daten auf Lead-Format mappen und direkt TerminPicker öffnen
@@ -1510,8 +1512,8 @@ function Opening() {
                         // Erfolg, waehrend im CRM das alte Datum steht.
                         if (!antwort.ok) {
                           const daten = await antwort.json().catch(() => ({}))
-                          alert(daten.error
-                            || 'Der Termin wurde bei Calendly gebucht, im CRM aber nicht gespeichert. Bitte den Lead prüfen.')
+                          meldung.fehler(daten.error
+                            || 'Der Termin steht bei Calendly, im CRM aber nicht. Bitte den Lead prüfen.')
                           return
                         }
 

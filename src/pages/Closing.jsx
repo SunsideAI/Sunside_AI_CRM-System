@@ -23,6 +23,7 @@ import Aktionsmenue from '../components/Aktionsmenue'
 import Gespraechsausgang from '../components/Gespraechsausgang'
 import { Rollen, Pille, Statistik, webZahlen } from '../components/LeadSchublade'
 import SlideDrawer from '../components/SlideDrawer'
+import { useMeldung } from '../components/Meldungen'
 import KontaktFelder from '../components/KontaktFelder'
 import LeadPool from '../components/LeadPool'
 import LeadTabelle from '../components/LeadTabelle'
@@ -164,6 +165,7 @@ const SELECTABLE_STATUS_OPTIONS = STATUS_OPTIONS
   .filter(opt => CLOSING_STATUS.includes(opt.value) && opt.value !== STATUS.ANGEBOT_ANGEFORDERT)
 
 function Closing() {
+  const meldung = useMeldung()
   const { user, isAdmin, isCloser, isGeschaeftsfuehrer } = useAuth()
   const location = useLocation()
   const [leads, setLeads] = useState([])
@@ -189,7 +191,6 @@ function Closing() {
   const [poolLeads, setPoolLeads] = useState([])
   const [loadingPool, setLoadingPool] = useState(false)
   const [claimingLead, setClaimingLead] = useState(null)
-  const [toast, setToast] = useState(null) // { type: 'success'|'error', message: string }
   
   // Abschluss-Modal State
   const [showAbschlussForm, setShowAbschlussForm] = useState(false)
@@ -245,10 +246,12 @@ function Closing() {
 
   const LEADS_PER_PAGE = 10
 
-  // Toast anzeigen (verschwindet nach 4 Sekunden)
+  // Alle kurzen Meldungen laufen über dasselbe Bauteil (components/Meldungen).
+  // Der Name bleibt, damit die zwei Dutzend Aufrufe unverändert bleiben.
   const showToast = (type, message) => {
-    setToast({ type, message })
-    setTimeout(() => setToast(null), 4000)
+    if (type === 'success') meldung.erfolg(message)
+    else if (type === 'error') meldung.fehler(message)
+    else meldung.hinweis(message)
   }
 
   // Datei-Upload Handler
@@ -1605,36 +1608,6 @@ function Closing() {
 
   return (
     <div className="space-y-8">
-      {/* Toast Notification */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50">
-          <div className={`flex items-center gap-3 px-4 py-3 rounded-xl shadow-ambient-lg ${
-            toast.type === 'success'
-              ? 'bg-success-container'
-              : 'bg-error-container'
-          }`}>
-            {toast.type === 'success' ? (
-              <CheckCircle className="w-5 h-5 text-success flex-shrink-0" />
-            ) : (
-              <AlertCircle className="w-5 h-5 text-error flex-shrink-0" />
-            )}
-            <span className={`font-medium ${
-              toast.type === 'success' ? 'text-success' : 'text-error'
-            }`}>{toast.message}</span>
-            <button
-              onClick={() => setToast(null)}
-              className={`ml-2 ${
-                toast.type === 'success'
-                  ? 'text-success hover:text-success/80'
-                  : 'text-error hover:text-error/80'
-              }`}
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Header */}
       <div className="seitenkopf">
         <div>
