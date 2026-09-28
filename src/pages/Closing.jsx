@@ -944,6 +944,20 @@ function Closing() {
     }).format(value || 0)
   }
 
+  // Der Setter übergibt, der Closer schickt die Bestätigungsmail mit dem VSL.
+  // Solange sie nicht draußen ist, ist sie der Anlass des Mailfensters; danach
+  // ist es eine gewöhnliche Mail oder, beim Nachfassen, das Toolkit.
+  const bestaetigungOffen = (lead) => {
+    if (lead?.status !== STATUS.ABSCHLUSS_VEREINBART) return false
+    const versendet = Array.isArray(lead.material_versendet) ? lead.material_versendet : []
+    return !versendet.some(m => /bestätigung|bestaetigung/i.test(String(m)))
+  }
+
+  const mailAnlass = (lead) =>
+    lead?.status === STATUS.WIRD_NACHGEFASST ? 'nachfassen'
+      : bestaetigungOffen(lead) ? 'setting'
+        : null
+
   const getStatusStyle = (status) => {
     const option = STATUS_OPTIONS.find(o => o.value === status)
     return option?.color || 'bg-gray-100 text-gray-700'
@@ -1984,7 +1998,7 @@ function Closing() {
                     hotLeadId={selectedLead?.id}
                     lead={selectedLead}
                     kontakt={selectedLead}
-                    anlass={selectedLead?.status === STATUS.WIRD_NACHGEFASST ? 'nachfassen' : null}
+                    anlass={mailAnlass(selectedLead)}
                     user={user}
                     inline={true}
                     kategorie={selectedLead?.status === STATUS.WIRD_NACHGEFASST ? 'Closing,Nachfassen' : 'Closing'}

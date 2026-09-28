@@ -59,7 +59,6 @@ function Setting() {
   const [gewaehlt, setGewaehlt] = useState(null)
   const [mailOffen, setMailOffen] = useState(false)
   // Nach der Übergabe: die Bestätigungsmail mit VSL zum eben übergebenen Kontakt.
-  const [bestaetigung, setBestaetigung] = useState(null)
   // Läuft die Übergabe an den Closer, zeigt die Schublade nur diesen Ablauf.
   const [ablaufLaeuft, setAblaufLaeuft] = useState(false)
   const [terminOffen, setTerminOffen] = useState(false)
@@ -112,13 +111,12 @@ function Setting() {
     const name = gewaehlt?.unternehmen || 'Der Kontakt'
 
     if (updates?.status === STATUS.ABSCHLUSS_VEREINBART) {
+      // Hier endet die Arbeit des Setters: Termin steht, Übergabe steht. Die
+      // Bestätigungsmail mit dem VSL schickt der Closer, sobald er den Termin
+      // übernommen hat (Entscheidung 28.09.). Also dieselbe Rückmeldung wie
+      // im Opening nach der Buchung - eine Meldung, kein Mailfenster.
       setHinweis(`${name} ist an den Closer übergeben. Das Abschlussgespräch steht im Closer-Pool.`)
-      // Die Schublade bleibt offen: Direkt nach dem Gespräch geht die
-      // Bestätigungsmail mit dem VSL raus (Mailstrecken Teil E, Nr. 6).
-      setBestaetigung({ ...gewaehlt, ...updates })
-      // Mit dem neuen Status ist der Kontakt für den Setter gesperrt, die
-      // Maske verschwindet und nur die Mail bleibt.
-      setGewaehlt(g => (g ? { ...g, ...updates } : g))
+      setGewaehlt(null)
       return
     }
 
@@ -617,7 +615,7 @@ function Setting() {
           Arbeitsbereich: hier der Ausgang des Beratungsgesprächs. */}
       <LeadSchublade
         offen={!!gewaehlt}
-        nurArbeit={ablaufLaeuft || mailOffen || bestaetigung?.id === gewaehlt?.id}
+        nurArbeit={ablaufLaeuft || mailOffen}
         kontaktFelder={bearbeiten && formular && (
           <KontaktFelder werte={formular} onChange={setFormular} mailFehlt={mailFehlt} />
         )}
@@ -686,35 +684,7 @@ function Setting() {
           </>
         )}
       >
-        {gewaehlt && bestaetigung?.id === gewaehlt.id && (
-          <div className="space-y-4">
-            <div className="p-3 bg-success-container rounded-lg text-body-sm text-on-surface">
-              Übergeben. Jetzt die Bestätigungsmail mit dem Video, solange das Gespräch
-              frisch ist. Bitte vor dem Senden anpassen.
-            </div>
-            <EmailComposer
-              hotLeadId={gewaehlt.id}
-              lead={{
-                id: gewaehlt.originalLeadId || gewaehlt.id,
-                unternehmensname: gewaehlt.unternehmen,
-                email: gewaehlt.email,
-                telefon: gewaehlt.telefon,
-                ort: gewaehlt.ort,
-                ansprechpartnerVorname: gewaehlt.ansprechpartnerVorname,
-                ansprechpartnerNachname: gewaehlt.ansprechpartnerNachname
-              }}
-              kontakt={bestaetigung}
-              user={user}
-              inline={true}
-              kategorie="Setting"
-              anlass="setting"
-              onClose={() => { setBestaetigung(null); setGewaehlt(null) }}
-              onSent={() => { setBestaetigung(null); setGewaehlt(null) }}
-            />
-          </div>
-        )}
-
-        {gewaehlt && gesperrt && bestaetigung?.id !== gewaehlt.id && (
+        {gewaehlt && gesperrt && (
           <div className="space-y-4">
             <div className="flex items-start gap-3 p-3 rounded-lg bg-primary-fixed/30 border border-primary-fixed-dim">
               <Lock className="w-5 h-5 text-primary shrink-0 mt-0.5" />
