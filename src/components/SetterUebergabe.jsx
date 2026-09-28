@@ -532,7 +532,7 @@ export default function SetterUebergabe({
               „Setting-Termine neu vereinbaren" und wartet dort auf einen neuen Termin.
             </p>
             <p>
-              Bei dir bleibt er unter „Geplatzt" sichtbar — von dort kannst du selbst
+              Bei dir bleibt er unter „Geplatzt" sichtbar, von dort kannst du selbst
               ein neues Beratungsgespräch legen.
             </p>
             {fall?.hinweis && <p className="text-on-surface-variant">{fall.hinweis}</p>}

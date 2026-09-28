@@ -118,7 +118,7 @@ export default function FilterWahl({
                       Dieses Feld ist in der Liste nirgends gefüllt. */}
                   {felder.map(s => (
                     <option key={s.schluessel} value={s.schluessel}>
-                      {s.name}{vollstaendig && !hatWerte(s.schluessel) ? ' — ohne Werte' : ''}
+                      {s.name}{vollstaendig && !hatWerte(s.schluessel) ? ' (ohne Werte)' : ''}
                     </option>
                   ))}
                 </select>

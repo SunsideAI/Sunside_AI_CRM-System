@@ -52,15 +52,19 @@ export const SEGMENT = {
 }
 
 /**
- * Zwei Felder schlagen das Segment, in dieser Reihenfolge:
+ * Drei Felder schlagen das Segment, in dieser Reihenfolge:
  *   1. Vorhaben = ja        -> die Vorhaben-Fassung, in jedem Segment
  *   2. Berufsgruppe = SV    -> die Sachverstaendigen-Fassung
+ *   3. Berufsgruppe = andere -> ebenfalls die Vorhaben-Fassung (Feedback
+ *      25.09.): Sie greift den Satz des Kunden auf, statt von Eigentuemern
+ *      oder Maklerbueros zu sprechen, die es dort nicht gibt.
  * Erst danach entscheidet das Ziel. Steht das Ziel auf 'nicht erhoben', waehlt
  * der Opener nach dem, worueber geklagt wurde (Teil A).
  */
 export function segmentMailFassung(lead) {
   if (lead?.vorhaben === true) return 'vorhaben'
   if (lead?.berufsgruppe === BRANCHE.SV) return 'sachverstaendige'
+  if (lead?.berufsgruppe === BRANCHE.ANDERE) return 'vorhaben'
   switch (lead?.ziel) {
     case SEGMENT.EIGENTUEMER: return 'eigentuemer'
     case SEGMENT.KAEUFER:     return 'kaeufer'

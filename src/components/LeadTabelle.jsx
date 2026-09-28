@@ -231,7 +231,7 @@ export default function LeadTabelle({
                   onClick={() => umschalten(s.schluessel)}
                   title={nichtSortierbar.includes(s.schluessel)
                     ? 'Nach dieser Spalte lässt sich hier nicht sortieren'
-                    : 'Sortieren — noch ein Klick dreht die Richtung'}
+                    : 'Sortieren. Noch ein Klick dreht die Richtung'}
                   className={`px-4 py-3.5 text-left text-label-sm font-medium text-on-surface-variant
                               uppercase tracking-wider select-none group ${AB[s.ab] || ''}
                               ${nichtSortierbar.includes(s.schluessel)

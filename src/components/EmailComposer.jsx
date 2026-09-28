@@ -112,7 +112,7 @@ function SignaturBox({ user, inhalt }) {
   return (
     <details className="border border-gray-200 rounded-lg bg-gray-50">
       <summary className="px-4 py-3 text-xs text-gray-500 cursor-pointer select-none">
-        Signatur (wird automatisch angehängt) — zum Prüfen aufklappen
+        Signatur, wird automatisch angehängt. Zum Prüfen aufklappen.
       </summary>
       {/* Tailwind stellt <img> auf display:block. In der Mail sind die Symbole
           inline und stehen nebeneinander; ohne diese Zeile zeigt die Vorschau

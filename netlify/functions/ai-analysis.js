@@ -56,7 +56,8 @@ export const handler = async (event) => {
 
 Regeln:
 - Antworte ausschließlich auf Deutsch.
-- Antworte ausschließlich mit validem JSON — kein Markdown, keine Backticks, kein Fließtext.
+- Antworte ausschließlich mit validem JSON. Kein Markdown, keine Backticks, kein Fließtext.
+- Keine Gedankenstriche als Satzzeichen. Wo einer stünde, nimm Punkt, Komma, Doppelpunkt oder Klammern.
 - Basiere deine Aussagen nur auf den übergebenen Zahlen. Wenn die Daten für eine Aussage nicht ausreichen, lass sie weg statt zu raten.
 - Vermeide Floskeln wie "Gute Arbeit!" oder "Weiter so!". Sei sachlich, konkret und direkt.
 - Gib Quoten immer als gerundete Prozentwerte an.

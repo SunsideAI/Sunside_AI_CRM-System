@@ -66,7 +66,7 @@ export default function SpaltenWahl({ stufe, auswahl, onAendern, speichert = fal
         <div className="absolute right-0 z-30 mt-2 w-72 card-elevated p-4 space-y-4">
           <div>
             <p className="text-label-sm text-on-surface-variant uppercase tracking-wider mb-2">
-              Angezeigt — zum Sortieren ziehen
+              Angezeigt. Zum Sortieren ziehen
             </p>
             <ul className="space-y-1">
               {aktuell.map(k => (

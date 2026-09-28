@@ -383,7 +383,7 @@ export const FELDER = {
   },
   ergebnis_beratung: {
     name: 'Ergebnis des Gesprächs', art: 'auswahl', optionen: AUSWAHL.ausgang_beratung,
-    hilfe: 'Der Regelfall ist das vereinbarte Abschlussgespräch; dafür buchst du gleich den Termin, ohne ihn geht es nicht weiter. Kam ausnahmsweise keiner zustande, der Kunde bleibt aber interessiert, ist es „Vertagt ohne festen Schritt" — dann fasst du binnen 48 Stunden nach. „Nicht geeignet" nur, wenn er wirklich nicht zu uns passt, mit Begründung. Wozu: Das Feld entscheidet, was das System als Nächstes tut, und ist die Grundlage der Quote, an der wir sehen, ob der Prozess trägt.'
+    hilfe: 'Der Regelfall ist das vereinbarte Abschlussgespräch; dafür buchst du gleich den Termin, ohne ihn geht es nicht weiter. Kam ausnahmsweise keiner zustande, der Kunde bleibt aber interessiert, ist es „Vertagt ohne festen Schritt": Dann fasst du binnen 48 Stunden nach. „Nicht geeignet" nur, wenn er wirklich nicht zu uns passt, mit Begründung. Wozu: Das Feld entscheidet, was das System als Nächstes tut, und ist die Grundlage der Quote, an der wir sehen, ob der Prozess trägt.'
   },
   verlust_grund: {
     name: 'Warum nicht geeignet', art: 'freitext', zeilen: 2,

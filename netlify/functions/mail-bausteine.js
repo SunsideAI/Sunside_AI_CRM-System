@@ -175,6 +175,7 @@ export function grundlageBauen(lead) {
 
 const REGELN = `Regeln:
 - Sie-Form, deutsch, sachlich und warm. Keine Floskeln, keine Superlative, keine Emojis, keine Ausrufezeichen.
+- Keine Gedankenstriche als Satzzeichen. Wo einer stünde, nimm Punkt, Komma, Doppelpunkt oder Klammern.
 - Kurze Absätze, höchstens drei Sätze je Baustein.
 - Erfinde nichts. Nur die Angaben aus der Grundlage. Fehlt eine Zahl, dann schreibe ohne Zahl.
 - Zitiere den Kunden wörtlich, wenn seine Worte in der Grundlage stehen.
@@ -197,7 +198,7 @@ ${hinweis ? `\nZusätzlicher Hinweis des Absenders (hat Vorrang): ${hinweis}\n` 
 Absender: ${absender}
 
 Diese Bausteine, in dieser Reihenfolge:
-${a.bausteine.map(([titel, zweck], i) => `${i + 1}. ${titel} — ${zweck}`).join('\n')}
+${a.bausteine.map(([titel, zweck], i) => `${i + 1}. ${titel}: ${zweck}`).join('\n')}
 
 ${REGELN}
 
