@@ -441,17 +441,23 @@
      die Hauptaktion in der Hausfarbe, Nebenaktionen umrandet, Abbrechen leise.
      Vorher hatte jeder Tab eigene Farben (grün, orange, rosa, blau) und eigene
      Rundungen, und derselbe Knopf sah in Opening und Closing verschieden aus. */
+  /* Alle drei sind gleich hoch. Vorher trug nur der umrandete Knopf einen
+     Rahmen, und der machte ihn zwei Pixel groesser als seine Nachbarn: In der
+     Reihe stand einer heraus, ohne dass man sagen konnte, warum. */
   .fuss-haupt {
-    @apply flex items-center gap-2 px-5 py-2 bg-primary text-on-primary rounded-xl
-           hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+    @apply inline-flex items-center justify-center gap-2 h-11 px-5 bg-primary text-on-primary
+           rounded-xl text-label-lg hover:bg-primary/90
+           disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
   }
   .fuss-neben {
-    @apply flex items-center gap-2 px-4 py-2 text-on-surface-variant border border-outline-variant
-           rounded-xl hover:bg-surface-container disabled:opacity-50 transition-colors;
+    @apply inline-flex items-center justify-center gap-2 h-11 px-4 text-on-surface-variant
+           border border-outline-variant rounded-xl text-label-lg
+           hover:bg-surface-container disabled:opacity-50 transition-colors;
   }
   .fuss-leise {
-    @apply flex items-center gap-2 px-4 py-2 text-on-surface-variant rounded-xl
-           hover:bg-surface-container disabled:opacity-50 transition-colors;
+    @apply inline-flex items-center justify-center gap-2 h-11 px-4 text-on-surface-variant
+           rounded-xl text-label-lg hover:bg-surface-container
+           disabled:opacity-50 transition-colors;
   }
 
   /* Alter Name, gleiche Sache. */

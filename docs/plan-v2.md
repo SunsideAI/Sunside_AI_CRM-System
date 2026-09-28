@@ -316,3 +316,614 @@ Dabei korrigiert: Die Beschriftung „Mit ausgesprochenem Bedarf" wurde in der K
 das Empfehlungsfenster direkt nach einer echten Buchung, die Übergabe mit echter Buchung des
 Abschlussgesprächs und das Hochzählen der Versuche beim Senden. Die Logik dahinter ist per
 Schnittstelle und Node geprüft. Miro-Tickets 9 (teilweise), 16, 17 und 18 sind als gebaut markiert.
+
+## Geführte Übergabe im Setting, 23.09.
+
+Rückmeldung: Im Setting öffnete sich nach „Hat stattgefunden" alles auf derselben Seite. Der
+Setter soll geführt werden wie im Opening — erst die Angaben, dann der Termin.
+
+Jetzt: „Termin mit Closer buchen" schaltet die Schublade auf eine eigene Seite.
+
+| Schritt | Inhalt | Fußleiste |
+|---|---|---|
+| 1 von 2 | Angaben aus dem Gespräch | Zurück · Zwischenstand speichern · **Weiter zum Termin** |
+| 2 von 2 | Termin mit dem Closer, Video fest, höchstens eine Woche | Zurück zu den Angaben, Buchen im Wähler |
+
+Fehlt eine Pflichtangabe, hält Schritt 1 an — vor jeder Calendly-Anfrage. Während des Ablaufs
+zeigt die Schublade nur diesen einen Weg: keine Kontaktdaten, kein Verlauf, keine Mail-Aktion,
+ein einziger Weg zurück je Seite.
+
+Dabei gefunden und behoben:
+
+- Die Schublade hat den Arbeitsbereich beim Seitenwechsel **neu aufgebaut**, dadurch ging der
+  begonnene Schritt samt Eingaben verloren (`b6fe26b`). Die Abschnitte werden jetzt einzeln
+  ausgeblendet, statt den Baum umzubauen.
+- Im Terminwähler standen bis zu drei Wege zurück (Kopfzeile, „Abbrechen", Fußleiste). „Abbrechen"
+  erscheint nur noch, wo es auch einen Empfänger hat.
+- `.fuss-leise` hatte kein Flex-Layout: Das Symbol im Knopf rutschte in eine eigene Zeile.
+
+**Nachweis (Playwright gegen die Vorschau, 23.09.):** 22/22 Prüfungen — Seitenwechsel, Kopfzeilen,
+Fußleisten samt Knopfklassen, Sperre ohne Angaben, erhaltene Eingaben beim Zurückgehen, keine
+Terminart-Auswahl, kein Setter-Häkchen, kein Schreib- oder Buchungsaufruf. Dazu unverändert grün:
+Rollenprüfung Setter-Häkchen 3/3, Schubladen in Opening, Setting und Closing ohne Schreibzugriff.
+
+**Weiterhin nicht im Browser getestet:** die tatsächliche Buchung des Abschlussgesprächs (erzeugt
+einen echten Calendly-Termin) und „Zwischenstand speichern" (schreibt in einen echten Datensatz).
+
+## Gleicher Aufbau in Opening, Setting und Closing, 23.09.
+
+Gemessen mit Playwright über alle drei Schubladen. Gefunden und behoben:
+
+| Befund | Vorher | Jetzt |
+|---|---|---|
+| Website-Zahlen | Opening nutzte das Bauteil, Closing hatte eine eigene Kopie (weißer Kasten, andere Reihenfolge, keine Farbschwellen), Setting zeigte sie gar nicht | Ein Bauteil `Statistik` mit `webZahlen(lead)`; überall dieselbe Stelle, Reihenfolge, Farbe. Ohne Zahlen entfällt der Abschnitt in allen drei gleich |
+| Kontaktdaten ändern | Opening: nur Telefon, E-Mail, Website — kein Ort, Name weiter unten im Arbeitsbereich. Closing: andere Reihenfolge und Beschriftung. Setting: gar nicht änderbar | Ein Bauteil `KontaktFelder`: Ansprechpartner, Telefon, E-Mail (Pflicht), Website, Ort — in allen drei gleich |
+| Ort speichern | Ging nur über Hot-Leads; `leads.js` kannte das Feld nicht | `stadt` ist im Lead-Update ergänzt |
+| E-Mail-Regel | Opening speicherte eine geleerte Adresse, Setting und Closing sperrten unterschiedlich | Eine Regel: Was beim Öffnen in der Maske stand, darf nicht geleert werden. Derselbe Hinweistext überall |
+| Bearbeiten-Maske im Opening | Wurde beim Auswählen des Kontakts gefüllt, nicht beim Bearbeiten — nach Zwischenspeichern stand dort ein alter Stand | `bearbeitenStarten()` füllt aus dem Kontakt, wie in Setting und Closing |
+| Fußleiste | Setting hatte keinen Bearbeiten-Knopf | Überall „Bearbeiten"; im Bearbeiten-Modus überall Abbrechen (leise) + Speichern (gefüllt) |
+
+Gefüllt ist immer genau die Aktion, die in dieser Stufe die Arbeit ist: im Opening und Closing
+„Bearbeiten", im Setting die Dokumentation des Beratungsgesprächs. „Bearbeiten" ist dort deshalb
+eine Nebenaktion (umrandet), sonst stünden zwei gefüllte Knöpfe nebeneinander.
+
+**Nachweis:** 47/47 Prüfungen über die drei Tabs (Abschnittsfolge, Zahlen-Darstellung,
+Knopfklassen, gleiche Kontaktmaske, E-Mail-Regel, Abbrechen ohne Schreibzugriff), dazu unverändert
+grün: geführte Übergabe 22/22, Kontakt-Bearbeitung im Setting 16/16 (mit echtem Speichern und
+Zurückstellen auf dem eigenen Datensatz), Rollenprüfung 3/3.
+
+## Setting: ansehen, bearbeiten, geführt entscheiden — 23.09. (Stand 2)
+
+Zwei Rückmeldungen: Die Knöpfe unten waren farblos, und der Ausgang ließ sich verstellen, ohne
+„Bearbeiten" zu drücken. Dazu die Vorgabe, dass jede Auswahl auf eine eigene Seite führt.
+
+**Ansehen und Bearbeiten.** Die Schublade ist erst einmal nur Ansicht: Das Auswahlfeld und die
+ganze Gesprächsmaske sind gesperrt (ein `fieldset`, kein Feld muss davon wissen), und unten stehen
+„E-Mail an den Kontakt" (umrandet) und **„Bearbeiten" (gefüllt)** — wie in Opening und Closing.
+Erst danach lässt sich etwas ändern. Geänderte Kontaktdaten gehen beim Speichern der Maske
+automatisch mit, damit eine gerade korrigierte Nummer nicht verloren geht.
+
+**Eine Seite je Auswahl.** Kein Knopf neben dem Feld mehr: Die Wahl selbst führt weiter.
+
+| Auswahl | Seite | Aktion unten |
+|---|---|---|
+| Hat stattgefunden | Ergebnis des Gesprächs (1 von 2 bzw. 3) | Zurück · Zwischenstand |
+| → Nächster Schritt / Auftrag | Angaben aus dem Gespräch (2 von 3) | Zurück · Zwischenstand · **Weiter zum Termin** |
+| → weiter | Termin mit dem Closer (3 von 3), Video fest | Zurück zu den Angaben, Buchen im Wähler |
+| → Vertagt / Absage | Angaben aus dem Gespräch (2 von 2) | Zurück · Zwischenstand · **Speichern und abschließen** |
+| Termin verschoben | Neuer Termin, telefonisch | Zurück, Buchen im Wähler |
+| Nicht erschienen / abgesagt | Was jetzt passiert: zurück an den Opener, sichtbar unter „Geplatzt" | Zurück · **Festhalten** |
+
+Während einer solchen Seite zeigt die Schublade nichts anderes — keine Kontaktdaten, kein Verlauf,
+ein Weg zurück. Die Vorbelegung des Ergebnisfeldes ist entfallen, sonst führte die Auswahl nicht.
+
+**Nachweis (Playwright, Vorschau):** Seiten je Auswahl 15/15, Sperre und Fußleiste 12/12, geführte
+Übergabe 22/22, Kontakt-Bearbeitung 16/16, Konsistenz über die drei Tabs 47/47 — in allen Läufen
+kein Schreib- oder Buchungsaufruf außer dem einen geprüften Speichern.
+
+## Pools: eine Ansicht für alle drei Stufen — 23.09.
+
+Vorher war jeder Pool anders gebaut: Der Closer-Pool eine Tabelle mit eigener, handgeschriebener
+Schublade, der Setter-Pool graue Kästen, der E-Book-Pool Karten mit orangem Ladebalken und
+amberfarbenem Etikett. In beiden Kästen-Pools gab es **keinen Klick** — wer wissen wollte, wer der
+Kontakt ist, musste ihn erst übernehmen.
+
+Jetzt kommt alles aus `src/components/LeadPool.jsx`:
+
+- dieselbe Tabelle wie in jeder Liste (Art · Unternehmen · Ansprechpartner · Ort · Termin · Hinweis),
+- Klick auf die Zeile öffnet die gewohnte Schublade mit Kontaktdaten, Termin, Website-Zahlen,
+  Übergabe und Verlauf,
+- die Aktion steht unten in der Fußleiste, gefüllt, genau eine,
+- Laden und Leerzustand halten die Höhe, in Hausfarben statt Orange.
+
+Unterschiedlich ist allein die Aktion, wie besprochen: **Übernehmen** im Opening (E-Book) und im
+Setting — dort nimmt man sich den Kontakt selbst —, **Bewerben** im Closing, wo ein Admin zuteilt.
+
+**Nachweis (Playwright, Vorschau):** 15/15 über die drei Tabs — Umschalter, Spalten, Klick öffnet
+die Schublade, genau eine gefüllte Aktion mit dem richtigen Wort, keine Fremdfarben, kein
+Schreibaufruf. Setter-Pool mit drei Einträgen vollständig durchgespielt; E-Book- und Closer-Pool
+waren leer, dort ist der Leerzustand geprüft (gleiche Komponente, gleicher Aufbau). Regression
+unverändert grün: Konsistenz 47/47, Setting-Seiten 15/15, Sperre 12/12.
+
+## Listen: ein Spaltenkatalog, eine Tabelle, eigene Spalten je Benutzer — 23.09.
+
+**Schritt 1 — angleichen.** Opening, Setting und Closing haben jetzt dieselbe Tabelle
+(`src/components/LeadTabelle.jsx`). Welche Spalten es gibt, steht in `shared/spalten.js`; woher
+die Werte kommen, übersetzt `src/utils/zeile.js` einmal je Stufe. Vorher hieß dieselbe Sache in
+jedem Tab anders (`unternehmensname`/`unternehmen`, `stadt`/`ort`, „Vertriebler"/„Coldcaller"),
+Closing hatte zweimal eine Spalte „Status", und sortieren konnte man nirgends.
+
+| | Standardspalten |
+|---|---|
+| Opening | Art · Unternehmen · Ansprechpartner · Ort · Kontakt · Ergebnis · Letzte Aktivität |
+| Setting | Art · Unternehmen · Ansprechpartner · Ort · Termin · Status |
+| Closing | Art · Unternehmen · Ansprechpartner · Ort · Termin · Status · Zuständig · Setter |
+
+Dazu überall: Klick auf den Spaltenkopf sortiert (zweiter Klick dreht um, Leeres steht hinten),
+Karten statt Tabelle auf schmalen Schirmen, waagerechtes Scrollen bei vielen Spalten.
+
+**Schritt 2 — konfigurierbar.** Über der Liste steht „Spalten": ausblenden, hinzufügen und die
+Reihenfolge per Ziehen ändern. Gespeichert wird je Benutzer in `users.preferences` (die Spalte
+gab es längst, benutzt hat sie niemand) über `netlify/functions/tabellen-spalten.js` — die
+Einstellung gilt damit auf jedem Gerät. „Zurück zum Standard" räumt wieder auf. Art und
+Unternehmen bleiben vorn, damit die Zeile beim Scrollen zuzuordnen bleibt.
+
+Zusätzlich wählbar sind die Felder, die die APIs längst liefern: Quelle, Terminart, Bundesland,
+Opener/Setter/Closer, Website-Zahlen (Besucher, Mehrwert, Absprungrate, Leads), Deal-Werte
+(Paket, Setup, Retainer, Laufzeit) sowie Fristen (Wiedervorlage, zugesagt bis, Angebot verschickt,
+Nachfass-Schritt, Nicht erschienen, Mobilnummer).
+
+**Nachweis (Playwright, Vorschau):** Tabellen 12/12 (Spalten je Stufe, Sortierung dreht um, Klick
+öffnet die Schublade), Spaltenwahl 7/7 (hinzufügen, ausblenden, Reihenfolge per Ziehen, überlebt
+den Seitenwechsel, Zurücksetzen). Regression unverändert grün: Pools 15/15, Konsistenz 47/47,
+Setting-Seiten 15/15, Sperre 12/12.
+
+Dabei gefunden: Die neue Function las die Benutzerkennung aus dem falschen Feld des
+Sitzungs-Helfers (`inhalt` statt `nutzer`) — fiel als 502 im Browsertest auf und ist behoben.
+
+### Nachtrag Spaltenwahl und Scrollen
+
+- Der Knopf „Spalten" sieht jetzt aus wie ein Filter (neue Klasse `.filter-knopf`: gleicher heller
+  Grund, gleiche Höhe, derselbe Pfeil rechts) und steht am rechten Ende der Filterzeile — er
+  steuert die Darstellung, nicht die Auswahl. Das eigene Symbol ist entfallen.
+- Bei vielen Spalten wird waagerecht gescrollt; Symbol und Unternehmen bleiben dabei stehen
+  (`position: sticky`), damit jede Zeile zuzuordnen bleibt.
+
+**Nachweis:** 15/15 über die drei Tabs — Knopfklasse, Position rechts der Filter, gleiche Höhe,
+erste Spalte bleibt beim Scrollen an Ort und Stelle, Unternehmen bleibt sichtbar. Regression:
+Spaltenwahl 7/7, Tabellen 12/12, Konsistenz 47/47.
+
+## Schritt 3: Filter zum Zusammenstellen — 23.09.
+
+Gefiltert wurde bisher mit festen Auswahlfeldern: im Opening fünf, in Setting und Closing je eines,
+und immer nur „ist gleich". Wer alles außer „Kein Interesse" sehen wollte, musste jeden anderen
+Wert einzeln durchgehen.
+
+Jetzt steht neben „Spalten" der Knopf „Filter", in derselben grauen Optik. Ein Filter besteht aus
+Feld, Vergleich und Wert; bis zu sechs gelten zusammen (`shared/filter.js`):
+
+| Feldart | Vergleiche |
+|---|---|
+| Text, Name, Status | ist · ist nicht · enthält · enthält nicht · ist leer · ist gefüllt |
+| Zahl, Geld, Prozent | ist · ist nicht · größer als · kleiner als · ist leer · ist gefüllt |
+| Datum | vor dem · nach dem · ist leer · ist gefüllt |
+
+Gefiltert wird über dieselben Felder wie die Spalten — also auch über alles, was man zusätzlich
+einblenden kann. Werte schlägt die Liste aus dem vor, was gerade drinsteht. Gespeichert wird je
+Benutzer zusammen mit den Spalten in `users.preferences`.
+
+**Wo gerechnet wird:** Setting und Closing haben ihre 615 Datensätze im Browser, dort filtert die
+Oberfläche selbst. Das Opening blättert serverseitig durch 28.853 Leads — dort gehen die Filter
+als Bedingungen mit in die Abfrage (`netlify/functions/leads.js`), sonst würde nur die sichtbare
+Seite durchsucht. Für „meine Leads" läuft die Abfrage dabei über einen Join auf die
+Zuweisungstabelle, weil eine Liste mit tausend IDs die URL sprengt.
+
+**Nachweis (Playwright, Vorschau):** 10/10 — „ist nicht" schließt nachweislich aus, der Zähler am
+Knopf stimmt, bei sechs Filtern ist Hinzufügen gesperrt, „Alle entfernen" stellt den Stand wieder
+her; im Opening geht der Filter an den Server, danach stehen dort nur noch passende Orte, vorher
+waren es andere. Regression grün: Spaltenwahl 7/7, Tabellen 12/12, Scrollen und Knopfoptik 15/15,
+Konsistenz 47/47, Pools 15/15. Die Testeinstellungen sind danach wieder entfernt.
+
+### Nachtrag: Land, Kontaktiert und das Merken der Filter
+
+- **Land** fehlte im Filter und ist ergänzt (Opening), dazu **Kontaktiert** (Ja/Nein). In der
+  Datenbank stehen die vollen Namen „Deutschland", „Österreich", „Schweiz" — die Vorschlagsliste
+  bietet genau diese an.
+- Im Opening werden nur Felder angeboten, die der Server auch beantworten kann. „Letzte Aktivität"
+  und „Zuständig" stehen dort nicht zur Wahl: Ein Filter, der still nichts tut, ist schlimmer als
+  keiner.
+- **Gemerkt wird bis zur Änderung.** Filter und Spalten liegen in `users.preferences`; nach dem
+  Neuladen geht der gespeicherte Filter wieder in die Abfrage und steht unverändert im Panel.
+
+Dabei behoben: Im Opening konnte eine verspätete Antwort einer älteren Abfrage das gerade
+gefilterte Ergebnis überschreiben. Jeder Ladelauf zählt jetzt mit, und nur der jüngste darf
+schreiben; Ansicht und Filter werden beim Laden frisch gelesen statt aus der Fassung von vorhin.
+
+**Nachweis:** 8/8 (Land im Filter, nur serverfähige Felder, Land filtert nachweislich, Filter
+überlebt das Neuladen in Abfrage und Panel, Setting nach Seitenwechsel), dazu Filter 10/10,
+Spalten 7/7, Tabellen 12/12, Konsistenz 47/47.
+
+**Wichtiger Befund am Rande:** Mehrere Dateien lagen im Repository **abgeschnitten** — `leads.js`
+endete mitten im Code, ebenso `SetterUebergabe.jsx` und `UebergabeFelder.jsx`. Ursache ist die
+iCloud-Auslagerung auf dem Desktop: Beim Committen wurde nur der geladene Teil erfasst. Der
+vollständige Stand ist wiederhergestellt; vor jedem Push gehört ein Blick auf `git diff HEAD`.
+
+## Kalender: informieren statt dokumentieren — 24.09.
+
+Die Seitenansicht im Kalender enthielt die komplette Setter-Maske: Ausgang wählen, zwölf
+Übergabefelder, Zwischenstand speichern. Der Kalender war damit ein zweites Setting — mit dem
+Unterschied, dass die Maske dort seit dem Umbau der Schubladen nicht mehr in eine Fußleiste
+hängen konnte und entsprechend zerrissen aussah.
+
+Jetzt ist die Seitenansicht dieselbe Schublade wie überall (`LeadSchublade`), nur ohne
+Arbeitsbereich:
+
+- **Kontaktdaten** mit Ansprechpartner, Status, Telefon, E-Mail, Ort und den Rollen
+  (Opener · Setter · Closer)
+- **Termin** mit Tag, Zeitraum und Art, dazu die Kennzeichen aus dem Kalenderraster
+  („Mein Closing", „Mein Beratungsgespräch", „Von mir gebucht", „Abschlussgespräch noch ohne
+  Closer", bei Wiedervorlagen „Zugewiesen an …")
+- **Verlauf**
+- Unten: „E-Mail an den Kontakt" und — gefüllt — „Im Setting öffnen" bzw. „Im Closing öffnen",
+  bei Wiedervorlagen „Im Opening öffnen". Gearbeitet wird in der Stufe, zu der der Termin gehört.
+
+**Nachweis (Playwright, Vorschau):** 8/8 — Termin im Raster öffnet die Schublade, Kontaktdaten,
+Termin mit Zeitraum und Verlauf stehen drin, keine Dokumentationsmaske und kein Auswahlfeld mehr,
+Fußleiste mit genau einer gefüllten Aktion, keine Fehler in der Konsole. Regression: Pools 15/15,
+Konsistenz 47/47, Setting-Seiten 15/15, Pool-Kasten über dem Kalender unverändert.
+
+### Nachtrag: ruhige Liste beim Filtern
+
+Beim Einstellen eines Filters sprang die Seite zweimal: Der Knopf „Filter" wurde breiter, sobald
+der Speicher-Spinner darin auftauchte, und im Opening ersetzte ein großer Ladebalken kurz die
+ganze Tabelle.
+
+- Die Knöpfe „Filter" und „Spalten" haben jetzt eine feste Mindestbreite und zeigen keinen
+  Spinner mehr; dass gerade gespeichert wird, steht still in `aria-busy`.
+- Beim Nachladen bleibt die Liste stehen und blendet nur leicht ab (200 ms). Den großen Spinner
+  gibt es nur noch, solange überhaupt nichts geladen ist — in Opening, Setting und Closing gleich.
+
+**Nachweis:** 6/6 — während des Tippens im Filter gemessen: Die Breite des Knopfs ändert sich
+nicht, der Tabellenkopf bleibt auf derselben Höhe, und die Tabelle verschwindet zwischendurch
+nicht. Regression: Filter 10/10, Spalten 7/7, Tabellen 12/12, Scrollen 15/15, Konsistenz 47/47.
+
+### Nachtrag: Filterfelder gegen die Daten geprüft
+
+Rückmeldung: Im Closing standen „Art" und „Terminart" nebeneinander — dasselbe, und bei „Art" blieb
+jeder Filter leer. Daraufhin habe ich alle Filterfelder aller drei Stufen gegen die Datenbank
+geprüft.
+
+**Gefunden und behoben:**
+
+| Befund | Jetzt |
+|---|---|
+| „Art" ist das Symbol links (Video/Telefon bzw. kontaktiert/offen) und trägt keinen eigenen Wert — als Filter blieb es leer und doppelte „Terminart" bzw. „Kontaktiert" | Bleibt Spalte, ist aber kein Filterfeld mehr (`ohneFilter`) |
+| „Zuständig" war im Setting derselbe Mensch wie „Setter", im Closing derselbe wie „Closer" | Im Setting und Closing entfallen, dafür steht „Closer" im Closing-Standard. Im Opening heißt das Feld jetzt „Vertriebler" (dort gibt es keine Rollenspalten) |
+| Felder, die in der Liste nirgends gefüllt sind, sahen aus wie kaputte Filter | Im Auswahlfeld steht „— ohne Werte" dahinter. Nur in Setting und Closing, wo die ganze Liste im Browser liegt; im Opening sind 50 von 28.853 Leads geladen, dort wäre die Aussage falsch |
+
+**Datenlage** (Stand 24.09.2026): In den 616 Hot Leads sind Terminart (608), Quelle (614) und die
+No-Show-Zähler (616) durchgehend gefüllt, Setup (83), Retainer (90), Laufzeit (71) und Bundesland
+(53) teilweise, Mobilnummer (2) fast gar nicht. Leer sind die Felder aus dem OSC-Umbau, die sich
+erst im Betrieb füllen: Wiedervorlage, zugesagt bis, Angebot verschickt. Sie bleiben wählbar —
+gekennzeichnet — weil sie ab Go-live gebraucht werden. In den 28.853 Leads des Openings sind
+Quelle, Land und Kontaktiert vollständig, Stadt (27.914) und Telefon (28.817) nahezu, E-Mail
+(21.730) und die Website-Zahlen (rund 11.000) teilweise.
+
+Nebenbei: Der Schriften-Import stand in `index.css` hinter den Tailwind-Direktiven, wodurch jeder
+Build eine CSS-Fehlermeldung ausgab. Er steht jetzt zuoberst.
+
+**Nachweis:** 10/10 über die drei Stufen — „Art" nicht mehr wählbar, „Zuständig" nirgends doppelt,
+im Closing Terminart einmal und Closer/Setter getrennt, leere Felder gekennzeichnet (und im
+Opening bewusst nicht). Regression: Tabellen 12/12, Filter 10/10, Spalten 7/7, Konsistenz 47/47,
+Scrollen 15/15.
+
+## Sortierung: auf- und absteigend, über die ganze Liste — 24.09.
+
+Klicken ließ sich der Spaltenkopf schon seit dem Tabellen-Umbau, aber es sortierte nur die
+sichtbare Seite: in Setting und Closing zehn Zeilen, im Opening fünfzig von 28.853. Eine
+Sortierung, die bei Zeile zehn aufhört, ist keine.
+
+- **Setting und Closing** sortieren jetzt die vollständige (gefilterte) Liste und blättern danach.
+  Ein Klick sortiert aufsteigend, der zweite dreht um; Leeres steht immer hinten, egal in welcher
+  Richtung. Nach dem Sortieren springt die Ansicht auf Seite 1.
+- **Das Opening sortiert auf dem Server** (`sort` und `dir` an `leads.js`), weil dort nur eine
+  Seite geladen ist. Spalten, für die es keine Datenbankspalte gibt — Letzte Aktivität,
+  Vertriebler, das Symbol und die zusammengesetzten Felder Ansprechpartner und Kontakt —, sind
+  dort nicht anklickbar und sagen das im Tooltip.
+- Sichtbar ist das jetzt auch: Beim Überfahren erscheint ein Doppelpfeil, die aktive Spalte trägt
+  den Pfeil in der Hausfarbe.
+
+**Nachweis (Playwright, Vorschau):** 9/9 — im Setting ist die Reihenfolge nachweislich alphabetisch
+und dreht sich beim zweiten Klick um, und sie greift über die Seitengrenze hinaus; im Opening geht
+die Sortierung nachweislich an den Server, auf- und absteigend zeigen andere Firmen, und eine
+Zahlenspalte (Besucher/Monat) sortiert numerisch statt als Text. Regression: Tabellen 12/12,
+Filter 10/10, Filterfelder 10/10, Konsistenz 47/47.
+
+Die Sortierregeln der Datenbank (Umlaute wie Grundbuchstaben, Satzzeichen schwächer gewichtet)
+bildet der Test bewusst nicht nach — geprüft wird die Richtung, nicht die Collation.
+
+## Follow-Up auf denselben Stand — 24.09.
+
+Die letzte Lead-Liste ohne den neuen Aufbau: eigene Tabelle mit sieben fest verdrahteten Spalten,
+Sortierung nur nach vier davon, keine Spaltenwahl, keine frei zusammenstellbaren Filter.
+
+Jetzt kommt auch sie aus `LeadTabelle`, mit Spalten aus dem Katalog (Stufe `followup`):
+Art · Unternehmen · Termin · Status · Closer · Nächster Schritt · Bis wann · Nachfassen — dazu
+wählbar Ansprechpartner, Kontakt, Setter und der letzte Kommentar. Filter und Spalten liegen wie
+überall in `users.preferences`.
+
+Weil die Follow-Up-Abfrage eigene Feldnamen liefert (`follow_up_datum`, `closer_name`, …), hat sie
+in `src/utils/zeile.js` einen eigenen Zweig bekommen — übersetzt wird auf dieselben Namen wie in
+den anderen Stufen. Die Liste kommt jetzt am Stück (585 Kontakte), gefiltert, sortiert und
+geblättert wird im Browser, wie in Setting und Closing. Das Symbol links zeigt, ob noch
+nachgefasst wird.
+
+**Nachweis (Playwright, Vorschau):** 9/9 — Spalten aus dem Katalog samt der eigenen Felder, beide
+Knöpfe in Filter-Optik, Sortierung alphabetisch und umkehrbar, Klick öffnet die Schublade, keine
+Fehler in der Konsole. Regression: Tabellen 12/12, Filter 10/10, Sortierung 9/9, Konsistenz 47/47.
+
+**Zwischenfall:** Mit dem Follow-Up-Commit landete `netlify/functions/leads.js` wieder
+abgeschnitten im Repo (687 statt 706 Zeilen). Dadurch fehlte der Export, Netlify erkannte die
+Datei nicht mehr als Modul, und das Opening bekam 502 — sichtbar als „0 Leads geladen". Die Datei
+ist wiederhergestellt; zusätzlich habe ich alle 
+versionierten Dateien einmal HEAD gegen Arbeitskopie verglichen: Sie war die einzige.
+
+## „Ich halte das Gespräch selbst" nur mit der passenden Rolle — 25.09.
+
+Das Häkchen beim Terminbuchen hing an einer Rolle: Setter. Wer nur Coldcaller war, bekam es
+trotzdem zu sehen und konnte sich als Setter eintragen; wer beim Abschlussgespräch buchte, bekam
+denselben Text und dieselbe Prüfung, obwohl dort die Closer-Rolle zählt.
+
+Jetzt entscheidet der Zweck der Buchung:
+
+| Buchung | Häkchen sieht | Text |
+|---|---|---|
+| Beratungsgespräch | Setter, Admin, Geschäftsführer | „Ich halte das Beratungsgespräch selbst" |
+| Abschlussgespräch | Closer, Admin, Geschäftsführer | „Ich halte das Abschlussgespräch selbst" |
+
+Wer Opener **und** Setter ist, bucht im Opening also den Termin und behält ihn; wer Setter **und**
+Closer ist, legt das Abschlussgespräch und hält es selbst — ohne den Umweg über den Pool, in dem
+er sich auf seinen eigenen Termin bewerben müsste. Wer die Rolle nicht trägt, sieht das Häkchen
+nicht, und der Termin geht in den Pool der nächsten Stufe.
+
+**Der Server prüft dasselbe noch einmal**, denn ein verborgenes Häkchen ist nur Oberfläche. Die
+Regel steht jetzt an einer Stelle — `zuteilungErlaubt()` in `netlify/functions/utils/zugriff.js` —
+und `hot-leads.js` fragt sie an allen drei Stellen: beim Buchen für Closer und Setter, beim
+Bearbeiten für alle vier Rollenfelder. Sie erlaubt genau drei Dinge: die Leitung teilt zu, ein
+leerer Wert gibt zurück in den Pool (abgeben ist kein Zuteilen), und wer die passende Rolle trägt,
+trägt **sich selbst** ein. Fremde Namen bleiben dem Bewerbungsweg vorbehalten; Opener und
+Reaktivierung vergibt ohnehin nur die Leitung. Der Namensweg (`closerName`) läuft durch dieselbe
+Prüfung, weil er vorher zu `closer_id` aufgelöst wird.
+
+**Nachweis:** `node scripts/pruefe-zuteilung.mjs` (neu in `npm run pruefe`) fragt die Regel
+21-mal durch — Coldcaller nein, Opener+Setter ja, Setter+Closer ja für Closer, fremder Name in
+jeder Rolle nein, Abgeben ja, Admin und Geschäftsführer ja — und prüft zusätzlich, dass
+`hot-leads.js` keine eigene Kopie der Logik mehr hält. Dazu Browser-Rollenmatrix 12/12 (Häkchen
+verborgen bzw. sichtbar je Rolle und Zweck) und der frühere Node-Regeltest 7/7.
+
+**Zwischenfall:** Der Versuch, die Server-Absicherung durch einen echten PATCH mit fremdem
+Closer-Namen zu widerlegen, lief über das Konto von Paul — und das ist Admin. Der Aufruf kam
+erwartungsgemäß mit 200 zurück (Admins dürfen zuteilen) und hat dabei an einem echten Hot Lead
+(„- Sommer Immobilien GmbH") den Closer überschrieben. Der Vorzustand war rekonstruierbar: Die
+Absage-Benachrichtigung vom 15.04. ging an den Setter und an Nikolas Kryut; er stand dort als
+Closer. Der Wert ist zurückgesetzt, weitere Spuren gab es nicht. Lehre: Rollenregeln nicht am
+Admin-Konto gegen echte Datensätze testen, sondern an der Regel selbst — genau das tut
+`pruefe-zuteilung.mjs`.
+
+**Offen dabei gefunden und behoben:** `Closing.jsx` rief beim Zurücksetzen des Formulars noch
+`setShowWebsiteStats(false)` auf, obwohl der Zustand beim Tabellen-Umbau entfallen war — ein
+Laufzeitfehler, der das Schließen der Schublade abgebrochen hätte. `npm run pruefe` ist jetzt
+fehlerfrei.
+
+## Im Closing ist immer vom Abschlussgespräch die Rede — 25.09.
+
+Die Stufen tragen je einen Termin: Das Beratungsgespräch hält der Setter, das
+Abschlussgespräch der Closer. Im Closing stand trotzdem an mehreren Stellen das
+falsche Wort — und an einer davon war es kein Wort, sondern ein Fehler.
+
+**Der Fehler:** Der Terminwähler wurde im Closing mit dem Zweck „beratung"
+geöffnet. Ein dort neu gebuchter Termin schrieb damit `termin_beratungsgespraech`
+(überschrieb also den Termin des Setters), setzte den Status auf
+„Beratungsgespräch vereinbart" — und weil `stufeVonLead` diesen Status dem
+Setting zuordnet, fiel der Kontakt aus dem Closing zurück. Jetzt bucht das
+Closing mit dem Zweck „abschluss": `termin_abschlussgespraech`,
+`meeting_link_abschluss`, Status „Abschlussgespräch vereinbart". Sichtbar wird
+das auch im Kalenderfenster, das nun die Calendly-Art „Abschlussgespräch, per
+Google Meet" lädt statt der Beratungsart.
+
+**Eine Quelle für die Stufen:** `STATUS_JE_STUFE` und `statusFuerStufe()` in
+`shared/status.js` sagen, welcher Status zu welcher Stufe gehört. Die
+Statuswahl im Closing bietet nur noch dessen Status an — vorher ließ sich dort
+„Beratungsgespräch vereinbart" wählen, was den Kontakt ins Setting zurückschob.
+Der Statusfilter nimmt zusätzlich, was im Bestand wirklich vorkommt: Altfälle
+sollen filterbar bleiben.
+
+**Die Altfälle:** 128 Kontakte mit Closer tragen noch einen Status von vor dem
+Umbau (109-mal „Lead", 19-mal „Termin verschoben"). Die Status-Migration bildet
+beides bewusst auf „Beratungsgespräch vereinbart" ab — ob das Gespräch
+stattfand, weiß niemand, und ein Abschlussgespräch haben sie nicht. Also hilft
+nur die Anzeige: `anzeigeName(status, stufe)` nennt einen Beratungs-Status im
+Closing „Termin vereinbart" bzw. „Termin geführt". Im Setting bleibt es beim
+vollen Wort. Farben hängen weiter am Rohwert.
+
+Dazu die Wortwahl: Closer-Pool („Offene Abschlussgespräche"), Abschnitt in der
+Schublade, Aktionen („Neues Abschlussgespräch buchen" / „Abschlussgespräch
+verschieben"), No-Show- und Bewerbungsdialog, Toast und der Hinweis
+„Abschlussgespräch verpasst". Unberührt bleiben die Nachrichtentypen „Termin
+abgesagt" und „Termin verschoben" (sie sind Werte des `message_type`-Enums) und
+die Rückblickzeile, die den vorangegangenen Beratungstermin des Setters nennt.
+
+**Nebenbei:** „Angebot versenden" hing an einem Status, den es im Closing nicht
+gibt — der Eintrag hieß deshalb immer „Neues Angebot". Er folgt jetzt dem
+Angebotsstand.
+
+**Nachweis:** `node scripts/pruefe-stufen.mjs` (neu in `npm run pruefe`) hält
+die Stufenlisten gegen `stufeVonLead` und die Übergangsmatrix, prüft jeden
+Statusnamen der Stufe und dass die Seiten die Listen benutzen. Playwright gegen
+die Vorschau 10/10: keine Zeile im Closing sagt „Beratungsgespräch" — in
+Liste, Filter, Schublade, Pool und der Admin-Ansicht „Alle Leads" —, die
+Altkontakte stehen dort als „Termin vereinbart", und die Gegenprobe im Setting
+zeigt, dass dort weiter vom Beratungsgespräch die Rede ist. Keine
+Konsolenfehler.
+
+**Offen, weil es eine Entscheidung über Daten ist:** Der Spaltenvorgabewert von
+`hot_leads.status` in der Datenbank ist noch `'Lead'`; neue Hot Leads ohne
+gesetzten Status bekommen also weiter den Altwert (zuletzt am 25.09.). Die
+Migration `20260913_osc_statuskette.sql` setzt den Vorgabewert auf
+„Beratungsgespräch vereinbart" und bildet die Altwerte ab — sie ist noch nicht
+gelaufen. Sie gehört zum Go-live-Paket, zusammen mit
+`20260918_osc_rollenzuschnitt.sql`.
+
+## Revision nach der Live-Demo: die Felder des Erstanrufs — 25.09.
+
+Aus dem Test vom 25.09. (Feedback v3, Abschnitt „Live Demo / Revision"). Der
+Opener füllt die Felder, aus denen die erste Mail und das Video entstehen —
+entsprechend genau ist der Schnitt.
+
+**Das Ziel darf nicht mehr offen bleiben.** „Noch nicht besprochen" ist als
+Auswahl verschwunden: An dieser Antwort hing, welches Testimonial und welcher
+VSL rausgehen, und „offen" heißt dort schlicht, dass niemand etwas verschicken
+kann. Dazu wird das **priorisierte Ziel Pflicht, sobald mehr als ein Ziel**
+genannt wurde.
+
+**Die Ziele richten sich nach der Branche** (`zieleFuerBranche`), die
+Beschriftung nach `brancheSprache` — die frühere `svSprache`, die jetzt zwei
+Fälle kennt:
+
+| Branche | Auswahl |
+|---|---|
+| Makler | Mehr Eigentümer-Anfragen · Mehr Kaufinteressenten · Zeitersparnis und Entlastung |
+| Sachverständiger | Mehr Bewertungsanfragen · Zeitersparnis und Entlastung |
+| andere | Mehr Anfragen · Zeitersparnis und Entlastung |
+
+Gespeichert wird in allen drei Fällen derselbe Wert; nur der Name wechselt.
+Kaufinteressenten gibt es nur beim Makler — ein Sachverständiger vermittelt
+keine, und bei „andere" wäre es geraten.
+
+**Gestrichen:** „Ansprechpartner und Funktion" (der Setter hat weiterhin „Wer
+das mitentscheidet"), „Kunde fragt von sich aus nach Preis, Ablauf oder
+Starttermin" samt Feld, der Opener-Hinweis über dem Notizfeld, die gelbe
+Warnung „Bitte buche zuerst einen Termin…" (der Schutz beim Speichern bleibt)
+und der Vorschlagsblock im Mailfenster des Openings — er speist sich aus der
+Übergabe des Setters, die es dort noch nicht gibt.
+
+**Neu formuliert:** „Will etwas Neues aufbauen (eigenes Vorhaben)" samt
+Tooltip, die Tooltips für das priorisierte Ziel und für das Problem in den
+Worten des Kunden, der Text über der Übergabe und der Hinweis nach der Buchung
+(„Testimonial-Video").
+
+**Folge, die im Blick bleiben muss:** Die Bewusstseinsstufe kannte eine Stufe 5
+für den, der von sich aus nach Preis oder Start fragt. Das Häkchen dafür ist
+jetzt weg; die Regel bleibt für Altkontakte stehen, neue erreichen Stufe 5
+nicht mehr über den Erstanruf.
+
+**Nachweis:** `node scripts/pruefe-erstanruf.mjs` (neu in `npm run pruefe`)
+prüft 14 Punkte — gestrichene Felder, Benennungen, die drei Branchenlisten und
+die Pflicht des priorisierten Ziels. Playwright in der Vorschau 14/14: im
+echten Buchungsdialog, nach Wahl eines Zeitfensters, mit Umschalten der Branche
+von Makler auf Sachverständiger auf „andere". Keine Konsolenfehler.
+
+Nebenbei geprüft, weil im Feedback „Calendly Buchung ist fehlgeschlagen" steht:
+Die Terminarten und die freien Zeiten kommen sauber (14 bis 15 Zeitfenster je
+Tag ab dem 28.09.). Der gemeldete Fehler lag also nicht an der Verfügbarkeit.
+
+**Noch nicht angefasst, wie besprochen:** Schritt 3 der Übergabe, die Optionen
+für das Ergebnis des Gesprächs und das Material (Testimonial- und VSL-Links,
+Signatur).
+
+## Der Ausgang des Beratungsgesprächs — 25./28.09.
+
+Nach dem Setting ist niemand Kunde: „Auftrag" hat dort nichts zu suchen. Paul
+hat am 25.09. entschieden, dass „Vertagt ohne festen Schritt" bleibt — es ist
+das einzige Tor ins Nachfassen — und dass ein vereinbartes Abschlussgespräch
+ohne gebuchten Termin nicht möglich sein darf.
+
+Der Setter wählt jetzt zwischen drei Ausgängen:
+
+| Ausgang | Was folgt |
+|---|---|
+| Abschlussgespräch vereinbart | Führt zwingend zum Terminwähler und übergibt an den Closer |
+| Vertagt ohne festen Schritt | Bleibt beim Setter, der binnen 48 Stunden nachfasst |
+| Nicht geeignet | Nur mit Begründung; der Kontakt wird aussortiert |
+
+Der Ausgang des ABSCHLUSSgesprächs bleibt, wie er war (`AUSWAHL.gespraechsausgang`
+mit „Auftrag") — dort ist der Auftrag der Regelfall. Die Begründung landet in
+`verlust_grund`, der Spalte, die das Closing ohnehin schreibt; dafür war keine
+neue Spalte nötig.
+
+**Ohne Termin geht es nicht**, an drei Stellen: Im Ablauf führt nur dieser
+Ausgang zum Wähler, der Server weist das Ergebnis ohne gebuchten Termin mit 422
+ab (`termin_fehlt`), und der Status „Abschlussgespräch vereinbart" war schon
+vorher an den Termin gebunden. Ein unbekannter Ausgang bekommt jetzt ebenfalls
+eine verständliche Antwort statt einer Datenbankmeldung.
+
+Die Datenbank kannte die alten vier Werte als CHECK-Constraint; sie ist mit
+`20260925_osc_ausgang_beratung.sql` auf die drei neuen umgestellt. Alle 616
+Kontakte hatten das Feld leer, es war also nichts umzuschreiben.
+
+**Nachweis:** `node scripts/pruefe-beratung.mjs` (neu in `npm run pruefe`) — 12
+Punkte über beide Listen, das Begründungs-Gate und die zwei Serverprüfungen.
+Gegen die Vorschau, an einem eigens angelegten und danach gelöschten
+Testkontakt: Server 3/3 (422 ohne Termin, 200 bei „Vertagt", alter Wert
+abgewiesen) und Oberfläche 10/10 (drei Optionen ohne „Auftrag" und „Absage",
+Begründungsfeld erscheint und verschwindet, „Weiter zum Termin" beim
+vereinbarten Abschlussgespräch). Keine Konsolenfehler.
+
+**Zwischenfall, der drei Tage gekostet hat:** Der Commit mit diesen Änderungen
+trug eine durch iCloud abgeschnittene `package.json` (31 statt 39 Zeilen, Abbruch
+mitten im Wert) und eine verkürzte `index.css`. Netlify konnte das JSON nicht
+lesen und baute gar nicht — die Vorschau lieferte weiter das Bundle von zwei
+Commits davor. Ich habe daraufhin zweimal gegen den alten Stand getestet und
+daraus geschlossen, die neue Serverprüfung greife nicht. Seitdem gilt: vor jedem
+Test gegen die Vorschau den Bundle-Hash vergleichen, und nach jedem Commit alle
+versionierten Dateien gegen die Arbeitskopie prüfen, nicht nur die geänderten.
+
+## Die Signatur trägt wieder Gruß und Namen — 28.09.
+
+Im Mailfenster begann die Signatur mit „KI-Entwicklung für Immobilienmakler" —
+Gruß und Name fehlten. Der Code war nicht schuld: `signaturHtml()` lässt beides
+weg, wenn die Mail selbst schon mit einem Gruß endet, damit beim Empfänger
+nicht zweimal „Viele Grüße" steht.
+
+Die Ursache lagen in den Vorlagen: 13 der 23 endeten auf „Viele Grüße
+{Absender}" und nahmen der Signatur damit ihre Aufgabe. Im bestehenden CRM
+liefert die Signatur den Abschluss, die Vorlage endet mit dem letzten Satz.
+Genau so ist es jetzt: Der Abschluss ist aus den 13 Vorlagen entfernt (Segment-
+und Nachfass-Mails), gesichert in `archiv_email_templates_20260928`.
+
+Beim Empfänger steht damit wieder: letzter Satz — „Mit freundlichen Grüßen" —
+Name — „KI-Entwicklung für Immobilienmakler" — Firmenblock. Die Regel im Code
+bleibt als Sicherung für frei geschriebene Mails: Wer selbst einen Gruß tippt,
+bekommt ihn nicht doppelt.
+
+**Nachweis (Vorschau):** 4/4 — die Signatur beginnt mit „Mit freundlichen
+Grüßen / Paul Probodziak", der Mailtext endet mit „Ich freue mich darauf!", und
+weder Gruß noch Name stehen doppelt.
+
+## Setting: der Rest der Revision — 28.09.
+
+Nach Ablauf und Ausgängen jetzt die Inhalte der Maske.
+
+**Weggefallen:** „Nur wenn es im Gespräch fiel" (Aufträge im Jahr, Provision je
+Auftrag) — beides war optional und gehört, wenn es zur Sprache kommt, ins
+Notizfeld. Und „Versendete Unterlagen und Videos": Das System schreibt beim
+Senden ohnehin mit, in der Maske stand die Liste nur im Weg. Beide Spalten
+bleiben lesbar, sie sind nur aus der Maske heraus.
+
+**Neu an ihrer Stelle: der Satz zum Übergeben.** Er steht am Ende der Angaben,
+dort, wo der Setter ihn im Gespräch spricht, und richtet sich nach dem Segment:
+
+| Segment | Was der Closer bis zum Termin vorbereitet |
+|---|---|
+| Eigentümer | Konzept mit SEO- und GEO-Analyse und Mehrwertkalkulation |
+| Kaufinteressenten | Kalkulation und eine Muster-Anzeige für ein Objekt |
+| Zeitersparnis | Automatisierungs-Kurzanalyse: die drei größten Zeitfresser |
+| Sachverständige | dieselbe Analyse, bezogen auf den Gutachtenprozess |
+| andere Branche | je nach Ziel: Anfragengewinnung oder Entlastung im Tagesgeschäft |
+
+**Das Closer-Gerüst** steht jetzt im Setting, wo die Standardfragen nicht
+passen (andere Branche oder eigenes Vorhaben): die sieben Fragen in genau der
+Reihenfolge aus dem Feedback, über dem Notizfeld. Der Hinweis über den Angaben
+nennt dieses Notizfeld ausdrücklich — es ist der Ausweg, wenn das Gespräch eine
+andere Wendung nimmt.
+
+**Mail an den Closer:** Wird das Abschlussgespräch vereinbart, geht sie raus —
+an den Closer, wenn einer feststeht, sonst an alle, die sich darauf bewerben
+können. Scheitert der Versand, bleibt die Übergabe trotzdem stehen.
+
+Im Übergabeblatt steht „Priorisiertes Ziel" nicht mehr doppelt; es trägt seinen
+Vermerk schon bei „Was der Kunde erreichen will".
+
+**Nachweis:** `pruefe-beratung.mjs` deckt die Maske, alle sechs Übergabesätze,
+die sieben Fragen und den Mailversand ab; Playwright in der Vorschau 8/8.
+
+### Entschieden: Der Setter bucht das Abschlussgespräch (Paul, 28.09.)
+
+Im Feedback vom 25.09. stand, Schritt 3 „Termin mit dem Closer" könne entfallen
+und der Closer setze den Termin nach der Übernahme selbst. Nach Abwägung bleibt
+es, wie es ist: Der Setter bucht den Termin am Ende des Gesprächs und übergibt
+in einem Zug. Das deckt sich mit dem Satz, den er dem Kunden sagt („Dafür
+blocken wir 45 Minuten fest ein"), mit der Regel „ohne Termin kein
+Abschlussgespräch vereinbart" und mit dem Haken „Ich halte das
+Abschlussgespräch selbst". Der Closer übernimmt den Termin aus dem Pool und
+schickt von dort sein VSL. Der Punkt ist damit erledigt, nicht offen.
