@@ -8,7 +8,7 @@ import { anmeldungVerlangen } from './utils/session.js'
 import { STATUS, normalisiere, uebergangErlaubt, anzeigeName, ruecknahmeZiel, beideSchreibweisen, stufeVonLead, zustaendigFuerStufe, STUFE_TEXT } from '../../shared/status.js'
 import {
   FELDER, uebergabePruefen, grenzenPruefen, zielAbleiten, UEBERGABE_1, UEBERGABE_2,
-  SPALTEN_UEBERGABE, SPALTEN_UEBERGABE_1
+  SPALTEN_UEBERGABE, SPALTEN_UEBERGABE_1, AUSWAHL
 } from '../../shared/felder.js'
 
 // Alles, was die beiden Übergaben lesen und schreiben, plus der gespeicherte
@@ -1251,6 +1251,21 @@ export async function handler(event) {
               message: 'Für „Verloren, wiedervorlagefähig" braucht es ein Datum und einen Grund.'
             })
           }
+        }
+      }
+
+      // Ein unbekannter Ausgang wuerde erst an der Datenbank scheitern - mit
+      // einer Meldung, die niemandem hilft. Also hier, in Worten.
+      if (fields.ergebnis_beratung
+          && !AUSWAHL.ausgang_beratung.includes(fields.ergebnis_beratung)) {
+        return {
+          statusCode: 422,
+          headers: corsHeaders,
+          body: JSON.stringify({
+            error: 'ausgang_unbekannt',
+            message: `„${fields.ergebnis_beratung}" ist kein Ausgang des Beratungsgesprächs. `
+              + `Möglich sind: ${AUSWAHL.ausgang_beratung.join(', ')}.`
+          })
         }
       }
 

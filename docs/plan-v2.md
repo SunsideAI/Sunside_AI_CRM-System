@@ -810,3 +810,50 @@ Tag ab dem 28.09.). Der gemeldete Fehler lag also nicht an der Verfügbarkeit.
 **Noch nicht angefasst, wie besprochen:** Schritt 3 der Übergabe, die Optionen
 für das Ergebnis des Gesprächs und das Material (Testimonial- und VSL-Links,
 Signatur).
+
+## Der Ausgang des Beratungsgesprächs — 25./28.09.
+
+Nach dem Setting ist niemand Kunde: „Auftrag" hat dort nichts zu suchen. Paul
+hat am 25.09. entschieden, dass „Vertagt ohne festen Schritt" bleibt — es ist
+das einzige Tor ins Nachfassen — und dass ein vereinbartes Abschlussgespräch
+ohne gebuchten Termin nicht möglich sein darf.
+
+Der Setter wählt jetzt zwischen drei Ausgängen:
+
+| Ausgang | Was folgt |
+|---|---|
+| Abschlussgespräch vereinbart | Führt zwingend zum Terminwähler und übergibt an den Closer |
+| Vertagt ohne festen Schritt | Bleibt beim Setter, der binnen 48 Stunden nachfasst |
+| Nicht geeignet | Nur mit Begründung; der Kontakt wird aussortiert |
+
+Der Ausgang des ABSCHLUSSgesprächs bleibt, wie er war (`AUSWAHL.gespraechsausgang`
+mit „Auftrag") — dort ist der Auftrag der Regelfall. Die Begründung landet in
+`verlust_grund`, der Spalte, die das Closing ohnehin schreibt; dafür war keine
+neue Spalte nötig.
+
+**Ohne Termin geht es nicht**, an drei Stellen: Im Ablauf führt nur dieser
+Ausgang zum Wähler, der Server weist das Ergebnis ohne gebuchten Termin mit 422
+ab (`termin_fehlt`), und der Status „Abschlussgespräch vereinbart" war schon
+vorher an den Termin gebunden. Ein unbekannter Ausgang bekommt jetzt ebenfalls
+eine verständliche Antwort statt einer Datenbankmeldung.
+
+Die Datenbank kannte die alten vier Werte als CHECK-Constraint; sie ist mit
+`20260925_osc_ausgang_beratung.sql` auf die drei neuen umgestellt. Alle 616
+Kontakte hatten das Feld leer, es war also nichts umzuschreiben.
+
+**Nachweis:** `node scripts/pruefe-beratung.mjs` (neu in `npm run pruefe`) — 12
+Punkte über beide Listen, das Begründungs-Gate und die zwei Serverprüfungen.
+Gegen die Vorschau, an einem eigens angelegten und danach gelöschten
+Testkontakt: Server 3/3 (422 ohne Termin, 200 bei „Vertagt", alter Wert
+abgewiesen) und Oberfläche 10/10 (drei Optionen ohne „Auftrag" und „Absage",
+Begründungsfeld erscheint und verschwindet, „Weiter zum Termin" beim
+vereinbarten Abschlussgespräch). Keine Konsolenfehler.
+
+**Zwischenfall, der drei Tage gekostet hat:** Der Commit mit diesen Änderungen
+trug eine durch iCloud abgeschnittene `package.json` (31 statt 39 Zeilen, Abbruch
+mitten im Wert) und eine verkürzte `index.css`. Netlify konnte das JSON nicht
+lesen und baute gar nicht — die Vorschau lieferte weiter das Bundle von zwei
+Commits davor. Ich habe daraufhin zweimal gegen den alten Stand getestet und
+daraus geschlossen, die neue Serverprüfung greife nicht. Seitdem gilt: vor jedem
+Test gegen die Vorschau den Bundle-Hash vergleichen, und nach jedem Commit alle
+versionierten Dateien gegen die Arbeitskopie prüfen, nicht nur die geänderten.
