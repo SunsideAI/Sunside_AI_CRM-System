@@ -929,6 +929,11 @@ function Opening() {
   // vor. Wer das Fenster schließt, ohne zu senden, soll beim nächsten Klick
   // wieder dort landen - und nicht vor einem leeren Formular stehen. Ist die
   // Segment-Mail dagegen schon raus, ist es eine gewöhnliche Mail.
+  // Der Hot Lead wird beim Öffnen des Leads nachgeladen. Bis er da ist, lässt
+  // sich nicht sagen, ob die Empfehlungsmail noch aussteht.
+  const wartetAufHotLead = loadingHotLead
+    || (selectedLead?.ergebnis === 'Beratungsgespräch' && !hotLeadData)
+
   const segmentMailOffen = (lead, hot) => {
     if (!hot?.id) return false
     if (!String(lead?.ergebnis || '').toLowerCase().includes('beratungsgespräch')) return false
@@ -1563,6 +1568,34 @@ function Opening() {
                     onSent={() => { setSegmentMail(null); setEditMode(false); hotLeadLaden() }}
                   />
                 </div>
+              ) : showEmailComposer && wartetAufHotLead ? (
+                // Solange der Hot Lead lädt, steht noch nicht fest, ob die
+                // Empfehlung noch aussteht. Lieber kurz warten als die falsche
+                // Ansicht zeigen und eine Sekunde später umspringen.
+                <div className="py-12 text-center">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto mb-3" />
+                  <p className="text-body-sm text-on-surface-variant">Mail wird vorbereitet …</p>
+                </div>
+              ) : showEmailComposer && segmentMailOffen(selectedLead, hotLeadData) ? (
+                // Die Empfehlung steht noch aus: dieselbe Ansicht wie direkt
+                // nach der Buchung.
+                <div className="space-y-4">
+                  <div className="p-3 bg-success-container rounded-lg text-body-sm text-on-surface">
+                    Der Termin steht. Jetzt die Mail mit dem passenden Testimonial-Video
+                    hinterher, solange das Gespräch frisch ist. Bitte vor dem Senden anpassen.
+                  </div>
+                  <EmailComposer
+                    hotLeadId={hotLeadData.id}
+                    lead={selectedLead}
+                    kontakt={hotLeadData}
+                    user={user}
+                    inline={true}
+                    kategorie="Opening"
+                    anlass="opening"
+                    onClose={() => { setShowEmailComposer(false); setEditMode(false) }}
+                    onSent={() => { setShowEmailComposer(false); setEditMode(false); hotLeadLaden() }}
+                  />
+                </div>
               ) : showEmailComposer ? (
                 // Email Composer anzeigen
                 <EmailComposer
@@ -2040,9 +2073,7 @@ function Opening() {
                             mehr an den Kontakt heran. */}
                         {darfMailen(selectedLead) && (
                           <button
-                            onClick={() => segmentMailOffen(selectedLead, hotLeadData)
-                              ? setSegmentMail({ hotLeadId: hotLeadData.id, kontakt: hotLeadData })
-                              : setShowEmailComposer(true)}
+                            onClick={() => setShowEmailComposer(true)}
                             className="fuss-neben"
                           >
                             <Mail className="w-4 h-4" />
