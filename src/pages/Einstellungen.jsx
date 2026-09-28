@@ -57,7 +57,7 @@ function Einstellungen() {
           <p className="mt-2 text-body-md text-on-surface-variant">
             {activeTab === 'mitarbeiter' && 'Mitarbeiter verwalten und Onboarding'}
             {activeTab === 'anfragen' && 'Lead-Anfragen der Vertriebler bearbeiten'}
-            {activeTab === 'hot-lead-bewerbungen' && 'Bewerbungen auf Beratungs- und Abschlussgespräche prüfen'}
+            {activeTab === 'hot-lead-bewerbungen' && 'Bewerbungen auf Abschlussgespräche prüfen'}
             {activeTab === 'system' && 'Systemkonfiguration und Verwaltung'}
           </p>
         </div>
