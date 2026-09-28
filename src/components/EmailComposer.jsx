@@ -522,6 +522,23 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
     }
   }
 
+  // Wo eine Vorlage empfohlen wird, ist das leere Formular nur ein Zwischenbild:
+  // Es steht da, bis die Vorlagen geladen sind, und springt dann um. Solange
+  // warten wir lieber sichtbar, statt kurz etwas Falsches zu zeigen.
+  const wartetAufVorlage = Boolean(anlass) && !error
+    && (!empfehlung || (empfehlung.schluessel && !selectedTemplate))
+  if (wartetAufVorlage) {
+    return (
+      <div className={inline ? "py-12 text-center" : "fixed inset-0 z-50 flex items-center justify-center p-4"}>
+        {!inline && <div className="modal-backdrop absolute inset-0" />}
+        <div className={inline ? "" : "modal-content relative max-w-md w-full text-center"}>
+          <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto mb-3" />
+          <p className="text-body-sm text-on-surface-variant">Passende Vorlage wird herausgesucht …</p>
+        </div>
+      </div>
+    )
+  }
+
   // Erfolgs-Ansicht
   if (success) {
     return (
