@@ -23,7 +23,15 @@ function dateien(ort) {
   return raus
 }
 
-const alle = [...dateien('src'), 'App.jsx']
+const alle = dateien('src')
+
+// Welche Datei ist ueberhaupt die App? Es lag lange eine zweite, alte App.jsx
+// im Wurzelverzeichnis, die niemand mehr einbindet. Ein Einbau dort wirkt nicht
+// und faellt trotzdem nicht auf. Also fragen wir den Einstieg, statt zu raten.
+const einstieg = fs.readFileSync('src/main.jsx', 'utf8')
+const treffer = einstieg.match(/import App from '(\.[^']+)'/)
+const appDatei = treffer ? path.normalize(path.join('src', treffer[1])) + '.jsx' : null
+sagt(Boolean(appDatei && fs.existsSync(appDatei)), `Einstieg zeigt auf eine App-Datei (${appDatei || 'nicht gefunden'})`)
 
 // 1. Kein Browser-Dialog mehr in den Seiten.
 const mitAlert = alle.filter(d => /(^|[^.\w])alert\(/.test(fs.readFileSync(d, 'utf8')))
@@ -36,7 +44,7 @@ const eigene = alle.filter(d =>
 sagt(eigene.length === 0, `Nur ein Ort für die Meldungen (${eigene.join(', ') || 'keine anderen'})`)
 
 // 3. Und das Bauteil haengt ueber allen Seiten.
-const app = fs.readFileSync('App.jsx', 'utf8')
+const app = appDatei && fs.existsSync(appDatei) ? fs.readFileSync(appDatei, 'utf8') : ''
 sagt(/MeldungenProvider/.test(app), 'Der Provider umschließt die Seiten')
 
 // 4. Die drei Arten haben Farben aus dem Haus, keine Fremdgruen.

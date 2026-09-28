@@ -4,6 +4,7 @@ import { useAuth } from './context/AuthContext'
 
 // Layout
 import Layout from './components/Layout'
+import { MeldungenProvider } from './components/Meldungen'
 
 // Pages
 import Login from './pages/Login'
@@ -62,7 +63,11 @@ function App() {
         path="/"
         element={
           <ProtectedRoute>
-            <Layout />
+            {/* Die kurzen Meldungen liegen über allen Seiten: eine Stelle,
+                ein Aussehen. */}
+            <MeldungenProvider>
+              <Layout />
+            </MeldungenProvider>
           </ProtectedRoute>
         }
       >
