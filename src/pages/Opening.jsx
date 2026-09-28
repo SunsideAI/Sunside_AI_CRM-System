@@ -1967,7 +1967,7 @@ function Opening() {
                     <div className="flex items-center justify-end gap-3">
                       <button
                         onClick={() => { setKommentarOnlyMode(false); setEditForm(prev => ({ ...prev, neuerKommentar: '' })); }}
-                        className="fuss-leise"
+                        className="fuss-leise fuss-weg"
                       >
                         Abbrechen
                       </button>
@@ -1986,7 +1986,7 @@ function Opening() {
                     <div className="flex items-center justify-end gap-3">
                     {editMode ? (
                       <>
-                        <button onClick={() => setEditMode(false)} className="fuss-leise">
+                        <button onClick={() => setEditMode(false)} className="fuss-leise fuss-weg">
                           Abbrechen
                         </button>
                         <button

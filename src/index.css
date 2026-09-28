@@ -399,8 +399,15 @@
      In einer 500 px breiten Schublade brach sonst „An Pool freigeben" mitten
      im Wort um, und die Knöpfe schoben sich ineinander. */
   .schublade-fuss {
-    @apply shrink-0 flex flex-wrap items-center justify-end gap-3
-           px-4 sm:px-6 py-4 border-t border-outline-variant bg-surface;
+    @apply shrink-0 flex flex-wrap items-center justify-end gap-2 sm:gap-3
+           px-4 sm:px-6 py-3 sm:py-4 border-t border-outline-variant bg-surface;
+  }
+
+  /* Wegführende Knöpfe („Zurück", „Abbrechen") stehen links, die Aktionen
+     rechts. Vorher drängten sich drei Knöpfe an den rechten Rand, und sobald
+     es eng wurde, rutschte ausgerechnet die Hauptaktion in eine zweite Zeile. */
+  .schublade-fuss .fuss-weg {
+    @apply mr-auto;
   }
 
   .schublade-fuss button,

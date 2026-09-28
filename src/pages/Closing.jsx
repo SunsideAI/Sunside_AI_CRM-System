@@ -2889,7 +2889,7 @@ function Closing() {
                         })
                       }}
                       disabled={sendingAngebot}
-                      className="fuss-leise"
+                      className="fuss-leise fuss-weg"
                     >
                       Abbrechen
                     </button>
@@ -2923,7 +2923,7 @@ function Closing() {
                   <button
                     type="button"
                     onClick={() => { setEditMode(false); setMailFehlt(false) }}
-                    className="fuss-leise"
+                    className="fuss-leise fuss-weg"
                   >
                     Abbrechen
                   </button>

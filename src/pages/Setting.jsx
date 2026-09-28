@@ -656,7 +656,7 @@ function Setting() {
             {/* Im geführten Ablauf stehen unten nur dessen Schritt-Knöpfe. */}
             {ablaufLaeuft ? null : bearbeiten ? (
               <>
-                <button onClick={bearbeitenAbbrechen} disabled={speichert} className="fuss-leise">
+                <button onClick={bearbeitenAbbrechen} disabled={speichert} className="fuss-leise fuss-weg">
                   Abbrechen
                 </button>
                 {/* Steht in der Gesprächsmaske schon eine gefüllte Aktion, ist

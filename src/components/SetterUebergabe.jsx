@@ -384,14 +384,15 @@ export default function SetterUebergabe({
   )
 
   const zurueckKnopf = (ziel, text = 'Zurück') => (
-    <button onClick={() => { setFehler(''); setAblauf(ziel) }} className="fuss-leise">
+    <button onClick={() => { setFehler(''); setAblauf(ziel) }} className="fuss-leise fuss-weg">
       <ChevronLeft className="w-4 h-4" /> {text}
     </button>
   )
 
   const zwischenstandKnopf = (
-    <button onClick={zwischenstand} disabled={laeuft} className="fuss-neben">
-      Zwischenstand speichern
+    <button onClick={zwischenstand} disabled={laeuft} className="fuss-neben"
+            title="Speichert den Stand, ohne den Status zu ändern">
+      Zwischenstand
     </button>
   )
 
@@ -407,7 +408,7 @@ export default function SetterUebergabe({
         {meldung && <p className="text-sm text-green-700">{meldung}</p>}
       </div>,
       <>
-        {zurueckKnopf(null, 'Zurück zum Ausgang')}
+        {zurueckKnopf(null)}
         {zwischenstandKnopf}
         <button
           onClick={() => { setFehler(''); setAblauf('ergebnis') }}
@@ -452,7 +453,7 @@ export default function SetterUebergabe({
         {fehlerKasten}
         {meldung && <p className="text-sm text-green-700">{meldung}</p>}
       </div>,
-      <>{zurueckKnopf('felder', 'Zurück zu den Angaben')}{zwischenstandKnopf}{weiter}</>
+      <>{zurueckKnopf('felder')}{zwischenstandKnopf}{weiter}</>
     )
   }
 
@@ -473,7 +474,7 @@ export default function SetterUebergabe({
         />
         {fehlerKasten}
       </div>,
-      zurueckKnopf('ergebnis', 'Zurück zum Ergebnis')
+      zurueckKnopf('ergebnis')
     )
   }
 
