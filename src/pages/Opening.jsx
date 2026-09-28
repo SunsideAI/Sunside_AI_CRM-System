@@ -1947,8 +1947,14 @@ function Opening() {
               )}
             </div>
 
-            {/* Modal Footer - nur zeigen wenn weder TerminPicker noch EmailComposer */}
-            {!showTerminPicker && !showEmailComposer && (
+            {/* Modal Footer - nur zeigen, wenn die Schublade wirklich den Lead
+                zeigt. Steht ein eigener Ablauf darin, hat der seine eigene
+                Fussleiste, und diese hier legte sich darunter: Beim
+                Empfehlungsfenster nach der Buchung (segmentMail) stand unter
+                dem Mailfenster "Abbrechen | Speichern" - Knoepfe, die den Lead
+                speichern, waehrend oben eine Mail geschrieben wird. Das echte
+                "E-Mail senden" lag ausserhalb des Bildes. */}
+            {!showTerminPicker && !showEmailComposer && !segmentMail && (
             <div className="schublade-fuss">
                 {kommentarOnlyMode ? (
                   /* Kommentar-Only Modus für gesperrte Leads */

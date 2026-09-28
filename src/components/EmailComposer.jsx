@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import MailBausteine from './MailBausteine'
 import {
   empfohleneVorlage, platzhalterWerte, platzhalterFuellen, offenePlatzhalter,
   hatEigenenGruss, gesendeteWerkzeuge
 } from '../../shared/mailvorlagen.js'
+import { signaturHtml } from '../../shared/signatur.js'
 import { 
   Mail, 
   Send, 
@@ -84,81 +84,51 @@ const htmlToMarkdown = (html) => {
 // Übergabefeldern; aus ihm füllen sich die Platzhalter der Mailstrecken-Datei
 
 /**
- * Die Signatur, wie sie das bestehende CRM anhängt.
+ * Die Signatur, wie sie der Versand anhängt.
  *
  * Sie stand bisher nur in der eingebetteten Ansicht; im Dialog (Setting,
  * Kalender) sah der Absender stattdessen eine Zeile mit seiner Adresse. Damit
  * jedes Mailfenster gleich aussieht - Betreff, Nachricht, Signatur -, steht
  * sie jetzt einmal hier und wird an beiden Stellen benutzt.
+ *
+ * Gezeichnet wird dasselbe HTML, das der Versand verschickt
+ * (shared/signatur.js). Vorher war das hier ein Nachbau aus JSX, und der war
+ * abgedriftet: keine Links auf den Symbolen, <span> statt <a> in der Fusszeile,
+ * das IBM-Abzeichen als "Coursera Badge" beschriftet. Wer die Vorschau prueft,
+ * sieht jetzt zwangslaeufig die echte Mail.
+ *
+ * Zugeklappt, weil der Block rund 300 px hoch ist: in der Schublade schob er
+ * den Senden-Knopf aus dem Bild, und der Absender sah die Signatur, wo er den
+ * Versand suchte.
  */
 function SignaturBox({ user, inhalt }) {
+  const html = signaturHtml({
+    name: user?.vor_nachname,
+    email: user?.email_geschaeftlich || user?.email,
+    telefon: user?.telefon,
+    eigenerGruss: hatEigenenGruss(htmlToMarkdown(inhalt)),
+  })
+
   return (
-    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-      <p className="text-xs text-gray-400 mb-2">Signatur (wird automatisch angehängt)</p>
-      <div className="text-sm text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
-        {/* Endet die Mail schon mit Gruß und Namen, entfallen diese zwei Zeilen. */}
-        {!hatEigenenGruss(htmlToMarkdown(inhalt)) && (
-          <>
-            <p className="mb-1">Mit freundlichen Grüßen</p>
-            <p className="font-semibold">{user?.vor_nachname || 'Sunside AI Team'}</p>
-          </>
-        )}
-        <p className="text-gray-600 mb-3">KI-Entwicklung für Immobilienmakler</p>
-
-        <img
-          src="https://onecdn.io/media/8c3e476c-82b3-4db6-8cbe-85b46cd452d0/full"
-          alt="Sunside AI"
-          className="h-8 mb-2"
-        />
-
-        <div className="flex gap-2 mb-3">
-          <img
-            src="https://onecdn.io/media/a8cea175-8fcb-4f91-9d6f-f53479a9a7fe/full"
-            alt="Instagram"
-            className="w-6 h-6"
-          />
-          <img
-            src="https://onecdn.io/media/10252e19-d770-418d-8867-2ec8236c8d86/full"
-            alt="Website"
-            className="w-6 h-6"
-          />
-        </div>
-
-        <p className="font-semibold text-xs">Sunside AI GbR</p>
-        <p className="text-xs text-gray-600">
-          Schiefer Berg 3 | 38124 Braunschweig | Deutschland<br />
-          E-Mail: {user?.email_geschaeftlich || user?.email || 'contact@sunsideai.de'} | Tel: {user?.telefon || '+49 176 56039050'}<br />
-          <span className="text-primary">www.sunsideai.de</span> |
-          <span className="text-primary ml-1">Jetzt Termin buchen</span> |
-          <span className="text-primary ml-1">Zur Podcast-Folge</span>
-        </p>
-        <p className="text-xs text-gray-500 mt-1">Geschäftsführung: Paul Probodziak und Niklas Schwerin</p>
-
-        <div className="flex gap-2 mt-2">
-          <img
-            src="https://onecdn.io/media/9de8d686-0a97-42a7-b7a6-8cf0fa4c6e95/full"
-            alt="Coursera Badge"
-            className="h-12"
-          />
-          <img
-            src="https://onecdn.io/media/2c4b8d13-4b19-4898-bd71-9b52f053ee57/full"
-            alt="Make Badge"
-            className="h-12"
-          />
-        </div>
-        <p className="text-xs text-gray-600 mt-1 italic"><strong>Wir sind zertifizierte IBM KI-Entwickler und Make Automatisierungsexperten.</strong></p>
-      </div>
-    </div>
+    <details className="border border-gray-200 rounded-lg bg-gray-50">
+      <summary className="px-4 py-3 text-xs text-gray-500 cursor-pointer select-none">
+        Signatur (wird automatisch angehängt) — zum Prüfen aufklappen
+      </summary>
+      {/* Tailwind stellt <img> auf display:block. In der Mail sind die Symbole
+          inline und stehen nebeneinander; ohne diese Zeile zeigt die Vorschau
+          sie untereinander und weicht wieder von dem ab, was ankommt. */}
+      <style>{`.signatur-vorschau img { display: inline-block; }`}</style>
+      <div
+        className="signatur-vorschau px-4 pb-4 text-sm text-gray-700"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    </details>
   )
 }
 
 
 // ({Schmerzpunkt im Wortlaut}, {Zuwachs} …). Gesendet wird nie automatisch.
 function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie = null, hotLeadId = null, anlass = null, kontakt = null }) {
-  // Die Textvorschläge kommen aus der Übergabe des Setters. Im Opening gibt es
-  // die noch nicht - dort stand der Block nur im Weg (Revision 25.09.).
-  const zeigeBausteine = anlass !== 'opening' && kategorie !== 'Opening'
-
   const [templates, setTemplates] = useState([])
   const [selectedTemplate, setSelectedTemplate] = useState('')
   const [loading, setLoading] = useState(true)
@@ -295,22 +265,11 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
     setInhalt(e.target.innerHTML)
   }
 
-  // Vorschlaege aus MailBausteine in den Editor bringen. Reiner Text kommt
-  // herein, Absaetze werden zu Zeilenumbruechen - der Editor haelt HTML.
-  const alsHtml = (text) => markdownToHtml(String(text || '').trim())
-
   const editorSetzen = (html) => {
     setInhalt(html)
     if (editorRef.current) editorRef.current.innerHTML = html
     if (modalEditorRef.current) modalEditorRef.current.innerHTML = html
   }
-
-  const bausteinEinfuegen = (text) => {
-    const vorhanden = (editorRef.current?.innerHTML || modalEditorRef.current?.innerHTML || inhalt || '').trim()
-    editorSetzen(vorhanden ? `${vorhanden}<br><br>${alsHtml(text)}` : alsHtml(text))
-  }
-
-  const entwurfUebernehmen = (text) => editorSetzen(alsHtml(text))
 
   // Fett formatieren
   const formatBold = () => {
@@ -595,14 +554,6 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
           </div>
         )}
 
-        {zeigeBausteine && (
-          <MailBausteine
-            hotLeadId={hotLeadId}
-            onBetreff={setBetreff}
-            onEinfuegen={bausteinEinfuegen}
-            onEntwurf={entwurfUebernehmen}
-          />
-        )}
 
         {(empfehlung || gewaehlteVorlage?.hinweis) && (
           <div className="space-y-2">
@@ -862,14 +813,6 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
             </div>
           )}
 
-          {zeigeBausteine && (
-            <MailBausteine
-              hotLeadId={hotLeadId}
-              onBetreff={setBetreff}
-              onEinfuegen={bausteinEinfuegen}
-              onEntwurf={entwurfUebernehmen}
-            />
-          )}
 
           {(empfehlung || gewaehlteVorlage?.hinweis) && (
             <div className="space-y-2">

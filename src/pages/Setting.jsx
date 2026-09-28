@@ -617,7 +617,7 @@ function Setting() {
           Arbeitsbereich: hier der Ausgang des Beratungsgesprächs. */}
       <LeadSchublade
         offen={!!gewaehlt}
-        nurArbeit={ablaufLaeuft}
+        nurArbeit={ablaufLaeuft || mailOffen || bestaetigung?.id === gewaehlt?.id}
         kontaktFelder={bearbeiten && formular && (
           <KontaktFelder werte={formular} onChange={setFormular} mailFehlt={mailFehlt} />
         )}
@@ -731,7 +731,8 @@ function Setting() {
 
         {gewaehlt && !gesperrt && (
           <>
-            {mailOffen && (
+            {/* Ist die Mail offen, steht sie allein in der Schublade. */}
+            {mailOffen ? (
               <EmailComposer
                 hotLeadId={gewaehlt.id}
                 lead={{
@@ -751,8 +752,8 @@ function Setting() {
                 onClose={() => setMailOffen(false)}
                 onSent={() => setMailOffen(false)}
               />
-            )}
-
+            ) : (
+              <>
             {/* Geplatzte Termine: neu legen.
                 Welcher Termin geplatzt ist, entscheidet, was gebucht wird.
                 Beim Setter landen fast nur geplatzte ABSCHLUSSgespräche -
@@ -798,6 +799,8 @@ function Setting() {
               onHauptaktion={setSetterHauptaktion}
               vorSpeichern={kontaktMitspeichern}
             />
+              </>
+            )}
           </>
         )}
       </LeadSchublade>
