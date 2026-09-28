@@ -12,7 +12,6 @@ import {
   Check, 
   AlertCircle,
   FileText,
-  User,
   ChevronDown,
   Paperclip,
   File,
@@ -83,6 +82,77 @@ const htmlToMarkdown = (html) => {
 // anlass ('opening' | 'setting' | 'nachfassen') wählt die eine empfohlene
 // Vorlage vor, mit einer Zeile Begründung. kontakt ist der Datensatz mit den
 // Übergabefeldern; aus ihm füllen sich die Platzhalter der Mailstrecken-Datei
+
+/**
+ * Die Signatur, wie sie das bestehende CRM anhängt.
+ *
+ * Sie stand bisher nur in der eingebetteten Ansicht; im Dialog (Setting,
+ * Kalender) sah der Absender stattdessen eine Zeile mit seiner Adresse. Damit
+ * jedes Mailfenster gleich aussieht - Betreff, Nachricht, Signatur -, steht
+ * sie jetzt einmal hier und wird an beiden Stellen benutzt.
+ */
+function SignaturBox({ user, inhalt }) {
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+      <p className="text-xs text-gray-400 mb-2">Signatur (wird automatisch angehängt)</p>
+      <div className="text-sm text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
+        {/* Endet die Mail schon mit Gruß und Namen, entfallen diese zwei Zeilen. */}
+        {!hatEigenenGruss(htmlToMarkdown(inhalt)) && (
+          <>
+            <p className="mb-1">Mit freundlichen Grüßen</p>
+            <p className="font-semibold">{user?.vor_nachname || 'Sunside AI Team'}</p>
+          </>
+        )}
+        <p className="text-gray-600 mb-3">KI-Entwicklung für Immobilienmakler</p>
+
+        <img
+          src="https://onecdn.io/media/8c3e476c-82b3-4db6-8cbe-85b46cd452d0/full"
+          alt="Sunside AI"
+          className="h-8 mb-2"
+        />
+
+        <div className="flex gap-2 mb-3">
+          <img
+            src="https://onecdn.io/media/a8cea175-8fcb-4f91-9d6f-f53479a9a7fe/full"
+            alt="Instagram"
+            className="w-6 h-6"
+          />
+          <img
+            src="https://onecdn.io/media/10252e19-d770-418d-8867-2ec8236c8d86/full"
+            alt="Website"
+            className="w-6 h-6"
+          />
+        </div>
+
+        <p className="font-semibold text-xs">Sunside AI GbR</p>
+        <p className="text-xs text-gray-600">
+          Schiefer Berg 3 | 38124 Braunschweig | Deutschland<br />
+          E-Mail: {user?.email_geschaeftlich || user?.email || 'contact@sunsideai.de'} | Tel: {user?.telefon || '+49 176 56039050'}<br />
+          <span className="text-primary">www.sunsideai.de</span> |
+          <span className="text-primary ml-1">Jetzt Termin buchen</span> |
+          <span className="text-primary ml-1">Zur Podcast-Folge</span>
+        </p>
+        <p className="text-xs text-gray-500 mt-1">Geschäftsführung: Paul Probodziak und Niklas Schwerin</p>
+
+        <div className="flex gap-2 mt-2">
+          <img
+            src="https://onecdn.io/media/9de8d686-0a97-42a7-b7a6-8cf0fa4c6e95/full"
+            alt="Coursera Badge"
+            className="h-12"
+          />
+          <img
+            src="https://onecdn.io/media/2c4b8d13-4b19-4898-bd71-9b52f053ee57/full"
+            alt="Make Badge"
+            className="h-12"
+          />
+        </div>
+        <p className="text-xs text-gray-600 mt-1 italic"><strong>Wir sind zertifizierte IBM KI-Entwickler und Make Automatisierungsexperten.</strong></p>
+      </div>
+    </div>
+  )
+}
+
+
 // ({Schmerzpunkt im Wortlaut}, {Zuwachs} …). Gesendet wird nie automatisch.
 function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie = null, hotLeadId = null, anlass = null, kontakt = null }) {
   // Die Textvorschläge kommen aus der Übergabe des Setters. Im Opening gibt es
@@ -701,63 +771,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
           `}</style>
         </div>
 
-        {/* Signatur Vorschau */}
-        <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-          <p className="text-xs text-gray-400 mb-2">Signatur (wird automatisch angehängt)</p>
-          <div className="text-sm text-gray-700" style={{ fontFamily: 'Arial, sans-serif', fontSize: '10pt' }}>
-            {/* Endet die Mail schon mit Gruß und Namen, entfallen diese zwei Zeilen. */}
-            {!hatEigenenGruss(htmlToMarkdown(inhalt)) && (
-              <>
-                <p className="mb-1">Mit freundlichen Grüßen</p>
-                <p className="font-semibold">{user?.vor_nachname || 'Sunside AI Team'}</p>
-              </>
-            )}
-            <p className="text-gray-600 mb-3">KI-Entwicklung für Immobilienmakler</p>
-            
-            <img 
-              src="https://onecdn.io/media/8c3e476c-82b3-4db6-8cbe-85b46cd452d0/full" 
-              alt="Sunside AI" 
-              className="h-8 mb-2"
-            />
-            
-            <div className="flex gap-2 mb-3">
-              <img 
-                src="https://onecdn.io/media/a8cea175-8fcb-4f91-9d6f-f53479a9a7fe/full" 
-                alt="Instagram" 
-                className="w-6 h-6"
-              />
-              <img 
-                src="https://onecdn.io/media/10252e19-d770-418d-8867-2ec8236c8d86/full" 
-                alt="Website" 
-                className="w-6 h-6"
-              />
-            </div>
-            
-            <p className="font-semibold text-xs">Sunside AI GbR</p>
-            <p className="text-xs text-gray-600">
-              Schiefer Berg 3 | 38124 Braunschweig | Deutschland<br />
-              E-Mail: {user?.email_geschaeftlich || user?.email || 'contact@sunsideai.de'} | Tel: {user?.telefon || '+49 176 56039050'}<br />
-              <span className="text-primary">www.sunsideai.de</span> |
-              <span className="text-primary ml-1">Jetzt Termin buchen</span> |
-              <span className="text-primary ml-1">Zur Podcast-Folge</span>
-            </p>
-            <p className="text-xs text-gray-500 mt-1">Geschäftsführung: Paul Probodziak und Niklas Schwerin</p>
-            
-            <div className="flex gap-2 mt-2">
-              <img 
-                src="https://onecdn.io/media/9de8d686-0a97-42a7-b7a6-8cf0fa4c6e95/full" 
-                alt="Coursera Badge" 
-                className="h-12"
-              />
-              <img 
-                src="https://onecdn.io/media/2c4b8d13-4b19-4898-bd71-9b52f053ee57/full" 
-                alt="Make Badge" 
-                className="h-12"
-              />
-            </div>
-            <p className="text-xs text-gray-600 mt-1 italic"><strong>Wir sind zertifizierte IBM KI-Entwickler und Make Automatisierungsexperten.</strong></p>
-          </div>
-        </div>
+        <SignaturBox user={user} inhalt={inhalt} />
 
         {/* Attachments */}
         {attachments.length > 0 && (
@@ -1070,16 +1084,7 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
             </div>
           )}
 
-          {/* Absender Info */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <div className="flex items-center text-sm text-gray-600">
-              <User className="w-4 h-4 mr-2 text-gray-400" />
-              <span className="font-medium">Absender:</span>
-              <span className="ml-2">
-                {user?.vor_nachname} &lt;{user?.email_geschaeftlich || user?.email}&gt;
-              </span>
-            </div>
-          </div>
+          <SignaturBox user={user} inhalt={inhalt} />
         </div>
 
         {/* Footer */}
