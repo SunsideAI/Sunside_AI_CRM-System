@@ -1556,7 +1556,16 @@ function Opening() {
                   onSent={async (info) => {
                     console.log('E-Mail gesendet:', info)
                     
-                    // Status auf "Unterlage bereitstellen" setzen NACH erfolgreichem Versand
+                    // Status auf "Unterlage bereitstellen" setzen NACH erfolgreichem
+                    // Versand - aber nur, wenn der Lead noch im Opening steht.
+                    // Steht der Termin schon, wuerde die Mail den Kontakt aus dem
+                    // Setting zuruecknehmen; genau das passierte, seit die Mail
+                    // auch nach der Buchung erreichbar ist.
+                    if (selectedLead.ergebnis === 'Beratungsgespräch') {
+                      setShowEmailComposer(false)
+                      loadLeads()
+                      return
+                    }
                     try {
                       // Prüfen ob Lead bereits kontaktiert war
                       const warBereitsKontaktiert = selectedLead.kontaktiert === true
@@ -2006,6 +2015,17 @@ function Opening() {
                       </>
                     ) : (
                       <>
+                        {/* Die Mail muss jederzeit gehen, nicht nur in dem
+                            Moment direkt nach der Buchung: Wer das
+                            Empfehlungsfenster einmal schliesst, kam sonst nicht
+                            mehr an den Kontakt heran. */}
+                        {selectedLead.email && (
+                          <button onClick={() => setShowEmailComposer(true)} className="fuss-neben">
+                            <Mail className="w-4 h-4" />
+                            E-Mail an den Kontakt
+                          </button>
+                        )}
+
                         {/* Soft Lock: Bei Beratungsgespräch nur Kommentar-Button, AUSSER bei Re-Engagement */}
                         {selectedLead.ergebnis === 'Beratungsgespräch' ? (
                           // No-Show oder Abgesagt: Setter kann voll bearbeiten
