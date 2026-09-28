@@ -1676,13 +1676,14 @@ function Opening() {
               ) : (
                 <>
               {/* Soft Lock Banner für Beratungsgespräch - mit Re-Engagement Ausnahme */}
+              {/* Steht ein Beratungsgespräch, liegt der Kontakt beim Setter -
+                  das weiß die Liste schon, bevor der Hot Lead geladen ist.
+                  Deshalb steht dieser Kasten sofort da, statt als schmaler
+                  Ladehinweis zu erscheinen und beim Eintreffen der Daten die
+                  halbe Schublade nach unten zu schieben. Nur die beiden
+                  geplatzten Fälle ersetzen ihn danach, in gleicher Höhe. */}
               {selectedLead.ergebnis === 'Beratungsgespräch' && !kommentarOnlyMode && (
-                loadingHotLead ? (
-                  <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-lg flex items-center gap-3">
-                    <Loader2 className="w-5 h-5 text-gray-400 animate-spin flex-shrink-0" />
-                    <span className="text-sm text-gray-500">Status wird geladen...</span>
-                  </div>
-                ) : hotLeadData?.status === STATUS.NICHT_ERSCHIENEN && darfNachterminieren(hotLeadData, user) ? (
+                hotLeadData?.status === STATUS.NICHT_ERSCHIENEN && darfNachterminieren(hotLeadData, user) ? (
                   <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-3">
                     <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0" />
                     <div>

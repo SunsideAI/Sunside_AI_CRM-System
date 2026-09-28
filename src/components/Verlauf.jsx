@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  Loader2, Phone, Mail, Calendar, CalendarX, CalendarClock, CheckCircle2,
+  Phone, Mail, Calendar, CalendarX, CalendarClock, CheckCircle2,
   MessageSquare, Bell, XCircle, Trophy, Pencil, Euro, FileSearch, RotateCcw, Circle
 } from 'lucide-react'
 
@@ -82,17 +82,26 @@ export default function Verlauf({ leadId, hotLeadId }) {
     }
   }
 
-  if (laedt) {
-    return (
-      <div className="flex items-center gap-2 py-6 text-on-surface-variant text-body-sm">
-        <Loader2 className="w-4 h-4 animate-spin" /> Verlauf wird geladen …
-      </div>
-    )
-  }
-
   if (fehler) {
     return <div className="py-4 text-body-sm text-error">{fehler}</div>
   }
+
+  // Beim Laden steht das Gerüst schon: dieselbe Filterzeile, darunter drei
+  // angedeutete Einträge. Vorher stand da eine schmale Zeile „Verlauf wird
+  // geladen", und wenn die Einträge kamen, klappte der ganze Abschnitt auf.
+  const skelett = (
+    <ol className="relative" aria-hidden="true">
+      <div className="absolute left-[11px] top-2 bottom-2 w-px bg-outline-variant" />
+      {[0, 1, 2].map(i => (
+        <li key={i} className="relative pl-8 pb-4 animate-pulse">
+          <span className="absolute left-0 top-0.5 w-[23px] h-[23px] rounded-full bg-surface-container" />
+          <div className="h-3 w-24 rounded bg-surface-container mb-1.5" />
+          <div className="h-3.5 w-3/4 rounded bg-surface-container" />
+          <div className="h-3 w-40 rounded bg-surface-container mt-1.5" />
+        </li>
+      ))}
+    </ol>
+  )
 
   return (
     <div>
@@ -112,7 +121,7 @@ export default function Verlauf({ leadId, hotLeadId }) {
         ))}
       </div>
 
-      {eintraege.length === 0 ? (
+      {laedt ? skelett : eintraege.length === 0 ? (
         <div className="py-6 text-center text-body-sm text-on-surface-variant">
           {gruppe ? 'Nichts in dieser Auswahl.' : 'Für diesen Kontakt ist noch nichts festgehalten.'}
         </div>
