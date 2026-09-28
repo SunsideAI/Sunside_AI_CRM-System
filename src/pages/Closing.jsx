@@ -22,6 +22,7 @@ import Uebergabeblatt, { UEBERGABE_2 } from '../components/Uebergabeblatt'
 import Aktionsmenue from '../components/Aktionsmenue'
 import Gespraechsausgang from '../components/Gespraechsausgang'
 import { Rollen, Pille, Statistik, webZahlen } from '../components/LeadSchublade'
+import SlideDrawer from '../components/SlideDrawer'
 import KontaktFelder from '../components/KontaktFelder'
 import LeadPool from '../components/LeadPool'
 import LeadTabelle from '../components/LeadTabelle'
@@ -3061,230 +3062,175 @@ function Closing() {
       )}
 
       {/* Bewerbungs-Modal */}
-      {showApplyModal && applyingLead && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-primary to-primary-container p-5">
-              <h3 className="text-xl font-semibold text-white">
-                Auf Lead bewerben
-              </h3>
-              <p className="text-white/80 text-sm mt-1">
-                {applyingLead.unternehmen}
-              </p>
+      {/* Bewerben: dieselbe Schublade wie überall, nicht mehr ein Kasten in
+          der Bildmitte. Im Pool steht die Schublade des Kontakts, darüber
+          legt sich diese hier - zwei Fenster derselben Art statt zweier
+          Bauweisen (Feedback 28.09.). */}
+      <SlideDrawer
+        isOpen={showApplyModal && !!applyingLead}
+        onClose={() => { setShowApplyModal(false); setApplyingLead(null); setApplyKommentar('') }}
+        title="Auf Abschlussgespräch bewerben"
+        untertitel={applyingLead?.unternehmen}
+        width="max-w-xl"
+        fuss={
+          <>
+            <button
+              onClick={() => { setShowApplyModal(false); setApplyingLead(null); setApplyKommentar('') }}
+              className="fuss-leise fuss-weg"
+            >
+              Abbrechen
+            </button>
+            <button onClick={submitApplication} disabled={submittingApplication} className="fuss-haupt">
+              {submittingApplication
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <Send className="w-4 h-4" />}
+              Bewerbung senden
+            </button>
+          </>
+        }
+      >
+        {applyingLead && (
+          <div className="space-y-5">
+            <p className="text-body-md text-on-surface-variant">
+              Deine Bewerbung geht an die Leitung. Sobald entschieden ist, bekommst du
+              eine E-Mail.
+            </p>
+
+            <div>
+              <label className="feld-label">Kommentar (optional)</label>
+              <textarea
+                value={applyKommentar}
+                onChange={(e) => setApplyKommentar(e.target.value)}
+                placeholder="Warum möchtest du dieses Gespräch übernehmen?"
+                rows={3}
+                className="textarea-field"
+              />
             </div>
 
-            {/* Content */}
-            <div className="p-5 space-y-4">
-              <p className="text-on-surface-variant">
-                Deine Bewerbung wird an einen Admin zur Genehmigung gesendet. Du wirst per E-Mail benachrichtigt, sobald eine Entscheidung getroffen wurde.
-              </p>
-
-              <div>
-                <label className="feld-label">
-                  Kommentar (optional)
-                </label>
-                <textarea
-                  value={applyKommentar}
-                  onChange={(e) => setApplyKommentar(e.target.value)}
-                  placeholder="Warum möchtest du diesen Lead übernehmen?"
-                  rows={3}
-                  className="textarea-field"
-                />
+            <div className="abschnitt-trenner pt-4 space-y-2 text-body-sm">
+              <div className="flex justify-between gap-4">
+                <span className="text-on-surface-variant">Abschlussgespräch</span>
+                <span className="font-medium text-on-surface">
+                  {closerTermin(applyingLead)
+                    ? new Date(closerTermin(applyingLead)).toLocaleString('de-DE', {
+                        weekday: 'short', day: '2-digit', month: '2-digit',
+                        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
+                      }) + ' Uhr'
+                    : 'Nicht festgelegt'}
+                </span>
               </div>
-
-              {/* Lead-Details */}
-              <div className="bg-surface-container rounded-lg p-3 text-sm space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-on-surface-variant">Abschlussgespräch:</span>
-                  <span className="font-medium">
-                    {closerTermin(applyingLead)
-                      ? new Date(closerTermin(applyingLead)).toLocaleString('de-DE', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })
-                      : 'Nicht festgelegt'}
-                  </span>
+              {applyingLead.setterName && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-on-surface-variant">Gebucht von</span>
+                  <span className="font-medium text-on-surface">{applyingLead.setterName}</span>
                 </div>
-                {applyingLead.setterName && (
-                  <div className="flex justify-between">
-                    <span className="text-on-surface-variant">Gebucht von:</span>
-                    <span className="font-medium">{applyingLead.setterName}</span>
-                  </div>
-                )}
-                {applyingLead.ansprechpartner && (
-                  <div className="flex justify-between">
-                    <span className="text-on-surface-variant">Ansprechpartner:</span>
-                    <span className="font-medium">{applyingLead.ansprechpartner}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 p-5 pt-0">
-              <button
-                onClick={() => { setShowApplyModal(false); setApplyingLead(null); setApplyKommentar(''); }}
-                className="flex-1 px-4 py-2.5 border border-outline-variant rounded-lg hover:bg-surface-container transition-colors"
-              >
-                Abbrechen
-              </button>
-              <button
-                onClick={submitApplication}
-                disabled={submittingApplication}
-                className="flex-1 btn-primary flex items-center justify-center"
-              >
-                {submittingApplication ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <>
-                    <Send className="w-4 h-4 mr-2" />
-                    Bewerbung senden
-                  </>
-                )}
-              </button>
+              )}
+              {applyingLead.ansprechpartner && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-on-surface-variant">Ansprechpartner</span>
+                  <span className="font-medium text-on-surface">{applyingLead.ansprechpartner}</span>
+                </div>
+              )}
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+        )}
+      </SlideDrawer>
 
       {/* No-Show-Modal */}
-      {showNoShowModal && selectedLead && createPortal(
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">
-            {/* Header */}
-            <div className="bg-gradient-to-r from-rose-500 to-rose-600 p-5">
-              <h3 className="text-xl font-semibold text-white">
-                Lead nicht erschienen
-              </h3>
-              <p className="text-white/80 text-sm mt-1">
-                {selectedLead.unternehmen}
-              </p>
-            </div>
-
-            {/* Content */}
-            <div className="p-5 space-y-4">
-              {/* Warnung bei wiederholtem No-Show */}
-              {(selectedLead.no_show_count || 0) >= 2 && (
-                <div className={`p-3 rounded-lg ${(selectedLead.no_show_count || 0) >= 3 ? 'bg-red-100 border border-red-300' : 'bg-amber-100 border border-amber-300'}`}>
-                  <p className={`font-medium ${(selectedLead.no_show_count || 0) >= 3 ? 'text-red-800' : 'text-amber-800'}`}>
-                    ⚠️ Dies wäre der {(selectedLead.no_show_count || 0) + 1}. No-Show
-                  </p>
-                  <p className={`text-sm mt-1 ${(selectedLead.no_show_count || 0) >= 3 ? 'text-red-700' : 'text-amber-700'}`}>
-                    {(selectedLead.no_show_count || 0) >= 3
-                      ? 'Empfehlung: Lead auf "Verloren" setzen.'
-                      : 'Bei wiederholtem No-Show sollte der Lead ggf. als verloren markiert werden.'
-                    }
-                  </p>
-                </div>
-              )}
-
-              <p className="text-on-surface-variant">
-                {noShowKeepInClosing
-                  ? <>Der Lead wird als nicht erschienen markiert und bleibt in <strong>deinem</strong> Closing. Der Setter wird nicht benachrichtigt.</>
-                  : selectedLead.setterName
-                    ? <>Der Lead wird als nicht erschienen markiert. <strong>{selectedLead.setterName}</strong> wird benachrichtigt und kann ein neues Abschlussgespräch buchen.</>
-                    : 'Der Lead wird als nicht erschienen markiert. Es ist kein Setter zugeordnet.'
-                }
-              </p>
-
-              {/* Option: Closer betreut den Lead selbst weiter */}
-              <label className="flex items-start gap-2 cursor-pointer p-3 rounded-lg border border-outline-variant hover:bg-surface-container">
-                <input
-                  type="checkbox"
-                  checked={noShowKeepInClosing}
-                  onChange={(e) => setNoShowKeepInClosing(e.target.checked)}
-                  className="mt-0.5 w-4 h-4 accent-rose-600 cursor-pointer"
-                />
-                <span className="text-sm text-on-surface">
-                  <strong>Im Closing behalten</strong>: Ich buche selbst neu, der Setter wird nicht benachrichtigt.
-                </span>
-              </label>
-
-              {/* Lead-Details */}
-              <div className="bg-surface-container rounded-lg p-3 text-sm space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-on-surface-variant">Geplantes Abschlussgespräch:</span>
-                  <span className="font-medium">
-                    {closerTermin(selectedLead)
-                      ? new Date(closerTermin(selectedLead)).toLocaleString('de-DE', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          timeZone: 'Europe/Berlin'
-                        })
-                      : 'Nicht festgelegt'}
-                  </span>
-                </div>
-                {selectedLead.setterName && (
-                  <div className="flex justify-between">
-                    <span className="text-on-surface-variant">Setter:</span>
-                    <span className="font-medium">{selectedLead.setterName}</span>
-                  </div>
-                )}
-                {(selectedLead.no_show_count || 0) > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-on-surface-variant">Bisherige No-Shows:</span>
-                    <span className="font-medium text-rose-600">{selectedLead.no_show_count}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex flex-col gap-2 p-5 pt-0">
-              {(selectedLead.no_show_count || 0) >= 3 ? (
-                <>
-                  <button
-                    onClick={handleNoShowToLost}
-                    disabled={noShowProcessing}
-                    className="w-full px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
-                  >
-                    Auf "Verloren" setzen
-                  </button>
-                  <button
-                    onClick={handleNoShowConfirm}
-                    disabled={noShowProcessing}
-                    className="w-full px-4 py-2.5 border border-rose-300 text-rose-700 rounded-lg hover:bg-rose-50 transition-colors"
-                  >
-                    {noShowProcessing ? (
-                      <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                    ) : (
-                      'Trotzdem als nicht erschienen markieren'
-                    )}
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={handleNoShowConfirm}
-                  disabled={noShowProcessing}
-                  className="w-full px-4 py-2.5 bg-rose-600 text-white rounded-lg hover:bg-rose-700 transition-colors font-medium flex items-center justify-center"
-                >
-                  {noShowProcessing ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    'Als nicht erschienen markieren'
-                  )}
-                </button>
-              )}
-              <button
-                onClick={handleNoShowCancel}
-                disabled={noShowProcessing}
-                className="w-full px-4 py-2.5 border border-outline-variant rounded-lg hover:bg-surface-container transition-colors"
-              >
-                Abbrechen
+      {/* Nicht erschienen: ebenfalls eine Schublade. Der Kasten in der
+          Bildmitte war die letzte Stelle im Closing, die anders aussah als
+          der Rest (Feedback 28.09.). */}
+      <SlideDrawer
+        isOpen={showNoShowModal && !!selectedLead}
+        onClose={handleNoShowCancel}
+        title="Kunde nicht erschienen"
+        untertitel={selectedLead?.unternehmen}
+        width="max-w-xl"
+        fuss={selectedLead && (
+          <>
+            <button onClick={handleNoShowCancel} disabled={noShowProcessing} className="fuss-leise fuss-weg">
+              Abbrechen
+            </button>
+            {(selectedLead.no_show_count || 0) >= 3 && (
+              <button onClick={handleNoShowToLost} disabled={noShowProcessing} className="fuss-neben">
+                Auf „Verloren" setzen
               </button>
+            )}
+            <button onClick={handleNoShowConfirm} disabled={noShowProcessing} className="fuss-haupt">
+              {noShowProcessing
+                ? <Loader2 className="w-4 h-4 animate-spin" />
+                : <AlertCircle className="w-4 h-4" />}
+              Als nicht erschienen festhalten
+            </button>
+          </>
+        )}
+      >
+        {selectedLead && (
+          <div className="space-y-5">
+            {(selectedLead.no_show_count || 0) >= 2 && (
+              <div className={`p-3 rounded-lg border ${(selectedLead.no_show_count || 0) >= 3
+                ? 'bg-error-container border-error/30' : 'bg-amber-50 border-amber-200'}`}>
+                <p className={`text-body-md font-medium ${(selectedLead.no_show_count || 0) >= 3
+                  ? 'text-error' : 'text-amber-900'}`}>
+                  Das wäre der {(selectedLead.no_show_count || 0) + 1}. Ausfall.
+                </p>
+                <p className={`text-body-sm mt-1 ${(selectedLead.no_show_count || 0) >= 3
+                  ? 'text-error' : 'text-amber-800'}`}>
+                  {(selectedLead.no_show_count || 0) >= 3
+                    ? 'Nach drei Ausfällen ist der Kontakt in aller Regel verloren.'
+                    : 'Kommt es noch einmal vor, gehört der Kontakt auf „Verloren".'}
+                </p>
+              </div>
+            )}
+
+            <p className="text-body-md text-on-surface-variant">
+              {noShowKeepInClosing
+                ? <>Der Kontakt bleibt in <strong>deinem</strong> Closing. Der Setter wird nicht benachrichtigt.</>
+                : selectedLead.setterName
+                  ? <>Der Kontakt geht zurück an <strong>{selectedLead.setterName}</strong>. Er wird benachrichtigt und kann ein neues Abschlussgespräch buchen.</>
+                  : 'Der Kontakt wird als nicht erschienen festgehalten. Ein Setter ist nicht zugeordnet.'}
+            </p>
+
+            <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border border-outline-variant hover:bg-surface-container">
+              <input
+                type="checkbox"
+                checked={noShowKeepInClosing}
+                onChange={(e) => setNoShowKeepInClosing(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-primary cursor-pointer"
+              />
+              <span className="text-body-sm text-on-surface">
+                <strong>Im Closing behalten:</strong> Ich buche selbst neu, der Setter wird nicht benachrichtigt.
+              </span>
+            </label>
+
+            <div className="abschnitt-trenner pt-4 space-y-2 text-body-sm">
+              <div className="flex justify-between gap-4">
+                <span className="text-on-surface-variant">Geplantes Abschlussgespräch</span>
+                <span className="font-medium text-on-surface">
+                  {closerTermin(selectedLead)
+                    ? new Date(closerTermin(selectedLead)).toLocaleString('de-DE', {
+                        weekday: 'short', day: '2-digit', month: '2-digit',
+                        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
+                      }) + ' Uhr'
+                    : 'Nicht festgelegt'}
+                </span>
+              </div>
+              {selectedLead.setterName && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-on-surface-variant">Setter</span>
+                  <span className="font-medium text-on-surface">{selectedLead.setterName}</span>
+                </div>
+              )}
+              {(selectedLead.no_show_count || 0) > 0 && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-on-surface-variant">Bisherige Ausfälle</span>
+                  <span className="font-medium text-error">{selectedLead.no_show_count}</span>
+                </div>
+              )}
             </div>
           </div>
-        </div>,
-        document.body
-      )}
+        )}
+      </SlideDrawer>
     </div>
   )
 }
