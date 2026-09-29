@@ -680,10 +680,17 @@ function Setting() {
             ) : (
               <>
                 {/* Abgeben, statt liegen lassen: Wer das Gespräch nicht führen
-                    kann, gibt den Kontakt zurück in den Pool. */}
-                <button onClick={() => setFreigabeOffen(true)} className="fuss-leise">
-                  <UserMinus className="w-4 h-4" /> Freigeben
-                </button>
+                    kann, gibt den Kontakt zurück in den Pool.
+                    Nur vor dem Gespräch: Der Setter-Pool zeigt ausschließlich
+                    vereinbarte Beratungsgespräche. Ein später freigegebener
+                    Kontakt hätte keinen Setter mehr und stünde in keiner Liste
+                    - weg für alle. Danach ist die Übergabe der Weg, nicht die
+                    Freigabe. */}
+                {gewaehlt.status === STATUS.BERATUNG_VEREINBART && (
+                  <button onClick={() => setFreigabeOffen(true)} className="fuss-leise">
+                    <UserMinus className="w-4 h-4" /> Freigeben
+                  </button>
+                )}
                 <button onClick={() => setMailOffen(o => !o)} className="fuss-neben">
                   <Mail className="w-4 h-4" /> E-Mail an den Kontakt
                 </button>

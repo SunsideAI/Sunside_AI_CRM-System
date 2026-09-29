@@ -1007,6 +1007,7 @@ export async function handler(event) {
         'closerId': 'closer_id',
         'closerName': 'closer_id',  // Wird im Spezialcode zu closer_id aufgelöst
         'setterId': 'setter_id',
+        'setterName': 'setter_id',  // Wird im Spezialcode zu setter_id aufgeloest
         'reaktivierungBearbeiterId': 'reaktivierung_bearbeiter_id',
         'reaktivierungBearbeiterName': 'reaktivierung_bearbeiter_id',  // im Spezialcode aufgelöst
         'terminDatum': 'termin_beratungsgespraech',
@@ -1068,6 +1069,19 @@ export async function handler(event) {
             } else {
               // Leerer String = Closer entfernen (zurück in Pool)
               fields.closer_id = null
+            }
+            continue
+          }
+          // Setter nach Name aufloesen (leer = zurueck in den Pool).
+          // Fehlte bis zum 29.09.: Ein Freigeben im Setting lief ins Leere -
+          // ohne Eintrag in fieldMap wurde das Feld stillschweigend verworfen
+          // und der Kontakt blieb, wo er war.
+          if (key === 'setterName') {
+            if (value) {
+              const sid = await getUserIdByName(value)
+              if (sid) fields.setter_id = sid
+            } else {
+              fields.setter_id = null
             }
             continue
           }

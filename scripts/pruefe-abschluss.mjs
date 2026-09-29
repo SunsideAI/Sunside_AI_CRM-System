@@ -78,6 +78,13 @@ for (const [datei, inhalt] of [['Setting', setting], ['Closing', closing]]) {
   sagt(/import LeadFreigabe/.test(inhalt), `${datei} benutzt dasselbe Bauteil`)
 }
 sagt(/stufe="setting"/.test(setting), 'Das Setting gibt an den Setter-Pool zurueck')
+// Der Server muss den Namensweg fuer beide Rollen kennen - fuer setterName
+// fehlte er, das Freigeben im Setting waere wirkungslos geblieben.
+sagt(/'setterName': 'setter_id'/.test(server) && /if \(key === 'setterName'\)/.test(server),
+  'Der Server loest auch setterName auf')
+// Nur vor dem Gespraech: danach zeigt der Pool den Kontakt nicht mehr.
+sagt(/gewaehlt\.status === STATUS\.BERATUNG_VEREINBART && \(\s*<button onClick=\{\(\) => setFreigabeOffen/.test(setting),
+  'Freigeben steht nur vor dem Beratungsgespraech')
 sagt(/stufe="closing"/.test(closing), 'Das Closing an den Closer-Pool')
 
 // Kein Popup mehr: ein Kasten in der Bildmitte ueber der Schublade.
