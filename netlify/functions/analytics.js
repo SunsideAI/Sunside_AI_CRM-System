@@ -15,7 +15,7 @@
 // Alias bestehen, damit ein noch offener Browser-Tab nicht bricht.
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
-import { STATUS, normalisiere, IST_VERLOREN } from '../../shared/status.js'
+import { STATUS, normalisiere, IST_VERLOREN, istAbschluss } from '../../shared/status.js'
 import { istOpener, istSetter, istCloser, istLeitung } from '../../shared/rollen.js'
 
 const supabase = createClient(
@@ -256,7 +256,8 @@ async function openingZahlen({ leitung, personId, zeitraum }) {
 
 const CLOSING_STUFEN = [
   STATUS.ABSCHLUSS_VEREINBART, STATUS.IM_ABSCHLUSS,
-  STATUS.ANGEBOT_ANGEFORDERT, STATUS.ANGEBOT_VERSCHICKT, STATUS.GEWONNEN
+  STATUS.ANGEBOT_ANGEFORDERT, STATUS.ANGEBOT_VERSCHICKT,
+  STATUS.ANGEBOT_UNTERSCHRIEBEN, STATUS.GEWONNEN
 ]
 
 export function beratungsAusgang(lead, heute) {
@@ -354,7 +355,9 @@ export function closingAusgang(lead) {
   const abschlussTermin = !!lead.termin_abschlussgespraech
   if (!lead.closer_id && !abschlussTermin) return null
 
-  if (s === STATUS.GEWONNEN) return 'gewonnen'
+  // Unterschrieben zaehlt fuer den Vertrieb als gewonnen: Die Rechnung
+  // folgt erst, die Arbeit des Closers ist getan.
+  if (istAbschluss(s)) return 'gewonnen'
   if (IST_VERLOREN.includes(s)) return 'verloren'
   if (s === STATUS.NICHT_ERSCHIENEN || s === STATUS.TERMIN_ABGESAGT) {
     return abschlussTermin ? 'noShow' : null
@@ -427,7 +430,7 @@ async function closingZahlen({ leitung, personId, zeitraum }) {
       const z = last[name] ||= { name, gesamt: 0, aktiv: 0, imClosing: 0, angebotVersendet: 0, abgeschlossen: 0, verloren: 0 }
       const s = normalisiere(lead.status)
       z.gesamt++
-      if (s === STATUS.GEWONNEN) z.abgeschlossen++
+      if (istAbschluss(s)) z.abgeschlossen++
       else if (IST_VERLOREN.includes(s)) z.verloren++
       else {
         z.aktiv++

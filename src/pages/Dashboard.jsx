@@ -1,4 +1,4 @@
-import { STATUS, IST_VERLOREN } from '../../shared/status.js'
+import { STATUS, IST_VERLOREN, istAbschluss } from '../../shared/status.js'
 import { istOpener, istSetter, ROLLE } from '../../shared/rollen.js'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
@@ -770,6 +770,7 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
       case STATUS.ANGEBOT_ANGEFORDERT:  return 'badge-warning'
       case STATUS.ANGEBOT_VERSCHICKT:   return 'badge-secondary'
       case STATUS.WIRD_NACHGEFASST:     return 'bg-warning-container text-warning'
+      case STATUS.ANGEBOT_UNTERSCHRIEBEN:
       case STATUS.GEWONNEN:             return 'badge-success'
       case STATUS.NICHT_ERSCHIENEN:     return 'bg-warning-container text-warning'
       case STATUS.TERMIN_ABGESAGT:      return 'bg-warning-container text-warning'
@@ -789,7 +790,9 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
   const stats = {
     lead: hotLeads.filter(l => LAUFEND.includes(l.status)).length,
     angebot: hotLeads.filter(l => l.status === STATUS.ANGEBOT_VERSCHICKT || l.status === STATUS.ANGEBOT_ANGEFORDERT).length,
-    gewonnen: hotLeads.filter(l => l.status === STATUS.GEWONNEN).length
+    // Unterschrieben zaehlt mit: fuer den Vertrieb ist der Abschluss der
+    // Vertrag, nicht die Rechnung.
+    gewonnen: hotLeads.filter(l => istAbschluss(l.status)).length
   }
 
   return (

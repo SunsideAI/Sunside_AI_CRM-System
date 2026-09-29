@@ -1,4 +1,4 @@
-import { STATUS, STUFE, IST_VERLOREN, anzeigeName, statusFuerStufe } from '../../shared/status.js'
+import { STATUS, STUFE, IST_VERLOREN, anzeigeName, statusFuerStufe, statusBrauchtLeitung } from '../../shared/status.js'
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
@@ -20,6 +20,7 @@ function altbestand(kommentar) {
 import Verlauf from '../components/Verlauf'
 import Uebergabeblatt, { UEBERGABE_2 } from '../components/Uebergabeblatt'
 import Aktionsmenue from '../components/Aktionsmenue'
+import LeadFreigabe from '../components/LeadFreigabe'
 import Gespraechsausgang from '../components/Gespraechsausgang'
 import { Rollen, Pille, Statistik, webZahlen } from '../components/LeadSchublade'
 import SlideDrawer from '../components/SlideDrawer'
@@ -151,6 +152,7 @@ const STATUS_OPTIONS = [
   { value: STATUS.ANGEBOT_ANGEFORDERT,  label: anzeigeName(STATUS.ANGEBOT_ANGEFORDERT), color: 'bg-yellow-100 text-yellow-700' },
   { value: STATUS.ANGEBOT_VERSCHICKT,   label: anzeigeName(STATUS.ANGEBOT_VERSCHICKT),  color: 'bg-secondary-container text-primary' },
   { value: STATUS.WIRD_NACHGEFASST,     label: 'Wird nachgefasst',             color: 'bg-amber-100 text-amber-700' },
+  { value: STATUS.ANGEBOT_UNTERSCHRIEBEN, label: 'Angebot unterschrieben',     color: 'bg-success-container text-success' },
   { value: STATUS.GEWONNEN,             label: 'Gewonnen',                     color: 'bg-green-100 text-green-700' },
   { value: STATUS.TERMIN_ABGESAGT,      label: 'Termin abgesagt',              color: 'bg-orange-100 text-orange-700' },
   { value: STATUS.VERLOREN_WIEDERVORLAGE, label: 'Verloren, wiedervorlagefähig', color: 'bg-teal-100 text-teal-700' },
@@ -163,6 +165,18 @@ const STATUS_OPTIONS = [
 const CLOSING_STATUS = statusFuerStufe(STUFE.CLOSING)
 const SELECTABLE_STATUS_OPTIONS = STATUS_OPTIONS
   .filter(opt => CLOSING_STATUS.includes(opt.value) && opt.value !== STATUS.ANGEBOT_ANGEFORDERT)
+
+// "Gewonnen" loest die Rechnung aus und steht deshalb nur der Leitung offen.
+// Der Vertrieb schliesst mit "Angebot unterschrieben" ab; den Rest hebt die
+// Leitung. Der Server prueft dasselbe noch einmal - hier geht es nur darum,
+// niemandem einen Knopf hinzustellen, der ohnehin abgewiesen wird.
+/** Beide Wege bedeuten: Der Vertrag ist unter Dach und Fach. */
+const schliesstAb = (status) =>
+  status === STATUS.ANGEBOT_UNTERSCHRIEBEN || status === STATUS.GEWONNEN
+
+const statusZurWahl = (istLeitung) =>
+  istLeitung ? SELECTABLE_STATUS_OPTIONS
+             : SELECTABLE_STATUS_OPTIONS.filter(o => !statusBrauchtLeitung(o.value))
 
 function Closing() {
   const meldung = useMeldung()
@@ -194,6 +208,9 @@ function Closing() {
   
   // Abschluss-Modal State
   const [showAbschlussForm, setShowAbschlussForm] = useState(false)
+  // Womit der Abschluss endet: "Angebot unterschrieben" beim Vertrieb,
+  // "Gewonnen", wenn die Leitung gleich abrechnet.
+  const [abschlussZiel, setAbschlussZiel] = useState(STATUS.ANGEBOT_UNTERSCHRIEBEN)
 
   // Angebot-View State (innerhalb des Modals)
   const [showAngebotView, setShowAngebotView] = useState(false)
@@ -220,7 +237,6 @@ function Closing() {
   // Freigabe an Pool State
   const [showReleaseConfirm, setShowReleaseConfirm] = useState(false)
   const [releaseReason, setReleaseReason] = useState('')
-  const [releasing, setReleasing] = useState(false)
   
   
   // Datei-Upload State
@@ -827,84 +843,45 @@ function Closing() {
     }
   }
 
-  // Lead an Pool freigeben
-  const releaseLead = async () => {
-    if (!selectedLead) return
-    
+  // Nach der Freigabe: Die Kollegen erfahren davon, und die Ansicht raeumt auf.
+  // Das Umhaengen selbst macht LeadFreigabe - hier steht nur noch, was danach
+  // im Closing passieren soll.
+  const nachFreigabe = async (grund) => {
     const userName = user?.vor_nachname || user?.name || 'Closer'
-    
+    const lead = selectedLead
+
     try {
-      setReleasing(true)
-      
-      // 1. Hot Lead updaten - closerName entfernen
-      const response = await fetch('/.netlify/functions/hot-leads', {
-        method: 'PATCH',
+      await fetch('/.netlify/functions/send-email', {
+        method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          hotLeadId: selectedLead.id,
-          updates: {
-            closerName: ''  // Leer = Pool
+          action: 'notify-closers-release',
+          termin: {
+            datum: lead?.terminDatum ? new Date(lead.terminDatum).toLocaleDateString('de-DE', {
+              weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric',
+              hour: '2-digit', minute: '2-digit',
+              timeZone: 'Europe/Berlin'   // immer deutsche Zeit
+            }) : 'Nicht festgelegt',
+            art: lead?.terminart || 'Unbekannt',
+            unternehmen: lead?.unternehmen,
+            ansprechpartner: [lead?.ansprechpartnerVorname, lead?.ansprechpartnerNachname]
+              .filter(Boolean).join(' ') || '',
+            releasedBy: userName,
+            releaseReason: grund || 'Keine Angabe'
           }
         })
       })
-      
-      const data = await response.json()
-      
-      if (!response.ok) {
-        throw new Error(data.error || 'Fehler beim Freigeben')
-      }
-      
-      // 2. E-Mail an alle Closer senden
-      try {
-        await fetch('/.netlify/functions/send-email', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            action: 'notify-closers-release',
-            termin: {
-              datum: selectedLead.terminDatum ? new Date(selectedLead.terminDatum).toLocaleDateString('de-DE', {
-                weekday: 'long',
-                day: '2-digit',
-                month: '2-digit',
-                year: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                timeZone: 'Europe/Berlin'  // Immer deutsche Zeit anzeigen
-              }) : 'Nicht festgelegt',
-              art: selectedLead.terminart || 'Unbekannt',
-              unternehmen: selectedLead.unternehmen,
-              ansprechpartner: [selectedLead.ansprechpartnerVorname, selectedLead.ansprechpartnerNachname].filter(Boolean).join(' ') || '',
-              releasedBy: userName,
-              releaseReason: releaseReason || 'Keine Angabe'
-            }
-          })
-        })
-      } catch (emailErr) {
-        console.error('Closer-Benachrichtigung fehlgeschlagen:', emailErr)
-        // Kein harter Fehler - Lead wurde trotzdem freigegeben
-      }
-      
-      // 3. UI aktualisieren
-      showToast('success', `${selectedLead.unternehmen} wurde an den Pool freigegeben`)
-      setShowReleaseConfirm(false)
-      setReleaseReason('')
-      setSelectedLead(null)
-      
-      // 4. Pool-Anzahl aktualisieren
-      loadPoolCount()
-      
-      // 5. Leads neu laden
-      if (viewMode === 'own') {
-        loadLeads()
-      }
-      
-    } catch (err) {
-      console.error('Lead freigeben fehlgeschlagen:', err)
-      showToast('error', 'Fehler: ' + err.message)
-    } finally {
-      setReleasing(false)
+    } catch (emailErr) {
+      // Kein harter Fehler: Der Kontakt liegt bereits im Pool.
+      console.error('Closer-Benachrichtigung fehlgeschlagen:', emailErr)
     }
+
+    setReleaseReason('')
+    setSelectedLead(null)
+    loadPoolCount()
+    if (viewMode === 'own') loadLeads()
   }
+
 
   const handleRefresh = async () => {
     setRefreshing(true)
@@ -1105,8 +1082,12 @@ function Closing() {
       return // Nichts zu speichern
     }
 
-    // NEU: Wenn Status auf "Abgeschlossen" wechselt -> erst Abschluss-Modal zeigen
-    if (editData.status === STATUS.GEWONNEN && selectedLead.status !== STATUS.GEWONNEN) {
+    // Der Abschluss wird erfasst, bevor der Status steht - egal auf welchem
+    // der beiden Wege. Der Vertrieb waehlt "Angebot unterschrieben", die
+    // Leitung darf auch direkt "Gewonnen" setzen; beide Male sollen dieselben
+    // Vertragsdaten erhoben werden.
+    if (schliesstAb(editData.status) && !schliesstAb(selectedLead.status)) {
+      setAbschlussZiel(editData.status)
       setShowAbschlussForm(true)
       return
     }
@@ -1929,6 +1910,13 @@ function Closing() {
                   </div>
                   <h3 className="text-xl font-semibold text-gray-900">Angebot wird versendet!</h3>
                 </div>
+              ) : showReleaseConfirm ? (
+                <LeadFreigabe
+                  lead={selectedLead}
+                  stufe="closing"
+                  onAbbrechen={() => { setShowReleaseConfirm(false); setReleaseReason('') }}
+                  onFertig={(grund) => { setShowReleaseConfirm(false); nachFreigabe(grund) }}
+                />
               ) : showAbschlussForm ? (
                 /* ========================================
                    ABSCHLUSS-FORM für Billing-Daten
@@ -1946,6 +1934,7 @@ function Closing() {
 
                   <AbschlussForm
                     lead={selectedLead}
+                    zielStatus={abschlussZiel}
                     onCancel={handleAbschlussCancel}
                     onSubmit={handleAbschlussSubmit}
                     isLoading={saving}
@@ -2418,7 +2407,7 @@ function Closing() {
                             className="input-field"
                           >
                             <option value="">Status beibehalten ({selectedLead.status})</option>
-                            {SELECTABLE_STATUS_OPTIONS.map(opt => (
+                            {statusZurWahl(isAdmin()).map(opt => (
                               <option key={opt.value} value={opt.value}>{opt.label}</option>
                             ))}
                           </select>
@@ -2933,7 +2922,7 @@ function Closing() {
                       Breite der Schublade brachen zwei mitten im Wort um. */}
                   <Aktionsmenue
                     eintraege={[
-                      closerTermin(selectedLead) && selectedLead.status !== STATUS.GEWONNEN
+                      closerTermin(selectedLead) && !schliesstAb(selectedLead.status)
                         && !IST_VERLOREN.includes(selectedLead.status) && {
                           name: new Date(closerTermin(selectedLead)) < new Date()
                             || selectedLead.status === STATUS.TERMIN_ABGESAGT
@@ -2970,63 +2959,9 @@ function Closing() {
               </div>
             )}
 
-            {/* Freigabe-Bestätigung Modal */}
-            {showReleaseConfirm && (
-              <div className="absolute inset-0 bg-black/50 flex items-center justify-center p-4 rounded-2xl">
-                <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-10 h-10 bg-warning-container rounded-full flex items-center justify-center">
-                      <UserMinus className="w-5 h-5 text-warning" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Lead freigeben?</h3>
-                      <p className="text-sm text-gray-500">{selectedLead.unternehmen}</p>
-                    </div>
-                  </div>
-                  
-                  <p className="text-gray-600 mb-4">
-                    Der Lead wird wieder für alle Closer im Pool verfügbar. Alle Closer werden per E-Mail benachrichtigt.
-                  </p>
-                  
-                  <div className="mb-4">
-                    <label className="feld-label">
-                      Grund (optional)
-                    </label>
-                    <textarea
-                      value={releaseReason}
-                      onChange={(e) => setReleaseReason(e.target.value)}
-                      rows={2}
-                      placeholder="z.B. Urlaub, Krankheit, Kapazität..."
-                      className="textarea-field"
-                    />
-                  </div>
-                  
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => { setShowReleaseConfirm(false); setReleaseReason(''); }}
-                      disabled={releasing}
-                      className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                    >
-                      Abbrechen
-                    </button>
-                    <button
-                      onClick={releaseLead}
-                      disabled={releasing}
-                      className="flex-1 flex items-center justify-center px-4 py-2 bg-warning text-white rounded-xl hover:bg-warning/90 disabled:opacity-50 transition-colors"
-                    >
-                      {releasing ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <UserMinus className="w-4 h-4 mr-2" />
-                          Freigeben
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Freigeben: dieselbe Schublade wie überall. Vorher lag hier
+                ein Kasten in der Bildmitte - die letzte Stelle im Closing, an
+                der noch ein Popup aufsprang. */}
           </div>
         </div>,
         document.body

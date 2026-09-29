@@ -1,4 +1,4 @@
-import { STATUS, anzeigeName, anzeigeNameVonLead } from '../../shared/status.js'
+import { STATUS, anzeigeName, anzeigeNameVonLead, istAbschluss } from '../../shared/status.js'
 
 // Eine Zeile für die Liste — egal, aus welcher Stufe der Datensatz kommt.
 //
@@ -33,7 +33,7 @@ function symbol(stufe, lead) {
   if (stufe === 'opening') {
     return lead.kontaktiert ? { zeichen: 'kontaktiert', ton: 'gut' } : { zeichen: 'offen', ton: 'neutral' }
   }
-  const ton = lead.status === STATUS.BERATUNG_GEFUEHRT || lead.status === STATUS.GEWONNEN ? 'gut'
+  const ton = lead.status === STATUS.BERATUNG_GEFUEHRT || istAbschluss(lead.status) ? 'gut'
     : [STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN, STATUS.VERLOREN_ENDGUELTIG].includes(lead.status) ? 'schlecht'
     : 'neutral'
   return { zeichen: lead.terminart === 'Video' ? 'video' : 'telefon', ton }

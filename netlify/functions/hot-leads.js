@@ -5,7 +5,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
-import { STATUS, normalisiere, uebergangErlaubt, anzeigeName, ruecknahmeZiel, beideSchreibweisen, stufeVonLead, zustaendigFuerStufe, STUFE_TEXT } from '../../shared/status.js'
+import { STATUS, normalisiere, uebergangErlaubt, anzeigeName, ruecknahmeZiel, beideSchreibweisen, stufeVonLead, zustaendigFuerStufe, statusBrauchtLeitung, STUFE_TEXT } from '../../shared/status.js'
 import {
   FELDER, uebergabePruefen, grenzenPruefen, zielAbleiten, UEBERGABE_1, UEBERGABE_2,
   SPALTEN_UEBERGABE, SPALTEN_UEBERGABE_1, AUSWAHL
@@ -1150,6 +1150,19 @@ export async function handler(event) {
       // verständliche Meldung statt einer Constraint-Verletzung.
       if (fields.status) {
         fields.status = normalisiere(fields.status)
+
+        // "Gewonnen" meldet den Abschluss an die Abrechnung und laesst eine
+        // Rechnung entstehen. Das ist keine Entscheidung des Vertriebs: Der
+        // Closer setzt "Angebot unterschrieben", die Leitung hebt es danach.
+        // Geprueft wird der normalisierte Wert, also auch der Altbestand
+        // "Abgeschlossen" - auf den haengt der Datenbank-Trigger.
+        if (statusBrauchtLeitung(fields.status) && !angemeldet.istAdmin) {
+          return verboten(
+            `„${anzeigeName(fields.status)}" setzt die Leitung. `
+            + `Der Vertrieb schliesst mit „${anzeigeName(STATUS.ANGEBOT_UNTERSCHRIEBEN)}" ab.`,
+            'nur_leitung'
+          )
+        }
 
         const { data: vorher } = await supabase
           .from('hot_leads').select('status').eq('id', hotLeadId).maybeSingle()

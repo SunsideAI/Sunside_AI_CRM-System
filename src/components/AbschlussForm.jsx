@@ -23,7 +23,13 @@ const ANREDE_OPTIONS = [
   { value: 'Frau', label: 'Frau' },
 ]
 
-export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
+export default function AbschlussForm({
+  lead, onCancel, onSubmit, isLoading,
+  // Der Vertrieb schliesst mit der Unterschrift ab; "Gewonnen" loest die
+  // Rechnung aus und bleibt der Leitung vorbehalten. Erhoben werden in beiden
+  // Faellen dieselben Vertragsdaten.
+  zielStatus = STATUS.ANGEBOT_UNTERSCHRIEBEN
+}) {
   const [form, setForm] = useState({
     // Sektion 1 - Rechnungsempfänger
     rechnung_anrede: '',
@@ -140,8 +146,12 @@ export default function AbschlussForm({ lead, onCancel, onSubmit, isLoading }) {
   function handleSubmit() {
     if (!angebotComplete) return
     if (!validate()) return
+    // Der Vertrieb schliesst mit der Unterschrift ab, nicht mit der Rechnung:
+    // "Gewonnen" meldet den Abschluss an die Abrechnung und bleibt deshalb der
+    // Leitung vorbehalten. Die Vertragsdaten von hier stehen ihr dafuer
+    // vollstaendig zur Verfuegung.
     onSubmit({
-      status: STATUS.GEWONNEN,
+      status: zielStatus,
       ...form,
     })
   }

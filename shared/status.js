@@ -22,6 +22,12 @@ export const STATUS = {
   ANGEBOT_VERSCHICKT:   'Angebot versendet',
 
   WIRD_NACHGEFASST:     'Wird nachgefasst',
+
+  // Der Abschluss aus Sicht des Vertriebs: Der Kunde hat unterschrieben, die
+  // Arbeit des Closers ist getan. "Gewonnen" ist etwas anderes - es loest die
+  // Rechnung aus (Abrechnungs-Bridge) und bleibt deshalb der Leitung
+  // vorbehalten. Wer unterschrieben hat, ist noch nicht abgerechnet.
+  ANGEBOT_UNTERSCHRIEBEN: 'Angebot unterschrieben',
   GEWONNEN:             'Gewonnen',
   NICHT_ERSCHIENEN:     'Nicht erschienen',
   TERMIN_ABGESAGT:      'Termin abgesagt',
@@ -95,10 +101,38 @@ export const REIHENFOLGE = [
   STATUS.GEWONNEN
 ]
 
+/**
+ * Status, die nur die Leitung setzen darf.
+ *
+ * "Gewonnen" ist nicht bloss eine Beschriftung: Der Wechsel dorthin meldet den
+ * Abschluss an die Abrechnungs-Bridge, und damit entsteht eine Rechnung. Das
+ * ist keine Entscheidung des Vertriebs. Wer unterschrieben hat, setzt
+ * ANGEBOT_UNTERSCHRIEBEN - fachlich der Abschluss, nur eben ohne Rechnung.
+ * Die Leitung hebt ihn danach.
+ */
+export const NUR_LEITUNG = [STATUS.GEWONNEN]
+
+export function statusBrauchtLeitung(status) {
+  return NUR_LEITUNG.includes(normalisiere(status))
+}
+
 /** Zustände, aus denen nichts mehr folgt. */
 export const ENDZUSTAENDE = [STATUS.GEWONNEN, STATUS.VERLOREN_ENDGUELTIG]
 
 export const IST_VERLOREN = [STATUS.VERLOREN_ENDGUELTIG, STATUS.VERLOREN_WIEDERVORLAGE]
+
+/**
+ * Der Vertrag steht - fuer die Vertriebsstatistik ist das der Abschluss.
+ *
+ * Nicht dasselbe wie abgerechnet: Die Rechnung haengt allein an GEWONNEN.
+ * Wer die Leistung des Vertriebs zaehlt, meint diese Liste; wer Umsatz zaehlt,
+ * meint GEWONNEN.
+ */
+export const IST_ABSCHLUSS = [STATUS.ANGEBOT_UNTERSCHRIEBEN, STATUS.GEWONNEN]
+
+export function istAbschluss(status) {
+  return IST_ABSCHLUSS.includes(normalisiere(status))
+}
 
 /** Was der Nutzer sieht. "Angebot" heisst im Wert anders als in der Anzeige. */
 export const ANZEIGE = {
@@ -159,13 +193,16 @@ const UEBERGAENGE = {
   [STATUS.BERATUNG_VEREINBART]:  [STATUS.BERATUNG_GEFUEHRT, STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN],
   [STATUS.BERATUNG_GEFUEHRT]:    [STATUS.ABSCHLUSS_VEREINBART, STATUS.WIRD_NACHGEFASST],
   [STATUS.ABSCHLUSS_VEREINBART]: [STATUS.IM_ABSCHLUSS, STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN],
-  [STATUS.IM_ABSCHLUSS]:         [STATUS.GEWONNEN, STATUS.ANGEBOT_ANGEFORDERT, STATUS.ANGEBOT_VERSCHICKT, STATUS.WIRD_NACHGEFASST],
+  [STATUS.IM_ABSCHLUSS]:         [STATUS.ANGEBOT_UNTERSCHRIEBEN, STATUS.GEWONNEN, STATUS.ANGEBOT_ANGEFORDERT, STATUS.ANGEBOT_VERSCHICKT, STATUS.WIRD_NACHGEFASST],
   [STATUS.ANGEBOT_ANGEFORDERT]:  [STATUS.ANGEBOT_VERSCHICKT, STATUS.IM_ABSCHLUSS],
-  [STATUS.ANGEBOT_VERSCHICKT]:   [STATUS.GEWONNEN, STATUS.WIRD_NACHGEFASST, STATUS.IM_ABSCHLUSS],
-  [STATUS.WIRD_NACHGEFASST]:     [STATUS.ABSCHLUSS_VEREINBART, STATUS.ANGEBOT_ANGEFORDERT, STATUS.ANGEBOT_VERSCHICKT],
+  [STATUS.ANGEBOT_VERSCHICKT]:   [STATUS.ANGEBOT_UNTERSCHRIEBEN, STATUS.GEWONNEN, STATUS.WIRD_NACHGEFASST, STATUS.IM_ABSCHLUSS],
+  [STATUS.WIRD_NACHGEFASST]:     [STATUS.ABSCHLUSS_VEREINBART, STATUS.ANGEBOT_ANGEFORDERT, STATUS.ANGEBOT_VERSCHICKT, STATUS.ANGEBOT_UNTERSCHRIEBEN],
   [STATUS.NICHT_ERSCHIENEN]:     [STATUS.BERATUNG_VEREINBART, STATUS.ABSCHLUSS_VEREINBART],
   [STATUS.TERMIN_ABGESAGT]:      [STATUS.BERATUNG_VEREINBART, STATUS.ABSCHLUSS_VEREINBART],
   [STATUS.VERLOREN_WIEDERVORLAGE]: [STATUS.WIRD_NACHGEFASST, STATUS.BERATUNG_VEREINBART],
+  // Unterschrieben ist kein Endzustand: Die Leitung macht daraus "Gewonnen",
+  // und wenn der Vertrag doch platzt, geht es zurueck in die Nachfassung.
+  [STATUS.ANGEBOT_UNTERSCHRIEBEN]: [STATUS.GEWONNEN, STATUS.WIRD_NACHGEFASST, STATUS.VERLOREN_ENDGUELTIG],
   [STATUS.GEWONNEN]:             [],
   [STATUS.VERLOREN_ENDGUELTIG]:  []
 }
@@ -315,6 +352,7 @@ export const STATUS_JE_STUFE = {
     STATUS.ANGEBOT_ANGEFORDERT,
     STATUS.ANGEBOT_VERSCHICKT,
     STATUS.WIRD_NACHGEFASST,
+    STATUS.ANGEBOT_UNTERSCHRIEBEN,
     STATUS.GEWONNEN,
     STATUS.TERMIN_ABGESAGT,
     STATUS.NICHT_ERSCHIENEN,

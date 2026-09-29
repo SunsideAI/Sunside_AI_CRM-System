@@ -89,7 +89,9 @@ const seite = fs.readFileSync('src/pages/Setting.jsx', 'utf8')
 sagt(/wert: 'uebergeben'/.test(seite), 'Das Setting hat einen Reiter „Übergeben"')
 sagt(/const imSetting = \(l\) => stufeVonLead\(l\) === STUFE\.SETTING/.test(seite),
   'Die Arbeitslisten fragen die Stufe')
-sagt(/fuss=\{\(gewaehlt && !gesperrt\) \?/.test(seite),
+// Die Bedingung darf wachsen (die Freigabe haengt inzwischen mit drin),
+// „!gesperrt" muss aber drinbleiben.
+sagt(/fuss=\{\([^)]*!gesperrt[^)]*\)\s*\?/.test(seite),
   'Ein gesperrter Kontakt hat keine Aktionen im Fuss')
 
 // 9. Die Reiter muessen nachrechenbar sein. Der erste Umbau am 28.09. sortierte

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import {
   Search, Calendar, Phone, Video, Loader2, User as UserIcon,
   AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight, Lock,
-  Edit3, Save
+  Edit3, Save, UserMinus
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { STATUS, anzeigeNameVonLead, stufeVonLead, anCloserUebergeben, STUFE, STUFE_TEXT } from '../../shared/status.js'
@@ -18,6 +18,7 @@ import Uebergabeblatt, { UEBERGABE_1 } from '../components/Uebergabeblatt'
 import KontaktFelder from '../components/KontaktFelder'
 import LeadTabelle from '../components/LeadTabelle'
 import SpaltenWahl from '../components/SpaltenWahl'
+import LeadFreigabe from '../components/LeadFreigabe'
 import { useMeldung } from '../components/Meldungen'
 import FilterWahl from '../components/FilterWahl'
 import useTabelle from '../hooks/useTabelle'
@@ -79,6 +80,7 @@ function Setting() {
   const [filter, setFilter] = useState('offen')
   const [gewaehlt, setGewaehlt] = useState(null)
   const [mailOffen, setMailOffen] = useState(false)
+  const [freigabeOffen, setFreigabeOffen] = useState(false)
   // Nach der Übergabe: die Bestätigungsmail mit VSL zum eben übergebenen Kontakt.
   // Läuft die Übergabe an den Closer, zeigt die Schublade nur diesen Ablauf.
   const [ablaufLaeuft, setAblaufLaeuft] = useState(false)
@@ -624,12 +626,12 @@ function Setting() {
           Arbeitsbereich: hier der Ausgang des Beratungsgesprächs. */}
       <LeadSchublade
         offen={!!gewaehlt}
-        nurArbeit={ablaufLaeuft || mailOffen}
+        nurArbeit={ablaufLaeuft || mailOffen || freigabeOffen}
         kontaktFelder={bearbeiten && formular && (
           <KontaktFelder werte={formular} onChange={setFormular} mailFehlt={mailFehlt} />
         )}
         onClose={() => {
-          setGewaehlt(null); setMailOffen(false); setTerminOffen(false)
+          setGewaehlt(null); setMailOffen(false); setTerminOffen(false); setFreigabeOffen(false)
           setAblaufLaeuft(false); bearbeitenAbbrechen()
         }}
         titel={gewaehlt?.unternehmen || 'Kontakt'}
@@ -654,7 +656,7 @@ function Setting() {
         verlauf={gewaehlt && { hotLeadId: gewaehlt.id, leadId: gewaehlt.originalLeadId }}
         arbeitsTitel="Beratungsgespräch"
         arbeitsIcon={Users}
-        fuss={(gewaehlt && !gesperrt) ? (
+        fuss={(gewaehlt && !gesperrt && !freigabeOffen) ? (
           <>
             {/* Beim Ändern der Kontaktdaten steht nur Abbrechen und Speichern
                 unten — sonst konkurrieren drei Hauptaktionen um dieselbe Ecke.
@@ -677,6 +679,11 @@ function Setting() {
               </>
             ) : (
               <>
+                {/* Abgeben, statt liegen lassen: Wer das Gespräch nicht führen
+                    kann, gibt den Kontakt zurück in den Pool. */}
+                <button onClick={() => setFreigabeOffen(true)} className="fuss-leise">
+                  <UserMinus className="w-4 h-4" /> Freigeben
+                </button>
                 <button onClick={() => setMailOffen(o => !o)} className="fuss-neben">
                   <Mail className="w-4 h-4" /> E-Mail an den Kontakt
                 </button>
@@ -710,8 +717,19 @@ function Setting() {
 
         {gewaehlt && !gesperrt && (
           <>
-            {/* Ist die Mail offen, steht sie allein in der Schublade. */}
-            {mailOffen ? (
+            {/* Mail und Freigabe stehen jeweils allein in der Schublade. */}
+            {freigabeOffen ? (
+              <LeadFreigabe
+                lead={gewaehlt}
+                stufe="setting"
+                onAbbrechen={() => setFreigabeOffen(false)}
+                onFertig={() => {
+                  setFreigabeOffen(false)
+                  setGewaehlt(null)
+                  laden(); poolZaehlen()
+                }}
+              />
+            ) : mailOffen ? (
               <EmailComposer
                 hotLeadId={gewaehlt.id}
                 lead={{
