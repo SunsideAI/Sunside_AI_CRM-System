@@ -10,7 +10,7 @@
 
 import fs from 'node:fs'
 import {
-  STATUS, STUFE, statusFuerStufe, uebergangErlaubt,
+  STATUS, STUFE, statusFuerStufe, uebergangErlaubt, normalisiere, anzeigeName,
   statusBrauchtLeitung, istAbschluss, ENDZUSTAENDE
 } from '../shared/status.js'
 
@@ -53,6 +53,22 @@ sagt(/statusBrauchtLeitung\(fields\.status\) && !angemeldet\.istAdmin/.test(serv
 // Die Bridge haengt weiter allein an GEWONNEN.
 sagt(/normalisiere\(fields\.status\) === STATUS\.GEWONNEN[\s\S]{0,120}BRIDGE_URL/.test(server),
   'Die Abrechnung haengt allein an „Gewonnen"')
+
+// Der Datenbank-Trigger notify_bridge_lead_closed hoert auf den Altwert
+// "Abgeschlossen". Also wird der auch geschrieben - sonst entstuende bei einem
+// gewonnenen Deal keine Rechnung. Gelesen wird er ueberall als GEWONNEN.
+sagt(/if \(fields\.status === STATUS\.GEWONNEN\) fields\.status = 'Abgeschlossen'/.test(server),
+  'Gespeichert wird der Wert, auf den der Trigger hoert')
+sagt(normalisiere('Abgeschlossen') === STATUS.GEWONNEN,
+  'Und gelesen heisst er wieder „Gewonnen"')
+sagt(anzeigeName('Abgeschlossen') === 'Gewonnen',
+  `In der Oberflaeche steht „${anzeigeName('Abgeschlossen')}"`)
+// Die Umschreibung darf erst nach der Uebergangspruefung greifen, sonst
+// vergleicht die Matrix gegen einen Wert, den sie nicht kennt.
+const posPruefung = server.indexOf('uebergangErlaubt(vorher.status, fields.status)')
+const posSchreib  = server.indexOf("fields.status = 'Abgeschlossen'")
+sagt(posPruefung > 0 && posSchreib > posPruefung,
+  'Sie greift erst nach der Uebergangspruefung')
 
 // ── Die Oberflaeche ────────────────────────────────────────────────────────
 const closing = fs.readFileSync('src/pages/Closing.jsx', 'utf8')

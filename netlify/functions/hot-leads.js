@@ -1344,6 +1344,16 @@ export async function handler(event) {
         fields.zuletzt_geaendert_von = angemeldet.id
       }
 
+      // Die Abrechnung haengt an einem Datenbank-Trigger, der auf den Altwert
+      // "Abgeschlossen" hoert (notify_bridge_lead_closed). Solange der so
+      // steht, wird er auch geschrieben - gelesen wird der Wert ueberall
+      // ueber normalisiere() und heisst dann wieder GEWONNEN. So bleibt die
+      // Rechnung an derselben Stelle haengen wie in der Produktion, ohne dass
+      // der uebrige Code den Altwert kennen muss.
+      //
+      // Faellt der Trigger irgendwann weg, kann diese Zeile mit ihm gehen.
+      if (fields.status === STATUS.GEWONNEN) fields.status = 'Abgeschlossen'
+
       console.log('Updating Hot Lead:', hotLeadId, fields, 'Kommentar:', kommentarToUpdate !== null)
 
       // Hot Lead laden (auch wenn keine fields zu updaten)
