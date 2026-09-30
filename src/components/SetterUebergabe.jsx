@@ -403,8 +403,22 @@ export default function SetterUebergabe({
     </div>
   )
 
+  // Zurueck auf die Basisseite heisst: Der Ausgang ist wieder offen.
+  //
+  // Sonst blieb im Auswahlfeld „Setting starten" stehen, waehrend die Fragen
+  // geschlossen waren. Wer dann denselben Eintrag noch einmal waehlt, loest
+  // nichts aus - ein <select> feuert change nur bei einer Wertaenderung. Der
+  // Start reagierte scheinbar nicht mehr, und man kam nur weiter, indem man
+  // erst einen anderen Ausgang waehlte und wieder zurueckwechselte.
   const zurueckKnopf = (ziel, text = 'Zurück') => (
-    <button onClick={() => { setFehler(''); setAblauf(ziel) }} className="fuss-leise fuss-weg">
+    <button
+      onClick={() => {
+        setFehler('')
+        setAblauf(ziel)
+        if (ziel === null && !fixerAusgang) setAusgang('')
+      }}
+      className="fuss-leise fuss-weg"
+    >
       <ChevronLeft className="w-4 h-4" /> {text}
     </button>
   )

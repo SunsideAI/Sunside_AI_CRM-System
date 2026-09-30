@@ -89,6 +89,17 @@ sagt(/GERUEST_FRAGEN/.test(seite), 'Die Setter-Maske zeigt die Gerüstfragen')
 sagt(/Am Ende der Seite findest du ein Notizfeld/.test(seite), 'Der Hinweis auf das Notizfeld steht')
 sagt(/abschlussgespraechVereinbart/.test(server), 'Der Server schickt die Mail an den Closer')
 
+// Zurueck auf die Basisseite raeumt die Auswahl mit ab.
+//
+// Anlass: Am 30.09.2026 blieb nach „Zurück" im Auswahlfeld „Setting starten"
+// stehen, waehrend die Fragen geschlossen waren. Ein <select> feuert change
+// nur bei einer Wertaenderung - wer denselben Eintrag noch einmal waehlte,
+// loeste nichts aus. Der Start des Setting-Gespraechs reagierte scheinbar
+// nicht mehr.
+const zurueckQuelle = fs.readFileSync('src/components/SetterUebergabe.jsx', 'utf8')
+sagt(/if \(ziel === null && !fixerAusgang\) setAusgang\(''\)/.test(zurueckQuelle),
+  'Zurueck setzt den Ausgang zurueck')
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')
