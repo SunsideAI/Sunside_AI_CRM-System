@@ -71,47 +71,53 @@ export function signaturHtml({ name, email, telefon, eigenerGruss = false } = {}
   const n = sicher(name || ABSENDER_VORGABE.name)
   const e = sicher(email || ABSENDER_VORGABE.email)
   const t = sicher(telefon || ABSENDER_VORGABE.telefon)
-
-  // Die Position gehoert zum Namen. Schliesst die Mail schon mit eigenem
-  // Gruss, steht der Name oben im Text - dann steht die Position direkt
-  // darunter, damit sie nicht verloren geht.
   const position = sicher(positionFuer(name))
-  const gruss = eigenerGruss
-    ? `<div style="margin-bottom: 15px;">${position}</div>`
-    : `<div style="margin-bottom: 16px;">Mit freundlichen Grüßen</div>
-      <div style="font-weight: bold; margin-bottom: 2px;">${n}</div>
-      <div style="color: #666; margin-bottom: 15px;">${position}</div>`
+
+  // Nachgebaut aus der Signatur im Postfach, Zeile fuer Zeile: dieselben
+  // Abstaende (eine Leerzeile, nicht zwei), dieselbe Schrift, und die Links in
+  // Schwarz statt in der Hausfarbe. Das Trennzeichen in der Adresszeile ist
+  // ein grosses I, kein Strich - so steht es dort.
+  const SCHRIFT = 'font-size: 10pt; font-family: arial, helvetica, sans-serif;'
+  const LEER = `<div style="${SCHRIFT}">&nbsp;</div>`
+  const SCHWARZ = 'color: rgb(0, 0, 0);'
+
+  const kopf = eigenerGruss
+    ? `<div style="${SCHRIFT}">${position}</div>`
+    : `<div style="${SCHRIFT}">Mit freundlichen Grüßen</div>
+       ${LEER}
+       <div style="${SCHRIFT}"><strong>${n}</strong></div>
+       <div style="${SCHRIFT}">${position}</div>`
 
   return `
-    <div style="margin-top: 30px; font-family: Arial, sans-serif; font-size: 10pt;">
-      ${gruss}
-      <img src="${BILD.logo}" alt="Sunside AI" style="height: 32px; margin-bottom: 10px;" />
-
-      <div style="margin-bottom: 15px;">
-        <a href="https://www.instagram.com/sunside.ai/" style="text-decoration: none; margin-right: 8px;">
-          <img src="${BILD.instagram}" alt="Instagram" style="width: 24px; height: 24px; vertical-align: middle;" />
-        </a>
-        <a href="https://www.sunsideai.de" style="text-decoration: none;">
-          <img src="${BILD.website}" alt="Website" style="width: 24px; height: 24px; vertical-align: middle;" />
-        </a>
+    <div style="${SCHRIFT}">
+      ${kopf}
+      ${LEER}
+      <div style="${SCHRIFT}">
+        <a href="https://www.sunsideai.de/"><img src="${BILD.logo}" alt="Sunside AI" width="189" height="41" /></a>
       </div>
-
-      <div style="font-weight: bold; font-size: 9pt;">Sunside AI GbR</div>
-      <div style="font-size: 9pt; color: #666;">
-        Schiefer Berg 3 | 38124 Braunschweig | Deutschland<br />
-        E-Mail: ${e} | Tel: ${t}<br />
-        <a href="https://www.sunsideai.de" style="color: ${SIGNATUR_FARBE};">www.sunsideai.de</a> |
-        <a href="https://sunsideai.de/#kontakt" style="color: ${SIGNATUR_FARBE}; margin-left: 4px;">Jetzt Termin buchen</a> |
-        <a href="https://sachverstand-mit-herz.podigee.io/12-new-episode" style="color: ${SIGNATUR_FARBE}; margin-left: 4px;">Zur Podcast-Folge</a>
+      ${LEER}
+      <div style="${SCHRIFT}">
+        <a href="https://www.instagram.com/sunside.ai/"><img src="${BILD.instagram}" alt="Instagram" width="28" height="28" /></a>&nbsp;&nbsp;<a href="https://www.sunsideai.de/"><img src="${BILD.website}" alt="Website" width="28" height="28" /></a>
       </div>
-      <div style="font-size: 9pt; color: #888; margin-top: 5px;">Geschäftsführung: Paul Probodziak und Niklas Schwerin</div>
-
-      <div style="margin-top: 15px;">
-        <img src="${BILD.ibm}" alt="IBM AI Developer" style="height: 48px; margin-right: 8px; vertical-align: middle;" />
-        <img src="${BILD.make}" alt="Make Badge" style="height: 48px; vertical-align: middle;" />
+      ${LEER}
+      <div style="${SCHRIFT}"><strong>Sunside AI GbR</strong></div>
+      <div style="${SCHRIFT}">
+        Schiefer Berg 3 I&nbsp;38124 Braunschweig I&nbsp;Deutschland<br />
+        E-Mail:&nbsp;<a style="${SCHWARZ}" href="mailto:${e}">${e}</a> I Tel: ${t}
       </div>
-      <div style="font-size: 9pt; color: #666; margin-top: 8px; font-style: italic;">
-        <strong>Wir sind zertifizierte IBM KI-Entwickler und Make Automatisierungsexperten.</strong>
+      <div style="${SCHRIFT}">
+        <a style="${SCHWARZ}" href="https://www.sunsideai.de/">www.sunsideai.de&nbsp;</a>|
+        <a style="${SCHWARZ}" href="https://sunsideai.de/jetzt-termin-buchen">Jetzt Termin buchen</a> |
+        <a style="${SCHWARZ}" href="https://sachverstand-mit-herz.podigee.io/12-new-episode">Zur Podcast-Folge</a>
+      </div>
+      ${LEER}
+      <div style="${SCHRIFT}">Geschäftsführung: Paul Probodziak und Niklas Schwerin</div>
+      ${LEER}
+      <div style="${SCHRIFT}">
+        <a href="https://coursera.org/share/022de5be2d06363370a26f58d0993aa9"><img src="${BILD.ibm}" alt="IBM AI Developer" width="125" height="63" style="max-width: 100%;" /></a> <a href="https://www.credly.com/badges/a3fac4e4-90bd-4b9a-b318-dd70bc3aa95c/public_url"><img src="${BILD.make}" alt="Make" width="63" height="63" style="max-width: 100%;" /></a>
+      </div>
+      <div style="${SCHRIFT}">
+        <em><strong>Wir sind zertifizierte IBM KI-Entwickler und Make Automatisierungsexperten.</strong></em>
       </div>
     </div>
   `

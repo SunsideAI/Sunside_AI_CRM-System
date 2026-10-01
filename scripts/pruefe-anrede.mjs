@@ -64,36 +64,42 @@ sagt(/kommtInFrage/.test(engine), 'Die Engine siebt Firmen und Floskeln aus')
 sagt(/unklar/.test(engine) && /falsche Anrede ist schlimmer/.test(engine),
   'Und weist das Modell an, im Zweifel nichts zu setzen')
 
-// ── Die Zeile unter dem Namen ──────────────────────────────────────────────
-// Stand vom 01.10.2026: EINE Zeile unter dem Namen. Gruender sind Paul
-// Probodziak und Niklas Schwerin; bei allen anderen steht dort, was die Firma
-// tut. Zweimal dasselbe braucht niemand.
+// ── Die Signatur ──────────────────────────────────────────────────────────
+// Stand vom 01.10.2026: 1:1 wie die Signatur im Postfach. Verglichen wurde
+// gegen den MIME-Quelltext einer echten Mail.
 const { positionFuer, signaturHtml } = await import('../shared/signatur.js')
 const FIRMENZEILE = 'KI-Entwicklung für Immobilienmakler'
 
 sagt(positionFuer('Paul Probodziak') === 'Gründer', 'Paul ist Gründer')
 sagt(positionFuer('Niklas Schwerin') === 'Gründer', 'Niklas ist Gründer')
 sagt(positionFuer('Max Lehmann') === FIRMENZEILE, 'Bei allen anderen steht die Firmenzeile')
-// Der Name kommt aus dem Benutzerprofil - dort steht schon mal ein Leerzeichen zu viel.
 sagt(positionFuer('  paul   probodziak ') === 'Gründer', 'Schreibweise und Leerzeichen egal')
 
-const sigG = signaturHtml({ name: 'Paul Probodziak', email: 'a@b.de', telefon: '+49 1' })
-const sigE = signaturHtml({ name: 'Max Lehmann',     email: 'a@b.de', telefon: '+49 1' })
-const zaehle = (h) => (h.match(/KI-Entwicklung für Immobilienmakler/g) || []).length
+const sig = signaturHtml({ name: 'Paul Probodziak', email: 'contact@sunsideai.de',
+                           telefon: '+49 176 43943026' })
 
-sagt(sigG.includes('>Gründer<'), 'Beim Gründer steht „Gründer"')
-sagt(zaehle(sigG) === 0, 'Und die Firmenzeile entfällt dort')
-sagt(zaehle(sigE) === 1, 'Bei allen anderen steht sie genau einmal')
-sagt(sigE.indexOf('Max Lehmann') < sigE.indexOf(FIRMENZEILE), 'Und zwar unter dem Namen')
-
-// Luft zwischen Gruss und Namen.
-sagt(/Mit freundlichen Grüßen<\/div>/.test(sigG)
-     && /margin-bottom: 16px;">Mit freundlichen Grüßen/.test(sigG),
-  'Zwischen Gruß und Name steht eine Leerzeile')
-
-// Auch wenn die Mail schon mit eigenem Gruss schliesst, darf die Zeile nicht fehlen.
-sagt(signaturHtml({ name: 'Max Lehmann', eigenerGruss: true }).includes(FIRMENZEILE),
-  'Auch bei eigenem Gruß in der Mail')
+// Die Position steht in derselben Schrift wie der Rest - nicht grau.
+sagt(!/color: #666[^>]*>(Gründer|KI-Entwicklung)/.test(sig),
+  'Die Position steht in Schwarz, nicht in Grau')
+// Genau eine Leerzeile zwischen Gruß und Name.
+sagt(/Mit freundlichen Grüßen<\/div>\s*<div[^>]*>&nbsp;<\/div>\s*<div[^>]*><strong>/.test(sig),
+  'Eine Leerzeile zwischen Gruß und Name')
+// Das Trennzeichen der Adresszeile ist ein grosses I, so wie im Postfach.
+sagt(sig.includes('Braunschweig I&nbsp;Deutschland'), 'Adresse mit „I" getrennt')
+// Die Links der Fusszeile sind schwarz, nicht in der Hausfarbe.
+sagt((sig.match(/color: rgb\(0, 0, 0\);/g) || []).length >= 4, 'Die Links sind schwarz')
+sagt(!/color: #460E74/.test(sig), 'Kein Lila mehr in der Signatur')
+// Der Terminlink zeigt auf die eigene Seite, nicht auf einen Anker.
+sagt(sig.includes('sunsideai.de/jetzt-termin-buchen'), 'Terminlink wie im Postfach')
+// Die Abzeichen sind verlinkt und haben die Groessen aus dem Postfach.
+sagt(sig.includes('coursera.org/share') && sig.includes('credly.com/badges'),
+  'Die Abzeichen sind verlinkt')
+sagt(/width="189" height="41"/.test(sig), 'Logo in der Größe aus dem Postfach')
+sagt(/width="28" height="28"/.test(sig), 'Symbole in der Größe aus dem Postfach')
+// Beim Gruender faellt die Firmenzeile weg.
+sagt(!sig.includes(FIRMENZEILE), 'Beim Gründer keine Firmenzeile')
+sagt(signaturHtml({ name: 'Max Lehmann' }).includes(FIRMENZEILE),
+  'Bei allen anderen steht sie dort')
 
 console.log('')
 if (befunde.length) {
