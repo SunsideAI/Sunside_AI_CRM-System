@@ -25,7 +25,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { ansprechpartnerStelle, brauchbar } from './utils/impressum.js'
+import { ansprechpartnerStelle, namenspaarBrauchbar } from './utils/impressum.js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { verboten } from './utils/zugriff.js'
 
@@ -61,7 +61,9 @@ async function frageModell(stuecke, schluessel) {
         + '- es ist ein Gründer aus der Firmenhistorie und nicht die heutige Leitung\n'
         + '- es ist ein Begriffspaar und kein Name ("Ansprechpartner Immobilienverwaltung", '
         + '"Mark Wohnungsgesellschaft", "Gesetzlicher Vertreter")\n'
-        + '- es ist nur ein Nachname ohne Vornamen, oder nur ein Vorname\n\n'
+        + '- es ist nur ein Nachname ohne Vornamen, oder nur ein Vorname\n'
+        + '- es ist eine Abkürzung (WEG, IVD, RDM, HV) oder ein Begriff aus dem '
+        + 'Seitentext, den du mangels Namen genommen hast\n\n'
         + 'Stehen mehrere Personen da, nimm die erste. Titel wie Dipl.-Ing., Ing. oder '
         + 'Dr. gehören nicht in den Namen. Schreibe Namen in normaler Gross- und '
         + 'Kleinschreibung, auch wenn der Ausschnitt sie in Grossbuchstaben zeigt.\n\n'
@@ -160,9 +162,9 @@ export async function handler(event) {
     for (const t of treffer) {
       const lead = teil[Number(t.nr) - 1]
       if (!lead) continue
-      const vorname = brauchbar(t.vorname)
-      const nachname = brauchbar(t.nachname)
-      if (!vorname || !nachname) continue
+      const paar = namenspaarBrauchbar(t.vorname, t.nachname)
+      if (!paar) continue
+      const { vorname, nachname } = paar
       const { error: schreibfehler } = await supabase
         .from('leads')
         .update({

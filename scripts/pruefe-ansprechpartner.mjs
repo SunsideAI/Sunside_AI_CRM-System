@@ -11,7 +11,8 @@
 // Aufruf: node scripts/pruefe-ansprechpartner.mjs
 
 import fs from 'node:fs'
-import { zuText, ausschnitt, unterseiten, brauchbar, wirktWieEinName, entschluessleBytes }
+import { zuText, ausschnitt, unterseiten, brauchbar, wirktWieEinName, entschluessleBytes,
+         namenspaarBrauchbar }
   from '../netlify/functions/utils/impressum.js'
 
 
@@ -131,6 +132,19 @@ sagt(brauchbar('info@firma.de') === null, 'Keine Mailadresse')
 sagt(brauchbar('Haus 12') === null, 'Nichts mit Ziffern')
 sagt(brauchbar('') === null && brauchbar(null) === null, 'Leer bleibt leer')
 
+// Das Paar zusammen, nicht nur jeder Teil fuer sich. Im ersten echten
+// Durchgang am 01.10.2026 schrieb das Modell bei 6 von 25 Leads "WEG" in
+// beide Felder - die Abkuerzung stand im Seitentext, und es nahm sie, weil
+// kein Name da war. Einzeln sah "WEG" harmlos aus.
+sagt(namenspaarBrauchbar('WEG', 'WEG') === null, '„WEG WEG" kommt nicht durch')
+sagt(namenspaarBrauchbar('IVD', 'Immobilien') === null, 'Eine Abkürzung als Vorname auch nicht')
+sagt(namenspaarBrauchbar('HV', 'Müller') === null, 'Und „HV Müller" nicht')
+sagt(namenspaarBrauchbar('Günther', 'Günther') === null,
+  'Zweimal dasselbe Wort ist kein Name, sondern eine Partnerfirma')
+sagt(namenspaarBrauchbar('Kerstin', 'Petersen')?.nachname === 'Petersen', 'Ein echtes Paar schon')
+sagt(namenspaarBrauchbar('Ümit', 'Alagöz')?.vorname === 'Ümit', 'Auch mit Umlaut am Anfang')
+sagt(namenspaarBrauchbar('Lars', 'Krüssel')?.nachname === 'Krüssel', 'Und mit Umlaut im Namen')
+
 // ── Der Auftrag an das Modell ─────────────────────────────────────────────
 const fn = fs.readFileSync('netlify/functions/ansprechpartner-suchen-background.js', 'utf8')
 sagt(/falscher Name ist schlimmer als kein Name/.test(fn),
@@ -141,6 +155,8 @@ sagt(/Gründer aus der Firmenhistorie/.test(fn),
   'Und den Gründer von 1982 nicht für die heutige Leitung halten (OMIT AG)')
 sagt(/Begriffspaar/.test(fn),
   'Und „Mark Wohnungsgesellschaft" nicht für einen Menschen')
+sagt(/Abkürzung \(WEG, IVD, RDM, HV\)/.test(fn),
+  'Und keine Abkürzung aus dem Seitentext')
 
 // ── Was die Funktion nicht anfasst ────────────────────────────────────────
 sagt(/\.is\('ansprechpartner_vorname', null\)/.test(fn),

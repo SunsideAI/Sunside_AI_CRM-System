@@ -250,6 +250,26 @@ export function brauchbar(wert) {
   if (w.length < 2 || w.length > 40) return null
   if (/\d|@|\.de$|\.com$/.test(w)) return null
   if (/^(gmbh|kg|ohg|gbr|mbh|ag|e\.?k\.?|vertreter|inhaber|gesch|firma|unbekannt|unklar|n\/?a|null)$/i.test(w)) return null
-  if (!/^[A-Za-zÀ-ɏ][A-Za-zÀ-ɏ'’\s.-]*$/.test(w)) return null
+  /* Eine Abkuerzung ist kein Name. Im ersten Durchgang am 01.10.2026 kam bei
+     sechs von 25 Leads "WEG WEG" heraus - das Wort stand im Seitentext, und
+     das Modell nahm es, weil nichts Besseres da war. Ein Wort ganz in
+     Grossbuchstaben ist in einem Impressum fast nie ein Vor- oder Nachname;
+     wo doch, schadet das Weglassen nicht. */
+  if (w.length <= 5 && w === w.toUpperCase()) return null
+  if (!/[a-z\u00df-\u00ff\u0101-\u024f]/.test(w)) return null
+  if (!/^[A-Za-z\u00c0-\u024f][A-Za-z\u00c0-\u024f'\u2019\s.-]*$/.test(w)) return null
   return w
+}
+
+/**
+ * Vor- und Nachname zusammen - was einzeln durchgeht, kann als Paar falsch
+ * sein. Derselbe Wert zweimal ist kein Name, sondern ein Wort, das das
+ * Modell in beide Felder geschrieben hat.
+ */
+export function namenspaarBrauchbar(vorname, nachname) {
+  const v = brauchbar(vorname)
+  const n = brauchbar(nachname)
+  if (!v || !n) return null
+  if (v.toLowerCase() === n.toLowerCase()) return null
+  return { vorname: v, nachname: n }
 }
