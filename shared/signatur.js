@@ -23,6 +23,21 @@ const BILD = {
 
 export const SIGNATUR_FARBE = '#460E74'
 
+/**
+ * Die Position unter dem Namen.
+ *
+ * Wer das Unternehmen gegruendet hat, steht auch so da; alle anderen sind
+ * KI-Entwickler. Verglichen wird ohne Ruecksicht auf Gross- und
+ * Kleinschreibung und auf doppelte Leerzeichen, weil der Name aus dem
+ * Benutzerprofil kommt und dort schon mal zwei davon stehen.
+ */
+const GRUENDER = ['paul probodziak', 'niklas schwerin']
+
+export function positionFuer(name) {
+  const n = String(name || '').toLowerCase().replace(/\s+/g, ' ').trim()
+  return GRUENDER.includes(n) ? 'Gründer' : 'KI-Entwickler'
+}
+
 export const ABSENDER_VORGABE = {
   name: 'Sunside AI Team',
   email: 'contact@sunsideai.de',
@@ -52,8 +67,15 @@ export function signaturHtml({ name, email, telefon, eigenerGruss = false } = {}
   const e = sicher(email || ABSENDER_VORGABE.email)
   const t = sicher(telefon || ABSENDER_VORGABE.telefon)
 
-  const gruss = eigenerGruss ? '' : `<div style="margin-bottom: 5px;">Mit freundlichen Grüßen</div>
-      <div style="font-weight: bold; margin-bottom: 2px;">${n}</div>`
+  // Die Position gehoert zum Namen. Schliesst die Mail schon mit eigenem
+  // Gruss, steht der Name oben im Text - dann steht die Position direkt
+  // darunter, damit sie nicht verloren geht.
+  const position = sicher(positionFuer(name))
+  const gruss = eigenerGruss
+    ? `<div style="font-weight: bold; margin-bottom: 2px;">${position}</div>`
+    : `<div style="margin-bottom: 5px;">Mit freundlichen Grüßen</div>
+      <div style="font-weight: bold; margin-bottom: 2px;">${n}</div>
+      <div style="margin-bottom: 2px;">${position}</div>`
 
   return `
     <div style="margin-top: 30px; font-family: Arial, sans-serif; font-size: 10pt;">
