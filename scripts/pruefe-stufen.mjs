@@ -75,6 +75,28 @@ const settingSeite = fs.readFileSync('src/pages/Setting.jsx', 'utf8')
 sagt(/zweck="beratung"/.test(settingSeite) && /zweck="abschluss"/.test(settingSeite),
   'Setting legt Beratungs- und Abschlussgespraech')
 
+// 6. Die Kalenderansicht muss dieselbe Stufe meinen wie der Rest.
+//
+// Bis zum 01.10.2026 fragte sie nur, wer als Closer eingetragen ist. Bei
+// Welfenross Better Living standen Setter und Closer beide auf Paul und die
+// Uebergabe war nie erfolgt - der Termin war gruen wie ein Setting-Termin,
+// der Knopf darunter sagte trotzdem "Im Closing öffnen" und fuehrte auf eine
+// Seite, auf der der Kontakt gar nicht steht.
+const termine = fs.readFileSync('src/pages/Termine.jsx', 'utf8')
+sagt(/isMyClosing = lead\.closerName === userName && stufe === STUFE\.CLOSING/.test(termine),
+  'Der Kalender nennt es erst Closing, wenn die Übergabe steht')
+sagt(/isMySetting = lead\.setterName === userName && stufe === STUFE\.SETTING/.test(termine),
+  'Und Setting nur, solange der Kontakt dort liegt')
+sagt(/const stufe = stufeVonLead\(lead\)/.test(termine),
+  'Beides aus stufeVonLead, nicht aus einer eigenen Regel')
+
+// Und die Probe aufs Exempel: genau dieser Kontakt.
+const welfenross = { status: 'Lead', ergebnis_beratung: null }   // so steht er in der Datenbank
+sagt(stufeVonLead(welfenross) === STUFE.SETTING,
+  'Welfenross: Status „Lead" ohne Übergabe ist Setting')
+sagt(stufeVonLead({ ...welfenross, ergebnis_beratung: 'Abschlussgespräch vereinbart' }) === STUFE.CLOSING,
+  'Mit Übergabe wäre er Closing')
+
 console.log(`\n${STATUS_JE_STUFE[STUFE.CLOSING].length} Closing-Status, ${STATUS_JE_STUFE[STUFE.SETTING].length} Setting-Status geprueft.`)
 if (befunde.length) {
   console.error('\nFEHLER:')

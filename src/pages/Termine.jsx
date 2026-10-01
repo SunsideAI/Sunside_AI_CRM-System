@@ -110,9 +110,16 @@ function Termine() {
       const formattedTermine = allLeads
         .filter(lead => lead.terminDatum) // Nur mit Termin
         .map(lead => {
-          const isMyClosing = lead.closerName === userName
+          // Ein Kontakt steht erst im Closing, wenn er übergeben wurde - dass
+          // ein Closer eingetragen ist, heisst das noch nicht. Bei Welfenross
+          // standen Setter und Closer beide auf Paul, die Übergabe war nie
+          // erfolgt: der Termin war grün wie ein Setting-Termin, der Knopf
+          // darunter sagte trotzdem „Im Closing öffnen" und führte auf eine
+          // Seite, auf der der Kontakt gar nicht steht.
+          const stufe = stufeVonLead(lead)
+          const isMyClosing = lead.closerName === userName && stufe === STUFE.CLOSING
           // Wer das Beratungsgespräch hält ...
-          const isMySetting = lead.setterName === userName
+          const isMySetting = lead.setterName === userName && stufe === STUFE.SETTING
           // ... und wer den Termin gelegt hat. Bis zum Umbau derselbe Mensch,
           // danach zwei verschiedene.
           const isMyBooking = lead.openerName === userName || lead.setterName === userName
