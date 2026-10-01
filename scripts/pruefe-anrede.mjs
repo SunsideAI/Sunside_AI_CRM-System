@@ -41,6 +41,13 @@ sagt(anrede(frau, 'nachfass_abschied') === 'Guten Tag Frau Berg',
 sagt(anrede({ ansprechpartner_vorname: '', ansprechpartner_nachname: '' }) == null,
   'Ohne Namen bleibt der Platzhalter stehen')
 
+// Der Platzhalter fuer die Vorlagen in der Datenbank: Anrede und Name ohne
+// Gruss, weil die Vorlage ihren eigenen mitbringt.
+const kurz = (lead) => platzhalterWerte({ lead, absender: 'Paul' })['Anrede Nachname']
+sagt(kurz(mann) === 'Herr Hettich', `Kurzform Mann: „${kurz(mann)}"`)
+sagt(kurz(frau) === 'Frau Berg',    `Kurzform Frau: „${kurz(frau)}"`)
+sagt(kurz(offen) === 'Dominique Stork', `Kurzform unklar: „${kurz(offen)}"`)
+
 // Das alte „Herr/Frau" darf nirgends mehr im Code stehen.
 const vorlagen = fs.readFileSync('shared/mailvorlagen.js', 'utf8')
 sagt(!/Herr\/Frau \$\{/.test(vorlagen) && !/'Herr\/Frau'/.test(vorlagen),

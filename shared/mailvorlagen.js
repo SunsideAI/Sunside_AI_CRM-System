@@ -151,6 +151,12 @@ export function platzhalterWerte({ lead = {}, absender = '', links = {}, schlues
     'Vorname Nachname': `${vorname} ${nachname}`.trim() || null,
     // Füllregel vom 15.09.: „Hallo" in den Nachfass-Mails, „Guten Tag" im Abschiedsbrief.
     'Anrede': anrede(lead, nachname, vorname, schluessel),
+    // Nur Anrede und Name, ohne Gruss: Die Vorlagen in der Datenbank bringen
+    // ihren eigenen mit („Schönen guten Tag {Anrede Nachname},").
+    'Anrede Nachname': nachname
+      ? (lead.anrede ? `${lead.anrede} ${nachname}`
+                     : [vorname, nachname].filter(Boolean).join(' '))
+      : null,
     'Absender': absender || null,
     'Video-Link': video ? `[Zum Video](${video})` : null,
     'VSL-Link': vsl ? `[dieses Video](${vsl})` : null,
