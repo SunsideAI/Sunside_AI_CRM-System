@@ -137,13 +137,47 @@ export async function handler(event) {
     return antworte(200, { offen: 0 })
   }
 
+  /* Die Leads sofort belegen, bevor die Arbeit beginnt.
+     
+     Ein Durchgang dauert gut zehn Minuten. Wurde der Vermerk erst am Ende
+     gesetzt, griff sich ein zweiter, gleichzeitig gestarteter Durchgang
+     dieselben Leads - er fragt ja nach denen ohne Vermerk, und den gab es
+     noch nicht. Jede Seite waere zweimal geholt und jeder Ausschnitt zweimal
+     bezahlt worden.
+     
+     Reserviert wird nur, was noch frei ist: `.is(..., null)` im Update laesst
+     einen Lead aus, den ein anderer Durchgang in der Zwischenzeit genommen
+     hat. Was dabei durchfaellt, wird hier auch nicht bearbeitet. */
+  const jetzt = new Date().toISOString()
+  const belegt = []
+  for (let k = 0; k < leads.length; k += 500) {
+    const teil = leads.slice(k, k + 500)
+    const { data: genommen, error: belegFehler } = await supabase
+      .from('leads')
+      .update({ ansprechpartner_gesucht_am: jetzt })
+      .in('id', teil.map(l => l.id))
+      .is('ansprechpartner_gesucht_am', null)
+      .select('id')
+    if (belegFehler) {
+      console.error('Belegen:', belegFehler.message)
+      continue
+    }
+    const meine = new Set((genommen || []).map(z => z.id))
+    belegt.push(...teil.filter(l => meine.has(l.id)))
+  }
+  if (!belegt.length) {
+    console.log('ansprechpartner-suchen: alles schon in Arbeit')
+    return antworte(200, { offen: 0 })
+  }
+  console.log(`belegt: ${belegt.length} von ${leads.length}`)
+
   // Die Websites parallel holen - das ist der langsame Teil.
   const stuecke = []
   const ohneStelle = []
   let i = 0
   async function arbeiter() {
-    while (i < leads.length && Date.now() < bis) {
-      const lead = leads[i++]
+    while (i < belegt.length && Date.now() < bis) {
+      const lead = belegt[i++]
       try {
         const stelle = await ansprechpartnerStelle(lead.website)
         if (stelle?.text) {
@@ -195,20 +229,13 @@ export async function handler(event) {
     }
   }
 
-  // Auch die ohne Fund vermerken, sonst nimmt sich der naechste Durchgang
-  // dieselben Leads wieder vor.
-  const abgearbeitet = [...ohneStelle, ...stuecke.map(s => s.id)]
-  const jetzt = new Date().toISOString()
-  for (let k = 0; k < abgearbeitet.length; k += 500) {
-    const { error: e } = await supabase
-      .from('leads')
-      .update({ ansprechpartner_gesucht_am: jetzt })
-      .in('id', abgearbeitet.slice(k, k + 500))
-      .is('ansprechpartner_gesucht_am', null)
-    if (e) console.error('Vermerk:', e.message)
-  }
+  /* Ein Lead, der angefangen, aber nicht zu Ende gebracht wurde - weil die
+     Frist ablief -, traegt den Vermerk trotzdem. Das ist gewollt: lieber
+     einmal uebersprungen als zweimal bezahlt. Wiederfinden lassen sie sich
+     ueber `ansprechpartner_gesucht_am is not null and quelle is null`. */
 
-  const bericht = { vorgenommen: leads.length, mit_stelle: stuecke.length, gesetzt }
+  const bericht = { geladen: leads.length, vorgenommen: belegt.length,
+                    mit_stelle: stuecke.length, gesetzt }
   console.log('ansprechpartner-suchen:', JSON.stringify(bericht))
   return antworte(200, bericht)
 }

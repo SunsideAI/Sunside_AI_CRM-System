@@ -198,8 +198,20 @@ sagt(/andereFirma\(lead\.quelle, lead\.website\)/.test(fn),
 // ── Was die Funktion nicht anfasst ────────────────────────────────────────
 sagt(/\.is\('ansprechpartner_vorname', null\)/.test(fn),
   'Ein von Hand gesetzter Name wird nicht überschrieben')
-sagt(/ansprechpartner_gesucht_am/.test(fn) && /sonst nimmt sich der naechste Durchgang/.test(fn),
-  'Auch Leads ohne Fund werden vermerkt')
+// Der Vermerk steht, bevor die Arbeit beginnt. Ein Durchgang dauert gut zehn
+// Minuten; wurde erst am Ende vermerkt, griff sich ein gleichzeitig
+// gestarteter zweiter Durchgang dieselben Leads - und jede Seite waere
+// zweimal geholt und jeder Ausschnitt zweimal bezahlt worden.
+const belegStelle = fn.indexOf('ansprechpartner_gesucht_am: jetzt')
+const arbeitStelle = fn.indexOf('await ansprechpartnerStelle(lead.website)')
+sagt(belegStelle > 0 && belegStelle < arbeitStelle,
+  'Die Leads werden belegt, bevor die Arbeit beginnt')
+sagt(/\.is\('ansprechpartner_gesucht_am', null\)\s*\n\s*\.select\('id'\)/.test(fn),
+  'Und nur, was kein anderer Durchgang schon hat')
+sagt(/const lead = belegt\[i\+\+\]/.test(fn),
+  'Gearbeitet wird an den belegten, nicht an den geladenen')
+sagt(/lieber\s+einmal uebersprungen als zweimal bezahlt/.test(fn),
+  'Ein abgebrochener Durchgang gibt seine Leads nicht wieder frei')
 sagt(!/anrede:/.test(fn),
   'Die Anrede setzt der Trigger, nicht diese Funktion')
 sagt(/istAdmin/.test(fn), 'Nur die Leitung darf den Lauf anstoßen')
