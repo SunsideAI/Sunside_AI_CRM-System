@@ -84,6 +84,14 @@ sagt(!/color: #666[^>]*>(Gründer|KI-Entwicklung)/.test(sig),
 // Genau eine Leerzeile zwischen Gruß und Name.
 sagt(/Mit freundlichen Grüßen<\/div>\s*<div[^>]*>&nbsp;<\/div>\s*<div[^>]*><strong>/.test(sig),
   'Eine Leerzeile zwischen Gruß und Name')
+// Und eine davor, damit der Gruß nicht am Mailtext klebt.
+sagt(/^\s*<div[^>]*>\s*<div[^>]*>&nbsp;<\/div>\s*<div[^>]*>Mit freundlichen Grüßen/.test(sig),
+  'Eine Leerzeile zwischen Mailtext und Gruß')
+// Bei eigenem Gruß steht die Position direkt unter dem Namen aus dem Text -
+// dort waere eine Leerzeile falsch.
+const eigen = signaturHtml({ name: 'Paul Probodziak', eigenerGruss: true })
+sagt(/^\s*<div[^>]*>\s*<div[^>]*>Gründer<\/div>/.test(eigen),
+  'Bei eigenem Gruß keine Leerzeile vor der Position')
 // Das Trennzeichen der Adresszeile ist ein grosses I, so wie im Postfach.
 sagt(sig.includes('Braunschweig I&nbsp;Deutschland'), 'Adresse mit „I" getrennt')
 // Die Links der Fusszeile sind schwarz, nicht in der Hausfarbe.

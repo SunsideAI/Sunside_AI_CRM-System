@@ -81,9 +81,13 @@ export function signaturHtml({ name, email, telefon, eigenerGruss = false } = {}
   const LEER = `<div style="${SCHRIFT}">&nbsp;</div>`
   const SCHWARZ = 'color: rgb(0, 0, 0);'
 
+  // Vor dem Gruss eine Leerzeile, damit er nicht am Mailtext klebt. Bei
+  // eigenerGruss steht der Gruss schon im Text und darunter folgt nur noch
+  // die Position - die gehoert direkt unter den Namen, ohne Abstand.
   const kopf = eigenerGruss
     ? `<div style="${SCHRIFT}">${position}</div>`
-    : `<div style="${SCHRIFT}">Mit freundlichen Grüßen</div>
+    : `${LEER}
+       <div style="${SCHRIFT}">Mit freundlichen Grüßen</div>
        ${LEER}
        <div style="${SCHRIFT}"><strong>${n}</strong></div>
        <div style="${SCHRIFT}">${position}</div>`
