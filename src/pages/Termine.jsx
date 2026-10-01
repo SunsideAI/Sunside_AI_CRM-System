@@ -1,6 +1,5 @@
-import { STATUS, anzeigeName } from '../../shared/status.js'
+import { STATUS, anzeigeName, stufeVonLead, STUFE } from '../../shared/status.js'
 import LeadSchublade from '../components/LeadSchublade'
-import SetterPool from '../components/SetterPool'
 import EmailComposer from '../components/EmailComposer'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -294,42 +293,37 @@ function Termine() {
       .sort((a, b) => new Date(a.start) - new Date(b.start))
   }
 
+  // Woran man einen Termin im Kalender erkennt.
+  //
+  // Die Farbe beantwortet eine Frage: Muss sich jemand darum kuemmern?
+  //   gelb  - Beratungsgespraech ohne Setter, liegt im Pool
+  //   gruen - Beratungsgespraech, jemand ist eingeteilt
+  //   lila  - Abschlussgespraech, die Sache des Closers
+  //   rot   - abgesagt (durchgestrichen)
+  //   orange- Wiedervorlage
+  //
+  // Rot bleibt der Absage vorbehalten. Ein Abschlussgespraech in Rot saehe aus
+  // wie ein geplatzter Termin, und das ist die Unterscheidung, auf die es in
+  // einem Kalender zuerst ankommt. Das Closing traegt deshalb die Hausfarbe.
   const getEventColor = (event) => {
-    // Status-basierte Farben haben Priorität
     const status = event.status?.toLowerCase() || ''
 
-    // Abgesagt = Rot
     if (status.includes('abgesagt')) {
       return 'bg-red-100 border-red-300 text-red-700'
     }
-
-    // Verschoben = Gelb/Amber
-    if (status.includes('verschoben')) {
-      return 'bg-amber-100 border-amber-300 text-amber-800'
-    }
-
-    // Wiedervorlage = Orange
     if (event.source === 'wiedervorlage') {
       return 'bg-orange-100 border-orange-300 text-orange-800'
     }
-
-    if (viewMode === 'all') {
-      // In "Alle Termine" Ansicht: Farbe nach Closer
-      if (event.closerName) {
-        return 'bg-green-100 border-green-300 text-green-800'
-      }
-      return 'bg-amber-100 border-amber-300 text-amber-800' // Kein Closer = Pool
-    }
-
-    // Mein Closing (ich bin Closer) = Grün
-    if (event.isMyClosing) {
-      return 'bg-green-100 border-green-300 text-green-800'
-    }
-    // Meine Buchung (ich bin Setter, aber nicht Closer) = Lila
-    if (event.isMyBooking && !event.isMyClosing) {
+    // Liegt der Kontakt beim Closer, ist es ein Abschlussgespraech - egal, ob
+    // der Status noch hinterherhinkt (siehe anCloserUebergeben).
+    if (stufeVonLead(event.lead || {}) === STUFE.CLOSING) {
       return 'bg-secondary-container border-primary-fixed-dim text-primary'
     }
-    return 'bg-blue-100 border-blue-300 text-blue-800'
+    // Beratungsgespraech: Ohne Setter wartet es im Pool auf jemanden.
+    if (!event.setterName) {
+      return 'bg-amber-100 border-amber-300 text-amber-800'
+    }
+    return 'bg-green-100 border-green-300 text-green-800'
   }
 
   // Prüfen ob Termin abgesagt ist (für Durchstreichung)
@@ -466,9 +460,6 @@ function Termine() {
         </div>
       )}
 
-      {/* Beratungsgespräche, für die noch kein Setter eingeteilt ist */}
-      <SetterPool onGeaendert={loadTermine} />
-
       {/* Kalender */}
       <div className="card-elevated overflow-hidden">
         {/* Wochentage Header */}
@@ -591,47 +582,28 @@ function Termine() {
         )}
       </div>
 
-      {/* Legende */}
+      {/* Legende - dieselbe in beiden Ansichten, weil die Farben jetzt
+          dasselbe bedeuten: Kuemmert sich jemand darum? */}
       <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-600">
-        {viewMode === 'own' ? (
-          <>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-green-200 border border-green-300"></div>
-              <span>Mein Closing</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-primary-fixed-dim border border-primary-fixed-dim"></div>
-              <span>Von mir gebucht</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-orange-200 border border-orange-300"></div>
-              <span>Wiedervorlage</span>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-green-200 border border-green-300"></div>
-              <span>Mit Closer</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-amber-200 border border-amber-300"></div>
-              <span>Im Pool (kein Closer)</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded bg-orange-200 border border-orange-300"></div>
-              <span>Wiedervorlage</span>
-            </div>
-          </>
-        )}
-        {/* Status-Legende (immer anzeigen) */}
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-amber-200 border border-amber-300"></div>
+          <span>Ohne Setter (im Pool)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-green-200 border border-green-300"></div>
+          <span>Beratungsgespräch, eingeteilt</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-secondary-container border border-primary-fixed-dim"></div>
+          <span>Abschlussgespräch</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-orange-200 border border-orange-300"></div>
+          <span>Wiedervorlage</span>
+        </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-red-200 border border-red-300"></div>
           <span className="line-through">Abgesagt</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-amber-200 border border-amber-300"></div>
-          <span>Verschoben</span>
         </div>
       </div>
 
