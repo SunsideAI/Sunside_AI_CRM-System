@@ -151,6 +151,20 @@ sagt(namenspaarBrauchbar('Dipl.', 'Ing. Jakob') === null, 'Und „Dipl." nicht')
 sagt(namenspaarBrauchbar('Ingo', 'Ruderisch')?.vorname === 'Ingo', 'Aber „Ingo" schon')
 sagt(namenspaarBrauchbar('Ingrid', 'Fischmann')?.vorname === 'Ingrid', 'Und „Ingrid" auch')
 sagt(namenspaarBrauchbar('Franz', 'Zormann')?.vorname === 'Franz', 'Und „Franz" auch')
+// Eine Rechtsform irgendwo im Namen: da steht die Firma, nicht ihr Inhaber.
+// "Niedermayer Immobilien GmbH" trug den Nachnamen "Immobilien GmbH".
+sagt(namenspaarBrauchbar('Niedermayer', 'Immobilien GmbH') === null,
+  '„Immobilien GmbH" ist kein Nachname')
+sagt(namenspaarBrauchbar('Hans', 'Müller GmbH') === null, 'Und „Müller GmbH" auch nicht')
+// Echte Namen, in denen dieselben Buchstabenfolgen stecken.
+sagt(namenspaarBrauchbar('Hagen', 'Agnesens')?.nachname === 'Agnesens', 'Aber „Agnesens" schon')
+sagt(namenspaarBrauchbar('Magnus', 'Kaufmann')?.vorname === 'Magnus', 'Und „Magnus" auch')
+sagt(namenspaarBrauchbar('Dagmar', 'Wagner')?.vorname === 'Dagmar', 'Und „Dagmar Wagner" auch')
+// Was im 3.000er-Durchgang an echten Namen vorkam und bleiben muss.
+sagt(namenspaarBrauchbar('Hans-Christian', 'de la Motte') !== null, 'Ein Namenszusatz bleibt')
+sagt(namenspaarBrauchbar('Lutz', 'Freiherr von Entreß-Fürsteneck') !== null, 'Ein Adelstitel auch')
+sagt(namenspaarBrauchbar('Eva Maria', 'Nietl') !== null, 'Ein Doppelvorname auch')
+sagt(namenspaarBrauchbar('Stefan A.', 'Beeck') !== null, 'Und ein Vorname mit Initial')
 sagt(namenspaarBrauchbar('Kerstin', 'Petersen')?.nachname === 'Petersen', 'Ein echtes Paar schon')
 sagt(namenspaarBrauchbar('Ümit', 'Alagöz')?.vorname === 'Ümit', 'Auch mit Umlaut am Anfang')
 sagt(namenspaarBrauchbar('Lars', 'Krüssel')?.nachname === 'Krüssel', 'Und mit Umlaut im Namen')

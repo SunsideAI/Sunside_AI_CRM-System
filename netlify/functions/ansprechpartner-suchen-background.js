@@ -220,7 +220,10 @@ export async function handler(event) {
           ansprechpartner_vorname: vorname,
           ansprechpartner_nachname: nachname,
           ansprechpartner_quelle: lead.quelle,
-          ansprechpartner_gesucht_am: new Date().toISOString(),
+          // Der Zeitstempel steht schon aus der Belegung. Wird er hier noch
+          // einmal gesetzt, verliert er seine Aussage: an ihm laesst sich
+          // sonst nicht mehr ablesen, welche Leads zu welchem Durchgang
+          // gehoerten.
         })
         .eq('id', lead.id)
         .is('ansprechpartner_vorname', null)   // nichts von Hand Gesetztes ueberschreiben

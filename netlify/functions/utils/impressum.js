@@ -256,6 +256,10 @@ export function brauchbar(wert) {
      Vornamensfeld. Der Auftrag an das Modell verbot das schon; es hielt sich
      nicht daran, also steht es hier. */
   if (/^(herr|frau|hr|fr|dr|prof|dipl|ing|mag|med|jur|rer|nat|h\.?c|msc|ba|ma|m\.?a|b\.?a)\.?$/i.test(w)) return null
+  /* Eine Rechtsform irgendwo im Wert heisst: hier steht die Firma, nicht ihr
+     Inhaber. Bei "Niedermayer Immobilien GmbH" trug der Nachname
+     "Immobilien GmbH" - die Sperrliste oben traf nur das Wort fuer sich. */
+  if (/(?<![A-Za-z\u00c0-\u024f])(gmbh|mbh|ohg|gbr|kgaa|e\.?\s?k(?:fr)?\.|ug\b|\bag\b|\bkg\b)/i.test(w)) return null
   /* Eine Abkuerzung ist kein Name. Im ersten Durchgang am 01.10.2026 kam bei
      sechs von 25 Leads "WEG WEG" heraus - das Wort stand im Seitentext, und
      das Modell nahm es, weil nichts Besseres da war. Ein Wort ganz in
