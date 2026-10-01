@@ -12,7 +12,7 @@
 
 import fs from 'node:fs'
 import { zuText, ausschnitt, unterseiten, brauchbar, wirktWieEinName, entschluessleBytes,
-         namenspaarBrauchbar }
+         namenspaarBrauchbar, andereFirma }
   from '../netlify/functions/utils/impressum.js'
 
 
@@ -145,6 +145,29 @@ sagt(namenspaarBrauchbar('Kerstin', 'Petersen')?.nachname === 'Petersen', 'Ein e
 sagt(namenspaarBrauchbar('Ümit', 'Alagöz')?.vorname === 'Ümit', 'Auch mit Umlaut am Anfang')
 sagt(namenspaarBrauchbar('Lars', 'Krüssel')?.nachname === 'Krüssel', 'Und mit Umlaut im Namen')
 
+// ── Gehört die Fundstelle zu dieser Firma? ────────────────────────────────
+const FIRMENFAELLE = [
+  // Dieselbe Firma - nur www, http/https oder eine Unterseite.
+  ['https://kriech-immobilien.de/impressum/', 'http://www.kriech-immobilien.de/', false],
+  ['https://www.pienzenauer-trudering.de/impressum/', 'https://pienzenauer-trudering.de/', false],
+  ['https://www.traum.immobilien/impressum', 'https://www.traum.immobilien/', false],
+  ['https://firma.co.uk/imprint', 'https://firma.co.uk/', false],
+  // Eine Filiale liegt auf derselben Domain - das erkennt nur das Modell,
+  // nicht diese Regel. Hier darf sie nicht fälschlich zuschlagen.
+  ['https://www.ksk-immobilien.de/impressum/', 'https://www.ksk-immobilien.de/standort/siegburg/', false],
+  // Eine andere Firma: die Agentur, der Hoster, ein Nachfolger.
+  ['https://www.aufteilungsplan.de/impressum', 'https://anneser-immobilien.de/', true],
+  ['https://vosse-immo.de/impressum', 'https://osterkamp-immobilien.de/', true],
+]
+let firmenfehler = 0
+for (const [quelle, website, soll] of FIRMENFAELLE) {
+  if (andereFirma(quelle, website) !== soll) {
+    firmenfehler++
+    console.log(`    ✗ ${website} ← ${quelle}`)
+  }
+}
+sagt(firmenfehler === 0, `${FIRMENFAELLE.length} Fälle: fremdes Impressum erkannt`)
+
 // ── Der Auftrag an das Modell ─────────────────────────────────────────────
 const fn = fs.readFileSync('netlify/functions/ansprechpartner-suchen-background.js', 'utf8')
 sagt(/falscher Name ist schlimmer als kein Name/.test(fn),
@@ -157,6 +180,10 @@ sagt(/Begriffspaar/.test(fn),
   'Und „Mark Wohnungsgesellschaft" nicht für einen Menschen')
 sagt(/Abkürzung \(WEG, IVD, RDM, HV\)/.test(fn),
   'Und keine Abkürzung aus dem Seitentext')
+sagt(/Niederlassung einer Kette und das Impressum gehört der/.test(fn),
+  'Und nicht den Vorstand einer Kette für den Filialleiter')
+sagt(/andereFirma\(lead\.quelle, lead\.website\)/.test(fn),
+  'Eine fremde Domain wird gar nicht erst geschrieben')
 
 // ── Was die Funktion nicht anfasst ────────────────────────────────────────
 sagt(/\.is\('ansprechpartner_vorname', null\)/.test(fn),

@@ -25,7 +25,7 @@
  */
 
 import { createClient } from '@supabase/supabase-js'
-import { ansprechpartnerStelle, namenspaarBrauchbar } from './utils/impressum.js'
+import { ansprechpartnerStelle, namenspaarBrauchbar, andereFirma } from './utils/impressum.js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { verboten } from './utils/zugriff.js'
 
@@ -63,7 +63,12 @@ async function frageModell(stuecke, schluessel) {
         + '"Mark Wohnungsgesellschaft", "Gesetzlicher Vertreter")\n'
         + '- es ist nur ein Nachname ohne Vornamen, oder nur ein Vorname\n'
         + '- es ist eine Abkürzung (WEG, IVD, RDM, HV) oder ein Begriff aus dem '
-        + 'Seitentext, den du mangels Namen genommen hast\n\n'
+        + 'Seitentext, den du mangels Namen genommen hast\n'
+        + '- die Firma ist die Niederlassung einer Kette und das Impressum gehört der '
+        + 'Zentrale. Erkennbar daran, dass die Adresse auf eine Unterseite zeigt '
+        + '(ksk-immobilien.de/standort/siegburg) oder der Firmenname einen Ort trägt, '
+        + 'den das Impressum nicht nennt. Der dort genannte Vorstand ist nicht der '
+        + 'Ansprechpartner dieser Niederlassung.\n\n'
         + 'Stehen mehrere Personen da, nimm die erste. Titel wie Dipl.-Ing., Ing. oder '
         + 'Dr. gehören nicht in den Namen. Schreibe Namen in normaler Gross- und '
         + 'Kleinschreibung, auch wenn der Ausschnitt sie in Grossbuchstaben zeigt.\n\n'
@@ -72,7 +77,8 @@ async function frageModell(stuecke, schluessel) {
       }, {
         role: 'user',
         content: stuecke
-          .map((s, i) => `${i + 1}. Firma: ${s.firma}\n   Impressum: ${s.text}`)
+          .map((s, i) => `${i + 1}. Firma: ${s.firma}\n   Adresse: ${s.website}`
+                            + `\n   Gefunden auf: ${s.quelle}\n   Impressum: ${s.text}`)
           .join('\n\n'),
       }],
     }),
@@ -141,7 +147,8 @@ export async function handler(event) {
       try {
         const stelle = await ansprechpartnerStelle(lead.website)
         if (stelle?.text) {
-          stuecke.push({ id: lead.id, firma: lead.unternehmensname || '', ...stelle })
+          stuecke.push({ id: lead.id, firma: lead.unternehmensname || '',
+                         website: lead.website, ...stelle })
         } else {
           ohneStelle.push(lead.id)
         }
@@ -162,6 +169,14 @@ export async function handler(event) {
     for (const t of treffer) {
       const lead = teil[Number(t.nr) - 1]
       if (!lead) continue
+      /* Fuehrt die Spur auf eine andere Domain, gehoert der Name einer
+         anderen Firma - der Agentur, dem Hoster, einem Nachfolger. Das ist
+         eindeutig genug fuer eine Regel; die Filiale einer Kette erkennt nur
+         das Modell, darum steht sie oben im Auftrag. */
+      if (andereFirma(lead.quelle, lead.website)) {
+        console.log('andere Firma:', lead.website, '->', lead.quelle)
+        continue
+      }
       const paar = namenspaarBrauchbar(t.vorname, t.nachname)
       if (!paar) continue
       const { vorname, nachname } = paar

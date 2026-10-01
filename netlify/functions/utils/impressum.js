@@ -273,3 +273,37 @@ export function namenspaarBrauchbar(vorname, nachname) {
   if (v.toLowerCase() === n.toLowerCase()) return null
   return { vorname: v, nachname: n }
 }
+
+/**
+ * Gehoert die Fundstelle ueberhaupt zu dieser Firma?
+ *
+ * Zwei Faelle, in denen der gefundene Name einem anderen Unternehmen gehoert:
+ *
+ * 1. Fremde Domain. Bei Anneser Immobilien stand im Impressum die Agentur
+ *    Butlerium samt mail@aufteilungsplan.de, bei Osterkamp Immobilien der
+ *    Inhaber von vosse-immo.de. Eine Weiterleitung auf eine ganz andere
+ *    Adresse ist hier das Erkennungszeichen.
+ * 2. Filiale einer Kette. Die Lead-Adresse zeigt dann auf eine Unterseite -
+ *    ksk-immobilien.de/standort/siegburg - waehrend das Impressum der
+ *    Zentrale gehoert und einen Menschen nennt, der mit Siegburg nichts zu
+ *    tun hat. Das entscheidet nicht diese Funktion, sondern das Modell: ob
+ *    "KSK-Immobilien GmbH Siegburg" zur Zentrale passt, ist eine Frage des
+ *    Verstehens, nicht des Vergleichens.
+ */
+export function andereFirma(quelle, website) {
+  const kern = (u) => {
+    try {
+      const teile = new URL(/^https?:\/\//i.test(u) ? u : 'https://' + u)
+        .hostname.toLowerCase().replace(/^www\./, '').split('.')
+      /* Die eintragbare Domain, grob: bei firma.de die ersten beiden Teile,
+         bei firma.co.uk oder firma.com.br drei. Genauer waere eine Liste
+         aller Endungen - fuer die Frage "ist das dieselbe Firma" reicht das. */
+      const tief = teile.length > 2 && /^(co|com|org|net|gov|ac)$/.test(teile[teile.length - 2]) ? 3 : 2
+      return teile.slice(-tief).join('.')
+    } catch { return null }
+  }
+  const a = kern(quelle)
+  const b = kern(website)
+  if (!a || !b) return false
+  return a !== b
+}
