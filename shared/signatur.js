@@ -24,18 +24,23 @@ const BILD = {
 export const SIGNATUR_FARBE = '#460E74'
 
 /**
- * Die Position unter dem Namen.
+ * Die eine Zeile unter dem Namen.
  *
- * Wer das Unternehmen gegruendet hat, steht auch so da; alle anderen sind
- * KI-Entwickler. Verglichen wird ohne Ruecksicht auf Gross- und
- * Kleinschreibung und auf doppelte Leerzeichen, weil der Name aus dem
- * Benutzerprofil kommt und dort schon mal zwei davon stehen.
+ * Wer das Unternehmen gegruendet hat, steht auch so da. Bei allen anderen
+ * steht an derselben Stelle, was die Firma tut. Zwei Zeilen braucht es nicht:
+ * Der Gruender sagt mit "Gründer" schon alles, und bei den uebrigen stand der
+ * Firmensatz vorher ohnehin direkt darunter.
+ *
+ * Verglichen wird ohne Ruecksicht auf Gross- und Kleinschreibung und auf
+ * doppelte Leerzeichen, weil der Name aus dem Benutzerprofil kommt und dort
+ * schon mal zwei davon stehen.
  */
 const GRUENDER = ['paul probodziak', 'niklas schwerin']
+const FIRMENZEILE = 'KI-Entwicklung für Immobilienmakler'
 
 export function positionFuer(name) {
   const n = String(name || '').toLowerCase().replace(/\s+/g, ' ').trim()
-  return GRUENDER.includes(n) ? 'Gründer' : 'KI-Entwickler'
+  return GRUENDER.includes(n) ? 'Gründer' : FIRMENZEILE
 }
 
 export const ABSENDER_VORGABE = {
@@ -72,16 +77,14 @@ export function signaturHtml({ name, email, telefon, eigenerGruss = false } = {}
   // darunter, damit sie nicht verloren geht.
   const position = sicher(positionFuer(name))
   const gruss = eigenerGruss
-    ? `<div style="font-weight: bold; margin-bottom: 2px;">${position}</div>`
-    : `<div style="margin-bottom: 5px;">Mit freundlichen Grüßen</div>
+    ? `<div style="margin-bottom: 15px;">${position}</div>`
+    : `<div style="margin-bottom: 16px;">Mit freundlichen Grüßen</div>
       <div style="font-weight: bold; margin-bottom: 2px;">${n}</div>
-      <div style="margin-bottom: 2px;">${position}</div>`
+      <div style="color: #666; margin-bottom: 15px;">${position}</div>`
 
   return `
     <div style="margin-top: 30px; font-family: Arial, sans-serif; font-size: 10pt;">
       ${gruss}
-      <div style="color: #666; margin-bottom: 15px;">KI-Entwicklung für Immobilienmakler</div>
-
       <img src="${BILD.logo}" alt="Sunside AI" style="height: 32px; margin-bottom: 10px;" />
 
       <div style="margin-bottom: 15px;">

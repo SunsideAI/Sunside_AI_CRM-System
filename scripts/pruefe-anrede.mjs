@@ -64,22 +64,35 @@ sagt(/kommtInFrage/.test(engine), 'Die Engine siebt Firmen und Floskeln aus')
 sagt(/unklar/.test(engine) && /falsche Anrede ist schlimmer/.test(engine),
   'Und weist das Modell an, im Zweifel nichts zu setzen')
 
-// ── Die Position in der Signatur ────────────────────────────────────────────
-// Gewuenscht am 01.10.2026: unter dem Namen steht die Position. Gruender sind
-// Paul Probodziak und Niklas Schwerin, alle anderen KI-Entwickler.
+// ── Die Zeile unter dem Namen ──────────────────────────────────────────────
+// Stand vom 01.10.2026: EINE Zeile unter dem Namen. Gruender sind Paul
+// Probodziak und Niklas Schwerin; bei allen anderen steht dort, was die Firma
+// tut. Zweimal dasselbe braucht niemand.
 const { positionFuer, signaturHtml } = await import('../shared/signatur.js')
+const FIRMENZEILE = 'KI-Entwicklung für Immobilienmakler'
 
 sagt(positionFuer('Paul Probodziak') === 'Gründer', 'Paul ist Gründer')
 sagt(positionFuer('Niklas Schwerin') === 'Gründer', 'Niklas ist Gründer')
-sagt(positionFuer('Max Lehmann') === 'KI-Entwickler', 'Alle anderen sind KI-Entwickler')
+sagt(positionFuer('Max Lehmann') === FIRMENZEILE, 'Bei allen anderen steht die Firmenzeile')
 // Der Name kommt aus dem Benutzerprofil - dort steht schon mal ein Leerzeichen zu viel.
 sagt(positionFuer('  paul   probodziak ') === 'Gründer', 'Schreibweise und Leerzeichen egal')
 
-const sig = signaturHtml({ name: 'Max Lehmann', email: 'a@b.de', telefon: '+49 1' })
-sagt(sig.includes('>KI-Entwickler<'), 'Die Position steht in der Signatur')
-sagt(sig.indexOf('Max Lehmann') < sig.indexOf('>KI-Entwickler<'), 'Und zwar unter dem Namen')
-// Auch wenn die Mail schon mit eigenem Gruss schliesst, darf sie nicht fehlen.
-sagt(signaturHtml({ name: 'Max Lehmann', eigenerGruss: true }).includes('>KI-Entwickler<'),
+const sigG = signaturHtml({ name: 'Paul Probodziak', email: 'a@b.de', telefon: '+49 1' })
+const sigE = signaturHtml({ name: 'Max Lehmann',     email: 'a@b.de', telefon: '+49 1' })
+const zaehle = (h) => (h.match(/KI-Entwicklung für Immobilienmakler/g) || []).length
+
+sagt(sigG.includes('>Gründer<'), 'Beim Gründer steht „Gründer"')
+sagt(zaehle(sigG) === 0, 'Und die Firmenzeile entfällt dort')
+sagt(zaehle(sigE) === 1, 'Bei allen anderen steht sie genau einmal')
+sagt(sigE.indexOf('Max Lehmann') < sigE.indexOf(FIRMENZEILE), 'Und zwar unter dem Namen')
+
+// Luft zwischen Gruss und Namen.
+sagt(/Mit freundlichen Grüßen<\/div>/.test(sigG)
+     && /margin-bottom: 16px;">Mit freundlichen Grüßen/.test(sigG),
+  'Zwischen Gruß und Name steht eine Leerzeile')
+
+// Auch wenn die Mail schon mit eigenem Gruss schliesst, darf die Zeile nicht fehlen.
+sagt(signaturHtml({ name: 'Max Lehmann', eigenerGruss: true }).includes(FIRMENZEILE),
   'Auch bei eigenem Gruß in der Mail')
 
 console.log('')
