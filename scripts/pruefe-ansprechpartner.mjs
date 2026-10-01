@@ -141,6 +141,16 @@ sagt(namenspaarBrauchbar('IVD', 'Immobilien') === null, 'Eine Abkürzung als Vor
 sagt(namenspaarBrauchbar('HV', 'Müller') === null, 'Und „HV Müller" nicht')
 sagt(namenspaarBrauchbar('Günther', 'Günther') === null,
   'Zweimal dasselbe Wort ist kein Name, sondern eine Partnerfirma')
+// Eine Anrede oder ein Titel ist kein Vorname. Im 500er-Durchgang kam
+// zweimal das Wort vor dem Namen ins Vornamensfeld: kwr-rathenow.de nennt
+// nur "Herr Harwardt" ohne Vornamen, butscher.net "Dr. Jens Butscher".
+sagt(namenspaarBrauchbar('Herr', 'Harwardt') === null, '„Herr Harwardt" kommt nicht durch')
+sagt(namenspaarBrauchbar('Dr.', 'Jens Butscher') === null, 'Und „Dr." als Vorname nicht')
+sagt(namenspaarBrauchbar('Dipl.', 'Ing. Jakob') === null, 'Und „Dipl." nicht')
+// Namen, die so anfangen, muessen bleiben.
+sagt(namenspaarBrauchbar('Ingo', 'Ruderisch')?.vorname === 'Ingo', 'Aber „Ingo" schon')
+sagt(namenspaarBrauchbar('Ingrid', 'Fischmann')?.vorname === 'Ingrid', 'Und „Ingrid" auch')
+sagt(namenspaarBrauchbar('Franz', 'Zormann')?.vorname === 'Franz', 'Und „Franz" auch')
 sagt(namenspaarBrauchbar('Kerstin', 'Petersen')?.nachname === 'Petersen', 'Ein echtes Paar schon')
 sagt(namenspaarBrauchbar('Ümit', 'Alagöz')?.vorname === 'Ümit', 'Auch mit Umlaut am Anfang')
 sagt(namenspaarBrauchbar('Lars', 'Krüssel')?.nachname === 'Krüssel', 'Und mit Umlaut im Namen')

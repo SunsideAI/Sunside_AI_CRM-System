@@ -250,6 +250,12 @@ export function brauchbar(wert) {
   if (w.length < 2 || w.length > 40) return null
   if (/\d|@|\.de$|\.com$/.test(w)) return null
   if (/^(gmbh|kg|ohg|gbr|mbh|ag|e\.?k\.?|vertreter|inhaber|gesch|firma|unbekannt|unklar|n\/?a|null)$/i.test(w)) return null
+  /* Eine Anrede oder ein Titel ist kein Vorname. kwr-rathenow.de nennt im
+     Impressum nur "Herr Harwardt, Geschäftsführer" - ohne Vornamen -, und
+     butscher.net "Dr. Jens Butscher": beide Male landete das Wort davor im
+     Vornamensfeld. Der Auftrag an das Modell verbot das schon; es hielt sich
+     nicht daran, also steht es hier. */
+  if (/^(herr|frau|hr|fr|dr|prof|dipl|ing|mag|med|jur|rer|nat|h\.?c|msc|ba|ma|m\.?a|b\.?a)\.?$/i.test(w)) return null
   /* Eine Abkuerzung ist kein Name. Im ersten Durchgang am 01.10.2026 kam bei
      sechs von 25 Leads "WEG WEG" heraus - das Wort stand im Seitentext, und
      das Modell nahm es, weil nichts Besseres da war. Ein Wort ganz in
