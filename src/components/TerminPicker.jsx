@@ -108,9 +108,18 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
   const zielStand = zielAbleiten(uebergabe1)
 
   // Was frueher in einem Freitextfeld stand, steht jetzt in zwei Feldern.
-  // Zusammengesetzt ergibt es denselben Satz fuer Kommentar und Calendly.
+  //
+  // Fuer den Kommentar im CRM gehoeren beide zusammen: das Ziel aus der
+  // Auswahl und der Wortlaut des Kunden dazu. In der Calendly-Buchung steht
+  // der Wortlaut dagegen nur nochmal dasselbe in anderen Worten („Ziel: Mehr
+  // Eigentuemer-Anfragen. 'Mehr Eigentuemeranfragen'"), und der Kunde
+  // bekommt die Buchungsbestaetigung zu sehen. Dorthin geht deshalb nur das
+  // Ziel.
+  const zielSatz = (uebergabe1.ziele || []).length > 0
+    ? `Ziel: ${(zielStand.ziel ? [zielStand.ziel] : uebergabe1.ziele).join(', ')}`
+    : ''
   const problemstellung = [
-    (uebergabe1.ziele || []).length > 0 && `Ziel: ${(zielStand.ziel ? [zielStand.ziel] : uebergabe1.ziele).join(', ')}`,
+    zielSatz,
     uebergabe1.schmerzpunkt_wortlaut && `„${uebergabe1.schmerzpunkt_wortlaut}"`
   ].filter(Boolean).join('. ')
 
@@ -358,7 +367,8 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             telefon: contactPhone,
             kategorie: lead?.kategorie,
             taetigkeit: taetigkeit,
-            problemstellung: problemstellung,
+            // Nur das Ziel: Der Wortlaut des Kunden bleibt im CRM.
+            problemstellung: zielSatz || problemstellung,
             terminart: selectedType,
             // Closer-Info
             // Der Closer steht hier noch nicht fest - er kommt nach der
