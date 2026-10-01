@@ -392,6 +392,9 @@ export async function handler(event) {
           id: record.id,
           unternehmen: arrayToString(record.unternehmen) || arrayToString(originalLead.unternehmensname) || '',
           ansprechpartnerVorname: arrayToString(record.ansprechpartner_vorname) || arrayToString(originalLead.ansprechpartner_vorname) || '',
+          // Herr oder Frau, aus dem Vornamen bestimmt. Die Mailvorlage greift
+          // darauf zu; fehlt der Wert, gruesst sie mit vollem Namen.
+          anrede: record.anrede || originalLead.anrede || null,
           ansprechpartnerNachname: arrayToString(record.ansprechpartner_nachname) || arrayToString(originalLead.ansprechpartner_nachname) || '',
           kategorie: arrayToString(record.kategorie) || arrayToString(originalLead.kategorie) || '',
           email: arrayToString(record.mail) || arrayToString(originalLead.mail) || '',
@@ -1038,6 +1041,7 @@ export async function handler(event) {
         'billing_mode': 'billing_mode',
         'billing_notes': 'billing_notes',
         'ansprechpartner_vorname': 'ansprechpartner_vorname',
+        'anrede': 'anrede',
         'ansprechpartner_nachname': 'ansprechpartner_nachname',
         'telefonnummer': 'telefonnummer',
         'mail': 'mail',

@@ -116,9 +116,28 @@ export function linksFuer(lead, links = {}) {
  * Links. Was sich nicht füllen lässt, fehlt in der Liste und bleibt im Text
  * stehen; der Mail-Dialog lässt dann nicht senden, bis es jemand ersetzt.
  *
- * Die Anrede („Herr/Frau") bleibt bewusst stehen: Das CRM kennt das
- * Geschlecht nicht, der Absender setzt sie beim Durchlesen richtig.
+ * Die Anrede kommt aus dem Feld `anrede` des Kontakts („Herr" oder „Frau"),
+ * das aus dem Vornamen bestimmt wird. Wo sie fehlt - Doppelnennungen,
+ * Unisex-Namen, Firmen im Namensfeld -, wird mit vollem Namen gegrüßt statt
+ * geraten: „Hallo Anna Berg" ist nie falsch, „Hallo Herr Berg" schon.
  */
+/**
+ * Die Anrede einer Mail.
+ *
+ * Mit bekanntem Geschlecht die uebliche Form („Hallo Herr Berg"), sonst mit
+ * vollem Namen („Hallo Anna Berg"). Geraten wird nicht: Eine falsche Anrede
+ * faellt beim Empfaenger sofort auf und kostet mehr, als die neutrale Form je
+ * kostet. Fehlt auch der Name, bleibt der Platzhalter stehen und der
+ * Mail-Dialog laesst nicht senden.
+ */
+function anrede(lead, nachname, vorname, schluessel) {
+  if (!nachname) return null
+  const gruss = schluessel === 'nachfass_abschied' ? 'Guten Tag' : 'Hallo'
+  const form = lead.anrede || null          // 'Herr' | 'Frau' | null
+  if (form) return `${gruss} ${form} ${nachname}`
+  return `${gruss} ${[vorname, nachname].filter(Boolean).join(' ')}`
+}
+
 export function platzhalterWerte({ lead = {}, absender = '', links = {}, schluessel = null }) {
   const nachname = lead.ansprechpartner_nachname || lead.ansprechpartnerNachname || ''
   const vorname = lead.ansprechpartner_vorname || lead.ansprechpartnerVorname || ''
@@ -131,7 +150,7 @@ export function platzhalterWerte({ lead = {}, absender = '', links = {}, schlues
     'Nachname': nachname || null,
     'Vorname Nachname': `${vorname} ${nachname}`.trim() || null,
     // Füllregel vom 15.09.: „Hallo" in den Nachfass-Mails, „Guten Tag" im Abschiedsbrief.
-    'Anrede': nachname ? `${schluessel === 'nachfass_abschied' ? 'Guten Tag' : 'Hallo'} Herr/Frau ${nachname}` : null,
+    'Anrede': anrede(lead, nachname, vorname, schluessel),
     'Absender': absender || null,
     'Video-Link': video ? `[Zum Video](${video})` : null,
     'VSL-Link': vsl ? `[dieses Video](${vsl})` : null,
