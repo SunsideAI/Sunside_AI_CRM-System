@@ -232,10 +232,29 @@ export async function handler(event) {
     }
   }
 
-  /* Ein Lead, der angefangen, aber nicht zu Ende gebracht wurde - weil die
-     Frist ablief -, traegt den Vermerk trotzdem. Das ist gewollt: lieber
-     einmal uebersprungen als zweimal bezahlt. Wiederfinden lassen sie sich
-     ueber `ansprechpartner_gesucht_am is not null and quelle is null`. */
+  /* Was die Frist nicht mehr geschafft hat, wieder freigeben.
+
+     Die Belegung schuetzt davor, dass zwei Durchgaenge dieselbe Seite holen.
+     Laeuft die Frist ab, bleibt der Rest der Liste aber unbearbeitet - und
+     galt dann fuer immer als durchsucht. Bei Johannes Immobilien stand
+     "Geschäftsführer: Alexander Johannes" im Impressum, bei Seebauer
+     "Gerhard Seebauer", bei MH Immobilien "Monika Haumann": alle drei nie
+     geholt, alle drei abgehakt.
+
+     Eine Seite zu holen kostet nichts. Ein verlorener Name schon. */
+  const bearbeitet = new Set([...ohneStelle, ...stuecke.map(s => s.id)])
+  const liegengeblieben = belegt.filter(l => !bearbeitet.has(l.id)).map(l => l.id)
+  for (let k = 0; k < liegengeblieben.length; k += 500) {
+    const { error: e } = await supabase
+      .from('leads')
+      .update({ ansprechpartner_gesucht_am: null })
+      .in('id', liegengeblieben.slice(k, k + 500))
+      .is('ansprechpartner_quelle', null)
+    if (e) console.error('Freigeben:', e.message)
+  }
+  if (liegengeblieben.length) {
+    console.log(`Frist abgelaufen, ${liegengeblieben.length} wieder freigegeben`)
+  }
 
   const bericht = { geladen: leads.length, vorgenommen: belegt.length,
                     mit_stelle: stuecke.length, gesetzt }

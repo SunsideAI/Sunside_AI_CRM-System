@@ -237,8 +237,16 @@ sagt(/\.is\('ansprechpartner_gesucht_am', null\)\s*\n\s*\.select\('id'\)/.test(f
   'Und nur, was kein anderer Durchgang schon hat')
 sagt(/const lead = belegt\[i\+\+\]/.test(fn),
   'Gearbeitet wird an den belegten, nicht an den geladenen')
-sagt(/lieber\s+einmal uebersprungen als zweimal bezahlt/.test(fn),
-  'Ein abgebrochener Durchgang gibt seine Leads nicht wieder frei')
+// Was die Frist nicht mehr schafft, muss zurueck in den Topf. Bei Johannes
+// Immobilien stand „Geschäftsführer: Alexander Johannes" im Impressum, bei
+// Seebauer „Gerhard Seebauer", bei MH Immobilien „Monika Haumann" - alle drei
+// wurden belegt, nie geholt und galten dann für immer als durchsucht.
+sagt(/ansprechpartner_gesucht_am: null/.test(fn),
+  'Was die Frist nicht schafft, wird wieder freigegeben')
+sagt(/const liegengeblieben = belegt\.filter\(l => !bearbeitet\.has\(l\.id\)\)/.test(fn),
+  'Und zwar genau die Leads, die kein Arbeiter angefasst hat')
+sagt(/Eine Seite zu holen kostet nichts\. Ein verlorener Name schon\./.test(fn),
+  'Die Belegung schützt vor Doppelarbeit, nicht vor dem zweiten Versuch')
 sagt(!/anrede:/.test(fn),
   'Die Anrede setzt der Trigger, nicht diese Funktion')
 sagt(/istAdmin/.test(fn), 'Nur die Leitung darf den Lauf anstoßen')
