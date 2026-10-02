@@ -63,6 +63,14 @@ const engine = fs.readFileSync('netlify/functions/anrede-nachtragen-background.j
 sagt(/kommtInFrage/.test(engine), 'Die Engine siebt Firmen und Floskeln aus')
 sagt(/unklar/.test(engine) && /falsche Anrede ist schlimmer/.test(engine),
   'Und weist das Modell an, im Zweifel nichts zu setzen')
+// Supabase gibt ohne Zutun hoechstens 1.000 Zeilen zurueck. Solange die
+// Tabelle 1.670 Namen trug, fiel das nicht auf; seit der Impressum-Suche sind
+// es 13.730. Dazu fragte die Abfrage nur nach „keine Anrede" - das trifft auch
+// die 23.000 Leads ganz ohne Namen, und die ersten tausend Zeilen waren damit
+// fast alle leer.
+sagt(/\.range\(von, von \+ 999\)/.test(engine), 'Die Engine holt alle Zeilen, nicht die ersten tausend')
+sagt(/\.not\('ansprechpartner_vorname', 'is', null\)/.test(engine),
+  'Und fragt nur nach Leads, die überhaupt einen Namen tragen')
 
 // ── Die Signatur ──────────────────────────────────────────────────────────
 // Stand vom 01.10.2026: 1:1 wie die Signatur im Postfach. Verglichen wurde

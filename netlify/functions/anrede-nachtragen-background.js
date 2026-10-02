@@ -63,21 +63,45 @@ export async function handler(event) {
   }
 
   try {
-    // Welche Vornamen stehen ohne Anrede da?
+    /* Alle Zeilen holen, nicht die ersten tausend.
+       
+       Supabase gibt ohne Zutun hoechstens 1.000 Zeilen zurueck. Solange die
+       Tabelle 1.670 Namen trug, fiel das nicht auf. Seit der Impressum-Suche
+       stehen dort 13.730, und die Abfrage fragte ausserdem nur nach "keine
+       Anrede" - das trifft auch die 23.000 Leads ganz ohne Namen. Die ersten
+       tausend Zeilen waren damit fast alle leer, und zu lernen gab es
+       nichts. */
+    async function vornamenAus(tabelle) {
+      const alle = []
+      for (let von = 0; ; von += 1000) {
+        const { data, error } = await supabase
+          .from(tabelle)
+          .select('ansprechpartner_vorname')
+          .is('anrede', null)
+          .not('ansprechpartner_vorname', 'is', null)
+          .range(von, von + 999)
+        if (error) { console.error(tabelle, error.message); break }
+        alle.push(...(data || []))
+        if ((data || []).length < 1000) break
+      }
+      return alle
+    }
+
     const [hot, kalt, bekannt] = await Promise.all([
-      supabase.from('hot_leads').select('ansprechpartner_vorname').is('anrede', null),
-      supabase.from('leads').select('ansprechpartner_vorname').is('anrede', null),
-      supabase.from('vorname_anrede').select('vorname')
+      vornamenAus('hot_leads'),
+      vornamenAus('leads'),
+      supabase.from('vorname_anrede').select('vorname').range(0, 9999)
     ])
     const schonDa = new Set((bekannt.data || []).map(z => z.vorname))
 
     const offen = [...new Set(
-      [...(hot.data || []), ...(kalt.data || [])]
+      [...hot, ...kalt]
         .map(z => (z.ansprechpartner_vorname || '').trim().split(' ')[0])
         .filter(kommtInFrage)
         .map(v => v.normalize('NFC'))
         .filter(v => !schonDa.has(v.toLowerCase()))
     )]
+    console.log(`unbekannte Vornamen: ${offen.length}`)
 
     if (offen.length === 0) {
       return { statusCode: 200, headers: corsHeaders,
