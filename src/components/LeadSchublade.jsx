@@ -143,7 +143,7 @@ function RollenWahl({ liste, onAendern }) {
               disabled={laedt}
               onChange={e => onAendern?.(feld, e.target.value)}
             >
-              <option value="">— niemand —</option>
+              <option value="">niemand</option>
               {/* Wer eingetragen ist, bleibt waehlbar, auch wenn er die Rolle
                   inzwischen nicht mehr traegt oder ausgeschieden ist. Sonst
                   leerte sich das Feld beim Oeffnen stillschweigend. */}
