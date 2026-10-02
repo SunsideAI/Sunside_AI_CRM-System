@@ -70,10 +70,13 @@ function Zelle({ spalte, zeile, badgeFarbe }) {
     case 'titel':
       return (
         <>
-          <div className="font-medium text-on-surface truncate max-w-[22rem]">{wert.titel}</div>
+          {/* Umbrechen statt abschneiden: „Immobilienmakler für Offenbach -
+              D.A. BENTES - DER MAK…" sagt weniger als zwei volle Zeilen, und
+              gerade bei Firmennamen steht das Unterscheidende oft hinten. */}
+          <div className="font-medium text-on-surface break-words max-w-[22rem]">{wert.titel}</div>
           {/* Auf schmalen Schirmen fehlen die eigenen Spalten — dann steht das
               Wichtigste hier mit drunter. */}
-          <div className="text-body-sm text-on-surface-variant truncate">
+          <div className="text-body-sm text-on-surface-variant break-words max-w-[22rem]">
             {wert.unter}
           </div>
         </>
