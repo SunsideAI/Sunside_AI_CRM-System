@@ -17,7 +17,13 @@ const UEBERGABE_SPALTEN = [...new Set([
   ...Object.keys(FELDER), ...SPALTEN_UEBERGABE, 'fragen_vorschlag', 'fragen_vorschlag_am'
 ])]
 import { systemMailSenden } from './utils/mailLayout.js'
-import { termineZurueckImPool, abschlussgespraechVereinbart } from './utils/mails.js'
+import { termineZurueckImPool, abschlussgespraechVereinbart,
+         abschlussgespraechZurKenntnis } from './utils/mails.js'
+
+/* Wohin die Mitlese-Mails der Leitung gehen. Eine Adresse, kein Verteiler aus
+   der Nutzertabelle: Paul und Niklas lesen beide dieses Postfach, und wer von
+   beiden gerade als Closer eingetragen ist, aendert daran nichts. */
+const LEITUNG_MAIL = process.env.LEITUNG_MAIL || 'contact@sunsideai.de'
 import { darf, verboten, hotLeadVerlangen, leadBeteiligt, zuteilungErlaubt, UUID } from './utils/zugriff.js'
 
 const supabase = createClient(
@@ -1011,6 +1017,8 @@ export async function handler(event) {
         'closerName': 'closer_id',  // Wird im Spezialcode zu closer_id aufgelöst
         'setterId': 'setter_id',
         'setterName': 'setter_id',  // Wird im Spezialcode zu setter_id aufgeloest
+        'openerId': 'opener_id',
+        'openerName': 'opener_id',  // Wird im Spezialcode zu opener_id aufgeloest
         'reaktivierungBearbeiterId': 'reaktivierung_bearbeiter_id',
         'reaktivierungBearbeiterName': 'reaktivierung_bearbeiter_id',  // im Spezialcode aufgelöst
         'terminDatum': 'termin_beratungsgespraech',
@@ -1086,6 +1094,18 @@ export async function handler(event) {
               if (sid) fields.setter_id = sid
             } else {
               fields.setter_id = null
+            }
+            continue
+          }
+          // Opener nach Name aufloesen (leer = entfernen). Wer den ersten
+          // Anruf gemacht hat, aendert sich normalerweise nicht - die Leitung
+          // muss es aber richtigstellen koennen, wenn jemand falsch drinsteht.
+          if (key === 'openerName') {
+            if (value) {
+              const oid = await getUserIdByName(value)
+              if (oid) fields.opener_id = oid
+            } else {
+              fields.opener_id = null
             }
             continue
           }
@@ -1454,6 +1474,26 @@ export async function handler(event) {
             imPool: !data.closer_id
           })
           for (const an of empfaenger) await systemMailSenden({ an, betreff: b, mail })
+
+          /* Und einmal zur Kenntnis an die Leitung. Paul und Niklas wollen
+             jeden gelegten Abschlusstermin sehen, ohne im CRM nachzusehen -
+             die Mail oben taugt dafuer nicht, sie spricht den Closer an und
+             fordert zu etwas auf. Steht ein Closer fest, geht sie ohnehin nur
+             an ihn; in den Pool-Fall sind Admins zwar eingeschlossen, aber
+             eben nur dann. */
+          try {
+            const { data: closer } = data.closer_id
+              ? await supabase.from('users').select('vor_nachname').eq('id', data.closer_id).maybeSingle()
+              : { data: null }
+            const { betreff: bk, mail: mk } = abschlussgespraechZurKenntnis({
+              setterName: angemeldet.name,
+              closerName: closer?.vor_nachname || null,
+              unternehmen, ansprechpartner, datum
+            })
+            await systemMailSenden({ an: LEITUNG_MAIL, betreff: bk, mail: mk })
+          } catch (e) {
+            console.error('Mail an die Leitung fehlgeschlagen:', e)
+          }
         } catch (mailFehler) {
           // Die Übergabe steht schon in der Datenbank; eine Mail, die nicht
           // rausgeht, darf sie nicht zurücknehmen.

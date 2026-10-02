@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Phone, Mail, Globe, MapPin, User as UserIcon, Calendar, Video,
   BarChart3, ClipboardList, History, ChevronDown
@@ -6,6 +6,7 @@ import {
 import SlideDrawer from './SlideDrawer'
 import Verlauf from './Verlauf'
 import { Abschnitt, Angabe, Angaben } from './Formular'
+import { istOpener, istSetter, istCloser, istLeitung } from '../../shared/rollen.js'
 
 // Die Schublade eines Kontakts — ein Gerüst für Opening, Setting, Closing und
 // Follow-Up.
@@ -70,14 +71,92 @@ function Rollenpille({ name, wert }) {
  * Vorher hieß der Opener in einem Tab „Vertriebler", im nächsten „Erstanruf",
  * und im Closing fehlte er ganz.
  */
-export function Rollen({ opener, setter, closer }) {
+export function Rollen({ opener, setter, closer, bearbeitbar = false, onAendern }) {
   const liste = [['Opener', opener], ['Setter', setter], ['Closer', closer]]
     .map(([name, wert]) => [name, Array.isArray(wert) ? wert.filter(Boolean).join(', ') : wert])
-    .filter(([, wert]) => wert)
-  if (liste.length === 0) return null
+
+  if (bearbeitbar) return <RollenWahl liste={liste} onAendern={onAendern} />
+
+  const besetzt = liste.filter(([, wert]) => wert)
+  if (besetzt.length === 0) return null
   return (
     <div className="flex flex-wrap gap-2">
-      {liste.map(([name, wert]) => <Rollenpille key={name} name={name} wert={wert} />)}
+      {besetzt.map(([name, wert]) => <Rollenpille key={name} name={name} wert={wert} />)}
+    </div>
+  )
+}
+
+/* Welches Feld im PATCH zu welcher Rolle gehoert, und wer sie tragen darf. */
+const ROLLENFELD = {
+  Opener: { feld: 'openerName', passt: istOpener },
+  Setter: { feld: 'setterName', passt: istSetter },
+  Closer: { feld: 'closerName', passt: istCloser },
+}
+
+/**
+ * Dieselben drei Rollen, nur zum Aendern.
+ *
+ * Zugeteilt wird normalerweise ueber den Bewerbungsweg - wer ein Gespraech
+ * fuehren will, bewirbt sich, die Leitung entscheidet. Fuer den Ausnahmefall
+ * fehlte der Griff: Jemand faellt aus, hat gekuendigt oder wurde versehentlich
+ * eingetragen. Dann musste die Leitung den Kontakt erst freigeben und hoffen,
+ * dass sich der Richtige bewirbt.
+ *
+ * Gezeigt wird das nur Admins; verbindlich ist die Pruefung im Server
+ * (utils/zugriff.js, zuteilungErlaubt), die fremde Zuteilungen ohnehin nur
+ * der Leitung erlaubt.
+ */
+function RollenWahl({ liste, onAendern }) {
+  const [nutzer, setNutzer] = useState([])
+  const [laedt, setLaedt] = useState(true)
+
+  useEffect(() => {
+    let weg = false
+    ;(async () => {
+      try {
+        const a = await fetch('/.netlify/functions/users')
+        const d = await a.json()
+        if (!weg) setNutzer((d.users || []).filter(u => u.vor_nachname && u.status))
+      } catch {
+        /* Ohne Liste bleibt die Auswahl leer; der Name darunter steht weiter. */
+      } finally {
+        if (!weg) setLaedt(false)
+      }
+    })()
+    return () => { weg = true }
+  }, [])
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-3">
+      {liste.map(([name, wert]) => {
+        const { feld, passt } = ROLLENFELD[name]
+        const infrage = nutzer.filter(u => istLeitung(u.rolle) || passt(u.rolle))
+        return (
+          <div key={name}>
+            <label className="text-label-sm text-on-surface-variant" htmlFor={`rolle-${name}`}>
+              {name}
+            </label>
+            <select
+              id={`rolle-${name}`}
+              className="select-field"
+              value={wert || ''}
+              disabled={laedt}
+              onChange={e => onAendern?.(feld, e.target.value)}
+            >
+              <option value="">— niemand —</option>
+              {/* Wer eingetragen ist, bleibt waehlbar, auch wenn er die Rolle
+                  inzwischen nicht mehr traegt oder ausgeschieden ist. Sonst
+                  leerte sich das Feld beim Oeffnen stillschweigend. */}
+              {wert && !infrage.some(u => u.vor_nachname === wert) && (
+                <option value={wert}>{wert}</option>
+              )}
+              {infrage.map(u => (
+                <option key={u.id} value={u.vor_nachname}>{u.vor_nachname}</option>
+              ))}
+            </select>
+          </div>
+        )
+      })}
     </div>
   )
 }

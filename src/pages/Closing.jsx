@@ -1077,7 +1077,11 @@ function Closing() {
       editData.website !== selectedLead.website ||
       editData.ort !== selectedLead.ort
 
-    if (!hasStatusChange && !hasNeuerKommentar && !hasTerminChange && !hasContactChange) {
+    const hasRollenChange = ['openerName', 'setterName', 'closerName'].some(
+      f => editData[f] !== undefined && editData[f] !== (selectedLead[f] || ''))
+
+    if (!hasStatusChange && !hasNeuerKommentar && !hasTerminChange && !hasContactChange
+        && !hasRollenChange) {
       setEditMode(false); setMailFehlt(false)
       return // Nichts zu speichern
     }
@@ -1259,6 +1263,16 @@ function Closing() {
           hotLeadUpdates.termin_abschlussgespraech = data.terminDatum
         } else {
           hotLeadUpdates.terminDatum = data.terminDatum
+        }
+      }
+
+      /* Zuteilungen. Der Server loest den Namen zur Benutzer-ID auf und
+         prueft dabei, ob der Angemeldete sie setzen darf - fuer fremde
+         Zuteilungen ist das nur die Leitung (utils/zugriff.js). Leer heisst
+         „niemand", also zurueck in den Pool. */
+      for (const feld of ['openerName', 'setterName', 'closerName']) {
+        if (data[feld] !== undefined && data[feld] !== (selectedLead[feld] || '')) {
+          hotLeadUpdates[feld] = data[feld]
         }
       }
 
@@ -2481,11 +2495,17 @@ function Closing() {
                       </>
                     )}
 
-                    {/* Wer den Kontakt hatte und hat, in jeder Schublade gleich. */}
+                    {/* Wer den Kontakt hatte und hat, in jeder Schublade gleich.
+                        Die Leitung kann es hier richtigstellen - zugeteilt wird
+                        sonst über den Bewerbungsweg, aber wenn jemand ausfällt
+                        oder versehentlich eingetragen wurde, braucht es einen
+                        Griff, der ohne Freigeben und Neubewerben auskommt. */}
                     <Rollen
-                      opener={safeString(selectedLead.openerName)}
-                      setter={safeString(selectedLead.setterName)}
-                      closer={safeString(selectedLead.closerName)}
+                      opener={safeString(editMode && isAdmin() ? (editData.openerName ?? selectedLead.openerName) : selectedLead.openerName)}
+                      setter={safeString(editMode && isAdmin() ? (editData.setterName ?? selectedLead.setterName) : selectedLead.setterName)}
+                      closer={safeString(editMode && isAdmin() ? (editData.closerName ?? selectedLead.closerName) : selectedLead.closerName)}
+                      bearbeitbar={editMode && isAdmin()}
+                      onAendern={handleEditChange}
                     />
                   </div>
 

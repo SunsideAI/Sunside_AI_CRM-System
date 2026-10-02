@@ -88,4 +88,40 @@ if (befunde.length) {
   for (const b of befunde) console.error('  - ' + b)
   process.exit(1)
 }
+const sagt = (ok, text) => {
+  console.log(`  ${ok ? '✓' : '✗'} ${text}`)
+  if (!ok) befunde.push(text)
+}
+
+// ── Die Leitung kann eine Zuteilung richtigstellen ───────────────────────
+//
+// Zugeteilt wird über den Bewerbungsweg. Für den Ausnahmefall - jemand fällt
+// aus, kündigt oder wurde versehentlich eingetragen - fehlte der Griff: Die
+// Leitung musste den Kontakt erst freigeben und hoffen, dass sich der
+// Richtige bewirbt.
+const server = fs.readFileSync('netlify/functions/hot-leads.js', 'utf8')
+sagt(/'openerName': 'opener_id'/.test(server), 'Der Opener lässt sich über den Namen setzen')
+sagt(/key === 'openerName'/.test(server), 'Und wird zur Benutzer-ID aufgelöst')
+
+// Verbindlich bleibt die Prüfung im Server: Fremde Zuteilungen darf nur die
+// Leitung setzen, und openerId steht in derselben Schleife wie closerId.
+sagt(/for \(const feld of \['closerId', 'setterId', 'openerId', 'reaktivierungBearbeiterId'\]\)/.test(server),
+  'Alle drei Zuteilungen laufen durch dieselbe Prüfung')
+
+const schublade = fs.readFileSync('src/components/LeadSchublade.jsx', 'utf8')
+sagt(/bearbeitbar = false/.test(schublade),
+  'Die Rollen-Anzeige ist nur auf Wunsch bearbeitbar')
+sagt(/istLeitung\(u\.rolle\) \|\| passt\(u\.rolle\)/.test(schublade),
+  'Zur Wahl stehen die, die die Rolle tragen - und die Leitung')
+sagt(/wert && !infrage\.some\(u => u\.vor_nachname === wert\)/.test(schublade),
+  'Wer eingetragen ist, verschwindet nicht aus der Liste')
+
+for (const [datei, seite] of [['src/pages/Closing.jsx', 'Closing'], ['src/pages/Setting.jsx', 'Setting']]) {
+  const inhalt = fs.readFileSync(datei, 'utf8')
+  sagt(/bearbeitbar[=:] ?(\{)?(Boolean\()?(editMode|bearbeiten) && isAdmin\(\)/.test(inhalt),
+    `${seite}: nur die Leitung sieht die Auswahl`)
+  sagt(/\['openerName', 'setterName', 'closerName'\]/.test(inhalt),
+    `${seite}: alle drei Zuteilungen werden mitgespeichert`)
+}
+
 console.log('Zuteilung: alles wie erwartet.')

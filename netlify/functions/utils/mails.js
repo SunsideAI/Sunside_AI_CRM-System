@@ -50,6 +50,35 @@ export function abschlussgespraechVereinbart({ setterName, unternehmen, ansprech
   }
 }
 
+/**
+ * Dasselbe Abschlussgespräch, aber für die Leitung zum Mitlesen.
+ *
+ * Paul und Niklas wollen jeden gelegten Abschlusstermin sehen, ohne dafür
+ * im CRM nachsehen zu müssen. Die Mail an den Closer taugt dafür nicht: Sie
+ * spricht ihn an („Dein Abschlussgespräch steht") und fordert zu etwas auf.
+ * Hier steht, wer übergeben hat und an wen - und sonst nichts zu tun.
+ */
+export function abschlussgespraechZurKenntnis({ setterName, closerName, unternehmen,
+                                                ansprechpartner, datum }) {
+  return {
+    betreff: betreff('Closing', `Abschlussgespräch gelegt: ${unternehmen || 'Kontakt'}`),
+    mail: systemMail({
+      bereich: 'Closing', ton: 'info', zustand: 'Zur Kenntnis',
+      titel: 'Ein Abschlussgespräch wurde gelegt',
+      einleitung: `${fett(setterName || 'Ein Setter')} hat übergeben`
+        + (closerName ? ` an ${fett(closerName)}.` : '. Ein Closer steht noch nicht fest.'),
+      fakten: [
+        ['Unternehmen', unternehmen],
+        ['Ansprechpartner', ansprechpartner],
+        ['Abschlussgespräch', datum],
+        ['Closer', closerName || 'noch offen']
+      ],
+      knopf: ['Im CRM ansehen', '/closing'],
+      grund: 'Du bekommst diese Mail, weil jedes gelegte Abschlussgespräch an die Leitung geht.'
+    })
+  }
+}
+
 /** Ein Closer hat einen Termin zurück in den Closer-Pool gegeben. */
 export function terminWiederFrei({ freigegebenVon, unternehmen, ansprechpartner, datum, art }) {
   return {

@@ -201,7 +201,11 @@ function Setting() {
       telefon: gewaehlt?.telefon || '',
       email: gewaehlt?.email || '',
       website: gewaehlt?.website || '',
-      ort: gewaehlt?.ort || ''
+      ort: gewaehlt?.ort || '',
+      // Die Zuteilungen - nur die Leitung bekommt sie zu sehen und zu ändern.
+      openerName: gewaehlt?.openerName || '',
+      setterName: gewaehlt?.setterName || '',
+      closerName: gewaehlt?.closerName || ''
     })
     setMailFehlt(false)
     setBearbeiten(true)
@@ -225,6 +229,14 @@ function Setting() {
     if (formular.email !== (gewaehlt.email || '')) aenderungen.mail = formular.email
     if (formular.website !== (gewaehlt.website || '')) aenderungen.website = formular.website
     if (formular.ort !== (gewaehlt.ort || '')) aenderungen.ort = formular.ort
+    /* Zuteilungen. Der Server löst den Namen zur Benutzer-ID auf und prüft
+       dabei, ob der Angemeldete sie setzen darf; für fremde Zuteilungen ist
+       das nur die Leitung (utils/zugriff.js). Leer heißt „niemand". */
+    for (const feld of ['openerName', 'setterName', 'closerName']) {
+      if (formular[feld] !== undefined && formular[feld] !== (gewaehlt[feld] || '')) {
+        aenderungen[feld] = formular[feld]
+      }
+    }
 
     if (Object.keys(aenderungen).length === 0) {
       if (!still) bearbeitenAbbrechen()
@@ -644,7 +656,13 @@ function Setting() {
           email: gewaehlt?.email,
           website: gewaehlt?.website,
           ort: gewaehlt?.ort,
-          rollen: { opener: gewaehlt?.openerName, setter: gewaehlt?.setterName, closer: gewaehlt?.closerName }
+          rollen: {
+            opener: (bearbeiten && isAdmin() ? formular?.openerName : gewaehlt?.openerName) || '',
+            setter: (bearbeiten && isAdmin() ? formular?.setterName : gewaehlt?.setterName) || '',
+            closer: (bearbeiten && isAdmin() ? formular?.closerName : gewaehlt?.closerName) || '',
+            bearbeitbar: Boolean(bearbeiten && isAdmin()),
+            onAendern: (feld, wert) => setFormular(f => ({ ...f, [feld]: wert }))
+          }
         }}
         statistik={webZahlen(gewaehlt)}
         termin={gewaehlt ? {

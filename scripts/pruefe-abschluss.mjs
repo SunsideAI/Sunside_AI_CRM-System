@@ -123,6 +123,37 @@ sagt(/items-start/.test(menue),
 sagt(/max-w-\[calc\(100vw-2rem\)\]/.test(menue),
   'Auf schmalen Schirmen bleibt das Menü im Bild')
 
+// ── Jedes gelegte Abschlussgespräch geht auch an die Leitung ─────────────
+//
+// Die Mail an den Closer taugt dafür nicht: Sie spricht ihn an („Dein
+// Abschlussgespräch steht") und fordert zu etwas auf. Steht ein Closer fest,
+// geht sie ohnehin nur an ihn; Admins sind nur im Pool-Fall eingeschlossen.
+const leitungServer = fs.readFileSync('netlify/functions/hot-leads.js', 'utf8')
+sagt(/const LEITUNG_MAIL = process\.env\.LEITUNG_MAIL \|\| 'contact@sunsideai\.de'/.test(leitungServer),
+  'Die Leitungsadresse steht an einer Stelle')
+sagt(/an: LEITUNG_MAIL/.test(leitungServer), 'Und bekommt die Mail zum Mitlesen')
+sagt(/abschlussgespraechZurKenntnis/.test(leitungServer), 'Mit eigener Vorlage, nicht der des Closers')
+
+const vorlagen = fs.readFileSync('netlify/functions/utils/mails.js', 'utf8')
+sagt(/export function abschlussgespraechZurKenntnis/.test(vorlagen), 'Die Vorlage gibt es')
+
+const { abschlussgespraechZurKenntnis } = await import('../netlify/functions/utils/mails.js')
+const mitCloser = abschlussgespraechZurKenntnis({
+  setterName: 'Marvin Schütze', closerName: 'Paul Probodziak',
+  unternehmen: 'WERTBAU Immobilien GmbH', ansprechpartner: 'Valerie Gilwert',
+  datum: 'Do, 09.10., 10:00 Uhr' })
+sagt(mitCloser.betreff.includes('WERTBAU'), `Betreff nennt die Firma: „${mitCloser.betreff}"`)
+sagt(mitCloser.mail.text.includes('Paul Probodziak'), 'Und der Text den Closer')
+sagt(mitCloser.mail.text.includes('Marvin Schütze'), 'Und wer übergeben hat')
+sagt(!/Dein Abschlussgespräch/.test(mitCloser.mail.text),
+  'Sie spricht die Leitung nicht als Closer an')
+
+const ohneCloser = abschlussgespraechZurKenntnis({
+  setterName: 'Marvin Schütze', closerName: null,
+  unternehmen: 'Hettich Immobilien', ansprechpartner: 'Wilfried Hettich', datum: 'Fr, 10.10.' })
+sagt(/noch nicht fest/.test(ohneCloser.mail.text),
+  'Ohne Closer steht das auch so da')
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')
