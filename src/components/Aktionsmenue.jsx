@@ -50,7 +50,7 @@ export default function Aktionsmenue({ eintraege, beschriftung = 'Weitere' }) {
       {offen && (
         <div
           role="menu"
-          className="absolute bottom-full right-0 mb-2 w-60 py-1 bg-surface-container-lowest
+          className="absolute bottom-full right-0 mb-2 w-72 max-w-[calc(100vw-2rem)] py-1 bg-surface-container-lowest
                      rounded-xl shadow-ambient-lg border border-outline-variant z-50"
         >
           {sichtbar.map((e, i) => (
@@ -59,13 +59,16 @@ export default function Aktionsmenue({ eintraege, beschriftung = 'Weitere' }) {
               type="button"
               role="menuitem"
               onClick={() => { setOffen(false); e.onClick?.() }}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-body-md
+              className={`w-full flex items-start gap-3 px-4 py-2.5 text-left text-body-md
                           hover:bg-surface-container transition-colors ${
                             e.warnung ? 'text-warning' : 'text-on-surface'
                           }`}
             >
-              {e.icon && <e.icon className="w-4 h-4 shrink-0" />}
-              <span className="flex-1">{e.name}</span>
+              {e.icon && <e.icon className="w-4 h-4 shrink-0 mt-0.5" />}
+              {/* min-w-0: Ein Flex-Kind schrumpft von sich aus nicht unter die
+                  Breite seines Textes - „Neues Abschlussgespräch buchen" lief
+                  deshalb aus dem Menü heraus, statt umzubrechen. */}
+              <span className="flex-1 min-w-0 break-words">{e.name}</span>
             </button>
           ))}
         </div>

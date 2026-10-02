@@ -109,6 +109,20 @@ sagt(!/Freigabe-Bestätigung Modal/.test(closing),
 sagt(!/showReleaseConfirm && \(\s*<div className="absolute inset-0 bg-black/.test(closing),
   'Und kommt nicht als Kasten in der Bildmitte zurueck')
 
+// Das Menü unter „Weitere" in der Fussleiste des Closings.
+//
+// Es hatte eine feste Breite, und sein Text stand in einem Flex-Kind. So eins
+// schrumpft von sich aus nicht unter die Breite seines Textes - „Neues
+// Abschlussgespräch buchen" lief deshalb aus dem Kasten heraus, statt
+// umzubrechen.
+const menue = fs.readFileSync('src/components/Aktionsmenue.jsx', 'utf8')
+sagt(/min-w-0/.test(menue), 'Der Menütext darf schrumpfen (min-w-0)')
+sagt(/break-words/.test(menue), 'Und bricht um, statt überzulaufen')
+sagt(/items-start/.test(menue),
+  'Bei zwei Zeilen steht das Symbol oben, nicht in der Mitte')
+sagt(/max-w-\[calc\(100vw-2rem\)\]/.test(menue),
+  'Auf schmalen Schirmen bleibt das Menü im Bild')
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')
