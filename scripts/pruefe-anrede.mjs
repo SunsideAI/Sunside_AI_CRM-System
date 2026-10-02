@@ -59,7 +59,7 @@ sagt(/anrede: record\.anrede/.test(server), 'Die Schnittstelle reicht die Anrede
 sagt(/'anrede': 'anrede'/.test(server), 'Und sie lässt sich von Hand korrigieren')
 
 // Die Nachtrag-Funktion fragt die KI nur fuer echte Vornamen.
-const engine = fs.readFileSync('netlify/functions/anrede-nachtragen.js', 'utf8')
+const engine = fs.readFileSync('netlify/functions/anrede-nachtragen-background.js', 'utf8')
 sagt(/kommtInFrage/.test(engine), 'Die Engine siebt Firmen und Floskeln aus')
 sagt(/unklar/.test(engine) && /falsche Anrede ist schlimmer/.test(engine),
   'Und weist das Modell an, im Zweifel nichts zu setzen')

@@ -13,8 +13,12 @@
 // Was unsicher ist, bleibt unbesetzt: Die Mail gruesst dann mit vollem Namen.
 // Eine falsche Anrede faellt beim Empfaenger sofort auf; eine fehlende nicht.
 //
-// Aufruf: POST /.netlify/functions/anrede-nachtragen
-// Rueckgabe: { geprueft, gelernt, offen }
+// Laeuft als Background Function: 1.579 unbekannte Vornamen sind rund
+// vierzig Anfragen ans Modell, und so lange haelt eine gewoehnliche Funktion
+// nicht durch. Die Antwort kommt sofort (202), die Arbeit danach.
+//
+// Aufruf: POST /.netlify/functions/anrede-nachtragen-background
+// Im Protokoll: { geprueft, gelernt, offen }
 
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
