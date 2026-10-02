@@ -261,16 +261,29 @@ sagt(firmenfehler === 0, `${FIRMENFAELLE.length} Fälle: fremdes Impressum erkan
 // ── Der Auftrag an das Modell ─────────────────────────────────────────────
 const fn = fs.readFileSync('netlify/functions/ansprechpartner-suchen-background.js', 'utf8')
 sagt(/falscher Name ist schlimmer als kein Name/.test(fn),
-  'Das Modell weiß: im Zweifel nichts setzen')
-sagt(/Webdesigner, Agentur/.test(fn),
+  'Das Modell weiß: ein falscher Name ist schlimmer als keiner')
+// Umgekehrt kostete zu viel Vorsicht Treffer: Bei „Johannes Immobilien" mit
+// „Geschäftsführer: Alexander Johannes" lehnte das Modell ab, weil es den
+// Nachnamen für den Firmennamen hielt. Ebenso bei MH Immobilien, wo neben
+// Monika Haumann der Webdesigner stand, und bei Rudert, dessen Impressum
+// eine andere Mail-Domain nennt als die Lead-Adresse.
+sagt(/STEHT EIN NAME DA, NIMM IHN/.test(fn),
+  'Und ebenso: ein übersehener Name kostet einen Kontakt')
+sagt(/Der Nachname steckt im Firmennamen/.test(fn),
+  'Der Nachname im Firmennamen ist ein Treffer, kein Ausschlussgrund')
+sagt(/das ist nicht deine Aufgabe/.test(fn),
+  'Die Domain prüft der Code, nicht das Modell')
+sagt(/nimm den mit der Rolle/.test(fn),
+  'Bei mehreren Namen gewinnt der mit der Rolle')
+sagt(/dem Webdesigner, der Agentur oder dem Hoster/.test(fn),
   'Und es soll fremde Impressen erkennen (Anneser → Butlerium)')
 sagt(/Gründer aus der Firmenhistorie/.test(fn),
   'Und den Gründer von 1982 nicht für die heutige Leitung halten (OMIT AG)')
 sagt(/Begriffspaar/.test(fn),
   'Und „Mark Wohnungsgesellschaft" nicht für einen Menschen')
-sagt(/Abkürzung \(WEG, IVD, RDM, HV\)/.test(fn),
+sagt(/Abkürzung ist \(WEG, IVD, RDM, HV\)/.test(fn),
   'Und keine Abkürzung aus dem Seitentext')
-sagt(/Niederlassung einer Kette und das Impressum gehört der/.test(fn),
+sagt(/Niederlassung einer Kette ist und das Impressum der Zentrale/.test(fn),
   'Und nicht den Vorstand einer Kette für den Filialleiter')
 sagt(/andereFirma\(lead\.quelle, lead\.website\)/.test(fn),
   'Eine fremde Domain wird gar nicht erst geschrieben')
