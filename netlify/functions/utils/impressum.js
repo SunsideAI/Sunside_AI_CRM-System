@@ -260,6 +260,14 @@ export function brauchbar(wert) {
      Inhaber. Bei "Niedermayer Immobilien GmbH" trug der Nachname
      "Immobilien GmbH" - die Sperrliste oben traf nur das Wort fuer sich. */
   if (/(?<![A-Za-z\u00c0-\u024f])(gmbh|mbh|ohg|gbr|kgaa|e\.?\s?k(?:fr)?\.|ug\b|\bag\b|\bkg\b)/i.test(w)) return null
+  /* Ein Mustername ist kein Name. Beim Aufräumen des Altbestands am
+     02.10.2026 standen „Max Mustermann", „Hans Muster" und „Karin Muster" in
+     den Feldern - alle drei von Platzhalter-Impressen. „Max" allein bleibt
+     natürlich: Max Hartmann, Max Renner, Max Koch sind echte Kontakte. */
+  if (/^(muster(mann|frau)?|mustermax|erika mustermann|max mustermann|vorname|nachname)$/i.test(w)) return null
+  /* Und eine Anrede- oder Grussfloskel auch nicht - im Altbestand stand bei
+     54 Kontakten „liebe Makler" im Namensfeld. */
+  if (/^(sehr geehrte[rn]?|liebe[rs]?|hallo|guten tag|damen|herren|sekret(ä|ae)rin|sekretariat|team|zentrale|empfang)$/i.test(w)) return null
   /* Eine Abkuerzung ist kein Name. Im ersten Durchgang am 01.10.2026 kam bei
      sechs von 25 Leads "WEG WEG" heraus - das Wort stand im Seitentext, und
      das Modell nahm es, weil nichts Besseres da war. Ein Wort ganz in

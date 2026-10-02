@@ -165,6 +165,19 @@ sagt(namenspaarBrauchbar('Hans-Christian', 'de la Motte') !== null, 'Ein Namensz
 sagt(namenspaarBrauchbar('Lutz', 'Freiherr von Entreß-Fürsteneck') !== null, 'Ein Adelstitel auch')
 sagt(namenspaarBrauchbar('Eva Maria', 'Nietl') !== null, 'Ein Doppelvorname auch')
 sagt(namenspaarBrauchbar('Stefan A.', 'Beeck') !== null, 'Und ein Vorname mit Initial')
+// Musternamen und Anredefloskeln. Beim Aufräumen des Altbestands am
+// 02.10.2026 standen bei 54 Kontakten „liebe Makler" im Namensfeld und bei
+// drei weiteren „Max Mustermann" bzw. „Hans Muster" - aus Impressen, die
+// ihren Platzhalter nie ersetzt haben.
+sagt(namenspaarBrauchbar('Max', 'Mustermann') === null, '„Max Mustermann" kommt nicht durch')
+sagt(namenspaarBrauchbar('Hans', 'Muster') === null, 'Und „Hans Muster" nicht')
+sagt(namenspaarBrauchbar('liebe', 'Makler') === null, '„liebe Makler" auch nicht')
+sagt(namenspaarBrauchbar('Sehr geehrte', 'Damen') === null, 'Und keine Anredefloskel')
+sagt(namenspaarBrauchbar('Sekretärin', 'Meier') === null, 'Und keine Funktion statt eines Namens')
+// „Max" allein ist ein echter Vorname - Max Hartmann, Max Renner, Max Koch
+// stehen so in der Datenbank, jeweils passend zum Firmennamen.
+sagt(namenspaarBrauchbar('Max', 'Hartmann')?.vorname === 'Max', 'Aber „Max Hartmann" schon')
+sagt(namenspaarBrauchbar('Liebherr', 'Schmidt') !== null, 'Und „Liebherr" auch')
 sagt(namenspaarBrauchbar('Kerstin', 'Petersen')?.nachname === 'Petersen', 'Ein echtes Paar schon')
 sagt(namenspaarBrauchbar('Ümit', 'Alagöz')?.vorname === 'Ümit', 'Auch mit Umlaut am Anfang')
 sagt(namenspaarBrauchbar('Lars', 'Krüssel')?.nachname === 'Krüssel', 'Und mit Umlaut im Namen')
