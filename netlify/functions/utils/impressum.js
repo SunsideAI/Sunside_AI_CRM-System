@@ -310,7 +310,7 @@ export function brauchbar(wert) {
      butscher.net "Dr. Jens Butscher": beide Male landete das Wort davor im
      Vornamensfeld. Der Auftrag an das Modell verbot das schon; es hielt sich
      nicht daran, also steht es hier. */
-  if (/^(herr|frau|hr|fr|dr|prof|dipl|ing|mag|med|jur|rer|nat|h\.?c|msc|ba|ma|m\.?a|b\.?a)\.?$/i.test(w)) return null
+  if (/^(herr|frau|hr|fr|dr|prof|dipl|ing|m{1,2}ag|med|jur|rer|nat|h\.?c|msc|bsc|mba|ll\.?m|dkfm|ba|ma|m\.?a|b\.?a)\.?$/i.test(w)) return null
   /* Eine Rechtsform irgendwo im Wert heisst: hier steht die Firma, nicht ihr
      Inhaber. Bei "Niedermayer Immobilien GmbH" trug der Nachname
      "Immobilien GmbH" - die Sperrliste oben traf nur das Wort fuer sich. */
@@ -344,7 +344,17 @@ export function namenspaarBrauchbar(vorname, nachname) {
   const n = brauchbar(nachname)
   if (!v || !n) return null
   if (v.toLowerCase() === n.toLowerCase()) return null
-  return { vorname: v, nachname: n }
+  return { vorname: grossAnfang(v), nachname: grossAnfang(n) }
+}
+
+/* Manche Seiten schreiben den Namen klein - schadkami-immobilien.de etwa.
+   In der Anrede faellt das auf ("Hallo Herr schadkami"), im Impressum nicht.
+   Namenszusaetze bleiben, wie sie sind: "von Quast" und "de la Motte" sind
+   richtig so. */
+function grossAnfang(w) {
+  if (/^(von|van|de|du|zu|der|den|di|da|le|la)\s/i.test(w)) return w
+  if (w !== w.toLowerCase()) return w   // hat schon Grossbuchstaben
+  return w.charAt(0).toUpperCase() + w.slice(1)
 }
 
 /**

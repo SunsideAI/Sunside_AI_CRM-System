@@ -217,6 +217,20 @@ sagt(namenspaarBrauchbar('Sekretärin', 'Meier') === null, 'Und keine Funktion s
 // stehen so in der Datenbank, jeweils passend zum Firmennamen.
 sagt(namenspaarBrauchbar('Max', 'Hartmann')?.vorname === 'Max', 'Aber „Max Hartmann" schon')
 sagt(namenspaarBrauchbar('Liebherr', 'Schmidt') !== null, 'Und „Liebherr" auch')
+// Österreichische und akademische Titel. „Immobilien MMag. Hauswurz KG"
+// lieferte „MMag." als Vornamen - der Filter kannte nur „Mag.".
+sagt(namenspaarBrauchbar('MMag.', 'Hauswurz') === null, '„MMag." ist kein Vorname')
+sagt(namenspaarBrauchbar('Dkfm.', 'Huber') === null, 'Und „Dkfm." auch nicht')
+sagt(namenspaarBrauchbar('MBA', 'Schmidt') === null, 'Und „MBA" nicht')
+// Manche Seiten schreiben den Namen klein. In der Anrede fällt das auf.
+sagt(namenspaarBrauchbar('Sa-San Thomas', 'schadkami')?.nachname === 'Schadkami',
+  'Ein kleingeschriebener Nachname wird großgeschrieben')
+sagt(namenspaarBrauchbar('Hans', 'müller')?.nachname === 'Müller', 'Auch mit Umlaut')
+// Namenszusätze bleiben, wie sie sind.
+sagt(namenspaarBrauchbar('Carina', 'von Salis-Soglio')?.nachname === 'von Salis-Soglio',
+  '„von Salis-Soglio" bleibt klein')
+sagt(namenspaarBrauchbar('Hans-Christian', 'de la Motte')?.nachname === 'de la Motte',
+  'Und „de la Motte" auch')
 sagt(namenspaarBrauchbar('Kerstin', 'Petersen')?.nachname === 'Petersen', 'Ein echtes Paar schon')
 sagt(namenspaarBrauchbar('Ümit', 'Alagöz')?.vorname === 'Ümit', 'Auch mit Umlaut am Anfang')
 sagt(namenspaarBrauchbar('Lars', 'Krüssel')?.nachname === 'Krüssel', 'Und mit Umlaut im Namen')
