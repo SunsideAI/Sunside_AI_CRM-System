@@ -94,6 +94,45 @@ for (const [text, soll] of NAMENSFAELLE) {
 }
 sagt(namensfehler === 0, `${NAMENSFAELLE.length} Fälle: Personenname von Begriffspaar unterschieden`)
 
+// ── Die Überschrift zählt erst, wenn sonst nichts da ist ─────────────────
+// Viele Impressen nennen Namen und Anschrift direkt unter „Impressum", ohne
+// Einleitung: bei rudert-immobilien.de steht „Johannes Rudert Immobilien" in
+// der Zeile darunter, und das erste starke Signalwort kam erst neun Zeilen
+// später - im Pflichttext, der nie einen Namen enthält.
+const unterUeberschrift = ausschnitt(['Impressum', 'Johannes Rudert Immobilien',
+  'Lehderstr. 54, 13086 Berlin', 'Telefon: +49 174 9542360',
+  'Haftung für Inhalte:', 'Als Diensteanbieter sind wir gemäß § 7 Abs.1 TMG für eigene '
+  + 'Inhalte auf diesen Seiten nach den allgemeinen Gesetzen verantwortlich.'].join('\n'))
+sagt(unterUeberschrift.text.includes('Johannes Rudert') && unterUeberschrift.vielversprechend,
+  'Der Name direkt unter „Impressum" wird gefunden')
+sagt(!unterUeberschrift.text.startsWith('Als Diensteanbieter'),
+  'Und der Pflichttext zieht den Ausschnitt nicht an sich')
+
+// Umgekehrt darf die Überschrift die ausdrückliche Angabe nicht verdrängen.
+// Bei sinnfalt-immobilien.de stand unter „Impressum" nur die Firma, der Name
+// sechs Zeilen weiter.
+const ausdruecklich = ausschnitt(['Impressum', 'Sinnfalt GmbH', 'Staufener Str. 25',
+  '79189 Bad Krozingen', 'Handelsregister: HRB717343',
+  'Vertreten durch:', 'Frau Nicole Ehret', 'Kontakt'].join('\n'))
+sagt(ausdruecklich.text.startsWith('Vertreten durch'),
+  '„Vertreten durch" schlägt die bloße Überschrift')
+
+// Zusammengesetzte Formen: optin.at schreibt „Geschäftsinhaber", und davor
+// steht keine Wortgrenze.
+const zusammengesetzt = ausschnitt(['Unternehmensgegenstand: Immobilientreuhänder',
+  'Geschäftsinhaber: Mag. David Breitwieser, Mag. Alexander Fenzl',
+  'Wirtschaftskammer Wien'].join('\n'))
+sagt(zusammengesetzt.text.includes('Breitwieser') && zusammengesetzt.vielversprechend,
+  '„Geschäftsinhaber" zählt wie „Inhaber"')
+
+// Navigationswörter sind keine Namen. „Zum Inhalt" aus „Zum Inhalt springen"
+// liess die Navigationsleiste als Fundstelle gewinnen.
+const NAVIGATION = ['Zum Inhalt springen', 'Unsere Dienstleistungen', 'Herzlich Willkommen',
+                    'Alle Objekte', 'Ihre Ansprechpartnerin', 'Neue Wege']
+let navfehler = 0
+for (const t of NAVIGATION) if (wirktWieEinName(t)) { navfehler++; console.log(`    ✗ „${t}"`) }
+sagt(navfehler === 0, `${NAVIGATION.length} Navigationszeilen gelten nicht als Name`)
+
 // ── Die Signalstelle, nicht die erste ─────────────────────────────────────
 // priveg.de hat "Ansprechpartner Immobilienverwaltung" im Menü. Der erste
 // Treffer war also die Navigationsleiste - und der Ausschnitt begann dort.

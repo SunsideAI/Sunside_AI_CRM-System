@@ -29,10 +29,39 @@ const KOPF = {
 /** Woran man im Impressum einen Verantwortlichen erkennt. */
 const SIGNAL = new RegExp(
   '\\b(Vertreten durch|vertretungsberechtigt\\w{0,12}|Vertretungsberechtigte[rn]?'
-  + '|Geschäftsführ\\w{0,10}|Geschaeftsfuehr\\w{0,10}|Inhaber(?:in)?\\b|Inh\\.'
-  + '|Eigentümer(?:in)?\\b|Verantwortlich\\w{0,3}\\b|Ansprechpartner(?:in)?\\b'
-  + '|Geschäftsleitung|Gesetzlicher Vertreter|Sachverständige[rn]?\\b'
-  + '|Gesellschafter(?:in)?\\b)', 'i')
+  + '|Gesch\u00e4ftsf\u00fchr\\w{0,10}|Geschaeftsfuehr\\w{0,10}|Inhaber(?:in)?\\b|Inh\\.'
+  + '|Eigent\u00fcmer(?:in)?\\b|Verantwortlich\\w{0,3}\\b|Ansprechpartner(?:in)?\\b'
+  /* Zusammengesetzt: optin.at schreibt "Geschäftsinhaber", und davor steht
+     keine Wortgrenze - mit \\bInhaber ging die Zeile durch. Ebenso
+     Firmeninhaber, Alleininhaber, Mitinhaber. */
+  + '|\\w*inhaber(?:in)?\\b'
+  + '|Gesch\u00e4ftsleitung|Gesetzlicher Vertreter|Sachverst\u00e4ndige[rn]?\\b'
+  + '|Gesellschafter(?:in)?\\b'
+  + ')', 'i')
+
+/* Die Ueberschrift selbst - ein schwaecheres Signal.
+   
+   Viele Impressen nennen Namen und Anschrift gleich darunter, ohne
+   Einleitung: bei rudert-immobilien.de steht "Johannes Rudert Immobilien" in
+   der Zeile nach "Impressum", und das erste starke Signalwort tauchte erst
+   neun Zeilen spaeter im Pflichttext auf.
+   
+   Sie zaehlt aber erst, wenn kein starkes Signal etwas hergab. Sonst gewinnt
+   sie gegen die spezifische Angabe: Bei sinnfalt-immobilien.de stand unter
+   der Ueberschrift die Firma mit Anschrift, und "Vertreten durch: Frau
+   Nicole Ehret" sechs Zeilen weiter unten hatte das Nachsehen. */
+const UEBERSCHRIFT = new RegExp(
+  '^(Impressum|Angaben gem\u00e4(\u00df|ss) \u00a7 ?5|Angaben nach \u00a7 ?5'
+  + '|Angaben gem\u00e4(\u00df|ss) \u00a7 ?5 (TMG|DDG))\\b', 'i')
+
+/* Der Pflichttext, der in fast jedem Impressum gleich lautet. Er enthaelt
+   "verantwortlich" und "Diensteanbieter", aber nie einen Namen - und zog den
+   Ausschnitt an sich, wenn er vor der Namensnennung stand. */
+const PFLICHTTEXT = new RegExp(
+  '(Als Diensteanbieter|Haftung f\u00fcr (Inhalte|Links)|Unser Angebot enth\u00e4lt Links'
+  + '|nach den allgemeinen Gesetzen verantwortlich|\u00a7\u00a7? ?[78] (Abs|bis)'
+  + '|Urheberrecht|urheberrechtlich gesch\u00fctzt|Die Europ\u00e4ische Kommission'
+  + '|Streitschlichtung|Streitbeilegung)', 'i')
 
 /* Tags, die eine Zeile beenden. Alles andere ist inline und darf ein Wort
    nicht zerschneiden - siehe Punkt 1 oben. */
@@ -56,6 +85,18 @@ const KEIN_NACHNAME = new RegExp(
   + ')s?$', 'i')
 
 /* Rechtsformen: steht eine davon im Wortpaar, ist es eine Firma. */
+/* Artikel, Praepositionen und Navigationswoerter. Als erstes Wort eines
+   Paares sehen sie aus wie ein Vorname: "Zum Inhalt" aus "Zum Inhalt
+   springen" liess bei rudert-immobilien.de die Navigationsleiste als
+   Fundstelle gewinnen. */
+const KEIN_VORNAME = new RegExp(
+  '^(zum|zur|der|die|das|den|dem|des|ein|eine|einen|einem|eines|im|am|an|auf|aus'
+  + '|bei|mit|nach|seit|vor|\u00fcber|unter|f\u00fcr|ohne|um|durch|gegen|alle|alles'
+  + '|unser|unsere|ihr|ihre|mein|meine|dein|kein|keine|neu|neue|neuer|hier|dort'
+  + '|jetzt|mehr|weiter|zur\u00fcck|home|start|startseite|men\u00fc|seite|sie|wir|uns'
+  + '|was|wie|wo|wer|warum|wann|welche[rsn]?|jede[rsn]?|diese[rsn]?|unsere[rsn]?'
+  + '|herzlich|willkommen|aktuell|aktuelle[rsn]?)$', 'i')
+
 const RECHTSFORM = /(?<![A-Za-z\u00c0-\u024f])(gmbh?|mbh?|ag|kg|ohg|gbr|e\.?\s?k(?:fr)?\.?|ug|se|ltd|co\b|kgaa)\b/i
 
 /**
@@ -72,6 +113,7 @@ export function wirktWieEinName(text) {
     const worte = s.split(/[-\s]+/)
     if (KEIN_NACHNAME.test(worte[worte.length - 1])) continue
     if (KEIN_NACHNAME.test(worte[0])) continue
+    if (KEIN_VORNAME.test(worte[0])) continue
     return s
   }
   return null
@@ -192,22 +234,35 @@ export function unterseiten(html, basis) {
  */
 export function ausschnitt(text) {
   const zeilen = text.split('\n').map(z => z.trim()).filter(Boolean)
-  let bester = null
-  for (let i = 0; i < zeilen.length; i++) {
-    if (!SIGNAL.test(zeilen[i])) continue
-    const brauchbareZeilen = (von, bis) => zeilen.slice(von, bis)
-      .filter(z => (z.split('|').length - 1) <= 3 && z.length <= 400)
-    /* Der Name muss nahe am Signalwort stehen - in derselben Zeile oder in
-       einer der beiden danach. Bewertet man den ganzen Ausschnitt, erbt der
-       Treffer in der Navigationsleiste den Namen, der zehn Zeilen weiter zu
-       einer anderen Signalstelle gehoert. Genau so gewann bei priveg.de das
-       Menue gegen "Vertreten durch den Geschäftsführer". */
-    const nah = brauchbareZeilen(i, i + 3).join(' | ')
-    const s = brauchbareZeilen(i, i + 10).join(' | ').slice(0, 500)
-    if (wirktWieEinName(nah)) return { text: s, vielversprechend: true }
-    if (!bester) bester = s
+  const brauchbareZeilen = (von, bis) => zeilen.slice(von, bis)
+    .filter(z => (z.split('|').length - 1) <= 3 && z.length <= 400)
+
+  /* Der Name muss nahe am Signalwort stehen - in derselben Zeile oder in
+     einer der beiden danach. Bewertet man den ganzen Ausschnitt, erbt der
+     Treffer in der Navigationsleiste den Namen, der zehn Zeilen weiter zu
+     einer anderen Signalstelle gehoert. Genau so gewann bei priveg.de das
+     Menue gegen "Vertreten durch den Geschäftsführer". */
+  const suche = (trifft) => {
+    let ohneNamen = null
+    for (let i = 0; i < zeilen.length; i++) {
+      if (!trifft(zeilen[i])) continue
+      if (PFLICHTTEXT.test(zeilen[i])) continue   // Standardtext, nie ein Name
+      const nah = brauchbareZeilen(i, i + 3).join(' | ')
+      const s = brauchbareZeilen(i, i + 10).join(' | ').slice(0, 500)
+      if (wirktWieEinName(nah)) return { text: s, vielversprechend: true }
+      if (!ohneNamen) ohneNamen = s
+    }
+    return ohneNamen ? { text: ohneNamen, vielversprechend: false } : null
   }
-  if (bester) return { text: bester, vielversprechend: false }
+
+  // Erst die ausdrueckliche Angabe, dann die blosse Ueberschrift.
+  const stark = suche(z => SIGNAL.test(z))
+  if (stark?.vielversprechend) return stark
+  const kopf = suche(z => UEBERSCHRIFT.test(z))
+  if (kopf?.vielversprechend) return kopf
+  if (stark) return stark
+  if (kopf) return kopf
+
   // Kein Signalwort: die Zeilen, die wie ein Name aussehen.
   const nah = zeilen.filter(z => wirktWieEinName(z) && z.length < 120).slice(0, 6)
   if (nah.length) return { text: nah.join(' | ').slice(0, 500), vielversprechend: true }
