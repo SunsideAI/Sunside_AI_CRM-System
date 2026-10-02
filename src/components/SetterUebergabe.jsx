@@ -59,8 +59,13 @@ const EIGENE_SPALTEN = [...new Set(
 // Was aus dem Erstanruf mitkommt und nur mitliest: Es entscheidet über
 // Sichtbarkeit, Fragesätze und den reduzierten Modus.
 const KONTEXT = [
-  'berufsgruppe', 'branche_andere', 'vorhaben', 'ziele', 'ziel_prioritaet', 'ziel_priorisiert',
-  'schmerzpunkt_wortlaut', 'vorerfahrung', 'vorerfahrung_wortlaut', 'material_versendet'
+  // `kategorie` steht hier, weil `berufsgruppe` erst der Erstanruf setzt. Ist
+  // der noch nicht gelaufen, sagt die Kategorie aus dem Import, womit man es
+  // zu tun hat - bei Verowert „Sachverständiger". Ohne sie rechnete die Maske
+  // mit einem Makler und bot „Mehr Kaufinteressenten" an.
+  'berufsgruppe', 'kategorie', 'branche_andere', 'vorhaben', 'ziele', 'ziel_prioritaet',
+  'ziel_priorisiert', 'schmerzpunkt_wortlaut', 'vorerfahrung', 'vorerfahrung_wortlaut',
+  'material_versendet'
 ]
 
 function startwerte(lead) {

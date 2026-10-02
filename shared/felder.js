@@ -141,7 +141,29 @@ function kurzZiel(ziel, lead) {
 // Sonderfälle
 // ---------------------------------------------------------------------------
 
-export const istSv = (lead) => lead?.berufsgruppe === BRANCHE.SV
+/**
+ * Welche Branche ein Kontakt hat - auch bevor jemand sie eingetragen hat.
+ *
+ * `berufsgruppe` setzt der Opener im Erstanruf. Bis dahin ist sie leer, und
+ * alles rechnete dann mit einem Makler: Bei Verowert - einem
+ * Sachverstaendigen, dessen Erstanruf noch nicht gelaufen war - stand im
+ * Beratungsgespraech „Mehr Kaufinteressenten" zur Wahl, ein Ziel, das es in
+ * diesem Beruf nicht gibt.
+ *
+ * Die Branche steht aber schon da: `kategorie` kommt aus dem Import und sagt
+ * "Immobiliensachverständiger", "Immobiliengutachter" oder
+ * "Real estate appraiser" - zum 02.10.2026 bei 1.329 Kontakten. Was der
+ * Opener einträgt, schlaegt das; die Kategorie ist nur der Rueckfall.
+ */
+const SV_KATEGORIE = /sachverst\u00e4ndig|sachverstaendig|gutachter|appraiser|bewert/i
+
+export function brancheVonLead(lead) {
+  if (lead?.berufsgruppe) return lead.berufsgruppe
+  if (SV_KATEGORIE.test(lead?.kategorie || '')) return BRANCHE.SV
+  return null   // nicht raten: ohne Kategorie bleibt es offen
+}
+
+export const istSv = (lead) => brancheVonLead(lead) === BRANCHE.SV
 
 /**
  * Der Satz, mit dem der Setter an den Closer übergibt.
@@ -265,7 +287,7 @@ export const FELDER = {
   },
   ziele: {
     name: 'Was der Kunde erreichen will', art: 'mehrfach',
-    optionen: w => zieleFuerBranche(w?.berufsgruppe),
+    optionen: w => zieleFuerBranche(brancheVonLead(w)),
     hilfe: 'Alle Ziele, die im Telefonat gefallen sind. Sie bestimmen Video, Mails und Unterlagen bis zum Abschluss. Nennt der Kunde mehrere, entscheidet das priorisierte Ziel.'
   },
   ziel_prioritaet: {
@@ -273,7 +295,13 @@ export const FELDER = {
     hilfe: 'Danach richtet sich das Video in der ersten Mail. Hat der Makler selbst ein Ziel vorgezogen, wähl es und setz „selbst so gesagt" auf Ja. Sonst entscheidest du nach seiner Klage: Sichtbarkeit oder Anfragen heißt Eigentümer, Erreichbarkeit oder Verwaltung heißt Zeitersparnis.'
   },
   ziel: {
-    name: 'Ziel bestätigt oder korrigiert', art: 'auswahl', optionen: AUSWAHL.ziel,
+    /* Dieselbe Auswahl wie im Erstanruf, und damit auch dieselbe Einschränkung
+       je Branche: Kaufinteressenten vermittelt ein Sachverständiger nicht.
+       Das Feld hing an der festen Liste, während das Feld `ziele` im Erstanruf
+       schon nach der Branche fragte - bei Verowert (Sachverständiger) stand
+       darum „Mehr Kaufinteressenten" zur Wahl. */
+    name: 'Ziel bestätigt oder korrigiert', art: 'auswahl',
+    optionen: w => zieleFuerBranche(brancheVonLead(w)),
     hilfe: 'Der Block beginnt mit „Was hat Sie dazu gebracht, sich das Gespräch und das Thema KI überhaupt anzuhören?". In der Antwort steckt oft schon das Ziel und das Problem, das dann ins Feld darunter gehört. Wozu: Dieses eine Feld steuert den Rest des Gesprächs. Es entscheidet, welche zwei Zahlen gleich gefragt werden, wie die Budget-Frage lautet, welche Unterlagen du am Ende ankündigst und welches Video der Kunde bekommt. Korrigiere es sofort, wenn er etwas anderes sagt.'
   },
   schmerzpunkt_wortlaut: {
