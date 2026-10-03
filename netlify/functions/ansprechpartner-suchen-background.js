@@ -26,6 +26,7 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { ansprechpartnerStelle, namenspaarBrauchbar, andereFirma } from './utils/impressum.js'
+import { AUFTRAG } from './utils/ansprechpartner-auftrag.js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { verboten } from './utils/zugriff.js'
 
@@ -50,44 +51,7 @@ async function frageModell(stuecke, schluessel) {
       response_format: { type: 'json_object' },
       messages: [{
         role: 'system',
-        content:
-          'Du liest Ausschnitte aus Impressen von Immobilienfirmen und nennst den '
-        + 'Ansprechpartner - den Inhaber, Geschäftsführer oder gesetzlichen Vertreter.\n\n'
-        + 'Antworte als JSON: {"treffer":[{"nr":1,"vorname":"...","nachname":"..."}]}.\n\n'
-        + 'STEHT EIN NAME DA, NIMM IHN. Diese Firmen sind meist Ein-Personen-Betriebe, '
-        + 'und der Name im Impressum ist genau der Mensch, den wir suchen. Drei Fälle, '
-        + 'in denen zu viel Vorsicht den Treffer kostete:\n'
-        + '- Der Nachname steckt im Firmennamen. "Johannes Immobilien" mit '
-        + '"Geschäftsführer: Alexander Johannes" ist ein Treffer, keine Firma; '
-        + 'ebenso "Vollmers Immobilien" mit Björn Vollmers.\n'
-        + '- Die Mailadresse im Impressum lautet anders als die Firma. Das ist normal '
-        + '(zweite Domain, alter Name) und kein Grund, den Namen wegzulassen. Ob die '
-        + 'Domain fremd ist, wird vorher geprüft - das ist nicht deine Aufgabe.\n'
-        + '- Es stehen mehrere Namen da, darunter ein Webdesigner oder eine Agentur. '
-        + 'Dann nimm den mit der Rolle (Inhaber, Geschäftsführer, Verantwortlicher) '
-        + 'und übergeh den Rest, statt ganz zu verzichten.\n\n'
-        + 'Lass einen Eintrag nur WEG, wenn:\n'
-        + '- wirklich kein Personenname dasteht, sondern nur eine Firma '
-        + '("MEISSLER & CO Verwaltungs GmbH")\n'
-        + '- der einzige Name erkennbar dem Webdesigner, der Agentur oder dem Hoster '
-        + 'gehört und sonst niemand genannt wird\n'
-        + '- es ein Gründer aus der Firmenhistorie ist und daneben die heutige Leitung steht\n'
-        + '- es ein Begriffspaar ist und kein Name ("Ansprechpartner Immobilienverwaltung", '
-        + '"Mark Wohnungsgesellschaft", "Gesetzlicher Vertreter")\n'
-        + '- nur ein Nachname ohne Vornamen dasteht, oder nur ein Vorname\n'
-        + '- es eine Abkürzung ist (WEG, IVD, RDM, HV) oder ein Begriff aus dem '
-        + 'Seitentext, den du mangels Namen genommen hast\n'
-        + '- die Firma die Niederlassung einer Kette ist und das Impressum der Zentrale '
-        + 'gehört. Erkennbar daran, dass die Adresse auf eine Unterseite zeigt '
-        + '(ksk-immobilien.de/standort/siegburg) oder der Firmenname einen Ort trägt, '
-        + 'den das Impressum nicht nennt. Der dort genannte Vorstand ist nicht der '
-        + 'Ansprechpartner dieser Niederlassung.\n\n'
-        + 'Stehen mehrere gleichrangige Personen da, nimm die erste. Titel wie '
-        + 'Dipl.-Ing., Mag., MMag. oder Dr. gehören nicht in den Namen. Schreibe Namen '
-        + 'in normaler Gross- und Kleinschreibung, auch wenn der Ausschnitt sie in '
-        + 'Grossbuchstaben zeigt.\n\n'
-        + 'Ein falscher Name ist schlimmer als kein Name - aber ein übersehener Name '
-        + 'kostet uns einen Kontakt.',
+        content: AUFTRAG,
       }, {
         role: 'user',
         content: stuecke

@@ -260,30 +260,48 @@ sagt(firmenfehler === 0, `${FIRMENFAELLE.length} Fälle: fremdes Impressum erkan
 
 // ── Der Auftrag an das Modell ─────────────────────────────────────────────
 const fn = fs.readFileSync('netlify/functions/ansprechpartner-suchen-background.js', 'utf8')
-sagt(/falscher Name ist schlimmer als kein Name/.test(fn),
-  'Das Modell weiß: ein falscher Name ist schlimmer als keiner')
+/* Der Auftrag steht in einer eigenen Datei, weil ansprechpartner-diagnose
+   denselben Text braucht: Liefe die Diagnose mit einem anderen Auftrag,
+   zeigte sie nicht, was der echte Lauf tut. Beide Dateien werden hier
+   geprueft - der Scraper darauf, dass er den gemeinsamen Auftrag auch
+   benutzt und keinen eigenen Prompt mitschleppt. */
+const auftrag = fs.readFileSync('netlify/functions/utils/ansprechpartner-auftrag.js', 'utf8')
+const diagnose = fs.readFileSync('netlify/functions/ansprechpartner-diagnose.js', 'utf8')
+sagt(/content: AUFTRAG/.test(fn) && !/role: 'system',\n\s*content:\n/.test(fn),
+  'Der Scraper nimmt den gemeinsamen Auftrag, keinen eigenen Prompt')
+sagt(/content: AUFTRAG/.test(diagnose),
+  'Und die Diagnose fragt mit genau demselben Auftrag')
+/* Ohne Antwort pro Eintrag ist nicht unterscheidbar, ob das Modell einen
+   Ausschnitt geprueft und verworfen oder bloss uebersehen hat. Die Diagnose
+   braucht das, um die 12.175 leeren Leads aufzuschluesseln. */
+sagt(/Nenne JEDEN Ausschnitt in der Antwort/.test(auftrag),
+  'Das Modell antwortet zu jedem Ausschnitt, auch wenn es nichts findet')
 // Umgekehrt kostete zu viel Vorsicht Treffer: Bei „Johannes Immobilien" mit
 // „Geschäftsführer: Alexander Johannes" lehnte das Modell ab, weil es den
 // Nachnamen für den Firmennamen hielt. Ebenso bei MH Immobilien, wo neben
 // Monika Haumann der Webdesigner stand, und bei Rudert, dessen Impressum
 // eine andere Mail-Domain nennt als die Lead-Adresse.
-sagt(/STEHT EIN NAME DA, NIMM IHN/.test(fn),
+sagt(/STEHT EIN NAME DA, NIMM IHN/.test(auftrag),
   'Und ebenso: ein übersehener Name kostet einen Kontakt')
-sagt(/Der Nachname steckt im Firmennamen/.test(fn),
+sagt(/DER NACHNAME STECKT IM FIRMENNAMEN/.test(auftrag),
   'Der Nachname im Firmennamen ist ein Treffer, kein Ausschlussgrund')
-sagt(/das ist nicht deine Aufgabe/.test(fn),
+/* „Johannes Rudert Immobilien" ist ein Mensch plus Branchenwort. Das
+   Modell hielt es fuer eine Firma und liess den Namen weg. */
+sagt(/FIRMENNAME UND NAME VERSCHMOLZEN/.test(auftrag),
+  'Und „Johannes Rudert Immobilien" ist Johannes Rudert plus Branche')
+sagt(/das ist nicht deine Aufgabe/.test(auftrag),
   'Die Domain prüft der Code, nicht das Modell')
-sagt(/nimm den mit der Rolle/.test(fn),
+sagt(/nimm den mit der Rolle/.test(auftrag),
   'Bei mehreren Namen gewinnt der mit der Rolle')
-sagt(/dem Webdesigner, der Agentur oder dem Hoster/.test(fn),
+sagt(/dem Webdesigner, der Agentur oder dem Hoster/.test(auftrag),
   'Und es soll fremde Impressen erkennen (Anneser → Butlerium)')
-sagt(/Gründer aus der Firmenhistorie/.test(fn),
+sagt(/Gründer aus der Firmenhistorie/.test(auftrag),
   'Und den Gründer von 1982 nicht für die heutige Leitung halten (OMIT AG)')
-sagt(/Begriffspaar/.test(fn),
+sagt(/Begriffspaar/.test(auftrag),
   'Und „Mark Wohnungsgesellschaft" nicht für einen Menschen')
-sagt(/Abkürzung ist \(WEG, IVD, RDM, HV\)/.test(fn),
+sagt(/Abkürzung ist \(WEG, IVD, RDM, HV\)/.test(auftrag),
   'Und keine Abkürzung aus dem Seitentext')
-sagt(/Niederlassung einer Kette ist und das Impressum der Zentrale/.test(fn),
+sagt(/Niederlassung einer Kette ist und das Impressum der Zentrale/.test(auftrag),
   'Und nicht den Vorstand einer Kette für den Filialleiter')
 sagt(/andereFirma\(lead\.quelle, lead\.website\)/.test(fn),
   'Eine fremde Domain wird gar nicht erst geschrieben')
