@@ -204,28 +204,55 @@ export async function holeSeite(url, msZeit = 12000) {
   }
 }
 
+/* Ein Link, so wie ihn Seiten wirklich schreiben.
+
+   Das alte Muster verlangte doppelte Anfuehrungszeichen um die Adresse und
+   hoechstens 120 Zeichen Beschriftung. Beides traf oft nicht zu:
+   bremerich-immobilien.de schreibt href='...' mit einfachen - verbreitet in
+   WordPress-Themes -, und bei expo-immo.de steckt in der Beschriftung so
+   viel verschachteltes Markup, dass 120 Zeichen nicht reichten. In einer
+   Stichprobe von 140 leeren Leads blieb dadurch bei 11 das Impressum
+   unentdeckt, obwohl es verlinkt war. */
+const ANKER = /<a\b([^>]*)>([\s\S]{0,800}?)<\/a>/gi
+const HREF = /href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/i
+
 /** Impressum zuerst, dann Kontakt, dann Ueber-uns. */
 export function unterseiten(html, basis) {
   const gefunden = []
   const gesehen = new Set()
-  const gruppen = [/impressum|imprint|legal-notice/i, /kontakt|contact/i,
+  const gruppen = [/impressum|imprint|legal-notice|mentions-legales/i, /kontakt|contact/i,
                    /ueber-uns|ueber_uns|about|team/i]
+  /* Die Anker einmal auslesen und dreimal durchsehen - sonst laeuft das
+     Muster pro Gruppe erneut ueber das ganze Dokument. */
+  const anker = []
+  for (const m of html.matchAll(ANKER)) {
+    const h = m[1].match(HREF)
+    if (!h) continue
+    const ziel = (h[1] ?? h[2] ?? h[3] ?? '').split('#')[0].trim()
+    if (!ziel || /^(javascript|mailto|tel):/i.test(ziel)) continue
+    anker.push({ ziel, beschriftung: m[2].replace(/<[^>]+>/g, ' ') })
+  }
   for (const muster of gruppen) {
-    for (const m of html.matchAll(/<a[^>]+href="([^"#]+)"[^>]*>([\s\S]{0,120}?)<\/a>/gi)) {
-      const ziel = m[1]
-      const beschriftung = m[2].replace(/<[^>]+>/g, '')
-      if (!muster.test(ziel) && !muster.test(beschriftung)) continue
+    for (const a of anker) {
+      if (!muster.test(a.ziel) && !muster.test(a.beschriftung)) continue
       try {
-        const voll = new URL(ziel, basis).href
+        const voll = new URL(a.ziel, basis).href
         if (!/^https?:/.test(voll) || gesehen.has(voll)) continue
         gesehen.add(voll)
         gefunden.push(voll)
-      } catch { /* kaputter Link */ }
+      } catch { continue }   // kaputter Link - der naechste kann gut sein
       break
     }
   }
   return gefunden.slice(0, 3)
 }
+
+/* Wo das Impressum liegt, wenn kein Link darauf zeigt. Manche Seiten bauen
+   ihre Navigation erst im Browser zusammen; ne-immobilien.de etwa nennt
+   "Impressum" im Text, verlinkt es im gelieferten HTML aber nicht. Ein
+   Abruf kostet nichts, ein verlorener Name schon. */
+const UEBLICHE_PFADE = ['/impressum', '/impressum/', '/impressum.html',
+                        '/impressum.php', '/de/impressum', '/imprint']
 
 /**
  * Der Ausschnitt, den das Modell lesen muss: die Zeilen ab der Signalstelle.
@@ -274,15 +301,42 @@ export function ausschnitt(text) {
  * einem Namen dabei ist.
  */
 export async function ansprechpartnerStelle(website) {
-  let basis = String(website || '').trim()
+  const basis = adresse(website)
   if (!basis) return null
-  if (!/^https?:\/\//i.test(basis)) basis = 'https://' + basis
   const start = await holeSeite(basis)
   if (!start) return null
 
-  const ziele = unterseiten(start, basis)
+  let ziele = unterseiten(start, basis)
+  /* Zeigt kein Link auf ein Impressum, die ueblichen Adressen probieren. */
+  if (!ziele.some(u => /impressum|imprint/i.test(u))) {
+    for (const pfad of UEBLICHE_PFADE) {
+      let url
+      try { url = new URL(pfad, basis).href } catch { continue }
+      if (ziele.includes(url)) continue
+      const html = await holeSeite(url, 8000)
+      if (!html) continue
+      /* Eine Seite, die auf jede Adresse mit der Startseite antwortet, waere
+         sonst dreimal dieselbe. Das Wort muss vorkommen - in einem Impressum
+         steht es praktisch immer. */
+      if (!/impressum|imprint|angaben gem/i.test(zuText(html).slice(0, 4000))) continue
+      ziele = [url, ...ziele]
+      break
+    }
+  }
+
+  /* Die Lead-Adresse kommt zuerst, wenn sie auf eine Unterseite zeigt.
+
+     Bei Franchise-Standorten - von-poll.com/de/immobilienmakler/limburg,
+     engelvoelkers.com/de-de/reutlingen - steht der oertliche Ansprechpartner
+     genau dort, waehrend das Impressum der Zentrale gehoert und einen
+     Vorstand nennt, den das Modell zu Recht verwirft. Stand die Lead-Adresse
+     am Ende der Liste, wurde sie in diesen Faellen nie bewertet. 1.439 der
+     leeren Leads zeigen auf eine solche Standortseite. */
+  const tief = /^https?:\/\/[^/]+\/.+/.test(basis)
+  const reihe = tief ? [basis, ...ziele] : [...ziele, basis]
+
   let rueckfall = null
-  for (const url of [...ziele, basis]) {
+  for (const url of reihe) {
     const html = url === basis ? start : await holeSeite(url)
     if (!html) continue
     const a = ausschnitt(zuText(html))
@@ -290,6 +344,24 @@ export async function ansprechpartnerStelle(website) {
     if (!rueckfall) rueckfall = { quelle: url, text: a.text }
   }
   return rueckfall
+}
+
+/**
+ * Die Adresse, mit der sich arbeiten laesst.
+ *
+ * 44 Leads tragen als Website eine Google-Umleitung - "/url?q=http://..."
+ * aus einem Suchergebnis, beim Einlesen mitkopiert. Die wurde nie geladen,
+ * weil ihr das Schema fehlt und sie ohnehin keine Firmenseite ist. Das
+ * Ziel steht aber im Parameter.
+ */
+export function adresse(website) {
+  let w = String(website || '').trim()
+  if (!w) return null
+  const q = w.match(/^\/?url\?(?:[^&]*&)*q=([^&]+)/i)
+  if (q) { try { w = decodeURIComponent(q[1]) } catch { w = q[1] } }
+  if (!/^https?:\/\//i.test(w)) w = 'https://' + w
+  try { new URL(w) } catch { return null }
+  return w
 }
 
 /**
@@ -328,7 +400,13 @@ export function brauchbar(wert) {
      das Modell nahm es, weil nichts Besseres da war. Ein Wort ganz in
      Grossbuchstaben ist in einem Impressum fast nie ein Vor- oder Nachname;
      wo doch, schadet das Weglassen nicht. */
-  if (w.length <= 5 && w === w.toUpperCase()) return null
+  /* Initialen sind erlaubt: "H.-J. Lehmann" steht so im Impressum von
+     lehmann-immobilien.de, und fuer die Anrede zaehlt der Nachname. Eine
+     Abkuerzung wie WEG oder IVD hat keine Punkte - daran unterscheiden sie
+     sich. */
+  const initialen = /^(?:[A-Z\u00c0-\u00de]\.[-\s]?){1,3}$/.test(w)
+  if (!initialen && w.length <= 5 && w === w.toUpperCase()) return null
+  if (initialen) return w
   if (!/[a-z\u00df-\u00ff\u0101-\u024f]/.test(w)) return null
   if (!/^[A-Za-z\u00c0-\u024f][A-Za-z\u00c0-\u024f'\u2019\s.-]*$/.test(w)) return null
   return w
@@ -388,5 +466,26 @@ export function andereFirma(quelle, website) {
   const a = kern(quelle)
   const b = kern(website)
   if (!a || !b) return false
-  return a !== b
+  if (a === b) return false
+  /* Zwei Domains derselben Firma. rudert-rudert.de fuehrt ins Impressum von
+     rudert-immobilien.de, und dort steht Johannes Rudert - der Mann, den wir
+     suchen. Der Filter hat ihn weggeworfen, weil er nur auf Gleichheit sah.
+     Teilen beide Adressen ein eigenes Wort, ist es dieselbe Firma.
+
+     Branchen- und Rechtsformwoerter zaehlen dabei nicht: sonst gilt jedes
+     "...-immobilien.de" als verwandt mit jedem anderen, und Osterkamp
+     Immobilien bekaeme wieder den Inhaber von vosse-immo.de. */
+  const eigen = (k) => k.replace(/\.[a-z.]+$/, '').split(/[-_.]+/)
+    .filter(t => t.length >= 4 && !BRANCHENWORT.test(t))
+  const meine = new Set(eigen(b))
+  return !eigen(a).some(t => meine.has(t))
 }
+
+/* Woerter, die in jeder zweiten Maklerdomain stehen und darum nichts
+   darueber sagen, ob zwei Adressen zur selben Firma gehoeren. */
+const BRANCHENWORT = new RegExp(
+  '^(immobilien|immobilie|immo|immos|makler|maklerin|hausverwaltung|verwaltung'
+  + '|haus|haeuser|wohnen|wohnung|wohnungen|real|realty|realestate|estate'
+  + '|invest|investment|treuhand|consulting|group|gruppe|team|service|services'
+  + '|gmbh|agentur|kontor|online|info|home|homes|city|center|zentrum'
+  + '|sachverstaendiger|gutachter|bewertung|verkauf|objekt|objekte)$', 'i')

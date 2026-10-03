@@ -12,7 +12,7 @@
 
 import fs from 'node:fs'
 import { zuText, ausschnitt, unterseiten, brauchbar, wirktWieEinName, entschluessleBytes,
-         namenspaarBrauchbar, andereFirma }
+         namenspaarBrauchbar, andereFirma, adresse }
   from '../netlify/functions/utils/impressum.js'
 
 
@@ -158,6 +158,52 @@ sagt(!ziele.some(z => /facebook/.test(z)), 'Kein Weiterklicken zu Facebook')
 sagt(ziele.every(z => z.startsWith('https://www.beispiel.de/')),
   'Relative Links werden zur vollen Adresse')
 
+/* Das alte Muster verlangte doppelte Anfuehrungszeichen und hoechstens 120
+   Zeichen Beschriftung. bremerich-immobilien.de schreibt href='...' - in
+   WordPress-Themes verbreitet -, und bei expo-immo.de steckt so viel
+   Markup in der Beschriftung, dass 120 Zeichen nicht reichten. In einer
+   Stichprobe von 140 leeren Leads blieb dadurch bei 11 das Impressum
+   unentdeckt, obwohl es verlinkt war - darunter Gerhard Bremerich und
+   Peer-Oliver Puelm. */
+const einfach = unterseiten(
+  `<a href='https://www.beispiel.de/impressum/' title='Impressum'>Impressum</a>`,
+  'https://www.beispiel.de/')
+sagt(einfach.some(z => /impressum/.test(z)), "Ein href='...' zaehlt genauso")
+
+const langeBeschriftung = unterseiten(
+  `<a href="/impressum" class="x"><span class="${'y'.repeat(200)}">Impressum</span></a>`,
+  'https://www.beispiel.de/')
+sagt(langeBeschriftung.some(z => /impressum/.test(z)),
+  'Und viel Markup in der Beschriftung verdeckt den Link nicht')
+
+sagt(unterseiten('<a href="/impressum#oben">Impressum</a>', 'https://www.beispiel.de/')[0]
+       === 'https://www.beispiel.de/impressum',
+  'Ein Sprungziel am Ende der Adresse wird abgeschnitten')
+sagt(!unterseiten('<a href="javascript:void(0)">Impressum</a>', 'https://www.beispiel.de/').length
+     && !unterseiten('<a href="mailto:a@b.de">Kontakt</a>', 'https://www.beispiel.de/').length,
+  'Und javascript: oder mailto: ist keine Seite')
+
+/* Ein kaputter Link darf die Gruppe nicht beenden - vorher brach die
+   Schleife nach dem ersten Treffer ab, auch wenn er unbrauchbar war. */
+sagt(unterseiten('<a href="http://[/impressum">Impressum</a>'
+                 + '<a href="/impressum/">Impressum</a>', 'https://www.beispiel.de/')
+       .some(z => z === 'https://www.beispiel.de/impressum/'),
+  'Nach einem kaputten Link wird weitergesucht')
+sagt(unterseiten('<a href="ftp://x/impressum">Impressum</a>'
+                 + '<a href="/impressum/">Impressum</a>', 'https://www.beispiel.de/')
+       .some(z => z === 'https://www.beispiel.de/impressum/'),
+  'Und nach einem, der nicht ins Web zeigt, auch')
+
+// ── Die Lead-Adresse ──────────────────────────────────────────────────────
+/* 44 Leads tragen als Website eine Google-Umleitung aus einem Suchergebnis.
+   Die wurde nie geholt, weil ihr das Schema fehlt - das Ziel steht aber im
+   Parameter. */
+sagt(adresse('/url?q=http://www.immobilien-aalen.de/&opi=79508299&sa=U')
+       === 'http://www.immobilien-aalen.de/',
+  'Eine Google-Umleitung wird auf ihr Ziel zurueckgefuehrt')
+sagt(adresse('www.foo.de') === 'https://www.foo.de', 'Ohne Schema wird https ergaenzt')
+sagt(adresse('') === null && adresse(null) === null, 'Und nichts bleibt nichts')
+
 // ── Was aus dem Modell kommt, wird nochmal gesiebt ────────────────────────
 // Das Modell soll Unsicheres weglassen, aber darauf allein verlaesst sich
 // hier nichts: eine falsche Anrede faellt beim Empfaenger sofort auf.
@@ -165,6 +211,10 @@ sagt(brauchbar('Kerstin') === 'Kerstin', 'Ein Name geht durch')
 sagt(brauchbar(' Ümit ') === 'Ümit', 'Umlaute und Leerzeichen ringsum')
 sagt(brauchbar('von Stosch') === 'von Stosch', 'Namenszusätze bleiben')
 sagt(brauchbar('GmbH') === null, '„GmbH" nicht')
+/* Initialen sind ein Vorname, Abkuerzungen nicht. Unterschied: der Punkt.
+   Ein Lead trug „H.-J." im Impressum und fiel unter die WEG-Regel. */
+sagt(brauchbar('H.-J.') === 'H.-J.', '„H.-J." ist ein Vorname')
+sagt(brauchbar('WEG') === null, '„WEG" ist keiner')
 sagt(brauchbar('Vertreter') === null, '„Vertreter" nicht')
 sagt(brauchbar('unklar') === null, '„unklar" nicht')
 sagt(brauchbar('info@firma.de') === null, 'Keine Mailadresse')
@@ -245,9 +295,19 @@ const FIRMENFAELLE = [
   // Eine Filiale liegt auf derselben Domain - das erkennt nur das Modell,
   // nicht diese Regel. Hier darf sie nicht fälschlich zuschlagen.
   ['https://www.ksk-immobilien.de/impressum/', 'https://www.ksk-immobilien.de/standort/siegburg/', false],
+  /* Zwei Domains derselben Firma. rudert-rudert.de fuehrt ins Impressum von
+     rudert-immobilien.de, wo Johannes Rudert steht - der Mann, den wir
+     suchen. Der Filter hat ihn weggeworfen, weil er nur auf Gleichheit sah. */
+  ['https://www.rudert-immobilien.de/impressum/', 'https://rudert-rudert.de/', false],
+  ['https://mhimmo.de/?page_id=2082', 'http://www.mhimmo.de/', false],
   // Eine andere Firma: die Agentur, der Hoster, ein Nachfolger.
   ['https://www.aufteilungsplan.de/impressum', 'https://anneser-immobilien.de/', true],
   ['https://vosse-immo.de/impressum', 'https://osterkamp-immobilien.de/', true],
+  /* Das gemeinsame Wort muss ein eigenes sein. Zaehlte "immobilien" mit,
+     waere jede Maklerdomain mit jeder verwandt und Osterkamp bekaeme wieder
+     den Inhaber von vosse-immo.de. */
+  ['https://a-immobilien.de/impressum', 'https://b-immobilien.de/', true],
+  ['https://hausverwaltung-mueller.de/impressum', 'https://immo-schmidt.de/', true],
 ]
 let firmenfehler = 0
 for (const [quelle, website, soll] of FIRMENFAELLE) {
