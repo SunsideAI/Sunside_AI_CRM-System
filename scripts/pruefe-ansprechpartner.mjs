@@ -211,10 +211,28 @@ sagt(brauchbar('Kerstin') === 'Kerstin', 'Ein Name geht durch')
 sagt(brauchbar(' Ümit ') === 'Ümit', 'Umlaute und Leerzeichen ringsum')
 sagt(brauchbar('von Stosch') === 'von Stosch', 'Namenszusätze bleiben')
 sagt(brauchbar('GmbH') === null, '„GmbH" nicht')
-/* Initialen sind ein Vorname, Abkuerzungen nicht. Unterschied: der Punkt.
-   Ein Lead trug „H.-J." im Impressum und fiel unter die WEG-Regel. */
-sagt(brauchbar('H.-J.') === 'H.-J.', '„H.-J." ist ein Vorname')
-sagt(brauchbar('WEG') === null, '„WEG" ist keiner')
+sagt(brauchbar('WEG') === null, '„WEG" ist keine Abkuerzung, die durchgeht')
+/* Ein Branchenwort ist weder Vor- noch Nachname. Das Modell zerlegte am
+   04.10.2026 sechs Firmennamen und schrieb den zweiten Teil ins
+   Nachnamensfeld; die Rechtsform-Regel traf nicht, weil keine dabeistand. */
+sagt(brauchbar('Immobilien') === null, '„Immobilien" ist kein Name')
+sagt(brauchbar('Immobilien Management') === null, 'Auch nicht als zweites Wort')
+sagt(brauchbar('Hausverwaltung') === null && brauchbar('Immobilienservice') === null,
+  'Und Komposita darauf auch nicht')
+sagt(brauchbar('Neuenschwander') === 'Neuenschwander',
+  'Ein langer Nachname bleibt davon unberuehrt')
+
+/* Das Modell soll den Eintrag weglassen, wenn es nichts findet. Bei „s REAL
+   Immobilien Braunau" schrieb es stattdessen „Nicht angegeben" ins
+   Vornamensfeld. */
+sagt(brauchbar('Nicht angegeben') === null, '„Nicht angegeben" ist kein Name')
+sagt(brauchbar('Keine Angabe') === null && brauchbar('Unbekannt') === null,
+  'Und „Keine Angabe" oder „Unbekannt" auch nicht')
+/* Die Regel darf keine echten Namen mitnehmen - „Nicole", „Nina" und
+   „Katharina" fangen genauso an. */
+sagt(['Nicole', 'Niklas', 'Nina', 'Nico', 'Katharina', 'Konstantin']
+       .every(n => brauchbar(n) === n),
+  'Namen mit demselben Anfang bleiben unberuehrt')
 sagt(brauchbar('Vertreter') === null, '„Vertreter" nicht')
 sagt(brauchbar('unklar') === null, '„unklar" nicht')
 sagt(brauchbar('info@firma.de') === null, 'Keine Mailadresse')

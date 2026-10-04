@@ -387,6 +387,13 @@ export function brauchbar(wert) {
      Inhaber. Bei "Niedermayer Immobilien GmbH" trug der Nachname
      "Immobilien GmbH" - die Sperrliste oben traf nur das Wort fuer sich. */
   if (/(?<![A-Za-z\u00c0-\u024f])(gmbh|mbh|ohg|gbr|kgaa|e\.?\s?k(?:fr)?\.|ug\b|\bag\b|\bkg\b)/i.test(w)) return null
+  /* Und ein Branchenwort ist weder Vor- noch Nachname. Das Modell zerlegte
+     am 04.10.2026 sechs Firmennamen in zwei Teile und schrieb den zweiten
+     ins Nachnamensfeld: "Beeler | Immobilien", "Nemetz | Immobilien",
+     "Werner | Immobilien Management". Die Rechtsform-Regel darueber traf
+     nicht, weil keine dabeistand - KEIN_NACHNAME kannte die Woerter
+     laengst, wurde aber nur zur Auswahl der Fundstelle benutzt. */
+  if (w.split(/[-\s]+/).some(teil => KEIN_NACHNAME.test(teil))) return null
   /* Ein Mustername ist kein Name. Beim Aufräumen des Altbestands am
      02.10.2026 standen „Max Mustermann", „Hans Muster" und „Karin Muster" in
      den Feldern - alle drei von Platzhalter-Impressen. „Max" allein bleibt
@@ -395,18 +402,21 @@ export function brauchbar(wert) {
   /* Und eine Anrede- oder Grussfloskel auch nicht - im Altbestand stand bei
      54 Kontakten „liebe Makler" im Namensfeld. */
   if (/^(sehr geehrte[rn]?|liebe[rs]?|hallo|guten tag|damen|herren|sekret(ä|ae)rin|sekretariat|team|zentrale|empfang)$/i.test(w)) return null
+  /* Auch keine Auskunft ueber das Fehlen einer Auskunft. Bei „s REAL
+     Immobilien Braunau" schrieb das Modell wortwoertlich „Nicht angegeben"
+     ins Vornamensfeld, obwohl der Auftrag das Weglassen verlangt. */
+  if (/^(nicht |keine? |ohne |k\.?a\.?$|n\.?v\.?$)/i.test(w)) return null
+  if (/^(unbekannt|unbenannt|anonym|entf(ä|ae)llt|fehlt|leer|none|unknown|not specified|n\/a)$/i.test(w)) return null
   /* Eine Abkuerzung ist kein Name. Im ersten Durchgang am 01.10.2026 kam bei
      sechs von 25 Leads "WEG WEG" heraus - das Wort stand im Seitentext, und
      das Modell nahm es, weil nichts Besseres da war. Ein Wort ganz in
      Grossbuchstaben ist in einem Impressum fast nie ein Vor- oder Nachname;
      wo doch, schadet das Weglassen nicht. */
-  /* Initialen sind erlaubt: "H.-J. Lehmann" steht so im Impressum von
-     lehmann-immobilien.de, und fuer die Anrede zaehlt der Nachname. Eine
-     Abkuerzung wie WEG oder IVD hat keine Punkte - daran unterscheiden sie
-     sich. */
-  const initialen = /^(?:[A-Z\u00c0-\u00de]\.[-\s]?){1,3}$/.test(w)
-  if (!initialen && w.length <= 5 && w === w.toUpperCase()) return null
-  if (initialen) return w
+  /* Initialen sind keine Abkuerzung wie WEG oder IVD - sie haben Punkte.
+     Als Nachname taugen sie nichts, als Vorname entscheidet darueber
+     namenspaarBrauchbar: dort ist bekannt, in welchem Feld der Wert landet. */
+  if (!NUR_INITIALEN.test(w) && w.length <= 5 && w === w.toUpperCase()) return null
+  if (NUR_INITIALEN.test(w)) return w
   if (!/[a-z\u00df-\u00ff\u0101-\u024f]/.test(w)) return null
   if (!/^[A-Za-z\u00c0-\u024f][A-Za-z\u00c0-\u024f'\u2019\s.-]*$/.test(w)) return null
   return w
@@ -422,8 +432,20 @@ export function namenspaarBrauchbar(vorname, nachname) {
   const n = brauchbar(nachname)
   if (!v || !n) return null
   if (v.toLowerCase() === n.toLowerCase()) return null
+  /* Ein Vorname aus Initialen taugt fuer die Mail nicht. Die Anrede kommt
+     aus dem Geschlecht, das Geschlecht aus dem Vornamen - und "W." sagt
+     dazu nichts. Ohne Anrede gruesst die Mailvorlage mit vollem Namen, und
+     "Hallo W. Kuhn" sieht nach Datenbankfehler aus. Ein Nachname allein ist
+     laut Auftrag ohnehin kein Treffer; hier ist derselbe Fall nur anders
+     geschrieben. */
+  if (NUR_INITIALEN.test(v)) return null
+  /* Als Nachname sind Initialen genauso wenig ein Name. */
+  if (NUR_INITIALEN.test(n)) return null
   return { vorname: grossAnfang(v), nachname: grossAnfang(n) }
 }
+
+/* Ein Wert, der nur aus Anfangsbuchstaben besteht: "W.", "H.-J.", "W.D." */
+const NUR_INITIALEN = /^(?:[A-Z\u00c0-\u00de]\.[-\s]?){1,3}$/
 
 /* Manche Seiten schreiben den Namen klein - schadkami-immobilien.de etwa.
    In der Anrede faellt das auf ("Hallo Herr schadkami"), im Impressum nicht.
