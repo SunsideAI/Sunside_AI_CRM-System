@@ -152,12 +152,18 @@ export async function handler(event) {
   // Die Websites parallel holen - das ist der langsame Teil.
   const stuecke = []
   const ohneStelle = []
+  /* Was mit der Website war, je Lead. Ohne diesen Vermerk sieht ein Lead,
+     dessen Domain nicht mehr aufloest, genauso aus wie einer, dessen
+     Impressum nur keinen Namen nennt - und niemand kann die einen
+     aussortieren und die anderen erneut versuchen. */
+  const seitenstand = new Map()
   let i = 0
   async function arbeiter() {
     while (i < belegt.length && Date.now() < bis) {
       const lead = belegt[i++]
       try {
         const stelle = await ansprechpartnerStelle(lead.website)
+        if (stelle?.websiteStatus) seitenstand.set(lead.id, stelle.websiteStatus)
         if (stelle?.text) {
           stuecke.push({ id: lead.id, firma: lead.unternehmensname || '',
                          website: lead.website, ...stelle })
@@ -166,12 +172,34 @@ export async function handler(event) {
         }
       } catch (e) {
         console.error('Website', lead.website, e.message)
+        seitenstand.set(lead.id, 'fehler_unbekannt')
         ohneStelle.push(lead.id)
       }
     }
   }
   await Promise.all(Array.from({ length: GLEICHZEITIG }, arbeiter))
   console.log(`geholt: ${stuecke.length} mit Stelle, ${ohneStelle.length} ohne`)
+
+  /* Den Seitenstand festhalten, bevor das Modell gefragt wird: Er gilt
+     unabhaengig davon, ob am Ende ein Name herauskommt. Gebuendelt nach
+     Status, damit aus 1.200 Leads nicht 1.200 Schreibvorgaenge werden. */
+  const jeStatus = new Map()
+  for (const [id, stand] of seitenstand) {
+    if (!jeStatus.has(stand)) jeStatus.set(stand, [])
+    jeStatus.get(stand).push(id)
+  }
+  const geprueft = new Date().toISOString()
+  for (const [stand, ids] of jeStatus) {
+    for (let k = 0; k < ids.length; k += 500) {
+      const { error: e } = await supabase
+        .from('leads')
+        .update({ website_status: stand, website_geprueft_am: geprueft })
+        .in('id', ids.slice(k, k + 500))
+      if (e) console.error('Seitenstand', stand, e.message)
+    }
+  }
+  console.log('Seitenstand:', JSON.stringify(
+    Object.fromEntries([...jeStatus].map(([k, v]) => [k, v.length]))))
 
   // Das Modell fragen und schreiben.
   let gesetzt = 0
@@ -235,7 +263,8 @@ export async function handler(event) {
   }
 
   const bericht = { geladen: leads.length, vorgenommen: belegt.length,
-                    mit_stelle: stuecke.length, gesetzt }
+                    mit_stelle: stuecke.length, gesetzt,
+                    seitenstand: Object.fromEntries([...jeStatus].map(([k, v]) => [k, v.length])) }
   console.log('ansprechpartner-suchen:', JSON.stringify(bericht))
   return antworte(200, bericht)
 }

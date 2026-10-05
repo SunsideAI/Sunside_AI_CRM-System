@@ -187,18 +187,45 @@ export function entschluessleBytes(bytes, contentType = '') {
  * Zeichensatz und aus "Persönlich" wird "PersÃ¶nlich".
  */
 export async function holeSeite(url, msZeit = 12000) {
+  return (await holeSeiteMitGrund(url, msZeit)).html
+}
+
+/**
+ * Dasselbe, aber mit der Auskunft, warum es nicht ging.
+ *
+ * "Nicht erreichbar" ist nicht eine Lage, sondern mehrere, und sie verlangen
+ * Verschiedenes: Eine Domain, die nicht mehr aufloest, ist weg und der Lead
+ * wertlos. Ein 403 heisst das Gegenteil - die Seite lebt und wehrt nur
+ * Maschinen ab, der Kunde ist ueber sie erreichbar. Ein Zeitablauf kann
+ * beides sein und lohnt einen zweiten Versuch.
+ *
+ * Solange holeSeite nur `null` lieferte, sah im Bestand alles gleich aus.
+ */
+export async function holeSeiteMitGrund(url, msZeit = 12000) {
   const abbruch = new AbortController()
   const uhr = setTimeout(() => abbruch.abort(), msZeit)
   try {
     const a = await fetch(url, { headers: KOPF, redirect: 'follow', signal: abbruch.signal })
-    if (!a.ok) return null
+    if (!a.ok) {
+      /* 401, 403 und 429 kommen vom Bot-Schutz, nicht von einer toten Seite.
+         Getrennt benannt, damit ein spaeterer Lauf sie anders anfassen kann
+         als einen 404. */
+      const art = [401, 403, 429].includes(a.status) ? 'abgewiesen' : 'fehler'
+      return { html: null, grund: `${art}_${a.status}` }
+    }
     const typ = a.headers.get('content-type') || ''
-    if (!/html/i.test(typ)) return null
+    if (!/html/i.test(typ)) return { html: null, grund: 'kein_html' }
     const bytes = new Uint8Array(await a.arrayBuffer())
-    if (bytes.length > 3_000_000) return null
-    return entschluessleBytes(bytes, typ)
-  } catch {
-    return null
+    if (bytes.length > 3_000_000) return { html: null, grund: 'zu_gross' }
+    return { html: entschluessleBytes(bytes, typ), grund: 'erreichbar' }
+  } catch (e) {
+    /* Der Abbruch durch die eigene Uhr heisst Zeitablauf; alles andere ist
+       ein Netzwerkfehler, in aller Regel eine Domain ohne DNS-Eintrag. */
+    const name = String(e?.name || '')
+    if (name === 'AbortError' || name === 'TimeoutError') {
+      return { html: null, grund: 'zeitablauf' }
+    }
+    return { html: null, grund: 'kein_dns' }
   } finally {
     clearTimeout(uhr)
   }
@@ -302,9 +329,9 @@ export function ausschnitt(text) {
  */
 export async function ansprechpartnerStelle(website) {
   const basis = adresse(website)
-  if (!basis) return null
-  const start = await holeSeite(basis)
-  if (!start) return null
+  if (!basis) return { text: null, websiteStatus: 'keine_adresse' }
+  const { html: start, grund } = await holeSeiteMitGrund(basis)
+  if (!start) return { text: null, websiteStatus: grund }
 
   let ziele = unterseiten(start, basis)
   /* Zeigt kein Link auf ein Impressum, die ueblichen Adressen probieren. */
@@ -340,10 +367,12 @@ export async function ansprechpartnerStelle(website) {
     const html = url === basis ? start : await holeSeite(url)
     if (!html) continue
     const a = ausschnitt(zuText(html))
-    if (a.vielversprechend) return { quelle: url, text: a.text }
-    if (!rueckfall) rueckfall = { quelle: url, text: a.text }
+    if (a.vielversprechend) return { quelle: url, text: a.text, websiteStatus: 'erreichbar' }
+    if (!rueckfall) rueckfall = { quelle: url, text: a.text, websiteStatus: 'erreichbar' }
   }
-  return rueckfall
+  /* Die Startseite stand, nur eine brauchbare Stelle gab es nicht. Das ist
+     etwas anderes als eine tote Domain und wird auch so vermerkt. */
+  return rueckfall ?? { text: null, websiteStatus: 'erreichbar' }
 }
 
 /**
@@ -364,6 +393,28 @@ export function adresse(website) {
   return w
 }
 
+/* Akademische Titel am Anfang eines Namens.
+
+   Der Filter hat sie bisher nur erkannt, wenn sie allein im Feld standen -
+   "Dr." wurde verworfen, "Dr. Armin" ging als Vorname durch. Dann gruesste
+   die Mail "Hallo Dr. Armin Hartmann", und der Trigger fand "dr. armin"
+   natuerlich in keiner Vornamensliste. Zehn Leads trugen so einen Vornamen,
+   drei weitere nur den Titel. Abschneiden ist besser als verwerfen: unter
+   dem Titel steht meist der richtige Name. */
+/* Der Punkt ist Teil der Bedingung. Ohne ihn frass "ing" aus der Liste das
+   "Ing" in "Ingrid", und aus "Mag. Ingrid" wurde "rid". */
+const TITEL = new RegExp(
+  '^((?:dr|prof|dipl|ing|mag|mmag|med|jur|rer|nat|habil|msc|bsc|mba|ll\\.m'
+  + '|dkfm|phil|agr|oec|h\\.c)\\.[-\\s]*)+', 'i')
+
+export function ohneTitel(wert) {
+  const w = String(wert || '').trim()
+  /* Nur wenn danach noch etwas steht. "Dr." allein bleibt "Dr." und faellt
+     weiter unten durch - sonst kaeme ein leerer Name durch. */
+  const rest = w.replace(TITEL, '').trim()
+  return rest.length >= 2 ? rest : w
+}
+
 /**
  * Was aus dem Modell kommt, wird nochmal gesiebt.
  *
@@ -373,7 +424,7 @@ export function adresse(website) {
  * Anrede einer echten Mail; lieber keiner.
  */
 export function brauchbar(wert) {
-  const w = String(wert || '').trim().normalize('NFC')
+  const w = ohneTitel(String(wert || '').trim().normalize('NFC'))
   if (w.length < 2 || w.length > 40) return null
   if (/\d|@|\.de$|\.com$/.test(w)) return null
   if (/^(gmbh|kg|ohg|gbr|mbh|ag|e\.?k\.?|vertreter|inhaber|gesch|firma|unbekannt|unklar|n\/?a|null)$/i.test(w)) return null
@@ -383,6 +434,10 @@ export function brauchbar(wert) {
      Vornamensfeld. Der Auftrag an das Modell verbot das schon; es hielt sich
      nicht daran, also steht es hier. */
   if (/^(herr|frau|hr|fr|dr|prof|dipl|ing|m{1,2}ag|med|jur|rer|nat|h\.?c|msc|bsc|mba|ll\.?m|dkfm|ba|ma|m\.?a|b\.?a)\.?$/i.test(w)) return null
+  /* Ein zusammengesetzter Titel ohne Namen dahinter: "Dr.-Ing.", "Dipl.-Ing.",
+     "Prof. Dr.". ohneTitel laesst ihn stehen, weil nichts uebrig bliebe -
+     hier faellt er durch. */
+  if (/^(?:(?:dr|prof|dipl|ing|mag|mmag|med|habil|phil|rer|nat|oec|jur)\.?[-\s]*)+$/i.test(w)) return null
   /* Eine Rechtsform irgendwo im Wert heisst: hier steht die Firma, nicht ihr
      Inhaber. Bei "Niedermayer Immobilien GmbH" trug der Nachname
      "Immobilien GmbH" - die Sperrliste oben traf nur das Wort fuer sich. */

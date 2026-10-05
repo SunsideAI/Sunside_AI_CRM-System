@@ -12,7 +12,7 @@
 
 import fs from 'node:fs'
 import { zuText, ausschnitt, unterseiten, brauchbar, wirktWieEinName, entschluessleBytes,
-         namenspaarBrauchbar, andereFirma, adresse }
+         namenspaarBrauchbar, andereFirma, adresse, holeSeiteMitGrund }
   from '../netlify/functions/utils/impressum.js'
 
 
@@ -225,6 +225,20 @@ sagt(brauchbar('Neuenschwander') === 'Neuenschwander',
 /* Das Modell soll den Eintrag weglassen, wenn es nichts findet. Bei „s REAL
    Immobilien Braunau" schrieb es stattdessen „Nicht angegeben" ins
    Vornamensfeld. */
+/* Ein Titel vor dem Namen wird abgeschnitten, nicht verworfen. Der Filter
+   erkannte ihn bisher nur allein im Feld: „Dr." fiel durch, „Dr. Armin" ging
+   als Vorname durch - und die Mail gruesste „Hallo Dr. Armin Hartmann". */
+sagt(brauchbar('Dr. Armin') === 'Armin', 'Ein Titel vor dem Namen fällt weg')
+sagt(brauchbar('Prof. Dr. Klaus') === 'Klaus', 'Auch mehrere hintereinander')
+sagt(brauchbar('Dr.-Ing.') === null && brauchbar('Dipl.-Ing.') === null,
+  'Ein Titel ohne Namen dahinter bleibt kein Name')
+/* Der Punkt gehoert zur Bedingung: ohne ihn frass „ing" aus der Titelliste
+   das „Ing" in „Ingrid", und aus „Mag. Ingrid" wurde „rid". */
+sagt(brauchbar('Mag. Ingrid') === 'Ingrid', '„Mag. Ingrid" wird „Ingrid", nicht „rid"')
+sagt(['Ingrid', 'Ingo', 'Inge', 'Magnus', 'Magdalena', 'Medina', 'Natalie', 'Philipp', 'Doris']
+       .every(n => brauchbar(n) === n),
+  'Namen, die wie ein Titel anfangen, bleiben ganz')
+
 sagt(brauchbar('Nicht angegeben') === null, '„Nicht angegeben" ist kein Name')
 sagt(brauchbar('Keine Angabe') === null && brauchbar('Unbekannt') === null,
   'Und „Keine Angabe" oder „Unbekannt" auch nicht')
@@ -383,6 +397,31 @@ sagt(/Niederlassung einer Kette ist und das Impressum der Zentrale/.test(auftrag
   'Und nicht den Vorstand einer Kette für den Filialleiter')
 sagt(/andereFirma\(lead\.quelle, lead\.website\)/.test(fn),
   'Eine fremde Domain wird gar nicht erst geschrieben')
+
+// ── Der Zustand der Website ───────────────────────────────────────────────
+/* Von gut 11.000 Leads ohne Ansprechpartner war bei der Haelfte die Website
+   nicht erreichbar - aber im Bestand sah das genauso aus wie ein Impressum
+   ohne Namen. „Nicht erreichbar" ist ausserdem mehrerlei: Eine Domain ohne
+   DNS-Eintrag ist weg, ein 403 heisst das Gegenteil (die Seite lebt und
+   wehrt nur Maschinen ab), ein Zeitablauf lohnt einen zweiten Versuch. */
+sagt(typeof holeSeiteMitGrund === 'function', 'Der Abruf sagt, warum er scheiterte')
+sagt(/abgewiesen_\$\{a\.status\}|\$\{art\}_\$\{a\.status\}/.test(
+       fs.readFileSync('netlify/functions/utils/impressum.js', 'utf8')),
+  'Bot-Schutz (401, 403, 429) wird getrennt von einem 404 benannt')
+sagt(/'zeitablauf'/.test(fs.readFileSync('netlify/functions/utils/impressum.js', 'utf8'))
+     && /'kein_dns'/.test(fs.readFileSync('netlify/functions/utils/impressum.js', 'utf8')),
+  'Und ein Zeitablauf von einer toten Domain')
+sagt(/website_status: stand, website_geprueft_am: geprueft/.test(fn),
+  'Der Lauf schreibt den Stand in den Lead')
+/* Gebuendelt nach Status: 1.200 Leads duerfen nicht 1.200 Schreibvorgaenge
+   werden. */
+sagt(/\.in\('id', ids\.slice/.test(fn), 'Und zwar gebündelt, nicht Lead für Lead')
+/* Vor dem Modellaufruf: Der Stand der Website gilt, ob am Ende ein Name
+   herauskommt oder nicht. */
+const standStelle = fn.indexOf('website_status: stand')
+const modellStelle = fn.indexOf('await frageModell(')
+sagt(standStelle > 0 && standStelle < modellStelle,
+  'Der Stand wird festgehalten, bevor das Modell gefragt wird')
 
 // ── Was die Funktion nicht anfasst ────────────────────────────────────────
 sagt(/\.is\('ansprechpartner_vorname', null\)/.test(fn),
