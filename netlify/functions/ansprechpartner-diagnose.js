@@ -10,9 +10,16 @@
  * Gibt pro Lead zurueck: ob eine Stelle gefunden wurde, den Ausschnitt, die
  * rohe Antwort des Modells und - falls sie verworfen wurde - den Grund.
  *
+ * Dasselbe fuer die Anrede: ein Name ohne Anrede ist fuer die Mail nur
+ * halb brauchbar, denn die Vorlage gruesst dann mit vollem Namen. Auch hier
+ * war nicht zu sehen, ob das Modell einen Vornamen als Doppelnamen
+ * einstufte oder gar nicht gefragt wurde.
+ *
  * Aufruf: POST /.netlify/functions/ansprechpartner-diagnose
  *         { menge: 40 }                 Stichprobe aus den leeren Leads
  *         { websites: ["..."] }          bestimmte Adressen
+ *         { vornamen: ["Jannik"] }       was das Modell zum Geschlecht sagt
+ *         { vornamen: "offen" }          die Vornamen ohne Anrede aus der Datenbank
  *         { modell: "gpt-4o" }           anderes Modell zum Vergleich
  */
 
@@ -22,6 +29,7 @@ import { ansprechpartnerStelle, brauchbar, namenspaarBrauchbar, andereFirma }
 import { anmeldungVerlangen } from './utils/session.js'
 import { verboten } from './utils/zugriff.js'
 import { AUFTRAG } from './utils/ansprechpartner-auftrag.js'
+import { ANREDE_AUFTRAG } from './utils/anrede-auftrag.js'
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
 
@@ -67,6 +75,63 @@ export async function handler(event) {
   try { wunsch = JSON.parse(event.body || '{}') } catch { /* ohne Angabe */ }
   const modell = typeof wunsch.modell === 'string' ? wunsch.modell : 'gpt-4o-mini'
   const menge = Math.min(Math.max(1, Number(wunsch.menge) || 20), 60)
+
+  /* Der Anrede-Zweig: fragt genau wie anrede-nachtragen, schreibt aber
+     nichts und gibt die rohe Antwort zurueck. */
+  if (wunsch.vornamen) {
+    let namen = wunsch.vornamen
+    if (namen === 'offen') {
+      const gesehen = new Set()
+      for (const tabelle of ['leads', 'hot_leads']) {
+        for (let von = 0; ; von += 1000) {
+          const { data } = await supabase.from(tabelle)
+            .select('ansprechpartner_vorname')
+            .is('anrede', null).not('ansprechpartner_vorname', 'is', null)
+            .range(von, von + 999)
+          for (const z of data || []) {
+            const v = (z.ansprechpartner_vorname || '').trim().split(' ')[0]
+            if (v) gesehen.add(v.normalize('NFC'))
+          }
+          if ((data || []).length < 1000) break
+        }
+      }
+      namen = [...gesehen]
+    }
+    if (!Array.isArray(namen) || !namen.length) {
+      return antworte(400, { error: 'vornamen: Liste oder "offen"' })
+    }
+    const urteile = []
+    const rohe = []
+    for (let i = 0; i < Math.min(namen.length, 400); i += 40) {
+      const teil = namen.slice(i, i + 40)
+      const a = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${schluessel}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: modell, temperature: 0,
+          response_format: { type: 'json_object' },
+          messages: [{ role: 'system', content: ANREDE_AUFTRAG },
+                     { role: 'user', content: teil.join(', ') }],
+        }),
+      })
+      if (!a.ok) { rohe.push(`${a.status} ${(await a.text()).slice(0, 200)}`); continue }
+      const roh = (await a.json()).choices?.[0]?.message?.content || ''
+      try { urteile.push(...(JSON.parse(roh).namen || [])) }
+      catch { rohe.push(roh.slice(0, 500)) }
+    }
+    const genannt = new Set(urteile.map(u => String(u.name || '').toLowerCase()))
+    const zahl = (form) => urteile.filter(u => u.anrede === form).length
+    return antworte(200, {
+      modell,
+      uebersicht: { gefragt: Math.min(namen.length, 400), beantwortet: urteile.length,
+                    herr: zahl('Herr'), frau: zahl('Frau'), unklar: zahl('unklar'),
+                    nicht_genannt: namen.slice(0, 400)
+                      .filter(n => !genannt.has(String(n).toLowerCase())).length },
+      unklar: urteile.filter(u => u.anrede === 'unklar').map(u => u.name),
+      urteile,
+      nicht_lesbar: rohe,
+    })
+  }
 
   let leads
   if (Array.isArray(wunsch.websites) && wunsch.websites.length) {

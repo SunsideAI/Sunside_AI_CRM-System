@@ -61,7 +61,9 @@ sagt(/'anrede': 'anrede'/.test(server), 'Und sie lässt sich von Hand korrigiere
 // Die Nachtrag-Funktion fragt die KI nur fuer echte Vornamen.
 const engine = fs.readFileSync('netlify/functions/anrede-nachtragen-background.js', 'utf8')
 sagt(/kommtInFrage/.test(engine), 'Die Engine siebt Firmen und Floskeln aus')
-sagt(/unklar/.test(engine) && /falsche Anrede ist schlimmer/.test(engine),
+sagt(/unklar/.test(fs.readFileSync('netlify/functions/utils/anrede-auftrag.js', 'utf8'))
+     && /falsche Anrede f(ä|ae)llt beim Empf(ä|ae)nger sofort auf/
+          .test(fs.readFileSync('netlify/functions/utils/anrede-auftrag.js', 'utf8')),
   'Und weist das Modell an, im Zweifel nichts zu setzen')
 // Supabase gibt ohne Zutun hoechstens 1.000 Zeilen zurueck. Solange die
 // Tabelle 1.670 Namen trug, fiel das nicht auf; seit der Impressum-Suche sind
@@ -116,6 +118,31 @@ sagt(/width="28" height="28"/.test(sig), 'Symbole in der Größe aus dem Postfac
 sagt(!sig.includes(FIRMENZEILE), 'Beim Gründer keine Firmenzeile')
 sagt(signaturHtml({ name: 'Max Lehmann' }).includes(FIRMENZEILE),
   'Bei allen anderen steht sie dort')
+
+// ── Der Auftrag an das Modell, das das Geschlecht zuordnet ───────────────
+/* Der alte Auftrag sagte dreimal „im Zweifel unklar" und nannte kein
+   Gegenbeispiel. Das Modell nahm das woertlich: von 870 Leads ohne Anrede
+   blieben nach einem Lauf 740 uebrig, darunter Jannik, Francesco, Dominic,
+   Helge, Frauke und Friederike - in Deutschland alle sechs eindeutig. */
+const auftrag = fs.readFileSync('netlify/functions/utils/anrede-auftrag.js', 'utf8')
+const fn = fs.readFileSync('netlify/functions/anrede-nachtragen-background.js', 'utf8')
+sagt(/content: ANREDE_AUFTRAG/.test(fn),
+  'Die Funktion nimmt den gemeinsamen Auftrag, keinen eigenen Prompt')
+sagt(/content: ANREDE_AUFTRAG/.test(
+       fs.readFileSync('netlify/functions/ansprechpartner-diagnose.js', 'utf8')),
+  'Und die Diagnose fragt mit genau demselben')
+sagt(/Nenne JEDEN Namen in der Antwort/.test(auftrag),
+  'Das Modell antwortet zu jedem Namen, auch den unklaren')
+sagt(/Jannik, Niko, Helge/.test(auftrag) && /Frauke, Friederike/.test(auftrag),
+  'Die sechs uebersehenen Namen stehen als Gegenbeispiel darin')
+sagt(/regelm(ä|ae)ßig f(ü|ue)r Frauen UND M(ä|ae)nner/.test(auftrag),
+  '„unklar" ist auf echte Doppelnamen begrenzt')
+sagt(/Kim/.test(auftrag) && /Dominique/.test(auftrag) && /Toni/.test(auftrag),
+  'Und die Doppelnamen sind benannt (Kim, Dominique, Toni)')
+/* Mit .range(0, 9999) war bei 10.000 bekannten Namen Schluss, und alles
+   darueber galt als unbekannt - bezahlt haette das Modell. */
+sagt(/bekannteVornamen\(\)/.test(fn) && /von \+= 1000/.test(fn),
+  'Die bekannten Vornamen werden paginiert geladen')
 
 console.log('')
 if (befunde.length) {

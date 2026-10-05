@@ -23,6 +23,7 @@
 import { createClient } from '@supabase/supabase-js'
 import { anmeldungVerlangen } from './utils/session.js'
 import { darf, verboten } from './utils/zugriff.js'
+import { ANREDE_AUFTRAG } from './utils/anrede-auftrag.js'
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY)
 
@@ -87,12 +88,28 @@ export async function handler(event) {
       return alle
     }
 
+    /* Auch hier gilt die Tausender-Grenze. Mit .range(0, 9999) war bei
+       10.000 Namen Schluss, und alles darueber galt als unbekannt - das
+       Modell waere fuer Namen bezahlt worden, die langst in der Tabelle
+       stehen. */
+    async function bekannteVornamen() {
+      const alle = []
+      for (let von = 0; ; von += 1000) {
+        const { data, error } = await supabase
+          .from('vorname_anrede').select('vorname').range(von, von + 999)
+        if (error) { console.error('vorname_anrede', error.message); break }
+        alle.push(...(data || []))
+        if ((data || []).length < 1000) break
+      }
+      return alle
+    }
+
     const [hot, kalt, bekannt] = await Promise.all([
       vornamenAus('hot_leads'),
       vornamenAus('leads'),
-      supabase.from('vorname_anrede').select('vorname').range(0, 9999)
+      bekannteVornamen()
     ])
-    const schonDa = new Set((bekannt.data || []).map(z => z.vorname))
+    const schonDa = new Set(bekannt.map(z => z.vorname))
 
     const offen = [...new Set(
       [...hot, ...kalt]
@@ -121,12 +138,7 @@ export async function handler(event) {
           response_format: { type: 'json_object' },
           messages: [{
             role: 'system',
-            content: 'Du ordnest Vornamen einem Geschlecht zu, für die Anrede in einer '
-                   + 'Geschäftsmail. Antworte als JSON: {"namen":[{"name":"...","anrede":"Herr|Frau|unklar"}]}. '
-                   + 'Nimm "unklar", wenn der Name in Deutschland für beide Geschlechter '
-                   + 'vorkommt (Kim, Dominique, Toni, Sidney, Chris), wenn es ein Nachname '
-                   + 'oder kein Personenname ist, oder wenn du dir nicht sicher bist. '
-                   + 'Im Zweifel immer "unklar" - eine falsche Anrede ist schlimmer als keine.'
+            content: ANREDE_AUFTRAG,
           }, {
             role: 'user',
             content: teil.join(', ')
