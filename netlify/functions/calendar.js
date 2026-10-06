@@ -204,11 +204,16 @@ export const handler = async (event) => {
           if (!userResponse.ok) throw new Error(userData.message || 'Calendly User-Fehler')
           const orgUri = userData.resource.current_organization
 
+          /* Nach Mailadresse filtert Calendly selbst - clientseitig zu
+             filtern hiesse, erst die naechsten N Termine zu holen und zu
+             hoffen, dass der gesuchte darunter ist. */
           const suche = new URLSearchParams({
             organization: orgUri, count: String(Math.min(Number(params.menge) || 5, 20)),
-            sort: 'start_time:desc', status: 'active'
+            sort: 'start_time:desc'
           })
+          if (params.mail) suche.set('invitee_email', String(params.mail).toLowerCase())
           if (params.ab) suche.set('min_start_time', params.ab)
+          if (params.status) suche.set('status', String(params.status))
           const eventsAntwort = await fetch(
             `https://api.calendly.com/scheduled_events?${suche}`, { headers: calendlyHeaders })
           const eventsDaten = await eventsAntwort.json()
@@ -219,7 +224,6 @@ export const handler = async (event) => {
             const gaesteAntwort = await fetch(`${ev.uri}/invitees`, { headers: calendlyHeaders })
             const gaeste = await gaesteAntwort.json()
             for (const g of gaeste.collection || []) {
-              if (params.mail && (g.email || '').toLowerCase() !== String(params.mail).toLowerCase()) continue
               buchungen.push({
                 termin: ev.start_time, terminart: ev.name, status: ev.status,
                 name: g.name, mail: g.email, gebucht_am: g.created_at,
