@@ -196,6 +196,7 @@ function Setting() {
   // Die Kontaktdaten des geöffneten Satzes in die Maske holen.
   const bearbeitenStarten = () => {
     setFormular({
+      anrede: gewaehlt?.anrede || '',
       vorname: gewaehlt?.ansprechpartnerVorname || '',
       nachname: gewaehlt?.ansprechpartnerNachname || '',
       telefon: gewaehlt?.telefon || '',
@@ -223,6 +224,7 @@ function Setting() {
     if (gewaehlt.email && !formular.email?.trim()) { setMailFehlt(true); return false }
 
     const aenderungen = {}
+    if (formular.anrede !== (gewaehlt.anrede || '')) aenderungen.anrede = formular.anrede
     if (formular.vorname !== (gewaehlt.ansprechpartnerVorname || '')) aenderungen.ansprechpartner_vorname = formular.vorname
     if (formular.nachname !== (gewaehlt.ansprechpartnerNachname || '')) aenderungen.ansprechpartner_nachname = formular.nachname
     if (formular.telefon !== (gewaehlt.telefon || '')) aenderungen.telefonnummer = formular.telefon
@@ -256,6 +258,7 @@ function Setting() {
       // Die offene Schublade zeigt sofort die neuen Werte, die Liste zieht nach.
       setGewaehlt(g => g ? {
         ...g,
+        anrede: formular.anrede,
         ansprechpartnerVorname: formular.vorname,
         ansprechpartnerNachname: formular.nachname,
         telefon: formular.telefon,
@@ -640,7 +643,8 @@ function Setting() {
         offen={!!gewaehlt}
         nurArbeit={ablaufLaeuft || mailOffen || freigabeOffen}
         kontaktFelder={bearbeiten && formular && (
-          <KontaktFelder werte={formular} onChange={setFormular} mailFehlt={mailFehlt} />
+          <KontaktFelder werte={formular} onChange={setFormular} mailFehlt={mailFehlt}
+                         anredeFehlt={!formular?.anrede} />
         )}
         onClose={() => {
           setGewaehlt(null); setMailOffen(false); setTerminOffen(false); setFreigabeOffen(false)
@@ -649,8 +653,10 @@ function Setting() {
         titel={gewaehlt?.unternehmen || 'Kontakt'}
         untertitel={[gewaehlt?.kategorie, gewaehlt?.ort].filter(Boolean).join(' · ')}
         kontakt={{
-          ansprechpartner: [gewaehlt?.ansprechpartnerVorname, gewaehlt?.ansprechpartnerNachname]
-            .filter(Boolean).join(' '),
+          /* Mit Anrede, damit am Kontakt zu sehen ist, dass sie hinterlegt
+             ist - Calendly verlangt sie beim Buchen. */
+          ansprechpartner: [gewaehlt?.anrede, gewaehlt?.ansprechpartnerVorname,
+                            gewaehlt?.ansprechpartnerNachname].filter(Boolean).join(' '),
           statusFeld: gewaehlt ? anzeigeNameVonLead(gewaehlt) : null,
           telefon: gewaehlt?.telefon,
           email: gewaehlt?.email,

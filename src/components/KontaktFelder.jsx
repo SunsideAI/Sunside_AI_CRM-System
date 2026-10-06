@@ -8,10 +8,14 @@ import { Phone, Mail, Globe, MapPin, User as UserIcon } from 'lucide-react'
  * das nur dort — im Setting standen die Daten fest, und wer eine falsche
  * Nummer hatte, musste den Kontakt in einem anderen Tab suchen.
  *
+ * Die Anrede gehört dazu, seit Calendly sie als Pflichtfeld abfragt: Ohne
+ * sie scheitert die Terminbuchung, und zwar mit einer Meldung aus Calendly,
+ * die am Bildschirm niemandem sagt, was zu tun ist.
+ *
  * Die Werte hält der Aufrufer; hier wird nur gezeigt und gemeldet.
  */
 export default function KontaktFelder({
-  werte, onChange, mailFehlt = false, nameFehlt = false, notiz = null
+  werte, onChange, mailFehlt = false, nameFehlt = false, anredeFehlt = false, notiz = null
 }) {
   const setze = (feld) => (e) => onChange({ ...werte, [feld]: e.target.value })
 
@@ -21,7 +25,18 @@ export default function KontaktFelder({
         Ansprechpartner{nameFehlt && <span className="text-red-500"> *</span>}
         {notiz}
       </label>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Calendly fragt die Anrede als Pflichtfeld ab: Fehlt sie, weist es
+            die Buchung ab. Sie steht deshalb vorn, nicht als Nachtrag. */}
+        <div className={`input-field-icon${anredeFehlt && !werte.anrede ? ' fehlt' : ''}`}>
+          <UserIcon className={`h-4 w-4 flex-shrink-0 ${anredeFehlt && !werte.anrede ? 'text-red-500' : 'text-primary'}`} />
+          <select value={werte.anrede || ''} onChange={setze('anrede')}
+                  className="bg-transparent w-full outline-none">
+            <option value="">Anrede …</option>
+            <option value="Herr">Herr</option>
+            <option value="Frau">Frau</option>
+          </select>
+        </div>
         <div className={`input-field-icon${nameFehlt && !werte.vorname ? ' fehlt' : ''}`}>
           <UserIcon className="h-4 w-4 text-primary flex-shrink-0" />
           <input value={werte.vorname || ''} onChange={setze('vorname')} placeholder="Vorname" />
@@ -34,6 +49,12 @@ export default function KontaktFelder({
       {nameFehlt && (
         <p className="text-xs text-red-500 -mt-1">
           Vor- und Nachname sind Pflicht, bevor ein Termin gebucht wird.
+        </p>
+      )}
+      {anredeFehlt && !werte.anrede && (
+        <p className="text-xs text-red-500 -mt-1">
+          Die Anrede ist in Calendly ein Pflichtfeld. Ohne sie weist Calendly
+          die Buchung ab. Bitte Herr oder Frau wählen - geraten wird nicht.
         </p>
       )}
 

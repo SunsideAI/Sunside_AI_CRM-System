@@ -67,6 +67,10 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
   const [validationErrors, setValidationErrors] = useState({})
   
   // Kontaktdaten
+  /* Calendly fragt die Anrede als Pflichtfeld ab. Sie steht deshalb hier im
+     Buchungsfenster und nicht nur in den Stammdaten: Faellt erst beim Buchen
+     auf, dass sie fehlt, muesste der Opener das Fenster verlassen. */
+  const [anrede, setAnrede] = useState(lead?.anrede || '')
   const [contactEmail, setContactEmail] = useState(lead?.email || '')
   const [contactPhone, setContactPhone] = useState(lead?.telefon || '')
   const [ansprechpartnerVorname, setAnsprechpartnerVorname] = useState(lead?.ansprechpartnerVorname || '')
@@ -306,6 +310,10 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
     if (!unternehmensname) {
       errors.unternehmen = true
     }
+    // Pflichtfeld bei Calendly: ohne Anrede weist es die Buchung ab.
+    if (!anrede) {
+      errors.anrede = true
+    }
     if (!selectedSlot) {
       errors.slot = true
     }
@@ -364,7 +372,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             ansprechpartner: ansprechpartnerName,
             // Herr oder Frau, so wie es im CRM steht. Fehlt die Anrede, weil
             // der Vorname unisex ist, geht nichts mit - geraten wird nicht.
-            anrede: lead?.anrede || '',
+            anrede: anrede || '',
             firma: unternehmensname,
             stadt: lead?.stadt,
             telefon: contactPhone,
@@ -503,6 +511,7 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
               // Hot Lead per Email matchen kann und keinen Duplikat-Eintrag anlegt.
               mail: contactEmail || null,
               telefonnummer: contactPhone || null,
+              anrede: anrede || null,
               ansprechpartnerVorname: ansprechpartnerVorname || null,
               ansprechpartnerNachname: ansprechpartnerNachname || null,
               ort: lead?.stadt || lead?.ort || null,
@@ -1049,6 +1058,27 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
               className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
               placeholder="Firmenname"
             />
+          </div>
+
+          {/* Anrede. Pflicht, weil Calendly sie verlangt - und weil eine
+              falsche Anrede beim Empfaenger sofort auffaellt, wird sie nicht
+              aus dem Vornamen geraten. */}
+          <div>
+            <label className="block text-xs text-gray-500 mb-1">Anrede *</label>
+            <select
+              value={anrede}
+              onChange={(e) => setAnrede(e.target.value)}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent${validationErrors.anrede ? ' border-red-500' : ''}`}
+            >
+              <option value="">Bitte wählen …</option>
+              <option value="Herr">Herr</option>
+              <option value="Frau">Frau</option>
+            </select>
+            {validationErrors.anrede && (
+              <p className="mt-1 text-xs text-red-500">
+                Calendly verlangt die Anrede. Ohne sie wird der Termin nicht gebucht.
+              </p>
+            )}
           </div>
 
           {/* Email & Telefon */}

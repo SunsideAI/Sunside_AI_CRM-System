@@ -587,6 +587,14 @@ export async function handler(event) {
       if (updates.datum !== undefined) {
         fieldsToUpdate.datum = updates.datum || null
       }
+      /* Die Anrede war hier nie vorgesehen: Das Opening konnte sie nicht
+         speichern, obwohl Calendly sie beim Buchen als Pflichtfeld verlangt.
+         Ein Trigger leitet sie sonst aus dem Vornamen ab - bei Kim, Toni
+         oder Dominique kann das niemand. Was hier ankommt, ist von Hand
+         gesetzt und schlaegt die Ableitung. */
+      if (updates.anrede !== undefined) {
+        fieldsToUpdate.anrede = updates.anrede || null
+      }
       if (updates.ansprechpartnerVorname !== undefined) {
         fieldsToUpdate.ansprechpartner_vorname = updates.ansprechpartnerVorname || null
       }

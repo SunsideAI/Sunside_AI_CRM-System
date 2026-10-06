@@ -1019,6 +1019,7 @@ function Closing() {
       neuerKommentar: '',  // Für neuen manuellen Kommentar
       terminDatum: closerTermin(lead) || '',  // Für manuelles Verschieben im CRM
       // Kontaktdaten (editierbar)
+      anrede: lead.anrede || '',
       ansprechpartnerVorname: lead.ansprechpartnerVorname || '',
       ansprechpartnerNachname: lead.ansprechpartnerNachname || '',
       email: lead.email || '',
@@ -1277,6 +1278,11 @@ function Closing() {
       }
 
       // Kontaktdaten-Updates - immer mitsenden wenn im Edit-Mode
+      /* Die Anrede gehoert dazu: Calendly fragt sie beim Buchen des
+         Abschlussgespraechs als Pflichtfeld ab. */
+      if (data.anrede !== undefined) {
+        hotLeadUpdates.anrede = data.anrede
+      }
       if (data.ansprechpartnerVorname !== undefined) {
         hotLeadUpdates.ansprechpartner_vorname = data.ansprechpartnerVorname
       }
@@ -2396,6 +2402,7 @@ function Closing() {
                             Opening und Setting — ein Bauteil, eine Beschriftung. */}
                         <KontaktFelder
                           werte={{
+                            anrede: editData.anrede,
                             vorname: editData.ansprechpartnerVorname,
                             nachname: editData.ansprechpartnerNachname,
                             telefon: editData.telefon,
@@ -2404,6 +2411,7 @@ function Closing() {
                             ort: editData.ort
                           }}
                           onChange={(w) => {
+                            handleEditChange('anrede', w.anrede)
                             handleEditChange('ansprechpartnerVorname', w.vorname)
                             handleEditChange('ansprechpartnerNachname', w.nachname)
                             handleEditChange('telefon', w.telefon)
@@ -2412,6 +2420,7 @@ function Closing() {
                             handleEditChange('ort', w.ort)
                           }}
                           mailFehlt={mailFehlt}
+                          anredeFehlt={!editData.anrede}
                         />
                         <div>
                           <label className="feld-label">Status</label>

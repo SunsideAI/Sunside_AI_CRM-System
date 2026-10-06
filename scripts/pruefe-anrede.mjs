@@ -129,7 +129,11 @@ const kalender = fs.readFileSync('netlify/functions/calendar.js', 'utf8')
 const haken = fs.readFileSync('netlify/functions/calendly-webhook.js', 'utf8')
 const picker = fs.readFileSync('src/components/TerminPicker.jsx', 'utf8')
 
-sagt(/anrede: lead\?\.anrede/.test(picker), 'Die Buchung gibt die Anrede mit')
+/* Vorbelegt aus dem Kontakt, abschickbar erst, wenn sie steht: Seit Calendly
+   sie als Pflicht fuehrt, wird sie im Buchungsfenster gewaehlt, nicht nur
+   stillschweigend uebernommen. */
+sagt(/useState\(lead\?\.anrede \|\| ''\)/.test(picker),
+  'Die Buchung übernimmt die Anrede aus dem Kontakt')
 sagt(/questionName\.includes\('anrede'\)/.test(kalender),
   'Und füllt damit die Calendly-Frage „Anrede", falls es sie gibt')
 /* Leer lassen statt raten: Steht im CRM keine Anrede, weil der Vorname
@@ -178,6 +182,40 @@ sagt(!/ansprechpartnerAnrede/.test(picker),
   'Und die Buchung stützt sich auf kein Feld, das niemand liefert')
 sagt(/action === 'calendly-buchungen'/.test(kalender),
   'Was bei Calendly ankam, lässt sich zurückfragen statt vermuten')
+
+/* Seit dem 06.10.2026 fuehrt Calendly die Anrede als PFLICHTFELD. Fehlt sie,
+   weist Calendly die Buchung ab - frueher blieb die Frage einfach leer. Die
+   Kette muss daher an jeder Stelle halten: eintragbar, speicherbar, sichtbar,
+   und vor dem Buchen verlangt. */
+const felder = fs.readFileSync('src/components/KontaktFelder.jsx', 'utf8')
+sagt(/value="Herr"/.test(felder) && /value="Frau"/.test(felder),
+  'Die Anrede lässt sich am Kontakt eintragen (Herr/Frau)')
+sagt(/anredeFehlt/.test(felder), 'Und wird angemahnt, solange sie fehlt')
+
+for (const [name, datei] of [['Setting', 'src/pages/Setting.jsx'],
+                             ['Opening', 'src/pages/Opening.jsx'],
+                             ['Closing', 'src/pages/Closing.jsx']]) {
+  const seite = fs.readFileSync(datei, 'utf8')
+  sagt(/anredeFehlt=\{/.test(seite), `${name} verlangt die Anrede am Kontakt`)
+  sagt(/anrede: (lead|gewaehlt|editData|editForm)\??\.anrede/.test(seite),
+    `${name} lädt sie in das Formular`)
+}
+
+/* Das Opening speichert ueber leads.js. Fehlte dort das Feld, liess sich die
+   Anrede eintragen und war nach dem Neuladen wieder weg. */
+sagt(/updates\.anrede !== undefined/.test(leadsFn),
+  'Das Opening kann die Anrede auch speichern')
+
+/* Serverseitig, damit es fuer jeden Weg gilt - auch fuer den, den es noch
+   nicht gibt. Sonst kommt die Absage von Calendly auf Englisch zurueck. */
+sagt(/offenePflicht/.test(kalender) && /f\.required/.test(kalender),
+  'Vor dem Buchen wird geprüft, ob Calendlys Pflichtfragen gefüllt sind')
+sagt(/Ohne Anrede lässt sich der Termin nicht buchen/.test(kalender),
+  'Und die Meldung sagt, was zu tun ist, statt was kaputt ist')
+sagt(/errors\.anrede = true/.test(picker),
+  'Das Buchungsfenster lässt ohne Anrede gar nicht erst abschicken')
+sagt(/anrede: anrede \|\| ''/.test(picker),
+  'Es übergibt die dort gewählte Anrede, nicht den alten Stand')
 
 console.log('')
 if (befunde.length) {

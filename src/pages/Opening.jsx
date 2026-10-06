@@ -556,6 +556,7 @@ function Opening() {
       kontaktiert: lead.kontaktiert,
       ergebnis: lead.ergebnis,
       kommentar: lead.kommentar,
+      anrede: lead.anrede || '',
       ansprechpartnerVorname: lead.ansprechpartnerVorname || '',
       ansprechpartnerNachname: lead.ansprechpartnerNachname || '',
       neuerKommentar: '',
@@ -601,7 +602,7 @@ function Opening() {
   useEffect(() => { hotLeadLaden() }, [hotLeadLaden])
 
   // Auto-Save für Ansprechpartner-Felder (mit Debounce)
-  const autoSaveAnsprechpartner = useCallback(async (leadId, vorname, nachname) => {
+  const autoSaveAnsprechpartner = useCallback(async (leadId, vorname, nachname, anrede) => {
     setAutoSaving(true)
     try {
       await fetch('/.netlify/functions/leads', {
@@ -611,7 +612,10 @@ function Opening() {
           leadId,
           updates: {
             ansprechpartnerVorname: vorname,
-            ansprechpartnerNachname: nachname
+            ansprechpartnerNachname: nachname,
+            /* Mit der Anrede: Calendly verlangt sie beim Buchen. Wer sie
+               hier setzt, soll sie nicht gleich darauf wieder eintippen. */
+            ...(anrede !== undefined ? { anrede } : {})
           }
         })
       })
@@ -619,7 +623,8 @@ function Opening() {
       // Lead in Liste aktualisieren
       setLeads(prev => prev.map(lead => 
         lead.id === leadId 
-          ? { ...lead, ansprechpartnerVorname: vorname, ansprechpartnerNachname: nachname }
+          ? { ...lead, ansprechpartnerVorname: vorname, ansprechpartnerNachname: nachname,
+              ...(anrede !== undefined ? { anrede } : {}) }
           : lead
       ))
       
@@ -651,7 +656,8 @@ function Opening() {
       if (selectedLead) {
         const vorname = field === 'ansprechpartnerVorname' ? value : editForm.ansprechpartnerVorname
         const nachname = field === 'ansprechpartnerNachname' ? value : editForm.ansprechpartnerNachname
-        autoSaveAnsprechpartner(selectedLead.id, vorname, nachname)
+        const anrede = field === 'anrede' ? value : editForm.anrede
+        autoSaveAnsprechpartner(selectedLead.id, vorname, nachname, anrede)
       }
     }, 800) // 800ms Verzögerung
   }
@@ -1763,6 +1769,7 @@ function Opening() {
                   // zwischengespeichert wird, sobald er vollständig ist.
                   <KontaktFelder
                     werte={{
+                      anrede: editForm.anrede,
                       vorname: editForm.ansprechpartnerVorname,
                       nachname: editForm.ansprechpartnerNachname,
                       telefon: editForm.telefon,
@@ -1771,6 +1778,9 @@ function Opening() {
                       ort: editForm.ort
                     }}
                     onChange={(w) => {
+                      if (w.anrede !== editForm.anrede) {
+                        handleAnsprechpartnerChange('anrede', w.anrede)
+                      }
                       if (w.vorname !== editForm.ansprechpartnerVorname) {
                         handleAnsprechpartnerChange('ansprechpartnerVorname', w.vorname)
                       }
@@ -1792,6 +1802,7 @@ function Opening() {
                     )}
                     nameFehlt={Boolean(editForm.ansprechpartnerValidation
                       && (!editForm.ansprechpartnerVorname || !editForm.ansprechpartnerNachname))}
+                    anredeFehlt={!editForm.anrede}
                   />
                 ) : (
                   // Dieselben Pillen wie in Setting und Closing, der Ort

@@ -528,6 +528,30 @@ export const handler = async (event) => {
             }
           }
 
+          /* Was Calendly als Pflicht fuehrt, muss gefuellt sein - sonst weist
+             es die Buchung ab, und am Bildschirm steht eine englische Meldung
+             ueber ein "invalid payload", mit der niemand etwas anfangen kann.
+             Die Anrede ist seit dem 06.10.2026 Pflichtfeld: Fehlt sie im CRM,
+             soll hier stehen, was zu tun ist, und nicht dort, was kaputt ist.
+
+             Geraten wird weiterhin nicht. Wer bucht, traegt die Anrede ein. */
+          const offenePflicht = customQuestions
+            .filter(f => f.enabled !== false && f.required)
+            .filter(f => !questionsAndAnswers.some(a => a.question === f.name))
+            .map(f => f.name)
+          if (offenePflicht.length) {
+            const anredeOffen = offenePflicht.some(n => /anrede|salutation/i.test(n))
+            return {
+              statusCode: 400, headers: corsHeaders,
+              body: JSON.stringify({
+                error: anredeOffen
+                  ? 'Ohne Anrede lässt sich der Termin nicht buchen: Calendly fragt sie als Pflichtfeld ab. Bitte beim Kontakt Herr oder Frau eintragen.'
+                  : `Calendly verlangt noch: ${offenePflicht.join(', ')}. Bitte die Angaben beim Kontakt ergänzen.`,
+                fehlendeFelder: offenePflicht
+              })
+            }
+          }
+
           // Buchungs-Request - Location je nach Terminart
           const requestBody = {
             event_type: eventTypeUri,
