@@ -206,6 +206,10 @@ export async function handler(event) {
       kommentar: record.kommentar || '',
       ansprechpartnerVorname: arrayToString(record.ansprechpartner_vorname) || '',
       ansprechpartnerNachname: arrayToString(record.ansprechpartner_nachname) || '',
+      /* Ohne diese Zeile kam die Anrede nie im Frontend an - die
+         Terminbuchung hat die Calendly-Frage dann leer gelassen, obwohl
+         "Herr" in der Datenbank stand. */
+      anrede: arrayToString(record.anrede) || '',
       wiedervorlageDatum: record.wiedervorlage_datum || '',
       quelle: arrayToString(record.quelle) || '',
       absprungrate: arrayToNumber(record.absprungrate),

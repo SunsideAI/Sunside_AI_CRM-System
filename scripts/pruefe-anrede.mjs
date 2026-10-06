@@ -168,6 +168,17 @@ sagt(/Kim/.test(auftrag) && /Dominique/.test(auftrag) && /Toni/.test(auftrag),
 sagt(/bekannteVornamen\(\)/.test(fn) && /von \+= 1000/.test(fn),
   'Die bekannten Vornamen werden paginiert geladen')
 
+/* Die Anrede half nichts, solange sie im Backend-Mapping fehlte: In der
+   Datenbank stand "Herr", im Frontend kam nichts an, und die Buchung liess
+   die Calendly-Frage leer. Belegt am 06.10.2026 an einer echten Buchung. */
+const leadsFn = fs.readFileSync('netlify/functions/leads.js', 'utf8')
+sagt(/anrede: arrayToString\(record\.anrede\)/.test(leadsFn),
+  'Das Lead-Mapping gibt die Anrede ans Frontend weiter')
+sagt(!/ansprechpartnerAnrede/.test(picker),
+  'Und die Buchung stützt sich auf kein Feld, das niemand liefert')
+sagt(/action === 'calendly-buchungen'/.test(kalender),
+  'Was bei Calendly ankam, lässt sich zurückfragen statt vermuten')
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')
