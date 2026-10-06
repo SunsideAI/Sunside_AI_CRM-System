@@ -423,6 +423,12 @@ export const handler = async (event) => {
               answer = leadInfo?.taetigkeit || 'Makler'
             } else if (questionName.includes('problem') || questionName.includes('ziel')) {
               answer = leadInfo?.problemstellung || 'Interesse an KI-gestützter Vertriebsassistenz'
+            } else if (questionName.includes('anrede') || questionName.includes('salutation')) {
+              // Nur was wir wissen. Steht im CRM keine Anrede, weil der
+              // Vorname unisex ist, bleibt die Frage leer statt geraten -
+              // dieselbe Regel wie in den Mailvorlagen: lieber neutral als
+              // falsch.
+              answer = leadInfo?.anrede || ''
             }
             
             if (answer) {

@@ -362,6 +362,9 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
           inviteePhone: contactPhone,
           leadInfo: {
             ansprechpartner: ansprechpartnerName,
+            // Herr oder Frau, so wie es im CRM steht. Fehlt die Anrede, weil
+            // der Vorname unisex ist, geht nichts mit - geraten wird nicht.
+            anrede: lead?.anrede || lead?.ansprechpartnerAnrede || '',
             firma: unternehmensname,
             stadt: lead?.stadt,
             telefon: contactPhone,

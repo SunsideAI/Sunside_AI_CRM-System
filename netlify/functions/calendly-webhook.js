@@ -268,10 +268,29 @@ export async function handler(event) {
         : kategorieRaw.includes('makler') ? 'Immobilienmakler'
         : null
 
+      /*
+       * Die Anrede, falls der Event Type danach fragt.
+       *
+       * Bei einer Direktbuchung sagt der Kunde sie selbst - das ist die beste
+       * Quelle, die es gibt. Besser jedenfalls als aus dem Vornamen
+       * abgeleitet: Bei Kim, Toni oder Dominique kann das niemand erraten,
+       * und der Trigger laesst die Anrede dort zu Recht leer.
+       *
+       * Nur Herr und Frau. Was sich nicht eindeutig zuordnen laesst, bleibt
+       * leer - dieselbe Regel wie ueberall sonst im CRM.
+       */
+      const anredeAnswer = questionsAndAnswers.find(q =>
+        /anrede|salutation/i.test(q.question || ''))
+      const anredeRoh = (anredeAnswer?.answer || '').trim().toLowerCase()
+      const anredeAusCalendly =
+        /^(herr|mr\.?|hr\.?)$/.test(anredeRoh) ? 'Herr'
+        : /^(frau|mrs\.?|ms\.?|fr\.?)$/.test(anredeRoh) ? 'Frau'
+        : null
+
       const oldInvitee = data.old_invitee
       const isReschedule = !!oldInvitee
 
-      console.log('Created Event:', { email: inviteeEmail, unternehmen, isReschedule, newTime: newScheduledTime, kategorie: kategorieAusCalendly, hatProblemstellung: !!problemstellung })
+      console.log('Created Event:', { email: inviteeEmail, unternehmen, isReschedule, newTime: newScheduledTime, kategorie: kategorieAusCalendly, anrede: anredeAusCalendly, hatProblemstellung: !!problemstellung })
 
       if (isReschedule) {
         const oldScheduledTime = oldInvitee.scheduled_event?.start_time || oldInvitee.start_time
@@ -531,6 +550,10 @@ export async function handler(event) {
             ansprechpartner_vorname: vorname || null,
             ansprechpartner_nachname: nachname || null,
             kategorie: kategorieAusCalendly || 'Immobilienmakler',
+            /* Der Trigger setzt die Anrede sonst aus dem Vornamen. Hat der
+               Kunde sie selbst angegeben, gilt seine Angabe - sie steht hier
+               und der Trigger laesst sie in Ruhe. */
+            ...(anredeAusCalendly ? { anrede: anredeAusCalendly } : {}),
             bereits_kontaktiert: true,
             ergebnis: 'Beratungsgespräch',
             datum: heuteISO,

@@ -119,6 +119,30 @@ sagt(!sig.includes(FIRMENZEILE), 'Beim Gründer keine Firmenzeile')
 sagt(signaturHtml({ name: 'Max Lehmann' }).includes(FIRMENZEILE),
   'Bei allen anderen steht sie dort')
 
+// ── Die Anrede und Calendly ──────────────────────────────────────────────
+/* Gefragt am 06.10.2026: Die Anrede soll bei einer Buchung mit nach Calendly.
+   Beide Richtungen zaehlen - hin, damit der Berater vor dem Termin weiss, wie
+   er den Kunden anspricht, und zurueck, weil bei einer Direktbuchung der
+   Kunde selbst antwortet. Seine Angabe schlaegt jede Ableitung aus dem
+   Vornamen: Bei Kim, Toni oder Dominique kann die niemand erraten. */
+const kalender = fs.readFileSync('netlify/functions/calendar.js', 'utf8')
+const haken = fs.readFileSync('netlify/functions/calendly-webhook.js', 'utf8')
+const picker = fs.readFileSync('src/components/TerminPicker.jsx', 'utf8')
+
+sagt(/anrede: lead\?\.anrede/.test(picker), 'Die Buchung gibt die Anrede mit')
+sagt(/questionName\.includes\('anrede'\)/.test(kalender),
+  'Und füllt damit die Calendly-Frage „Anrede", falls es sie gibt')
+/* Leer lassen statt raten: Steht im CRM keine Anrede, weil der Vorname
+   unisex ist, bleibt auch die Frage leer. */
+sagt(/leadInfo\?\.anrede \|\| ''/.test(kalender),
+  'Fehlt sie im CRM, bleibt die Frage leer statt geraten')
+
+sagt(/anrede\|salutation/i.test(haken), 'Der Webhook liest eine Anrede-Antwort zurück')
+sagt(/\? 'Herr'/.test(haken) && /\? 'Frau'/.test(haken),
+  'Und ordnet sie Herr oder Frau zu')
+sagt(/anredeAusCalendly \? \{ anrede: anredeAusCalendly \} : \{\}/.test(haken),
+  'Bei einer Direktbuchung steht die Angabe des Kunden im Lead')
+
 // ── Der Auftrag an das Modell, das das Geschlecht zuordnet ───────────────
 /* Der alte Auftrag sagte dreimal „im Zweifel unklar" und nannte kein
    Gegenbeispiel. Das Modell nahm das woertlich: von 870 Leads ohne Anrede
