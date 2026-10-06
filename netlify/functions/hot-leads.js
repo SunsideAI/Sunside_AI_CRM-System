@@ -982,7 +982,7 @@ export async function handler(event) {
       }
       let wunsch = {}
       try { wunsch = JSON.parse(event.body || '{}') } catch { /* ohne Angabe */ }
-      const { hotLeadId, bestaetigung } = wunsch
+      const { hotLeadId, bestaetigung, nurHot } = wunsch
       if (!hotLeadId) {
         return {
         statusCode: 400, headers: corsHeaders,
@@ -1059,8 +1059,11 @@ export async function handler(event) {
       }
       }
 
+      /* nurHot zieht den Kontakt aus der Strecke zurueck und laesst den
+         kalten Lead stehen - gedacht fuer Testbuchungen, die man wiederholen
+         will, ohne den Lead neu anzulegen. */
       let kalterGeloescht = false
-      if (lead.lead_id) {
+      if (lead.lead_id && !nurHot) {
         for (const [tabelle, spalte] of [['kontakt_verlauf', 'lead_id'],
                                          ['lead_assignments', 'lead_id'],
                                          ['anrufversuche', 'lead_id']]) {
@@ -1076,7 +1079,9 @@ export async function handler(event) {
       return {
         statusCode: 200, headers: corsHeaders,
         body: JSON.stringify({ success: true, geloescht: lead.unternehmen,
-                               hotLeadId, kalterLead: kalterGeloescht ? lead.lead_id : null })
+                               hotLeadId, nurHot: !!nurHot,
+                               kalterLead: kalterGeloescht ? lead.lead_id : null,
+                               kalterBehalten: nurHot ? lead.lead_id : null })
       }
     }
 

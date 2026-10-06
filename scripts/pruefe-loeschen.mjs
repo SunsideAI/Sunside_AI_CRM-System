@@ -45,6 +45,16 @@ sagt(hotStelle > 0 && hotStelle < kaltStelle,
 sagt(/console\.log\('Kontakt gelöscht:'/.test(teil),
   'Wer was gelöscht hat, steht im Protokoll')
 
+/* nurHot zieht einen Kontakt aus der Strecke zurueck, ohne den kalten Lead
+   mitzunehmen - fuer Testbuchungen, die man wiederholen will. Faellt die
+   Bedingung weg, loescht ein Reset still den Lead mit. */
+sagt(/const \{ hotLeadId, bestaetigung, nurHot \} = wunsch/.test(teil),
+  'Ein Reset lässt sich anfordern')
+sagt(/if \(lead\.lead_id && !nurHot\)/.test(teil),
+  'Und beim Reset bleibt der kalte Lead stehen')
+sagt(/kalterBehalten/.test(teil),
+  'Die Antwort sagt, welcher kalte Lead geblieben ist')
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')
