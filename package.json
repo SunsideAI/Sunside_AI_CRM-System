@@ -12,7 +12,7 @@
     "migrate:csv": "node supabase/migrate-from-csv.js",
     "migrate:csv:clear": "node supabase/migrate-from-csv.js --clear",
     "migrate:csv:dry": "node supabase/migrate-from-csv.js --dry-run",
-    "pruefe": "node scripts/pruefe-wachen.mjs && node scripts/pruefe-zuteilung.mjs && node scripts/pruefe-stufen.mjs && node scripts/pruefe-erstanruf.mjs && node scripts/pruefe-beratung.mjs && node scripts/pruefe-sprache.mjs && node scripts/pruefe-bewerbung.mjs && node scripts/pruefe-meldungen.mjs && node scripts/pruefe-uebergabe.mjs && node scripts/pruefe-abschluss.mjs && node scripts/pruefe-anrede.mjs && node scripts/pruefe-ansprechpartner.mjs && npx oxlint --deny no-undef src/ netlify/ shared/"
+    "pruefe": "node scripts/pruefe-wachen.mjs && node scripts/pruefe-zuteilung.mjs && node scripts/pruefe-stufen.mjs && node scripts/pruefe-erstanruf.mjs && node scripts/pruefe-beratung.mjs && node scripts/pruefe-sprache.mjs && node scripts/pruefe-bewerbung.mjs && node scripts/pruefe-meldungen.mjs && node scripts/pruefe-uebergabe.mjs && node scripts/pruefe-abschluss.mjs && node scripts/pruefe-anrede.mjs && node scripts/pruefe-ansprechpartner.mjs && node scripts/pruefe-loeschen.mjs && npx oxlint --deny no-undef src/ netlify/ shared/"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.39.0",

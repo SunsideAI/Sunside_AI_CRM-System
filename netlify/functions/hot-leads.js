@@ -34,7 +34,7 @@ const supabase = createClient(
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-  'Access-Control-Allow-Methods': 'GET, POST, PATCH, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Content-Type': 'application/json'
 }
 
@@ -962,6 +962,124 @@ export async function handler(event) {
     // ==========================================
     // PATCH: Hot Lead aktualisieren
     // ==========================================
+    /*
+     * Einen Kontakt endgültig entfernen.
+     *
+     * Das CRM konnte Hot Leads bisher nicht löschen - es gab nur den
+     * Massen-Archivlauf für kalte Leads. Für echte Kontakte ist das richtig
+     * so: Sie werden verloren gegeben, nicht gelöscht, sonst fehlt später
+     * die Spur. Für Testdaten aber nicht: Am 06.10.2026 stand ein "Paul Test"
+     * im Setter-Pool zwischen echten Terminen, und niemand im Haus konnte ihn
+     * entfernen.
+     *
+     * Nur die Leitung, und nur über die ausdrückliche Bestätigung im Körper.
+     * Ein Kontakt mit Rechnungen oder als Kunde wird abgewiesen - was in der
+     * Buchhaltung hängt, löscht man nicht aus dem CRM heraus.
+     */
+    if (event.httpMethod === 'DELETE') {
+      if (!angemeldet?.istAdmin) {
+        return verboten('Löschen darf nur die Leitung')
+      }
+      let wunsch = {}
+      try { wunsch = JSON.parse(event.body || '{}') } catch { /* ohne Angabe */ }
+      const { hotLeadId, bestaetigung } = wunsch
+      if (!hotLeadId) {
+        return {
+        statusCode: 400, headers: corsHeaders,
+        body: JSON.stringify({ error: 'hotLeadId ist erforderlich' })
+      }
+      }
+      /* Ein Tippfehler in einer Kennung darf keinen Kontakt kosten. Wer
+         löscht, nennt den Firmennamen dazu - stimmen beide nicht überein,
+         passiert nichts. */
+      if (!bestaetigung) {
+        return {
+        statusCode: 400, headers: corsHeaders,
+        body: JSON.stringify({ error: 'bestaetigung mit dem Firmennamen ist erforderlich' })
+      }
+      }
+
+      const { data: lead, error: leseFehler } = await supabase
+        .from('hot_leads')
+        .select('id, unternehmen, lead_id')
+        .eq('id', hotLeadId)
+        .single()
+      if (leseFehler || !lead) {
+        return {
+        statusCode: 404, headers: corsHeaders,
+        body: JSON.stringify({ error: 'Kontakt nicht gefunden' })
+      }
+      }
+      if ((lead.unternehmen || '').trim() !== String(bestaetigung).trim()) {
+        return {
+          statusCode: 400, headers: corsHeaders,
+          body: JSON.stringify({ error: `Bestätigung stimmt nicht: hier steht "${lead.unternehmen}"` })
+        }
+      }
+
+      // Was in der Buchhaltung oder beim Kunden hängt, bleibt.
+      for (const [tabelle, spalte, wort] of [
+        ['kunden', 'hot_lead_id', 'ist ein Kunde'],
+        ['billing_invoices', 'hot_lead_id', 'hat Rechnungen'],
+        ['billing_recurring', 'hot_lead_id', 'hat eine Abrechnung'],
+      ]) {
+        const { count } = await supabase.from(tabelle)
+          .select('*', { count: 'exact', head: true }).eq(spalte, hotLeadId)
+        if (count > 0) {
+          return {
+        statusCode: 409, headers: corsHeaders,
+        body: JSON.stringify({ error: `Nicht gelöscht: Der Kontakt ${wort}.` })
+      }
+        }
+      }
+
+      /* Die Reihenfolge zählt: erst was auf den Kontakt zeigt, dann er
+         selbst, zuletzt der kalte Lead - sonst weist der Fremdschlüssel ab. */
+      const abhaengig = [
+        ['kontakt_verlauf', 'hot_lead_id'],
+        ['hot_lead_ereignisse', 'hot_lead_id'],
+        ['hot_lead_applications', 'hot_lead_id'],
+        ['hot_lead_attachments', 'hot_lead_id'],
+        ['crm_erinnerungen', 'hot_lead_id'],
+        ['follow_up_actions', 'hot_lead_id'],
+        ['system_messages', 'hot_lead_id'],
+        ['anrufversuche', 'hot_lead_id'],
+        ['kunden_kommunikation', 'hot_lead_id'],
+      ]
+      for (const [tabelle, spalte] of abhaengig) {
+        const { error: e } = await supabase.from(tabelle).delete().eq(spalte, hotLeadId)
+        if (e) console.error(`Löschen aus ${tabelle}:`, e.message)
+      }
+
+      const { error: hotFehler } = await supabase.from('hot_leads').delete().eq('id', hotLeadId)
+      if (hotFehler) {
+        return {
+        statusCode: 500, headers: corsHeaders,
+        body: JSON.stringify({ error: `Kontakt nicht gelöscht: ${hotFehler.message}` })
+      }
+      }
+
+      let kalterGeloescht = false
+      if (lead.lead_id) {
+        for (const [tabelle, spalte] of [['kontakt_verlauf', 'lead_id'],
+                                         ['lead_assignments', 'lead_id'],
+                                         ['anrufversuche', 'lead_id']]) {
+          await supabase.from(tabelle).delete().eq(spalte, lead.lead_id)
+        }
+        const { error: kaltFehler } = await supabase.from('leads').delete().eq('id', lead.lead_id)
+        if (kaltFehler) console.error('Kalten Lead löschen:', kaltFehler.message)
+        else kalterGeloescht = true
+      }
+
+      console.log('Kontakt gelöscht:', lead.unternehmen, hotLeadId,
+                  'durch', angemeldet?.vor_nachname || angemeldet?.id)
+      return {
+        statusCode: 200, headers: corsHeaders,
+        body: JSON.stringify({ success: true, geloescht: lead.unternehmen,
+                               hotLeadId, kalterLead: kalterGeloescht ? lead.lead_id : null })
+      }
+    }
+
     if (event.httpMethod === 'PATCH') {
       const body = JSON.parse(event.body)
       const { hotLeadId, updates } = body
@@ -1431,6 +1549,46 @@ export async function handler(event) {
         if (kommentarError) {
           console.error('Update Kommentar in leads Error:', kommentarError)
           // Kein throw - Hot Lead ist bereits gespeichert
+        }
+      }
+
+      /*
+       * Name und Anrede gehoeren demselben Menschen - in beiden Tabellen.
+       *
+       * Ein Kontakt steht zweimal da: als kalter Lead und als Hot Lead, ueber
+       * `lead_id` verbunden. Der Kommentar wird seit jeher gespiegelt, die
+       * Stammdaten nicht. Am 06.10.2026 wichen bei 633 verknuepften Paaren
+       * 145 Namen voneinander ab - wer den Namen in der einen Akte
+       * berichtigte, liess die andere falsch stehen.
+       *
+       * Gehoerte eigentlich in einen Datenbank-Trigger: Der gaelte fuer jeden
+       * Weg, auch fuer den, den es noch nicht gibt. Hier deckt es die
+       * Oberflaeche ab, ueber die Namen tatsaechlich geaendert werden.
+       */
+      const STAMMFELDER = {
+        ansprechpartner_vorname: 'ansprechpartner_vorname',
+        ansprechpartner_nachname: 'ansprechpartner_nachname',
+        anrede: 'anrede',
+      }
+      const stammAenderung = {}
+      for (const feld of Object.keys(STAMMFELDER)) {
+        if (Object.prototype.hasOwnProperty.call(fields, feld)) {
+          stammAenderung[feld] = fields[feld]
+        }
+      }
+      if (Object.keys(stammAenderung).length && data.lead_id) {
+        const { error: stammFehler } = await supabase
+          .from('leads')
+          .update(stammAenderung)
+          .eq('id', data.lead_id)
+        if (stammFehler) {
+          // Kein throw: Der Hot Lead steht schon. Aber benannt, sonst laufen
+          // die beiden Seiten still auseinander - genau der Zustand, den das
+          // hier beheben soll.
+          console.error('Stammdaten in leads spiegeln:', stammFehler.message)
+        } else {
+          console.log('Stammdaten gespiegelt nach leads:', data.lead_id,
+                      Object.keys(stammAenderung).join(', '))
         }
       }
 
