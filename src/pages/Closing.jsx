@@ -55,6 +55,25 @@ function closerTermin(lead) {
 function terminBezeichnung(lead) {
   return lead?.termin_abschlussgespraech ? 'Abschlussgespräch' : 'Beratungsgespräch'
 }
+
+/* Art und Einwahl gehoeren zum selben Termin wie das Datum. terminart und
+   meeting_link beschreiben den Telefontermin des Setters; fuer ein gelegtes
+   Abschlussgespraech sind beide die falsche Auskunft. Das Abschlussgespraech
+   ist in Calendly fest als Videotermin eingerichtet (Konzeptvorstellung ->
+   google_conference), und sein Einwahllink steht in meeting_link_abschluss.
+
+   Am 06.10.2026 stand im Closer-Pool bei drei Abschlussgespraechen
+   "Telefonisch" samt Telefonhoerer, und der Meet-Link fehlte ganz: Der Closer
+   haette angerufen, waehrend der Kunde im Meeting wartet. */
+function closerTerminart(lead) {
+  return lead?.termin_abschlussgespraech ? 'Video' : (lead?.terminart || 'Video')
+}
+
+function closerLink(lead) {
+  return lead?.termin_abschlussgespraech
+    ? (lead?.meeting_link_abschluss || null)
+    : (lead?.meeting_link || null)
+}
 import {
   Calendar,
   ClipboardList,
@@ -872,7 +891,7 @@ function Closing() {
               hour: '2-digit', minute: '2-digit',
               timeZone: 'Europe/Berlin'   // immer deutsche Zeit
             }) : 'Nicht festgelegt',
-            art: lead?.terminart || 'Unbekannt',
+            art: closerTerminart(lead),
             unternehmen: lead?.unternehmen,
             ansprechpartner: [lead?.ansprechpartnerVorname, lead?.ansprechpartnerNachname]
               .filter(Boolean).join(' ') || '',
@@ -1729,7 +1748,7 @@ function Closing() {
                   .filter(Boolean).join(' '),
                 ort: l.ort,
                 terminDatum: wann,
-                art: { icon: l.terminart === 'Telefonisch' ? Phone : Video },
+                art: { icon: closerTerminart(l) === 'Telefonisch' ? Phone : Video },
                 hinweis: wann && new Date(wann) < new Date()
                   ? 'Abschlussgespräch verpasst'
                   : l.setterName ? `gelegt von ${l.setterName}` : null,
@@ -1751,8 +1770,8 @@ function Closing() {
                   weekday: 'long', day: '2-digit', month: '2-digit',
                   hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
                 }) + ' Uhr',
-                art: e.roh.terminart || 'Video',
-                link: e.roh.meeting_link
+                art: closerTerminart(e.roh),
+                link: closerLink(e.roh)
               },
               statistik: webZahlen(e.roh),
               uebergabe: <Uebergabeblatt lead={e.roh} />,
