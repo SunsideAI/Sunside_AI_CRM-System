@@ -12,7 +12,11 @@
 
 import { ABSENDER_SYSTEM } from './mail.js'
 
-export const CRM_URL = 'https://crmsunsideai.netlify.app'
+/* Die Adresse, unter der das Team das CRM aufruft. Jeder Knopf in jeder
+   Systemmail haengt daran. Die Netlify-Adresse funktioniert zwar weiter,
+   fuehrt den Empfaenger aber auf eine Domain, die nirgends sonst auftaucht -
+   und wer sie einmal als Lesezeichen setzt, arbeitet dauerhaft daneben. */
+export const CRM_URL = 'https://crm.sunsideai.de'
 
 const FIRMA = 'Sunside AI GbR · Schiefer Berg 3 · 38124 Braunschweig'
 

@@ -61,6 +61,18 @@ for (const art of ['erfolg', 'fehler', 'hinweis']) {
   sagt(new RegExp(`${art}:`).test(bauteil), `Art „${art}" gibt es`)
 }
 
+/* Jeder Knopf in jeder Systemmail haengt an CRM_URL. Steht dort die
+   Netlify-Adresse, fuehrt sie das Team auf eine Domain, die sonst nirgends
+   auftaucht - und ein Lesezeichen darauf haelt sich hartnaeckig.
+   Richtiggestellt am 06.10.2026. */
+const layout = fs.readFileSync('netlify/functions/utils/mailLayout.js', 'utf8')
+sagt(/CRM_URL = 'https:\/\/crm\.sunsideai\.de'/.test(layout),
+  'Die Mail-Knöpfe zeigen auf crm.sunsideai.de')
+for (const [datei, inhalt] of [['mailLayout.js', layout],
+                               ['mail.js', fs.readFileSync('netlify/functions/utils/mail.js', 'utf8')]]) {
+  sagt(!/netlify\.app/.test(inhalt), `Keine Netlify-Adresse in ${datei}`)
+}
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')
