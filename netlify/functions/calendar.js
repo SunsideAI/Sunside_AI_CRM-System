@@ -161,7 +161,15 @@ export const handler = async (event) => {
             scheduling_url: et.scheduling_url,
             type: terminartAusCalendly(et),
             // Die Ortsangabe mitgeben, damit sich das nachpruefen laesst.
-            locations: (et.locations || []).map(l => l?.kind || l?.type).filter(Boolean)
+            locations: (et.locations || []).map(l => l?.kind || l?.type).filter(Boolean),
+            /* Die Fragen, die der Event Type stellt. Beim Buchen werden sie
+               ueber ihren Namen befuellt - ohne diese Liste laesst sich von
+               aussen nicht pruefen, ob eine erwartete Frage ueberhaupt
+               existiert und wie sie heisst. */
+            fragen: (et.custom_questions || []).map(q => ({
+              name: q.name, typ: q.type, pflicht: q.required,
+              aktiv: q.enabled, antworten: q.answer_choices || []
+            }))
           })) || []
 
           return {
