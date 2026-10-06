@@ -186,6 +186,60 @@ export const handler = async (event) => {
         }
       }
 
+      /* ----------------------------------------
+         calendly-buchungen: Was bei Calendly wirklich ankam
+
+         Beim Buchen fuellen wir die Fragen des Event Types ueber ihren
+         Namen. Ob eine Antwort tatsaechlich ankam, sieht man weder im CRM
+         noch in der Bestaetigungsmail zuverlaessig - die Mailvorlage laesst
+         eine leere Anrede stillschweigend weg. Diese Route liest die
+         Antworten beim Eingeladenen zurueck, damit sich eine Uebergabe
+         belegen statt vermuten laesst.
+         ---------------------------------------- */
+      if (action === 'calendly-buchungen') {
+        try {
+          const userResponse = await fetch('https://api.calendly.com/users/me',
+                                           { headers: calendlyHeaders })
+          const userData = await userResponse.json()
+          if (!userResponse.ok) throw new Error(userData.message || 'Calendly User-Fehler')
+          const orgUri = userData.resource.current_organization
+
+          const suche = new URLSearchParams({
+            organization: orgUri, count: String(Math.min(Number(params.menge) || 5, 20)),
+            sort: 'start_time:desc', status: 'active'
+          })
+          if (params.ab) suche.set('min_start_time', params.ab)
+          const eventsAntwort = await fetch(
+            `https://api.calendly.com/scheduled_events?${suche}`, { headers: calendlyHeaders })
+          const eventsDaten = await eventsAntwort.json()
+          if (!eventsAntwort.ok) throw new Error(eventsDaten.message || 'Calendly Termin-Fehler')
+
+          const buchungen = []
+          for (const ev of eventsDaten.collection || []) {
+            const gaesteAntwort = await fetch(`${ev.uri}/invitees`, { headers: calendlyHeaders })
+            const gaeste = await gaesteAntwort.json()
+            for (const g of gaeste.collection || []) {
+              if (params.mail && (g.email || '').toLowerCase() !== String(params.mail).toLowerCase()) continue
+              buchungen.push({
+                termin: ev.start_time, terminart: ev.name, status: ev.status,
+                name: g.name, mail: g.email, gebucht_am: g.created_at,
+                antworten: (g.questions_and_answers || [])
+                  .map(q => ({ frage: q.question, antwort: q.answer }))
+              })
+            }
+          }
+          return {
+            statusCode: 200, headers: corsHeaders,
+            body: JSON.stringify({ success: true, buchungen })
+          }
+        } catch (err) {
+          return {
+            statusCode: 500, headers: corsHeaders,
+            body: JSON.stringify({ error: 'Calendly Fehler', details: err.message })
+          }
+        }
+      }
+
       // ----------------------------------------
       // calendly-slots: Verfügbare Slots abrufen
       // ----------------------------------------
