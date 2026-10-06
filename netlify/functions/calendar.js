@@ -456,16 +456,38 @@ export const handler = async (event) => {
         const firstName = nameParts[0] || inviteeName
         const lastName = nameParts.slice(1).join(' ') || firstName
 
-        // Telefonnummer in E.164 Format
-        let formattedPhone = inviteePhone || '+49'
-        if (formattedPhone && !formattedPhone.startsWith('+')) {
-          if (formattedPhone.startsWith('0')) {
-            formattedPhone = '+49' + formattedPhone.substring(1)
-          } else {
-            formattedPhone = '+49' + formattedPhone
+        /* Telefonnummer in E.164. Gepflegt wird sie von Hand, also steht da
+           alles: "09071/5679968", "(09071) 5679968", "+49 (0)511 899 928 68".
+           Frueher fielen nur Leerzeichen und Bindestriche weg - ein
+           Schraegstrich blieb stehen und Calendly wies die Buchung ab. */
+        let roh = String(inviteePhone || '').trim()
+        /* Manche Felder tragen zwei Nummern ("+49 4154 8981111 / 0157...").
+           Getrennt wird aber nur, wenn es dafuer zu viele Ziffern sind: In
+           "09071/5679968" trennt derselbe Schraegstrich Vorwahl und
+           Rufnummer, und ein Split daran verschluckt die Vorwahl. E.164
+           laesst hoechstens 15 Ziffern zu - alles darueber sind zwei. */
+        if (roh.replace(/\D/g, '').length > 15) {
+          for (const teil of roh.split(/[/,;]|\s{2,}/)) {
+            if (teil.replace(/\D/g, '').length >= 7) { roh = teil.trim(); break }
           }
         }
-        formattedPhone = formattedPhone.replace(/[\s\-]/g, '')
+        let formattedPhone = roh || '+49'
+        const plusVorn = formattedPhone.startsWith('+')
+        let ziffern = formattedPhone.replace(/\D/g, '')
+        if (plusVorn) {
+          // Eine Null hinter der Landesvorwahl ist deutsche Schreibweise,
+          // keine Ziffer der Rufnummer: +49 (0)511 ist +49511.
+          ziffern = ziffern.replace(/^(49|43|41)0+/, '$1')
+          formattedPhone = '+' + ziffern
+        } else if (ziffern.startsWith('00')) {
+          formattedPhone = '+' + ziffern.substring(2)
+        } else if (ziffern.startsWith('0')) {
+          formattedPhone = '+49' + ziffern.replace(/^0+/, '')
+        } else if (ziffern) {
+          formattedPhone = '+49' + ziffern
+        } else {
+          formattedPhone = '+49'
+        }
 
         try {
           // Event Type Details abrufen für Custom Questions

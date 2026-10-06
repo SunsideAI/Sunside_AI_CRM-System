@@ -675,6 +675,32 @@ export async function handler(event) {
         throw new Error(error.message || 'Fehler beim Aktualisieren')
       }
 
+      /* Dieselben Stammdaten stehen im Kontakt ein zweites Mal. Wer sie hier
+         pflegt, erwartet sie dort - sonst bucht die Terminvergabe mit der
+         alten Adresse weiter. Die Gegenrichtung steht in hot-leads.js. */
+      const STAMMFELDER = ['ansprechpartner_vorname', 'ansprechpartner_nachname',
+                           'anrede', 'mail', 'telefonnummer']
+      const stammAenderung = {}
+      for (const feld of STAMMFELDER) {
+        if (Object.prototype.hasOwnProperty.call(fieldsToUpdate, feld)) {
+          stammAenderung[feld] = fieldsToUpdate[feld]
+        }
+      }
+      if (Object.keys(stammAenderung).length) {
+        const { error: stammFehler } = await supabase
+          .from('hot_leads')
+          .update(stammAenderung)
+          .eq('lead_id', leadId)
+        if (stammFehler) {
+          // Kein throw: Der Lead steht schon. Aber benannt, sonst laufen die
+          // beiden Seiten still auseinander - genau das soll das hier beheben.
+          console.error('Stammdaten in hot_leads spiegeln:', stammFehler.message)
+        } else {
+          console.log('Stammdaten gespiegelt nach hot_leads:', leadId,
+                      Object.keys(stammAenderung).join(', '))
+        }
+      }
+
       return {
         statusCode: 200,
         headers,

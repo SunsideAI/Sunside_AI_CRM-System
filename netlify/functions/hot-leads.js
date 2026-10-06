@@ -1574,6 +1574,10 @@ export async function handler(event) {
         ansprechpartner_vorname: 'ansprechpartner_vorname',
         ansprechpartner_nachname: 'ansprechpartner_nachname',
         anrede: 'anrede',
+        /* Mail und Telefon gehoeren dazu: Wer sie auf einer Seite pflegt,
+           bucht sonst mit der alten Adresse von der anderen. */
+        mail: 'mail',
+        telefonnummer: 'telefonnummer',
       }
       const stammAenderung = {}
       for (const feld of Object.keys(STAMMFELDER)) {
