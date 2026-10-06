@@ -184,6 +184,25 @@ function EmailComposer({ lead, user, onClose, onSent, inline = false, kategorie 
     if (vorlage) handleTemplateSelect(vorlage.id)
   }, [anlass, loading, templates]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  /* Das Nachrichtenfeld ist ein contentEditable. React rendert es nicht aus
+     dem State - es wird von Hand beschrieben, einmal beim Waehlen der
+     Vorlage. Steht das Feld in diesem Moment noch nicht im DOM oder wird es
+     danach neu aufgebaut, bleibt es leer, waehrend der Text im State liegt:
+     Betreff gefuellt, Vorlage gewaehlt, Nachricht leer. Genau so gemeldet am
+     06.10.2026 aus dem Fenster direkt nach der Buchung, wo die Vorlage
+     gesetzt wird, waehrend das Fenster erst entsteht.
+
+     Dieser Abgleich holt den Text zurueck, sobald das Feld da ist. Waehrend
+     getippt wird, fasst er nichts an - sonst spraenge der Cursor. */
+  useEffect(() => {
+    for (const editor of [editorRef.current, modalEditorRef.current]) {
+      if (!editor) continue
+      if (document.activeElement === editor) continue
+      if (editor.innerHTML === (inhalt || '')) continue
+      editor.innerHTML = inhalt || ''
+    }
+  }, [inhalt])
+
   // Links kommen oft nach der Vorlage an: dann die offenen Link-Platzhalter
   // noch einmal füllen, ohne den übrigen Text anzufassen.
   useEffect(() => {
