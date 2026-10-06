@@ -45,6 +45,16 @@ import { Angabe, Angaben } from '../components/Formular'
 function closerTermin(lead) {
   return lead?.termin_abschlussgespraech || lead?.terminDatum || null
 }
+
+/* closerTermin faellt auf das Beratungsgespraech zurueck, wenn noch kein
+   Abschlussgespraech gelegt ist - fuer Sortierung und Bewerbung ist das
+   richtig. Unter der festen Ueberschrift "Abschlussgespraech" wurde daraus
+   aber eine Falschaussage: Am 06.10.2026 sah ein Kontakt, der im Setter-Pool
+   lag und nur ein Beratungsgespraech hatte, wie ein gelegtes
+   Abschlussgespraech aus. Hier steht, um welchen Termin es wirklich geht. */
+function terminBezeichnung(lead) {
+  return lead?.termin_abschlussgespraech ? 'Abschlussgespräch' : 'Beratungsgespräch'
+}
 import {
   Calendar,
   ClipboardList,
@@ -1621,7 +1631,11 @@ function Closing() {
               ? 'Offene Abschlussgespräche - noch kein Closer zugewiesen'
               : viewMode === 'own'
                 ? 'Deine Leads im Closing-Prozess'
-                : 'Alle Leads im Closing-Prozess'
+                /* Diese Ansicht laedt hot-leads ohne jeden Filter, also den
+                   ganzen Bestand - auch Kontakte, die im Setting liegen oder
+                   verloren sind. "Alle Leads im Closing-Prozess" hat das
+                   Gegenteil behauptet. */
+                : 'Der gesamte Kontaktbestand, auch außerhalb des Closings'
             }
           </p>
         </div>
@@ -2518,11 +2532,11 @@ function Closing() {
                     />
                   </div>
 
-                  {/* ABSCHLUSSGESPRÄCH Section */}
+                  {/* Der gelegte Termin - welcher, sagt die Überschrift. */}
                   <div className="space-y-3 abschnitt-trenner">
                     <h3 className="abschnitt-titel flex items-center gap-2">
                     <Calendar className="w-4 h-4" />
-                    Abschlussgespräch
+                    {terminBezeichnung(selectedLead)}
                   </h3>
 
                     <div className="grid grid-cols-2 gap-4">
