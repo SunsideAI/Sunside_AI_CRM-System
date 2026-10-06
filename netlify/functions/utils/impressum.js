@@ -80,6 +80,10 @@ const KEIN_NACHNAME = new RegExp(
   '(verwaltung|gesellschaft|dienste?|makler(?:in)?|bewertung|b\u00fcro|buero|service'
   + '|beratung|vermittlung|management|treuhand|kontor|technik|wesen|handel|vertrieb'
   + '|zentrum|center|agentur|immobilien|aufsichtsbeh\u00f6rde|beh\u00f6rde|angaben'
+  /* „Kammler Gutachten" stand am 05.10.2026 als Name im Bestand. Die Liste
+     kannte „gutachter", also den Menschen, nicht aber „gutachten", also die
+     Sache - und genau die steht im Firmennamen. */
+  + '|gutachten|gutachter(?:in)?|sachverst\u00e4ndige[rn]?|bewertungen|expertise'
   + '|vertreter(?:in)?|hinweise?|informationen|stra\u00dfe|strasse|weg|allee|platz'
   + '|damm|ring|gasse|ufer|chaussee|kammer|gericht|amt|nummer|erlaubnis|industrie|kammer|verband|versicherung'
   + ')s?$', 'i')

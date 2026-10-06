@@ -216,6 +216,16 @@ sagt(brauchbar('WEG') === null, '„WEG" ist keine Abkuerzung, die durchgeht')
    04.10.2026 sechs Firmennamen und schrieb den zweiten Teil ins
    Nachnamensfeld; die Rechtsform-Regel traf nicht, weil keine dabeistand. */
 sagt(brauchbar('Immobilien') === null, '„Immobilien" ist kein Name')
+/* Die Liste kannte „gutachter", also den Menschen, nicht aber „gutachten",
+   also die Sache - und genau die steht im Firmennamen: „Kammler Gutachten"
+   stand am 05.10.2026 als Name im Bestand, ebenso „Die Gutachterin". */
+sagt(brauchbar('Gutachten') === null && brauchbar('Gutachterin') === null,
+  '„Gutachten" und „Gutachterin" sind keine Nachnamen')
+sagt(brauchbar('Sachverständige') === null && brauchbar('Bewertungen') === null,
+  'Und „Sachverständige" oder „Bewertungen" auch nicht')
+/* Echte Namen mit demselben Anfang bleiben: Gutacker, Guttenberg, Gutmann. */
+sagt(['Gutacker', 'Guttenberg', 'Gutmann', 'Sacher'].every(n => brauchbar(n) === n),
+  'Namen, die ähnlich anfangen, bleiben unberührt')
 sagt(brauchbar('Immobilien Management') === null, 'Auch nicht als zweites Wort')
 sagt(brauchbar('Hausverwaltung') === null && brauchbar('Immobilienservice') === null,
   'Und Komposita darauf auch nicht')
