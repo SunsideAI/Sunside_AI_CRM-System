@@ -181,7 +181,23 @@ export function anzeigeNameVonLead(lead, stufe = null) {
       && (s === STATUS.BERATUNG_VEREINBART || s === STATUS.BERATUNG_GEFUEHRT)) {
     return ANZEIGE[STATUS.ABSCHLUSS_VEREINBART] || STATUS.ABSCHLUSS_VEREINBART
   }
+  /* „Beratungsgespräch geführt" sagt nicht, wie es ausging. Drei ganz
+     verschiedene Kontakte tragen denselben Wert: der noch nicht
+     dokumentierte, der vertagte und der übergebene. Für das Setting gibt es
+     keinen eigenen Status „vertagt" - „Wird nachgefasst" gehört laut
+     STATUS_JE_STUFE ins Closing und würde den Kontakt dorthin schieben.
+     Deshalb steht die Entscheidung in der Anzeige statt im Statusfeld: Der
+     Wert bleibt, wie er ist, Übergänge und Auswertungen merken nichts. */
+  if (s === STATUS.BERATUNG_GEFUEHRT && vertagt(lead)) {
+    return `${anzeigeName(s, stufe)} · Entscheidung vertagt`
+  }
   return anzeigeName(s, stufe)
+}
+
+/** Gespräch geführt, aber ohne festen nächsten Schritt: der Setter fasst nach. */
+export function vertagt(lead) {
+  const ergebnis = lead?.ergebnis_beratung ?? lead?.ergebnisBeratung
+  return ergebnis === 'Vertagt ohne festen Schritt'
 }
 
 /**

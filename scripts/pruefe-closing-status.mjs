@@ -47,6 +47,27 @@ sagt(/termin_abschlussgespraech: new Date\(gebucht\.start\)/.test(uebergeben)
      && /status: STATUS\.ABSCHLUSS_VEREINBART/.test(uebergeben),
   'Beim Übergeben gehen Termin und Status gemeinsam raus')
 
+/* „Beratungsgespraech gefuehrt" traegt drei verschiedene Kontakte: den noch
+   nicht dokumentierten, den vertagten und den uebergebenen. Einen eigenen
+   Status fuer die Vertagung gibt es im Setting nicht - „Wird nachgefasst"
+   gehoert laut STATUS_JE_STUFE ins Closing und wuerde den Kontakt dorthin
+   schieben. Deshalb steht die Entscheidung in der Anzeige. */
+const st = fs.readFileSync('shared/status.js', 'utf8')
+sagt(/export function vertagt\(lead\)/.test(st),
+  'Eine Vertagung ist als Zustand benannt')
+sagt(/Entscheidung vertagt/.test(st),
+  'Und steht hinter dem Status, statt ihn zu ersetzen')
+sagt(!/STATUS_JE_STUFE[\s\S]{0,260}STUFE\.SETTING\][\s\S]{0,300}WIRD_NACHGEFASST/.test(st),
+  'Der Nachfass-Status bleibt dem Closing vorbehalten')
+
+/* Beide Wege - Liste und Schublade - bilden den Namen ueber dieselbe
+   Funktion. Griffe einer davon roh auf lead.status zu, stuende die
+   Vertagung nur an einer Stelle. */
+sagt(/anzeigeNameVonLead\(lead, stufe\)/.test(fs.readFileSync('src/utils/zeile.js', 'utf8')),
+  'Die Liste bildet den Status über diese Funktion')
+sagt(/anzeigeNameVonLead\(gewaehlt\)/.test(fs.readFileSync('src/pages/Setting.jsx', 'utf8')),
+  'Die Schublade im Setting ebenso')
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')
