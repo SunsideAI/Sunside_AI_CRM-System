@@ -1,4 +1,4 @@
-import { STATUS, STUFE, IST_VERLOREN, anzeigeName, statusFuerStufe, statusBrauchtLeitung } from '../../shared/status.js'
+import { STATUS, STUFE, IST_VERLOREN, anzeigeName, ruecknahmeZiel, statusFuerStufe, statusBrauchtLeitung } from '../../shared/status.js'
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
@@ -110,7 +110,8 @@ import {
   Download,
   Trash2,
   File,
-  Video
+  Video,
+  Undo2
 } from 'lucide-react'
 
 // Paket-Optionen für Angebot
@@ -209,6 +210,9 @@ const statusZurWahl = (istLeitung) =>
 
 function Closing() {
   const meldung = useMeldung()
+  // „Zurueck an den Vorgaenger" steckt im Aktionsmenue der Fussleiste - der
+  // Dialog dazu wird von dort geoeffnet.
+  const [zurueckOffen, setZurueckOffen] = useState(false)
   const { user, isAdmin, isCloser, isGeschaeftsfuehrer } = useAuth()
   const location = useLocation()
   const [leads, setLeads] = useState([])
@@ -2500,10 +2504,28 @@ function Closing() {
                       <>
                         {/* Reicht die Übergabe des Setters nicht, geht der
                             Kontakt mit Begründung zurück. Kein Vorwurf -
-                            die Rückgabequote misst die Qualität der Übergaben. */}
+                            die Rückgabequote misst die Qualität der Übergaben.
+
+                            Geöffnet wird das aus dem Aktionsmenü unten; hier
+                            steht nur noch der Dialog, wenn er dran ist. Vorher
+                            stand der Knopf ganz oben, vor allem, was man in
+                            der Schublade wirklich sucht. */}
                         <RueckgabeKnopf
                           hotLead={selectedLead}
-                          onErledigt={() => { setSelectedLead(null); loadLeads() }}
+                          offen={zurueckOffen}
+                          onSchliessen={() => setZurueckOffen(false)}
+                          onErledigt={() => {
+                            const name = selectedLead?.unternehmen || 'Der Kontakt'
+                            const ziel = ruecknahmeZiel(selectedLead?.status)
+                            setZurueckOffen(false)
+                            setSelectedLead(null)
+                            loadLeads()
+                            // Dieselbe Rückmeldung wie im Setting: Wer etwas
+                            // weitergibt, soll lesen, wohin es gegangen ist.
+                            meldung.erfolg(ziel
+                              ? `${name} ist zurück auf „${anzeigeName(ziel)}". Der Vorgänger hat eine Nachricht mit deiner Begründung.`
+                              : `${name} ist an den Vorgänger zurückgegeben.`)
+                          }}
                         />
 
                         {/* Info Grid */}
@@ -3004,7 +3026,12 @@ function Closing() {
                         icon: Send, onClick: () => setShowAngebotView(true) },
                       selectedLead.closerName && {
                         name: 'An Pool freigeben', icon: UserMinus, warnung: true,
-                        onClick: () => setShowReleaseConfirm(true) }
+                        onClick: () => setShowReleaseConfirm(true) },
+                      // Nur, wo es einen Schritt zurück gibt - sonst zeigte das
+                      // Menü einen Eintrag, der nichts tut.
+                      ruecknahmeZiel(selectedLead.status) && {
+                        name: 'Zurück an den Vorgänger', icon: Undo2,
+                        onClick: () => setZurueckOffen(true) }
                     ]}
                   />
 

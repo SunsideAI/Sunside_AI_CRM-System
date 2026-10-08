@@ -78,6 +78,26 @@ sagt(/statusBasisVonLead/.test(st) && /export function statusZusatzVonLead/.test
 sagt(/anzeigeNameVonLead\(gewaehlt\)/.test(fs.readFileSync('src/pages/Setting.jsx', 'utf8')),
   'Die Schublade im Setting ebenso')
 
+/* „Zurueck an den Vorgaenger" stand im Closing ganz oben in der Schublade,
+   vor allem, was man dort wirklich sucht - im Setting steht es am Ende.
+   Jetzt im Aktionsmenue der Fussleiste, mit derselben Rueckmeldung danach
+   wie im Setting. */
+const cl = fs.readFileSync('src/pages/Closing.jsx', 'utf8')
+sagt(/name: 'Zurück an den Vorgänger', icon: Undo2/.test(cl),
+  'Die Rückgabe steht im Aktionsmenü')
+sagt(/ruecknahmeZiel\(selectedLead\.status\) && \{/.test(cl),
+  'Und nur dort, wo es einen Schritt zurück gibt')
+sagt(/offen=\{zurueckOffen\}/.test(cl) && /onSchliessen=\{\(\) => setZurueckOffen\(false\)\}/.test(cl),
+  'Der Dialog wird von dort gesteuert')
+sagt(/meldung\.erfolg\(ziel/.test(cl),
+  'Nach der Rückgabe steht da, wohin der Kontakt gegangen ist')
+
+const rk = fs.readFileSync('src/components/RueckgabeKnopf.jsx', 'utf8')
+sagt(/if \(gesteuert\) return null/.test(rk),
+  'Im gesteuerten Fall zeigt die Komponente keinen zweiten Knopf')
+sagt(/scrollIntoView/.test(rk),
+  'Und scrollt zum Dialog, wenn er aus der Fußleiste geöffnet wird')
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')

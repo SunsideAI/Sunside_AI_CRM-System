@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Undo2, Loader2 } from 'lucide-react'
 import { ruecknahmeZiel, anzeigeName } from '../../shared/status.js'
 
@@ -13,11 +13,28 @@ import { ruecknahmeZiel, anzeigeName } from '../../shared/status.js'
  * Eigene Aktion und kein gewöhnlicher Statuswechsel: Nur so bleibt die
  * Rückgabequote zählbar.
  */
-export default function RueckgabeKnopf({ hotLead, onErledigt }) {
-  const [offen, setOffen] = useState(false)
+/* Zwei Bauweisen, eine Komponente.
+
+   Im Setting steht der Knopf am Ende des Formulars und oeffnet sich selbst.
+   Im Closing gehoert er ins Aktionsmenue der Fussleiste - dort stand er
+   vorher oben unter den Kontaktdaten, vor allem, was man wirklich sucht.
+   Wird `offen` von aussen gesetzt, zeigt die Komponente keinen eigenen Knopf
+   mehr, sondern nur noch den Dialog. */
+export default function RueckgabeKnopf({ hotLead, onErledigt, offen: vonAussen, onSchliessen }) {
+  const gesteuert = vonAussen !== undefined
+  const [offenIntern, setOffenIntern] = useState(false)
+  const offen = gesteuert ? vonAussen : offenIntern
+  const schliessen = () => gesteuert ? onSchliessen?.() : setOffenIntern(false)
   const [grund, setGrund] = useState('')
   const [laeuft, setLaeuft] = useState(false)
   const [fehler, setFehler] = useState('')
+  const kasten = useRef(null)
+
+  /* Aus dem Menue in der Fussleiste geoeffnet, steht der Dialog weiter oben
+     in der Schublade - ausserhalb des Blickfelds. Also hinscrollen. */
+  useEffect(() => {
+    if (offen && gesteuert) kasten.current?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+  }, [offen, gesteuert])
 
   const ziel = ruecknahmeZiel(hotLead?.status)
   if (!ziel) return null   // aus dieser Stufe gibt es keinen Schritt zurück
@@ -37,7 +54,7 @@ export default function RueckgabeKnopf({ hotLead, onErledigt }) {
       })
       const daten = await antwort.json()
       if (!antwort.ok) { setFehler(daten.error || 'Rückgabe fehlgeschlagen'); return }
-      setOffen(false); setGrund('')
+      schliessen(); setGrund('')
       onErledigt?.()
     } catch (e) {
       setFehler('Netzwerkfehler: ' + e.message)
@@ -47,9 +64,11 @@ export default function RueckgabeKnopf({ hotLead, onErledigt }) {
   }
 
   if (!offen) {
+    // Von aussen gesteuert: Der Knopf steckt im Menue, hier bleibt nichts.
+    if (gesteuert) return null
     return (
       <button
-        onClick={() => setOffen(true)}
+        onClick={() => setOffenIntern(true)}
         className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
       >
         <Undo2 className="w-4 h-4" />
@@ -59,7 +78,7 @@ export default function RueckgabeKnopf({ hotLead, onErledigt }) {
   }
 
   return (
-    <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
+    <div ref={kasten} className="p-3 bg-gray-50 border border-gray-200 rounded-lg space-y-2">
       <p className="text-sm text-gray-700">
         Der Kontakt geht zurück auf „{anzeigeName(ziel)}". Der Vorgänger bekommt
         eine Nachricht mit deiner Begründung.
@@ -83,7 +102,7 @@ export default function RueckgabeKnopf({ hotLead, onErledigt }) {
           Zurückgeben
         </button>
         <button
-          onClick={() => { setOffen(false); setFehler('') }}
+          onClick={() => { schliessen(); setFehler('') }}
           className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900"
         >
           Abbrechen
