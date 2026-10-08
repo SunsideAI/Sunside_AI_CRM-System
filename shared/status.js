@@ -175,12 +175,17 @@ export function anzeigeName(status, stufe = null) {
  * Nur fuer die beiden Beratungswerte: Ein Kontakt, der im Closing schon beim
  * Angebot steht, behaelt selbstverstaendlich seinen eigenen Stand.
  */
-export function anzeigeNameVonLead(lead, stufe = null) {
+export function statusBasisVonLead(lead, stufe = null) {
   const s = normalisiere(lead?.status)
   if (anCloserUebergeben(lead)
       && (s === STATUS.BERATUNG_VEREINBART || s === STATUS.BERATUNG_GEFUEHRT)) {
     return ANZEIGE[STATUS.ABSCHLUSS_VEREINBART] || STATUS.ABSCHLUSS_VEREINBART
   }
+  return anzeigeName(s, stufe)
+}
+
+export function anzeigeNameVonLead(lead, stufe = null) {
+  const s = normalisiere(lead?.status)
   /* „Beratungsgespräch geführt" sagt nicht, wie es ausging. Drei ganz
      verschiedene Kontakte tragen denselben Wert: der noch nicht
      dokumentierte, der vertagte und der übergebene. Für das Setting gibt es
@@ -188,10 +193,23 @@ export function anzeigeNameVonLead(lead, stufe = null) {
      STATUS_JE_STUFE ins Closing und würde den Kontakt dorthin schieben.
      Deshalb steht die Entscheidung in der Anzeige statt im Statusfeld: Der
      Wert bleibt, wie er ist, Übergänge und Auswertungen merken nichts. */
-  if (s === STATUS.BERATUNG_GEFUEHRT && vertagt(lead)) {
-    return `${anzeigeName(s, stufe)} · Entscheidung vertagt`
-  }
-  return anzeigeName(s, stufe)
+  const zusatz = statusZusatzVonLead(lead)
+  const basis = statusBasisVonLead(lead, stufe)
+  return zusatz ? `${basis} · ${zusatz}` : basis
+}
+
+/**
+ * Nur der Zusatz, ohne den Status davor.
+ *
+ * In der Liste ist die Statuspille einzeilig und bricht nicht um; der lange
+ * Text spraengte die Spalte. Dort steht deshalb der Status in der Pille und
+ * der Zusatz klein darunter. In der Schublade ist Platz fuer beides in einer
+ * Zeile - dafuer gibt es anzeigeNameVonLead().
+ */
+export function statusZusatzVonLead(lead) {
+  const s = normalisiere(lead?.status)
+  if (s === STATUS.BERATUNG_GEFUEHRT && vertagt(lead)) return 'Entscheidung vertagt'
+  return null
 }
 
 /** Gespräch geführt, aber ohne festen nächsten Schritt: der Setter fasst nach. */

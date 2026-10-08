@@ -1,4 +1,4 @@
-import { STATUS, anzeigeName, anzeigeNameVonLead, istAbschluss } from '../../shared/status.js'
+import { STATUS, anzeigeName, anzeigeNameVonLead, statusBasisVonLead, statusZusatzVonLead, istAbschluss } from '../../shared/status.js'
 
 // Eine Zeile für die Liste — egal, aus welcher Stufe der Datensatz kommt.
 //
@@ -108,7 +108,12 @@ export function zeileAusLead(stufe, lead) {
     terminart: lead.terminart || null,
     // Die Stufe entscheidet, wie der Status heisst: Im Closing steht bei
     // Altkontakten "Termin vereinbart", nicht "Beratungsgespraech vereinbart".
-    status: lead.status ? anzeigeNameVonLead(lead, stufe) : null,
+    /* Die Pille traegt den Status, der Zusatz steht klein darunter: Sie
+       bricht nicht um, und „Beratungsgespraech gefuehrt · Entscheidung
+       vertagt" sprengte die Spalte. */
+    status: lead.status ? statusBasisVonLead(lead, stufe) : null,
+    statusVoll: lead.status ? anzeigeNameVonLead(lead, stufe) : null,
+    statusZusatz: statusZusatzVonLead(lead),
     statusWert: lead.status || null,
     zustaendig: (stufe === 'closing' ? lead.closerName : lead.setterName) || null,
     opener: lead.openerName || null,

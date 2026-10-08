@@ -63,8 +63,18 @@ sagt(!/STATUS_JE_STUFE[\s\S]{0,260}STUFE\.SETTING\][\s\S]{0,300}WIRD_NACHGEFASST
 /* Beide Wege - Liste und Schublade - bilden den Namen ueber dieselbe
    Funktion. Griffe einer davon roh auf lead.status zu, stuende die
    Vertagung nur an einer Stelle. */
-sagt(/anzeigeNameVonLead\(lead, stufe\)/.test(fs.readFileSync('src/utils/zeile.js', 'utf8')),
-  'Die Liste bildet den Status über diese Funktion')
+/* Die Statuspille bricht nicht um (whitespace-nowrap). Stuende der Zusatz
+   darin, spraengte er die Spalte - deshalb Pille und Zusatz getrennt. */
+const z = fs.readFileSync('src/utils/zeile.js', 'utf8')
+sagt(/statusBasisVonLead\(lead, stufe\)/.test(z),
+  'Die Liste trägt den Status in der Pille')
+sagt(/statusZusatz: statusZusatzVonLead\(lead\)/.test(z),
+  'Und den Zusatz getrennt daneben')
+const tab = fs.readFileSync('src/components/LeadTabelle.jsx', 'utf8')
+sagt(/zeile\?\.statusZusatz &&/.test(tab),
+  'Die Tabelle zeigt ihn unter der Pille')
+sagt(/statusBasisVonLead/.test(st) && /export function statusZusatzVonLead/.test(st),
+  'Beide Teile sind einzeln abrufbar')
 sagt(/anzeigeNameVonLead\(gewaehlt\)/.test(fs.readFileSync('src/pages/Setting.jsx', 'utf8')),
   'Die Schublade im Setting ebenso')
 

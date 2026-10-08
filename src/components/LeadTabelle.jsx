@@ -115,11 +115,22 @@ function Zelle({ spalte, zeile, badgeFarbe }) {
       return <span className="whitespace-nowrap">{datumText(wert, false)}</span>
 
     case 'badge':
+      /* Die Pille bricht nicht um - ein langer Text spraengte die Spalte.
+         Was ueber den Status hinausgeht, steht deshalb klein darunter:
+         „Beratungsgespraech gefuehrt" in der Pille, „Entscheidung vertagt"
+         als Zeile davor. */
       return (
-        <span className={`inline-flex px-2.5 py-1 rounded-full text-label-sm whitespace-nowrap ${
-          badgeFarbe?.(wert, zeile, spalte) || 'bg-surface-container text-on-surface-variant'}`}>
-          {wert}
-        </span>
+        <div className="flex flex-col items-start gap-1">
+          <span className={`inline-flex px-2.5 py-1 rounded-full text-label-sm whitespace-nowrap ${
+            badgeFarbe?.(wert, zeile, spalte) || 'bg-surface-container text-on-surface-variant'}`}>
+            {wert}
+          </span>
+          {zeile?.statusZusatz && (
+            <span className="text-label-sm text-on-surface-variant pl-0.5">
+              {zeile.statusZusatz}
+            </span>
+          )}
+        </div>
       )
 
     case 'person':
