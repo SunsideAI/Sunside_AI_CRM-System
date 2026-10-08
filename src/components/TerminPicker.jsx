@@ -1187,4 +1187,51 @@ function TerminPicker({ lead, hotLeadId, onTerminBooked, onCancel, zweck = null,
             /* Ein Knopf. Die Frage "wer haelt das Gespraech" beantwortet das
                Haekchen darueber; eine Closer-Frage gibt es hier nicht mehr. */
             <button
-     
+              onClick={() => bookTermin()}
+              disabled={booking}
+              className="w-full flex items-center justify-center px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-container disabled:opacity-50 transition-colors"
+            >
+              {booking ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <>
+                  <Calendar className="w-5 h-5 mr-2" />
+                  {(kannSelbstHalten && setzeSelbst && knopfText)
+                    ? knopfText.replace('an den Closer übergeben', 'selbst übernehmen')
+                    : knopfText || ((kannSelbstSetten && setzeSelbst)
+                    ? 'Termin buchen und selbst übernehmen'
+                    : 'Termin buchen und an den Setter-Pool geben')}
+                </>
+              )}
+            </button>
+          )}
+          
+          {/* Nur wo es einen Weg zurueck gibt; im gefuehrten Ablauf steht er
+              in der Fussleiste. */}
+          {onCancel && (
+            <button
+              onClick={onCancel}
+              className="w-full py-2 text-gray-600 hover:text-gray-800"
+            >
+              Abbrechen
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Abbrechen wenn noch kein Slot gewählt */}
+      {!selectedSlot && onCancel && (
+        <div className="flex justify-end pt-4 border-t">
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 text-gray-600 hover:text-gray-800"
+          >
+            Abbrechen
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+export default TerminPicker

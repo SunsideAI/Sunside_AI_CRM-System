@@ -619,4 +619,30 @@ export default function SetterUebergabe({
     <fieldset disabled={gesperrt} className="space-y-3 min-w-0">
       <p className="feld-hinweis mt-0">
         Als Erstes ausfüllen. Mit „Setting starten" öffnest du die Fragen, auch schon
-        vor dem Anruf. Gezählt wird der Termin er
+        vor dem Anruf. Gezählt wird der Termin erst, wenn du am Ende das Ergebnis des
+        Gesprächs einträgst. Geht er nicht ran oder hat abgesagt, stell hier auf den
+        passenden Ausgang um.
+      </p>
+
+      {/* Die Auswahl selbst ist der Weg weiter - einen Knopf daneben braucht
+          es nicht. */}
+      <select
+        value={ausgang}
+        onChange={e => ausgangWaehlen(e.target.value)}
+        className="input-field disabled:opacity-60 disabled:cursor-not-allowed"
+      >
+        {AUSGAENGE.map(a => (
+          <option key={a.wert || 'offen'} value={a.wert}>{a.name}</option>
+        ))}
+      </select>
+
+      {fehlerKasten}
+      {meldung && <p className="text-sm text-green-700">{meldung}</p>}
+
+      {/* Reicht der Erstanruf nicht aus, geht der Kontakt zurück an den Opener. */}
+      <div className="pt-4 border-t border-outline-variant/50 mt-2">
+        <RueckgabeKnopf hotLead={lead} onErledigt={onGespeichert} />
+      </div>
+    </fieldset>
+  )
+}

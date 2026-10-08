@@ -273,4 +273,16 @@ export default function LeadTabelle({
                 {spalten.map((s, si) => (
                   <td key={s.schluessel}
                       className={`px-4 py-4 text-body-sm text-on-surface-variant ${AB[s.ab] || ''}
-                                  ${s.fest ? `${HAFTEND[si] ||
+                                  ${s.fest ? `${HAFTEND[si] || ''} ${
+                                    i % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}` : ''}`}>
+                    <Zelle spalte={s} zeile={z} badgeFarbe={badgeFarbe} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}

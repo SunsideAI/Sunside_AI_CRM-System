@@ -158,4 +158,16 @@ export function sortierwert(zeile, spalte) {
  * Eine Sortierung, die bei Zeile zehn aufhört, ist keine.
  */
 export function sortiere(zeilen, spalte, ab = false) {
-  if (!spalte) return
+  if (!spalte) return zeilen
+  const richtung = ab ? -1 : 1
+  return [...zeilen].sort((a, b) => {
+    const x = sortierwert(a, spalte)
+    const y = sortierwert(b, spalte)
+    if (x === null && y === null) return 0
+    if (x === null) return 1
+    if (y === null) return -1
+    if (x < y) return -1 * richtung
+    if (x > y) return 1 * richtung
+    return 0
+  })
+}

@@ -3061,4 +3061,15 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
         <div className="text-center py-12">
           <BarChart3 className="h-12 w-12 text-outline mx-auto mb-4" />
           <h3 className="text-title-lg font-display text-on-surface mb-2">Keine Daten verfügbar</h3>
-          <p className="text-on-surface-varian
+          <p className="text-on-surface-variant">Es gibt noch keine Closing-Daten für den ausgewählten Zeitraum.</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ==========================================
+// KPI Card Component
+// ==========================================
+
+export default Dashboard

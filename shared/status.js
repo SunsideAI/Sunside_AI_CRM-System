@@ -241,13 +241,29 @@ const UEBERGAENGE = {
   [STATUS.VERLOREN_ENDGUELTIG]:  []
 }
 
+/**
+ * Darf ein Kontakt von einem Status auf einen anderen wechseln?
+ *
+ * Die Kette oben beschreibt den gedachten Weg; verboten ist ab dem 08.10.2026
+ * nur noch, was echte Folgen hat. Die strenge Fassung hat vor allem die
+ * Korrektur verhindert: Ein Kontakt mit laufendem Angebot liess sich nicht auf
+ * „Angebot versendet" setzen, weil der Weg ueber drei Zwischenschritte fuehrte,
+ * die nie dokumentiert wurden. Und bei 201 Kontakten mit alten Statuswerten war
+ * ueberhaupt kein Wechsel moeglich, weil die Datenbankfunktion sie nicht kannte.
+ *
+ * Was bleibt: Aus „Abgeschlossen" und „Gewonnen" fuehrt kein Weg heraus. An
+ * „Abgeschlossen" haengt die Abrechnungs-Bridge, ein Wechsel dort wirkt
+ * ausserhalb des CRM.
+ *
+ * Gefuehrt wird weiter ueber die Oberflaeche: STATUS_JE_STUFE bietet je Stufe
+ * nur die passenden Status an. Gleichlautend zu status_uebergang_erlaubt() in
+ * der Datenbank.
+ */
 export function uebergangErlaubt(von, nach) {
   const v = normalisiere(von)
   const n = normalisiere(nach)
   if (!v || v === n) return true
-  // Absagen ist aus jeder Stufe möglich.
-  if (IST_VERLOREN.includes(n)) return true
-  return (UEBERGAENGE[v] || []).includes(n)
+  return ![STATUS.GEWONNEN, 'Abgeschlossen'].includes(v)
 }
 
 /**

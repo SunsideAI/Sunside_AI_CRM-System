@@ -3182,4 +3182,54 @@ function Closing() {
 
             <p className="text-body-md text-on-surface-variant">
               {noShowKeepInClosing
-          
+                ? <>Der Kontakt bleibt in <strong>deinem</strong> Closing. Der Setter wird nicht benachrichtigt.</>
+                : selectedLead.setterName
+                  ? <>Der Kontakt geht zurück an <strong>{selectedLead.setterName}</strong>. Er wird benachrichtigt und kann ein neues Abschlussgespräch buchen.</>
+                  : 'Der Kontakt wird als nicht erschienen festgehalten. Ein Setter ist nicht zugeordnet.'}
+            </p>
+
+            <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border border-outline-variant hover:bg-surface-container">
+              <input
+                type="checkbox"
+                checked={noShowKeepInClosing}
+                onChange={(e) => setNoShowKeepInClosing(e.target.checked)}
+                className="mt-0.5 w-4 h-4 accent-primary cursor-pointer"
+              />
+              <span className="text-body-sm text-on-surface">
+                <strong>Im Closing behalten:</strong> Ich buche selbst neu, der Setter wird nicht benachrichtigt.
+              </span>
+            </label>
+
+            <div className="abschnitt-trenner pt-4 space-y-2 text-body-sm">
+              <div className="flex justify-between gap-4">
+                <span className="text-on-surface-variant">Geplantes Abschlussgespräch</span>
+                <span className="font-medium text-on-surface">
+                  {closerTermin(selectedLead)
+                    ? new Date(closerTermin(selectedLead)).toLocaleString('de-DE', {
+                        weekday: 'short', day: '2-digit', month: '2-digit',
+                        hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Berlin'
+                      }) + ' Uhr'
+                    : 'Nicht festgelegt'}
+                </span>
+              </div>
+              {selectedLead.setterName && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-on-surface-variant">Setter</span>
+                  <span className="font-medium text-on-surface">{selectedLead.setterName}</span>
+                </div>
+              )}
+              {(selectedLead.no_show_count || 0) > 0 && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-on-surface-variant">Bisherige Ausfälle</span>
+                  <span className="font-medium text-error">{selectedLead.no_show_count}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </SlideDrawer>
+    </div>
+  )
+}
+
+export default Closing

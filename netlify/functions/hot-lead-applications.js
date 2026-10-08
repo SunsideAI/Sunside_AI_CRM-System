@@ -633,4 +633,25 @@ async function sendAdminInAppNotification({ hotLead, closerName, bewerbungId, st
     .from('system_messages')
     .insert(messages)
 
- 
+  if (error) {
+    console.error('[Hot-Lead-Applications] Fehler beim Erstellen der In-App-Benachrichtigungen:', error)
+  } else {
+    console.log('[Hot-Lead-Applications] In-App-Benachrichtigungen erstellt für', admins.length, 'Admins')
+  }
+}
+
+// E-Mail an Closer nach Genehmigung/Ablehnung
+async function sendCloserNotification({ closerEmail, closerName, unternehmen, status, stufe, adminKommentar }) {
+  const RESEND_API_KEY = process.env.RESEND_API_KEY
+  if (!RESEND_API_KEY || !closerEmail) return
+
+  const { betreff, mail } = bewerbungEntschieden({
+    angenommen: status === 'Genehmigt',
+    stufe,
+    unternehmen,
+    kommentar: adminKommentar
+  })
+  await systemMailSenden({ an: closerEmail, betreff, mail })
+
+  console.log('[Hot-Lead-Applications] Closer-Benachrichtigung gesendet an', closerEmail)
+}
