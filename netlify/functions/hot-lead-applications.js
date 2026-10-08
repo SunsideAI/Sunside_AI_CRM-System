@@ -8,7 +8,7 @@ import { anmeldungVerlangen } from './utils/session.js'
 import { systemMailSenden } from './utils/mailLayout.js'
 import { neueBewerbung, bewerbungEntschieden } from './utils/mails.js'
 import { darf, verboten } from './utils/zugriff.js'
-import { normalisiere } from '../../shared/status.js'
+import { normalisiere, STATUS } from '../../shared/status.js'
 
 // Die beiden Stufen, auf die man sich bewerben kann.
 const STUFE = { SETTER: 'Setter', CLOSER: 'Closer' }
@@ -403,6 +403,7 @@ export async function handler(event) {
             id,
             closer_id,
             setter_id,
+            status,
             original_lead:leads!hot_leads_lead_id_fkey(unternehmensname)
           )
         `)
@@ -456,10 +457,23 @@ export async function handler(event) {
           }
         }
 
-        // Lead zuweisen
+        /* Lead zuweisen. Mit dem Closer wandert auch der Status weiter:
+           Ein Kontakt, der einen Closer hat, steht im Abschluss - bisher
+           blieb er auf "Abschlussgespraech vereinbart" stehen, und im
+           Closing sah es aus, als warte er noch auf jemanden.
+
+           Nur aus ABSCHLUSS_VEREINBART heraus, denn nur dieser Uebergang
+           steht in UEBERGAENGE (shared/status.js). Ein Kontakt, der schon
+           weiter ist - Angebot verschickt, nachgefasst - behaelt seinen
+           Stand; ihn zurueckzusetzen waere schlimmer als gar nichts zu tun. */
+        const neuerStand = (stufe === STUFE.CLOSER
+          && normalisiere(application.hot_lead?.status) === STATUS.ABSCHLUSS_VEREINBART)
+          ? { status: STATUS.IM_ABSCHLUSS } : {}
+
         const { error: assignError } = await supabase
           .from('hot_leads')
-          .update({ [feld]: application.closer_id, zuletzt_geaendert_von: angemeldet.id })
+          .update({ [feld]: application.closer_id, ...neuerStand,
+                    zuletzt_geaendert_von: angemeldet.id })
           .eq('id', application.hot_lead_id)
 
         if (assignError) throw new Error(assignError.message)

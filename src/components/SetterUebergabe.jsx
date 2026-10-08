@@ -284,8 +284,23 @@ export default function SetterUebergabe({
   }
 
   const zwischenstand = async () => {
-    const ok = await senden({ ...eigene() }, { still: true })
-    if (ok) setMeldung('Zwischenstand gespeichert. Der Status bleibt unverändert.')
+    /* „Abschlussgespräch vereinbart" ist kein Zwischenstand, sondern der
+       Schalter, der den Kontakt ins Closing schiebt: anCloserUebergeben()
+       misst genau an diesem Feld. Ohne gebuchten Termin entsteht daraus ein
+       Kontakt, der im Closing steht und weder Termin noch Closer hat - so
+       geschehen bei Westfalenmakler am 06.10.2026.
+
+       Der Zwischenstand hält dieses eine Ergebnis deshalb zurück. Alles
+       andere aus dem Gespräch wird gespeichert, die Arbeit ist nicht
+       verloren; festgehalten wird es, sobald der Termin steht. */
+    const felder = eigene()
+    const nochOhneTermin = felder.ergebnis_beratung === 'Abschlussgespräch vereinbart'
+      && !lead?.termin_abschlussgespraech
+    if (nochOhneTermin) felder.ergebnis_beratung = null
+    const ok = await senden(felder, { still: true })
+    if (ok) setMeldung(nochOhneTermin
+      ? 'Zwischenstand gespeichert. Das Ergebnis „Abschlussgespräch vereinbart" wird erst festgehalten, wenn der Termin gebucht ist.'
+      : 'Zwischenstand gespeichert. Der Status bleibt unverändert.')
   }
 
   const knopfText = mitUebergabe
