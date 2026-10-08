@@ -1,4 +1,5 @@
-import { STATUS, IST_VERLOREN, istAbschluss } from '../../shared/status.js'
+import { STATUS, IST_VERLOREN, istAbschluss, normalisiere} from '../../shared/status.js'
+import StatusAnzeige from '../components/StatusAnzeige'
 import { istOpener, istSetter, ROLLE } from '../../shared/rollen.js'
 import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../context/AuthContext'
@@ -762,7 +763,9 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
   }
 
   const getStatusStyle = (status) => {
-    switch (status) {
+    // Ueber den Altbestand hinweg: "Lead" und "Im Closing" stehen so in der
+    // Datenbank und trafen keinen einzigen Zweig - die Pille blieb grau.
+    switch (normalisiere(status)) {
       case STATUS.BERATUNG_VEREINBART:  return 'badge-primary'
       case STATUS.BERATUNG_GEFUEHRT:    return 'badge-primary'
       case STATUS.ABSCHLUSS_VEREINBART: return 'badge-primary'
@@ -916,9 +919,8 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
                         </p>
                       )}
                     </div>
-                    <span className={`badge flex-shrink-0 ${getStatusStyle(lead.status)}`}>
-                      {lead.status || 'Neu'}
-                    </span>
+                    <StatusAnzeige lead={lead} farbe={getStatusStyle(lead.status)}
+                                   text={lead.status ? undefined : 'Neu'} />
                   </div>
                 </div>
               ))}
@@ -1013,9 +1015,8 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
                     {/* Status Badge */}
                     <td className="px-4 py-4">
-                      <span className={`badge ${getStatusStyle(lead.status)}`}>
-                        {lead.status || 'Unbekannt'}
-                      </span>
+                      <StatusAnzeige lead={lead} farbe={getStatusStyle(lead.status)}
+                                     text={lead.status ? undefined : 'Unbekannt'} />
                     </td>
                   </tr>
                 ))}
@@ -1210,9 +1211,8 @@ function MeineLeadsImClosing({ userId, userName, isColdcaller, isCloser, isAdmin
 
                 {/* Status Badge */}
                 <div className="flex items-center gap-2">
-                  <span className={`badge ${getStatusStyle(selectedLead.status)}`}>
-                    {selectedLead.status || 'Unbekannt'}
-                  </span>
+                  <StatusAnzeige lead={selectedLead} farbe={getStatusStyle(selectedLead.status)}
+                                 text={selectedLead.status ? undefined : 'Unbekannt'} />
                   {selectedLead.terminart && (
                     <span className="badge badge-primary">
                       {selectedLead.terminart}
@@ -3061,15 +3061,4 @@ function ClosingAnalytics({ user, isAdmin, meldeAktualisieren }) {
         <div className="text-center py-12">
           <BarChart3 className="h-12 w-12 text-outline mx-auto mb-4" />
           <h3 className="text-title-lg font-display text-on-surface mb-2">Keine Daten verfügbar</h3>
-          <p className="text-on-surface-variant">Es gibt noch keine Closing-Daten für den ausgewählten Zeitraum.</p>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ==========================================
-// KPI Card Component
-// ==========================================
-
-export default Dashboard
+          <p className="text-on-surface-varian

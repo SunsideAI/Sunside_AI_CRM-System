@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import StatusAnzeige from './StatusAnzeige'
 import {
   Phone, Mail, Video, CheckCircle2, Circle, User as UserIcon,
   Calendar, AlertCircle, ChevronUp, ChevronDown, ChevronsUpDown, MessageSquare
@@ -115,22 +116,14 @@ function Zelle({ spalte, zeile, badgeFarbe }) {
       return <span className="whitespace-nowrap">{datumText(wert, false)}</span>
 
     case 'badge':
-      /* Die Pille bricht nicht um - ein langer Text spraengte die Spalte.
-         Was ueber den Status hinausgeht, steht deshalb klein darunter:
-         „Beratungsgespraech gefuehrt" in der Pille, „Entscheidung vertagt"
-         als Zeile davor. */
+      // Pille und Zusatz baut StatusAnzeige - dieselbe Darstellung wie im
+      // Dashboard und in der Schublade.
       return (
-        <div className="flex flex-col items-start gap-1">
-          <span className={`inline-flex px-2.5 py-1 rounded-full text-label-sm whitespace-nowrap ${
-            badgeFarbe?.(wert, zeile, spalte) || 'bg-surface-container text-on-surface-variant'}`}>
-            {wert}
-          </span>
-          {zeile?.statusZusatz && (
-            <span className="text-label-sm text-on-surface-variant pl-0.5">
-              {zeile.statusZusatz}
-            </span>
-          )}
-        </div>
+        <StatusAnzeige
+          lead={zeile?.roh || {}}
+          text={wert}
+          farbe={badgeFarbe?.(wert, zeile, spalte)}
+        />
       )
 
     case 'person':
@@ -280,16 +273,4 @@ export default function LeadTabelle({
                 {spalten.map((s, si) => (
                   <td key={s.schluessel}
                       className={`px-4 py-4 text-body-sm text-on-surface-variant ${AB[s.ab] || ''}
-                                  ${s.fest ? `${HAFTEND[si] || ''} ${
-                                    i % 2 === 0 ? 'bg-surface-container-lowest' : 'bg-surface'}` : ''}`}>
-                    <Zelle spalte={s} zeile={z} badgeFarbe={badgeFarbe} />
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </>
-  )
-}
+                                  ${s.fest ? `${HAFTEND[si] ||
