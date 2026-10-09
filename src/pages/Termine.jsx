@@ -7,6 +7,35 @@ import { useAuth } from '../context/AuthContext'
 import Verlauf from '../components/Verlauf'
 import { Calendar, ChevronLeft, ChevronRight, Clock, User, Users, Loader2, Building2, Phone, Video, RefreshCw, CalendarDays, CalendarRange, PhoneCall, X, Mail } from 'lucide-react'
 
+/* Wie lange ein Termin dauert. Vorher waren alle 30 Minuten lang - auch das
+   Abschlussgespraech, das in Calendly 45 Minuten belegt. Im Wochenraster sah
+   es dadurch kuerzer aus, als es ist. */
+const DAUER = { beratung: 30, abschluss: 45, wiedervorlage: 15 }
+
+const endeNach = (start, minuten) =>
+  new Date(new Date(start).getTime() + minuten * 60000).toISOString()
+
+/* Die Farbe sagt, WAS fuer ein Termin das ist - nicht, in welcher Stufe der
+   Kontakt gerade steckt. Die Art aendert sich nie: Ein Beratungsgespraech
+   bleibt eines, auch wenn der Kontakt laengst im Closing ist. Vorher hing die
+   Farbe am Status, und ein gehaltenes Beratungsgespraech faerbte sich
+   nachtraeglich um, sobald der Kontakt weiterwanderte.
+
+   Rot schlaegt alles: Ob ein Termin abgesagt ist, muss man im Kalender als
+   Erstes sehen. */
+const FARBE = {
+  beratungsgespraech: 'bg-green-100 border-green-300 text-green-800',
+  abschlussgespraech: 'bg-secondary-container border-primary-fixed-dim text-primary',
+  wiedervorlage:      'bg-orange-100 border-orange-300 text-orange-800',
+  abgesagt:           'bg-red-100 border-red-300 text-red-700'
+}
+
+const KUERZEL = {
+  beratungsgespraech: 'Beratung',
+  abschlussgespraech: 'Abschluss',
+  wiedervorlage:      'WV'
+}
+
 function Termine() {
   const { user, isAdmin } = useAuth()
   const routerNavigate = useNavigate()
@@ -106,49 +135,78 @@ function Termine() {
         console.warn('Wiedervorlagen laden fehlgeschlagen:', wvErr)
       }
       
-      // Hot Leads als Termine formatieren
-      const formattedTermine = allLeads
-        .filter(lead => lead.terminDatum) // Nur mit Termin
-        .map(lead => {
-          // Ein Kontakt steht erst im Closing, wenn er übergeben wurde - dass
-          // ein Closer eingetragen ist, heisst das noch nicht. Bei Welfenross
-          // standen Setter und Closer beide auf Paul, die Übergabe war nie
-          // erfolgt: der Termin war grün wie ein Setting-Termin, der Knopf
-          // darunter sagte trotzdem „Im Closing öffnen" und führte auf eine
-          // Seite, auf der der Kontakt gar nicht steht.
-          const stufe = stufeVonLead(lead)
-          const isMyClosing = lead.closerName === userName && stufe === STUFE.CLOSING
-          // Wer das Beratungsgespräch hält ...
-          const isMySetting = lead.setterName === userName && stufe === STUFE.SETTING
-          // ... und wer den Termin gelegt hat. Bis zum Umbau derselbe Mensch,
-          // danach zwei verschiedene.
-          const isMyBooking = lead.openerName === userName || lead.setterName === userName
-          
-          return {
+      /* Ein Kontakt kann ZWEI Termine haben: das Beratungsgespraech des
+         Setters und das Abschlussgespraech des Closers. Bisher lud der
+         Kalender nur das erste - die Abschlussgespraeche standen nirgends,
+         und der alte Beratungstermin wurde stattdessen umgefaerbt, sobald
+         der Kontakt ins Closing wanderte. Am 08.10.2026 fehlten so drei
+         Termine am 13. und 14. Oktober. */
+      const formattedTermine = allLeads.flatMap(lead => {
+        // Ein Kontakt steht erst im Closing, wenn er übergeben wurde - dass
+        // ein Closer eingetragen ist, heisst das noch nicht. Bei Welfenross
+        // standen Setter und Closer beide auf Paul, die Übergabe war nie
+        // erfolgt: der Termin war grün wie ein Setting-Termin, der Knopf
+        // darunter sagte trotzdem „Im Closing öffnen" und führte auf eine
+        // Seite, auf der der Kontakt gar nicht steht.
+        const stufe = stufeVonLead(lead)
+        const isMyClosing = lead.closerName === userName && stufe === STUFE.CLOSING
+        const isMySetting = lead.setterName === userName && stufe === STUFE.SETTING
+        const isMyBooking = lead.openerName === userName || lead.setterName === userName
+
+        const gemeinsam = {
+          hotLeadId: lead.id,
+          status: lead.status,
+          isMyClosing, isMyBooking, isMySetting,
+          unternehmen: lead.unternehmen,
+          ansprechpartner: `${lead.ansprechpartnerVorname || ''} ${lead.ansprechpartnerNachname || ''}`.trim(),
+          email: lead.email,
+          telefon: lead.telefon,
+          ort: lead.ort,
+          kommentar: lead.kommentar,
+          setterName: lead.setterName,
+          closerName: lead.closerName,
+          openerName: lead.openerName,
+          // Der vollstaendige Datensatz, damit die Setter-Ansicht die
+          // Uebergabe-Felder vorbefuellen kann.
+          lead
+        }
+
+        const eintraege = []
+        if (lead.terminDatum) {
+          eintraege.push({
+            ...gemeinsam,
             id: `hotlead-${lead.id}`,
-            hotLeadId: lead.id,
             title: lead.unternehmen || 'Beratungsgespräch',
             start: lead.terminDatum,
-            end: new Date(new Date(lead.terminDatum).getTime() + 30 * 60000).toISOString(), // +30 Min
+            end: endeNach(lead.terminDatum, DAUER.beratung),
             source: 'beratungsgespraech',
+            // Die Terminart des Beratungsgespraechs - telefonisch oder Video.
             terminart: lead.terminart,
-            status: lead.status,
-            isMyClosing,
-            isMyBooking,
-            isMySetting,
-            unternehmen: lead.unternehmen,
-            ansprechpartner: `${lead.ansprechpartnerVorname || ''} ${lead.ansprechpartnerNachname || ''}`.trim(),
-            email: lead.email,
-            telefon: lead.telefon,
-            ort: lead.ort,
-            kommentar: lead.kommentar,
-            setterName: lead.setterName,
-            closerName: lead.closerName,
-            // Der vollstaendige Datensatz, damit die Setter-Ansicht die
-            // Uebergabe-Felder vorbefuellen kann.
-            lead
-          }
-        })
+            // Wer haelt, wer hat gelegt: beim Beratungsgespraech Setter und
+            // Opener, beim Abschluss Closer und Setter.
+            haelt: lead.setterName, haeltRolle: 'Setter',
+            legte: lead.openerName, legteRolle: 'Opener'
+          })
+        }
+        if (lead.termin_abschlussgespraech) {
+          eintraege.push({
+            ...gemeinsam,
+            id: `abschluss-${lead.id}`,
+            title: lead.unternehmen || 'Abschlussgespräch',
+            start: lead.termin_abschlussgespraech,
+            end: endeNach(lead.termin_abschlussgespraech, DAUER.abschluss),
+            source: 'abschlussgespraech',
+            // In Calendly fest ein Videotermin (Konzeptvorstellung ->
+            // google_conference); lead.terminart beschreibt das
+            // Beratungsgespraech und waere hier die falsche Auskunft.
+            terminart: 'Video',
+            meetingLink: lead.meeting_link_abschluss,
+            haelt: lead.closerName, haeltRolle: 'Closer',
+            legte: lead.setterName, legteRolle: 'Setter'
+          })
+        }
+        return eintraege
+      })
       
       // Wiedervorlagen als Termine formatieren
       const formattedWiedervorlagen = wiedervorlagen
@@ -313,24 +371,20 @@ function Termine() {
   // wie ein geplatzter Termin, und das ist die Unterscheidung, auf die es in
   // einem Kalender zuerst ankommt. Das Closing traegt deshalb die Hausfarbe.
   const getEventColor = (event) => {
-    const status = event.status?.toLowerCase() || ''
+    if (isEventCancelled(event)) return FARBE.abgesagt
+    return FARBE[event.source] || FARBE.beratungsgespraech
+  }
 
-    if (status.includes('abgesagt')) {
-      return 'bg-red-100 border-red-300 text-red-700'
+  /* Was die Farbe nicht traegt, traegt die Form:
+     - vergangen  -> blasser, bleibt aber lesbar
+     - niemand eingeteilt -> gestrichelte Kante links */
+  const eventForm = (event) => {
+    const klassen = []
+    if (event.start && new Date(event.start) < new Date()) klassen.push('opacity-60')
+    if (event.source !== 'wiedervorlage' && !event.haelt) {
+      klassen.push('border-l-[3px] border-l-dashed')
     }
-    if (event.source === 'wiedervorlage') {
-      return 'bg-orange-100 border-orange-300 text-orange-800'
-    }
-    // Liegt der Kontakt beim Closer, ist es ein Abschlussgespraech - egal, ob
-    // der Status noch hinterherhinkt (siehe anCloserUebergeben).
-    if (stufeVonLead(event.lead || {}) === STUFE.CLOSING) {
-      return 'bg-secondary-container border-primary-fixed-dim text-primary'
-    }
-    // Beratungsgespraech: Ohne Setter wartet es im Pool auf jemanden.
-    if (!event.setterName) {
-      return 'bg-amber-100 border-amber-300 text-amber-800'
-    }
-    return 'bg-green-100 border-green-300 text-green-800'
+    return klassen.join(' ')
   }
 
   // Prüfen ob Termin abgesagt ist (für Durchstreichung)
@@ -516,18 +570,31 @@ function Termine() {
                           <button
                             key={event.id}
                             onClick={() => setSelectedEvent(event)}
-                            className={`w-full text-left p-2 rounded-lg border text-xs hover:shadow-md transition-shadow ${getEventColor(event)} ${isEventCancelled(event) ? 'opacity-60' : ''}`}
+                            className={`w-full text-left p-2 rounded-lg border text-xs hover:shadow-md transition-shadow ${getEventColor(event)} ${eventForm(event)}`}
                           >
-                            <div className={`font-medium truncate flex items-center ${isEventCancelled(event) ? 'line-through' : ''}`}>
+                            {/* Zeit und Art zuerst: „Quartier 39" allein sagt
+                                nicht, ob es ein Erstgespräch oder der
+                                Abschluss ist. */}
+                            <div className="flex items-baseline gap-1.5">
+                              <span className={`font-semibold tabular-nums ${isEventCancelled(event) ? 'line-through' : ''}`}>
+                                {formatTime(event.start, event.source)}
+                              </span>
+                              <span className="text-[9px] uppercase tracking-wide border border-current rounded px-1 opacity-80">
+                                {KUERZEL[event.source] || 'Termin'}
+                              </span>
+                            </div>
+                            <div className={`font-medium truncate flex items-center mt-0.5 ${isEventCancelled(event) ? 'line-through' : ''}`}>
                               {getEventIcon(event)}
                               {event.title}
                             </div>
-                            <div className={`text-[10px] opacity-75 ${isEventCancelled(event) ? 'line-through' : ''}`}>
-                              {formatTime(event.start, event.source)}
-                            </div>
-                            {viewMode === 'all' && event.closerName && (
-                              <div className="text-[10px] opacity-75 truncate">
-                                {event.closerName}
+                            {event.source !== 'wiedervorlage' && (
+                              <div className="text-[10px] opacity-80 truncate">
+                                {event.haeltRolle}: {event.haelt || 'niemand'}
+                              </div>
+                            )}
+                            {event.legte && (
+                              <div className="text-[10px] opacity-60 truncate">
+                                {event.legteRolle}: {event.legte}
                               </div>
                             )}
                             {isEventCancelled(event) && (
@@ -571,7 +638,7 @@ function Termine() {
                       <button
                         key={event.id}
                         onClick={() => setSelectedEvent(event)}
-                        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] truncate hover:shadow-sm transition-shadow ${getEventColor(event)} ${isEventCancelled(event) ? 'opacity-60 line-through' : ''}`}
+                        className={`w-full text-left px-1.5 py-0.5 rounded text-[10px] truncate hover:shadow-sm transition-shadow ${getEventColor(event)} ${eventForm(event)} ${isEventCancelled(event) ? 'line-through' : ''}`}
                       >
                         <span className="font-medium">{formatTime(event.start, event.source)}</span> {event.title}
                       </button>
@@ -589,16 +656,13 @@ function Termine() {
         )}
       </div>
 
-      {/* Legende - dieselbe in beiden Ansichten, weil die Farben jetzt
-          dasselbe bedeuten: Kuemmert sich jemand darum? */}
+      {/* Legende. Die Farbe sagt, WAS fuer ein Termin das ist - alles
+          andere traegt die Form, damit ein Termin seine Farbe behaelt,
+          solange es ihn gibt. */}
       <div className="flex flex-wrap items-center gap-4 mt-4 text-sm text-gray-600">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-amber-200 border border-amber-300"></div>
-          <span>Ohne Setter (im Pool)</span>
-        </div>
-        <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-green-200 border border-green-300"></div>
-          <span>Beratungsgespräch, eingeteilt</span>
+          <span>Beratungsgespräch</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-secondary-container border border-primary-fixed-dim"></div>
@@ -611,6 +675,14 @@ function Termine() {
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-red-200 border border-red-300"></div>
           <span className="line-through">Abgesagt</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-surface-container border-l-[3px] border-l-dashed border-outline"></div>
+          <span>Niemand eingeteilt</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded bg-surface-container border border-outline-variant opacity-60"></div>
+          <span>Vorbei</span>
         </div>
       </div>
 
