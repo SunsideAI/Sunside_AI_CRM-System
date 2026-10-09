@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { statusFarbe } from '../utils/statusfarbe'
 import {
   Search, Calendar, Phone, Video, Loader2, User as UserIcon,
   AlertCircle, Users, Mail, RefreshCw, X, ChevronLeft, ChevronRight, Lock,
@@ -555,11 +556,7 @@ function Setting() {
             sortierung={sortierung}
             onSortierung={(spalte) => { setSeite(1); setSortierung(s =>
               s.spalte === spalte ? { spalte, ab: !s.ab } : { spalte, ab: false }) }}
-            badgeFarbe={(_, z) => z.statusWert === STATUS.BERATUNG_GEFUEHRT
-              ? 'bg-success-container text-success'
-              : [STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(z.statusWert)
-                ? 'bg-error-container text-error'
-                : 'bg-secondary-container text-primary'}
+            badgeFarbe={(_, z) => statusFarbe(z.roh, 'setting')}
             onZeile={(z) => {
               setGewaehlt(z.roh); setMailOffen(false); setTerminOffen(false)
               bearbeitenAbbrechen()

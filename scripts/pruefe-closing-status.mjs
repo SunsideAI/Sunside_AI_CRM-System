@@ -126,6 +126,20 @@ for (const alt2 of ['Lead', 'Im Closing', 'Termin verschoben', 'Verloren'])
 sagt(/when von in \('Abgeschlossen', 'Gewonnen'\) then false/.test(mig),
   'Und sperrt dieselben Endzustände wie der Code')
 
+/* Die Farbe folgt dem angezeigten Stand, nicht dem gespeicherten Wert. Sie
+   las vorher lead.status roh und verglich woertlich: Bei den Altwerten traf
+   sie keinen Zweig, und „Abschlussgespraech vereinbart" - fuer den Setter das
+   Ziel - sah aus wie ein Zwischenstand. */
+const farbe = fs.readFileSync('src/utils/statusfarbe.js', 'utf8')
+sagt(/statusBasisVonLead\(lead, stufe\) === STATUS\.ABSCHLUSS_VEREINBART/.test(farbe),
+  'Die Farbe misst am angezeigten Stand')
+sagt(/uebergeben\s*\n?\s*\|\|/.test(farbe) && /bg-success-container/.test(farbe),
+  'Ein vereinbartes Abschlussgespräch ist grün')
+sagt(/normalisiere\(lead\?\.status\)/.test(farbe),
+  'Und greift auch bei alten Statuswerten')
+sagt(/statusFarbe\(z\.roh, 'setting'\)/.test(fs.readFileSync('src/pages/Setting.jsx', 'utf8')),
+  'Das Setting nutzt sie')
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')
