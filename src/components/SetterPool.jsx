@@ -5,6 +5,18 @@ import { STATUS } from '../../shared/status.js'
 import LeadPool from './LeadPool'
 import Uebergabeblatt, { UEBERGABE_1 } from './Uebergabeblatt'
 
+/* Wie lange ein Termin nach seiner Zeit noch zur Uebernahme steht. Ein
+   Beratungsgespraech dauert eine halbe Stunde; wer es haelt oder nachtraegt,
+   braucht den Kontakt auch danach noch. */
+const NACHLAUF_STUNDEN = 24
+
+/** Steht dieser Termin noch zur Uebernahme? Zaehler und Liste fragen dasselbe. */
+export function imPoolSichtbar(lead) {
+  if (lead?.status !== STATUS.BERATUNG_VEREINBART) return false
+  if (!lead.terminDatum) return false
+  return new Date(lead.terminDatum) > new Date(Date.now() - NACHLAUF_STUNDEN * 3600 * 1000)
+}
+
 // Der Setter-Pool: Beratungsgespräche, für die noch niemand eingeteilt ist.
 //
 // Aufbau, Tabelle und Schublade kommen aus LeadPool und sehen darum aus wie im
@@ -34,11 +46,15 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
     try {
       const antwort = await fetch('/.netlify/functions/hot-leads?pool=setter')
       const daten = await antwort.json()
-      // Nur was noch bevorsteht - vergangene Termine ohne Setter sind ein Fall
-      // für den Alarm, nicht für die Bewerbung.
-      const offen = (daten.hotLeads || []).filter(l =>
-        l.status === STATUS.BERATUNG_VEREINBART &&
-        l.terminDatum && new Date(l.terminDatum) > new Date())
+      /* Was bevorsteht, und was gerade erst vorbei ist.
+         Strikt „in der Zukunft" hiess: Ein Termin um 10:00 fiel um 10:01 aus
+         dem Pool, obwohl ihn noch niemand uebernommen hatte - wer das
+         Gespraech gerade fuehrt oder es nachtragen will, fand ihn nicht mehr.
+         Ein Tag Nachlauf deckt das ab, ohne den Pool zu fuellen: Am
+         09.10.2026 lagen dort 17 kuenftige Termine und null aus den letzten
+         24 Stunden. Was laenger unbesetzt liegt, ist kein Fall fuer die
+         Bewerbung mehr, sondern fuer den Alarm. */
+      const offen = (daten.hotLeads || []).filter(imPoolSichtbar)
       const sortiert = offen.sort((a, b) => new Date(a.terminDatum) - new Date(b.terminDatum))
       setTermine(sortiert)
       onAnzahl?.(sortiert.length)
@@ -77,19 +93,25 @@ export default function SetterPool({ onGeaendert, onAnzahl, alsAnsicht = false }
   // Als Kasten über dem Kalender: Ist nichts da, steht dort auch nichts.
   if (!alsAnsicht && !laedt && termine.length === 0) return null
 
-  const eintraege = termine.map(l => ({
-    id: l.id,
-    unternehmen: l.unternehmen,
-    untertitel: [l.kategorie, l.ort].filter(Boolean).join(' · '),
-    ansprechpartner: [l.ansprechpartnerVorname, l.ansprechpartnerNachname].filter(Boolean).join(' '),
-    ort: l.ort,
-    terminDatum: l.terminDatum,
-    art: { icon: l.terminart === 'Video' ? Video : Phone },
-    hinweis: l.openerId === user?.id
+  const eintraege = termine.map(l => {
+    // Schon vorbei, aber noch im Nachlauf: Das gehoert in den Hinweis, sonst
+    // uebernimmt jemand einen Termin und merkt erst danach, dass er laeuft.
+    const vorbei = l.terminDatum && new Date(l.terminDatum) < new Date()
+    const wer = l.openerId === user?.id
       ? 'dein Erstanruf'
-      : l.openerName ? `gelegt von ${l.openerName}` : null,
-    roh: l
-  }))
+      : l.openerName ? `gelegt von ${l.openerName}` : null
+    return {
+      id: l.id,
+      unternehmen: l.unternehmen,
+      untertitel: [l.kategorie, l.ort].filter(Boolean).join(' · '),
+      ansprechpartner: [l.ansprechpartnerVorname, l.ansprechpartnerNachname].filter(Boolean).join(' '),
+      ort: l.ort,
+      terminDatum: l.terminDatum,
+      art: { icon: l.terminart === 'Video' ? Video : Phone },
+      hinweis: [vorbei ? 'Termin ist vorbei' : null, wer].filter(Boolean).join(' · ') || null,
+      roh: l
+    }
+  })
 
   const pool = (
     <LeadPool

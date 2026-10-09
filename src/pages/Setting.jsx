@@ -12,7 +12,7 @@ import GeplatzteTermine from '../components/GeplatzteTermine'
 import SlideDrawer from '../components/SlideDrawer'
 import SetterUebergabe from '../components/SetterUebergabe'
 import KommentarKasten from '../components/KommentarKasten'
-import SetterPool from '../components/SetterPool'
+import SetterPool, { imPoolSichtbar } from '../components/SetterPool'
 import EmailComposer from '../components/EmailComposer'
 import TerminPicker from '../components/TerminPicker'
 import Uebergabeblatt, { UEBERGABE_1 } from '../components/Uebergabeblatt'
@@ -185,10 +185,9 @@ function Setting() {
     try {
       const antwort = await fetch('/.netlify/functions/hot-leads?pool=setter')
       const daten = await antwort.json()
-      const offen = (daten.hotLeads || []).filter(l =>
-        l.status === STATUS.BERATUNG_VEREINBART &&
-        l.terminDatum && new Date(l.terminDatum) > new Date())
-      setPoolAnzahl(offen.length)
+      // Dieselbe Bedingung wie die Liste - sonst stuende im Umschalter eine
+      // andere Zahl, als der Pool dann zeigt.
+      setPoolAnzahl((daten.hotLeads || []).filter(imPoolSichtbar).length)
     } catch {
       // Zahl bleibt, wie sie war — ein Zähler ist kein Grund für eine Meldung.
     }

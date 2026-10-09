@@ -124,4 +124,22 @@ for (const [datei, seite] of [['src/pages/Closing.jsx', 'Closing'], ['src/pages/
     `${seite}: alle drei Zuteilungen werden mitgespeichert`)
 }
 
+/* Ein Termin um 10:00 fiel um 10:01 aus dem Pool, obwohl ihn noch niemand
+   uebernommen hatte - gemeldet am 09.10.2026. Wer das Gespraech gerade fuehrt
+   oder nachtraegt, muss den Kontakt noch finden. */
+const sp = fs.readFileSync('src/components/SetterPool.jsx', 'utf8')
+sagt(/export function imPoolSichtbar/.test(sp),
+  'Eine Stelle entscheidet, was im Pool steht')
+sagt(/NACHLAUF_STUNDEN = 24/.test(sp),
+  'Ein vorbeier Termin bleibt einen Tag lang übernehmbar')
+sagt(/Termin ist vorbei/.test(sp),
+  'Und ist als vorbei gekennzeichnet')
+sagt(/filter\(imPoolSichtbar\)/.test(fs.readFileSync('src/pages/Setting.jsx', 'utf8')),
+  'Der Zähler im Umschalter fragt dasselbe wie die Liste')
+
+if (befunde.length) {
+  console.error('FEHLER:')
+  for (const b of befunde) console.error('  - ' + b)
+  process.exit(1)
+}
 console.log('Zuteilung: alles wie erwartet.')
