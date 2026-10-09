@@ -27,7 +27,11 @@ const FARBE = {
   beratungsgespraech: 'bg-green-100 border-green-300 text-green-800',
   abschlussgespraech: 'bg-secondary-container border-primary-fixed-dim text-primary',
   wiedervorlage:      'bg-orange-100 border-orange-300 text-orange-800',
-  abgesagt:           'bg-red-100 border-red-300 text-red-700'
+  abgesagt:           'bg-red-100 border-red-300 text-red-700',
+  // Niemand eingeteilt. Faellt auf, bevor die Art zaehlt: Ein Termin ohne
+  // Zustaendigen findet sonst nicht statt. Welche Art es ist, steht im
+  // Kuerzel der Kachel.
+  offen:              'bg-amber-100 border-amber-300 text-amber-800'
 }
 
 const KUERZEL = {
@@ -37,7 +41,11 @@ const KUERZEL = {
 }
 
 function Termine() {
-  const { user, isAdmin } = useAuth()
+  const { user, isAdmin, isSetter, isCloser } = useAuth()
+  /* Beide Arten im Kalender hat, wer Setting und Closing haelt - und die
+     Leitung, die in der Ansicht „Alle" ohnehin alles sieht. Paul etwa traegt
+     Closer und Geschaeftsfuehrer, aber nicht Setter. */
+  const zeigtBeideArten = (isSetter() && isCloser()) || isAdmin()
   const routerNavigate = useNavigate()
   const [termine, setTermine] = useState([])
   const [loading, setLoading] = useState(true)
@@ -50,6 +58,13 @@ function Termine() {
   
   // View Mode: own = Meine Termine, all = Alle Termine (nur Admin)
   const [viewMode, setViewMode] = useState('own')
+  /* Wer Setting UND Closing haelt, hat zwei Sorten Termine im selben
+     Kalender. Der Umschalter trennt sie. Fuer alle anderen waere er ein
+     Knopf ohne Wirkung - sie sehen ohnehin nur eine Sorte.
+
+     Die Leitung bekommt ihn auch: Sie traegt die Rolle Setter oft nicht im
+     Profil, sieht in der Ansicht "Alle" aber beides. */
+  const [artFilter, setArtFilter] = useState('alle')
   // Calendar Mode: week = Wochenansicht, month = Monatsansicht
   const [calendarMode, setCalendarMode] = useState('week')
   
@@ -347,10 +362,19 @@ function Termine() {
     return `${year}-${month}-${day}`
   }
 
+  /* Was der Umschalter durchlaesst. Wiedervorlagen gehoeren zum Setting -
+     sie sind Nachfassarbeit, kein Abschlussgespraech. */
+  const passtZumFilter = (event) => {
+    if (artFilter === 'alle') return true
+    if (artFilter === 'closing') return event.source === 'abschlussgespraech'
+    return event.source !== 'abschlussgespraech'
+  }
+
   const getEventsForDay = (date) => {
     const dateStr = toLocalDateString(date)
 
     return termine
+      .filter(passtZumFilter)
       .filter(event => {
         const eventDate = toLocalDateString(new Date(event.start))
         return eventDate === dateStr
@@ -370,8 +394,12 @@ function Termine() {
   // Rot bleibt der Absage vorbehalten. Ein Abschlussgespraech in Rot saehe aus
   // wie ein geplatzter Termin, und das ist die Unterscheidung, auf die es in
   // einem Kalender zuerst ankommt. Das Closing traegt deshalb die Hausfarbe.
+  /* Rangfolge, nicht nur Art: Zuerst zaehlt, was den Termin gefaehrdet.
+     Abgesagt schlaegt alles, danach kommt "niemand eingeteilt" - beides
+     muss man im Kalender sehen, bevor man die Art wissen will. */
   const getEventColor = (event) => {
     if (isEventCancelled(event)) return FARBE.abgesagt
+    if (event.source !== 'wiedervorlage' && !event.haelt) return FARBE.offen
     return FARBE[event.source] || FARBE.beratungsgespraech
   }
 
@@ -428,6 +456,26 @@ function Termine() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          {/* Setting oder Closing. Nur fuer die, die beides halten - fuer alle
+              anderen waere es ein Knopf ohne Wirkung. */}
+          {zeigtBeideArten && (
+            <div className="umschalter">
+              {[['alle', 'Beides'], ['setting', 'Setting'], ['closing', 'Closing']].map(([wert, text]) => (
+                <button
+                  key={wert}
+                  onClick={() => setArtFilter(wert)}
+                  className={`umschalter-knopf ${
+                    artFilter === wert
+                      ? 'aktiv'
+                      : 'text-on-surface-variant hover:text-primary hover:bg-primary-fixed/30'
+                  }`}
+                >
+                  {text}
+                </button>
+              ))}
+            </div>
+          )}
+
           {/* View Mode Toggle - nur für Admins */}
           {isAdmin() && (
             <div className="umschalter">
@@ -677,7 +725,7 @@ function Termine() {
           <span className="line-through">Abgesagt</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded bg-surface-container border-l-[3px] border-l-dashed border-outline"></div>
+          <div className="w-3 h-3 rounded bg-amber-200 border border-amber-300 border-l-[3px] border-l-dashed"></div>
           <span>Niemand eingeteilt</span>
         </div>
         <div className="flex items-center gap-2">

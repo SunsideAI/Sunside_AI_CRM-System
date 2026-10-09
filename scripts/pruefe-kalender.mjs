@@ -54,6 +54,28 @@ sagt(/haeltRolle: 'Setter'[\s\S]{0,200}legteRolle: 'Opener'/.test(fn)
      && /haeltRolle: 'Closer'[\s\S]{0,200}legteRolle: 'Setter'/.test(fn),
   'Die Rollennamen richten sich nach der Terminart')
 
+/* Wer Setting UND Closing haelt, hat zwei Sorten Termine im selben Kalender.
+   Nur fuer die lohnt der Umschalter - alle anderen sehen ohnehin eine Sorte.
+   Die Leitung bekommt ihn auch: Sie traegt Setter oft nicht im Profil, sieht
+   in der Ansicht "Alle" aber beides. */
+sagt(/const zeigtBeideArten = \(isSetter\(\) && isCloser\(\)\) \|\| isAdmin\(\)/.test(fn),
+  'Den Umschalter sieht, wer beide Rollen hält - und die Leitung')
+sagt(/artFilter === 'closing'/.test(fn) && /event\.source === 'abschlussgespraech'/.test(fn),
+  '„Closing" zeigt nur Abschlussgespräche')
+sagt(/\.filter\(passtZumFilter\)/.test(fn),
+  'Der Filter greift auf die Tagesliste')
+/* Wiedervorlagen sind Nachfassarbeit des Setters, kein Abschlussgespraech -
+   sie gehoeren zum Setting-Teil, nicht in beide oder keinen. */
+sagt(/Wiedervorlagen gehoeren zum Setting/.test(fn),
+  'Wiedervorlagen zählen zum Setting')
+
+/* Ein Termin ohne Zustaendigen faellt sonst nicht auf: Die Artfarbe wuerde
+   ihn wie jeden anderen aussehen lassen. */
+sagt(/if \(event\.source !== 'wiedervorlage' && !event\.haelt\) return FARBE\.offen/.test(fn),
+  'Ohne Zuständigen schlägt Gelb die Artfarbe')
+sagt(/offen:\s+'bg-amber-100/.test(fn),
+  'Und zwar in Bernstein, nicht im Orange der Wiedervorlage')
+
 console.log('')
 if (befunde.length) {
   console.error('FEHLER:')
