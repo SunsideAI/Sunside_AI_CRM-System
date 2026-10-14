@@ -1,4 +1,4 @@
-import { STATUS, STUFE, IST_VERLOREN, anzeigeName, ruecknahmeZiel, statusFuerStufe, statusBrauchtLeitung } from '../../shared/status.js'
+import { STATUS, STUFE, IST_VERLOREN, anzeigeName, ruecknahmeZiel, statusFuerStufe, statusBrauchtLeitung, stufeVonLead } from '../../shared/status.js'
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useLocation } from 'react-router-dom'
@@ -989,7 +989,19 @@ function Closing() {
 
   // Filter-Logik
   const getFilteredLeads = () => {
-    let filtered = leads
+    /* Wer noch im Setting steht und keinen Closer hat, ist keine Arbeit des
+       Closings - er stand hier nur, weil diese Liste als einzige der drei
+       Stufen gar nicht nach der Stufe fragte. Das Setting tut es seit jeher
+       (imSetting in Setting.jsx), das Opening ohnehin. Am 14.10.2026 fiel es
+       an einem frisch angelegten Kontakt auf, der gleichzeitig im Setting und
+       im Closing stand; dahinter lagen 73 weitere.
+
+       Der Closer in der Bedingung ist kein Beiwerk, sondern der Schutz davor,
+       jemandem die Arbeit wegzunehmen: 130 Kontakte aus der Zeit vor dem
+       OSC-Umbau tragen noch einen Beratungs-Status, obwohl ein Closer sie
+       haelt - ihre Uebergabe wurde nie dokumentiert. Ein reiner Stufenfilter
+       haette sie alle aus der Liste geworfen. */
+    let filtered = leads.filter(l => stufeVonLead(l) !== STUFE.SETTING || l.closerId)
 
     // Status-Filter
     if (statusFilter !== 'all') {

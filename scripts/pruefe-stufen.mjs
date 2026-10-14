@@ -97,6 +97,46 @@ sagt(stufeVonLead(welfenross) === STUFE.SETTING,
 sagt(stufeVonLead({ ...welfenross, ergebnis_beratung: 'Abschlussgespräch vereinbart' }) === STUFE.CLOSING,
   'Mit Übergabe wäre er Closing')
 
+/* Die Closing-Liste fragt nach der Stufe - als einzige der drei tat sie das
+   lange nicht.
+
+   Am 14.10.2026 fiel es an einem frisch angelegten Kontakt auf: Er stand
+   gleichzeitig im Setting und im Closing. Dahinter lagen 73 weitere. Von 667
+   Hot Leads waren 410 nicht in der Closing-Stufe; das Setting filtert seit
+   jeher ueber imSetting(), das Closing ueber gar nichts.
+
+   Der Closer in der Bedingung ist der Schutz vor einem groben Fehler: 130
+   Kontakte aus der Zeit vor dem OSC-Umbau tragen noch einen Beratungs-Status,
+   obwohl ein Closer sie haelt - ihre Uebergabe wurde nie dokumentiert. Ein
+   reiner Stufenfilter haette sie alle aus der Liste geworfen, mitsamt der
+   Arbeit, die daran haengt. */
+const closingQuelle = fs.readFileSync('src/pages/Closing.jsx', 'utf8')
+sagt(/let filtered = leads\.filter\(l => stufeVonLead\(l\) !== STUFE\.SETTING \|\| l\.closerId\)/.test(closingQuelle),
+  'Die Closing-Liste lässt Setting-Kontakte ohne Closer weg')
+sagt(/stufeVonLead/.test(closingQuelle.split('\n')[0]),
+  'stufeVonLead ist dafür importiert')
+
+// Die Bedingung durchgerechnet
+const zeigtImClosing = (l) => stufeVonLead(l) !== STUFE.SETTING || l.closerId
+const faelle = [
+  ['Frische Anfrage im Setting, kein Closer (Hw-Immobilienservice)',
+   { status: STATUS.BERATUNG_VEREINBART }, false],
+  ['Altbestand: Beratungs-Status, aber ein Closer hält ihn',
+   { status: STATUS.BERATUNG_VEREINBART, closerId: 'abc' }, true],
+  ['Übergeben ans Closing',
+   { status: STATUS.BERATUNG_GEFUEHRT, ergebnis_beratung: 'Abschlussgespräch vereinbart' }, true],
+  ['Im Abschluss',
+   { status: STATUS.IM_ABSCHLUSS }, true],
+  ['Gewonnen bleibt sichtbar',
+   { status: STATUS.GEWONNEN }, true],
+  ['Verloren bleibt sichtbar',
+   { status: STATUS.VERLOREN_ENDGUELTIG }, true],
+]
+for (const [name, lead, erwartet] of faelle) {
+  sagt(Boolean(zeigtImClosing(lead)) === erwartet,
+    `${erwartet ? 'Im Closing' : 'Nicht im Closing'}: ${name}`)
+}
+
 console.log(`\n${STATUS_JE_STUFE[STUFE.CLOSING].length} Closing-Status, ${STATUS_JE_STUFE[STUFE.SETTING].length} Setting-Status geprueft.`)
 if (befunde.length) {
   console.error('\nFEHLER:')
