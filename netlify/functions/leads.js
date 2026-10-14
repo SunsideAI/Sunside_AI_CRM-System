@@ -259,10 +259,16 @@ export async function handler(event) {
       // User-Map laden für Namen-Auflösung
       const userMap = await loadUserMap()
 
-      // Basis-Query
+      /* Basis-Query.
+
+         Wird nach einem Vertriebler gefiltert, geht das ueber einen Join auf
+         lead_assignments statt ueber eine Liste von Lead-Ids. Der Grund steht
+         unten beim Filter: Die Id-Liste sprengte die Laenge der Anfrage. */
+      const nachVertrieblerFiltern = Boolean(vertriebler && vertriebler !== 'all')
       let query = supabase
         .from('leads')
-        .select('*', { count: 'exact' })
+        .select(nachVertrieblerFiltern ? '*, lead_assignments!inner(user_id)' : '*',
+                { count: 'exact' })
 
       // User-Filter: Nur wenn NICHT Admin mit "all" view ODER bei Wiedervorlagen-Abfrage
       // Die Rolle kam aus der Query: ?userRole=Admin&view=all lieferte jedem
@@ -385,30 +391,26 @@ export async function handler(event) {
         }
       }
 
-      // Vertriebler-Filter (für Admins)
-      // Mit Pagination um > 1000 Assignments zu unterstützen
-      if (vertriebler && vertriebler !== 'all') {
-        let vertrAssignments = []
-        let vertrOffset = 0
-        const vertrPageSize = 1000
+      /* Vertriebler-Filter (fuer die Leitung).
 
-        while (true) {
-          const { data: batch } = await supabase
-            .from('lead_assignments')
-            .select('lead_id')
-            .eq('user_id', vertriebler)
-            .range(vertrOffset, vertrOffset + vertrPageSize - 1)
+         Vorher wurden erst saemtliche Zuteilungen dieser Person geholt und
+         ihre Lead-Ids einzeln an die Abfrage gehaengt. Bei 3.901 Zuteilungen
+         (Patrick Wolfram) wurde die Adresse rund 150 KB lang, und Cloudflare
+         antwortete mit "414 Request-URI Too Large"; im CRM stand dann nur
+         "Fehler beim Laden der Leads". Betroffen war jeder mit grossem
+         Bestand, also genau die, nach denen man filtert - Max Lehmann 6.298,
+         Patrick 3.901, Manuel Schaelling 2.453, Marvin Schuetze 2.199. Unter
+         etwa 600 Zuteilungen fiel es nicht auf, deshalb blieb es lange
+         unbemerkt.
 
-          if (!batch || batch.length === 0) break
-          vertrAssignments = vertrAssignments.concat(batch)
-          if (batch.length < vertrPageSize) break
-          vertrOffset += vertrPageSize
-        }
-
-        if (vertrAssignments.length > 0) {
-          const leadIds = vertrAssignments.map(a => a.lead_id)
-          query = query.in('id', leadIds)
-        }
+         Der Join erledigt dasselbe in der Datenbank: eine kurze Anfrage,
+         unabhaengig von der Menge. Die Bedingung steht auf der eingebetteten
+         Tabelle, das `!inner` oben im select macht daraus einen echten
+         Filter statt einer blossen Beigabe. Da ein Lead demselben Nutzer nur
+         einmal zugeteilt ist, entstehen keine Doppelzeilen (geprueft: 3.901
+         Zuteilungen ergeben 3.901 Treffer). */
+      if (nachVertrieblerFiltern) {
+        query = query.eq('lead_assignments.user_id', vertriebler)
       }
 
       // Kontaktiert-Filter
