@@ -51,9 +51,33 @@ const MEINE_STUFEN = [
 // „Anstehend", voll bearbeitbar.
 const imSetting = (l) => stufeVonLead(l) === STUFE.SETTING
 
+/* Ein Kontakt, fuer den nie ein Termin gebucht wurde.
+
+   Zwei Wege fuehren hierher. Erstens die Anfrage von aussen: Jemand meldet
+   sich ueber die Website, landet im Setting, und der Termin steht noch aus.
+   Zweitens die Uebergabe ohne Buchung: Im Gespraech wird "Abschlussgespraech
+   vereinbart" dokumentiert, aber kein Termin gelegt.
+
+   Beide standen vorher nirgends. Der erste Fall lag unter "Anstehend"
+   zwischen echten Terminen, nur ohne Datum; der zweite galt schlicht als
+   uebergeben. Am 14.10.2026 waren so 22 Kontakte im Setting ohne je gebuchten
+   Termin, darunter drei Anfragen von der Website, die 7, 42 und 47 Tage lagen
+   - eine davon ohne jeden Setter, also in keiner Liste eines Menschen.
+
+   Die Liste heisst "Ohne Termin" und nicht "Termin vereinbaren": Nicht jeder
+   Kontakt braucht einen. Manchmal ruft man an, fuehrt das Gespraech sofort
+   und dokumentiert es - dann war das Telefonat der Termin. Beide Wege stehen
+   in der Schublade offen, buchen oder gleich festhalten. */
+const ohneTermin = (l) =>
+  (imSetting(l) && l.status === STATUS.BERATUNG_VEREINBART && !l.terminDatum)
+  || (anCloserUebergeben(l) && !l.termin_abschlussgespraech)
+
 const FILTER = [
+  // Anstehend heisst: Der Termin steht. Ohne Datum ist nichts anstehend.
   { wert: 'offen',      name: 'Anstehend',
-    trifft: l => imSetting(l) && l.status === STATUS.BERATUNG_VEREINBART },
+    trifft: l => imSetting(l) && l.status === STATUS.BERATUNG_VEREINBART && l.terminDatum },
+  { wert: 'ohne_termin', name: 'Ohne Termin',
+    trifft: ohneTermin },
   { wert: 'zu_tun',     name: 'Zu dokumentieren',
     trifft: l => imSetting(l) && l.status === STATUS.BERATUNG_GEFUEHRT },
   // Geplatzt fragt nicht nach der Stufe: Ein Termin, den der Closer behalten
@@ -806,6 +830,29 @@ function Setting() {
               >
                 <Calendar className="w-4 h-4" /> Abschlussgespräch neu buchen
               </button>
+            )}
+
+            {/* Nie ein Termin gebucht: Der Knopf hing bisher daran, dass vorher
+                etwas geplatzt sein musste. Eine Anfrage von der Website hat
+                aber nie einen Termin gehabt, der platzen koennte - sie liess
+                sich aus dem Setting heraus gar nicht terminieren. */}
+            {gewaehlt.status === STATUS.BERATUNG_VEREINBART && !gewaehlt.terminDatum && (
+              terminOffen ? (
+                <TerminPicker
+                  zweck="beratung"
+                  lead={{ id: gewaehlt.originalLeadId, unternehmensname: gewaehlt.unternehmen }}
+                  hotLeadId={gewaehlt.id}
+                  onTerminBooked={() => { setTerminOffen(false); setGewaehlt(null); laden() }}
+                  onCancel={() => setTerminOffen(false)}
+                />
+              ) : (
+                <button
+                  onClick={() => setTerminOffen(true)}
+                  className="btn-primary inline-flex items-center gap-2"
+                >
+                  <Calendar className="w-4 h-4" /> Beratungsgespräch buchen
+                </button>
+              )
             )}
 
             {[STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(gewaehlt.status)
