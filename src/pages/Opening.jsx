@@ -162,6 +162,17 @@ function Opening() {
   
   // Modal State
   const [selectedLead, setSelectedLead] = useState(null)
+  /* Zaehlt bei jedem Nachladen hoch und stoesst den Verlauf an. Ohne das
+     blieb ein gerade geschriebener Kommentar unsichtbar, solange die
+     Schublade offen stand.
+
+     Der geoeffnete Lead wird hier bewusst NICHT aus der Liste nachgezogen:
+     Aus dem Terminbereich heraus steht in `selectedLead` ein von Hand
+     gebautes Objekt (mappedLead, Zeile 1231 und 1301), das zwar eine echte
+     Lead-Id traegt, aber zusaetzliche Felder gesetzt hat. Ein Nachziehen
+     wuerde genau die ueberschreiben. Feldaenderungen stehen hier ohnehin
+     sofort da, weil die Seite sie lokal mitfuehrt. */
+  const [neuladen, setNeuladen] = useState(0)
   const [editMode, setEditMode] = useState(false)
   const tabelle = useTabelle('opening')
   // Zählt die Ladeläufe, damit eine verspätete Antwort nichts überschreibt.
@@ -279,6 +290,9 @@ function Opening() {
         setPageHistory(prev => [...prev, offset])
       }
       setOffset(data.offset)
+      // Steht hinter dem Ueberhol-Schutz oben: Ein abgeloester Lauf darf den
+      // Verlauf nicht anstossen.
+      setNeuladen(n => n + 1)
 
     } catch (err) {
       if (meinLauf === ladeLaufRef.current) setError(err.message)
@@ -861,6 +875,10 @@ function Opening() {
       setSelectedLead(prev => ({ ...prev, ...updates, kommentar: editForm.kommentar }))
       setEditForm(prev => ({ ...prev, neuerKommentar: '', kommentar: editForm.kommentar }))
       setEditMode(false)
+      /* Den Verlauf darunter nachziehen. Hier steht bewusst kein loadLeads():
+         Die Liste wird oben schon von Hand nachgefuehrt, und ein zweiter
+         Abruf ueber 50 Leads nur fuer die Zeitleiste waere verschwendet. */
+      setNeuladen(n => n + 1)
 
     } catch (err) {
       meldung.fehler(err.message)
@@ -911,6 +929,8 @@ function Opening() {
       setSelectedLead(prev => ({ ...prev, kommentar: updatedKommentar }))
       setEditForm(prev => ({ ...prev, neuerKommentar: '', kommentar: updatedKommentar }))
       setKommentarOnlyMode(false)
+      // Der Kommentar steht jetzt im Verlauf darunter - also nachfragen.
+      setNeuladen(n => n + 1)
       
     } catch (err) {
       meldung.fehler(err.message)
@@ -2001,7 +2021,7 @@ function Opening() {
                   Verlauf
                 </h3>
 
-                <Verlauf leadId={selectedLead.id} />
+                <Verlauf leadId={selectedLead.id} signal={neuladen} />
 
                 {/* Nur noch der Altbestand: alles, was VOR dem ersten datierten
                     Eintrag steht. Die datierten Einträge zeigt die Zeitleiste

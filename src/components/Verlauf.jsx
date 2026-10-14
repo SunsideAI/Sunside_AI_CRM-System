@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Phone, Mail, Calendar, CalendarX, CalendarClock, CheckCircle2,
   MessageSquare, Bell, XCircle, Trophy, Pencil, Euro, FileSearch, RotateCcw, Circle
@@ -52,18 +52,42 @@ const datum = (iso) => {
 const uhrzeit = (iso) =>
   new Date(iso).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })
 
-export default function Verlauf({ leadId, hotLeadId }) {
+export default function Verlauf({ leadId, hotLeadId, signal = 0 }) {
   const [eintraege, setEintraege] = useState([])
   const [laedt, setLaedt] = useState(true)
   const [fehler, setFehler] = useState('')
   const [gruppe, setGruppe] = useState('')
   const [vollstaendig, setVollstaendig] = useState(true)
 
+  /* Ein anderer Kontakt oder ein anderer Filter: Hier steht gleich etwas
+     voellig anderes, also zeigt das Skelett, dass geladen wird. */
   useEffect(() => { laden() }, [leadId, hotLeadId, gruppe])
 
-  const laden = async () => {
+  /* `signal` zaehlt hoch, sobald die Seite etwas gespeichert hat.
+     Ohne das blieb ein gerade geschriebener Kommentar unsichtbar: Die
+     Schublade blieb offen, leadId und hotLeadId aenderten sich nicht, und
+     der Verlauf hatte keinen Anlass, noch einmal zu fragen. Man musste die
+     Liste neu laden und den Kontakt erneut oeffnen, um den eigenen Eintrag
+     zu sehen - und tippte ihn im Zweifel ein zweites Mal.
+
+     Hier wird still nachgeladen: dieselbe Zeitleiste, nur einen Eintrag
+     laenger. Mit Skelett wuerde der Abschnitt bei jedem Speichern kurz
+     zusammenfallen und wieder aufklappen.
+
+     Der Ref faengt den ersten Durchlauf ab: Beim Oeffnen steht `signal`
+     schon auf dem Zaehlerstand der Seite, und ohne den Vergleich liefe
+     sofort ein zweiter Abruf neben dem von oben. */
+  const letztesSignal = useRef(signal)
+  useEffect(() => {
+    if (letztesSignal.current === signal) return
+    letztesSignal.current = signal
+    laden(true)
+  }, [signal])
+
+  const laden = async (still = false) => {
     if (!leadId && !hotLeadId) return
-    setLaedt(true); setFehler('')
+    if (!still) setLaedt(true)
+    setFehler('')
     try {
       const p = new URLSearchParams()
       if (hotLeadId) p.append('hotLeadId', hotLeadId)

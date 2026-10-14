@@ -307,8 +307,20 @@ function Setting() {
       // Die eigenen Setting-Kontakte plus die, die schon beim Closer liegen:
       // Letztere füllen den Reiter „Übergeben". Was gewonnen oder verloren
       // ist, bleibt draussen - das ist keine Ansicht des Setters mehr.
-      setKontakte((daten.hotLeads || []).filter(l =>
-        MEINE_STUFEN.includes(l.status) || anCloserUebergeben(l)))
+      const frisch = (daten.hotLeads || []).filter(l =>
+        MEINE_STUFEN.includes(l.status) || anCloserUebergeben(l))
+      setKontakte(frisch)
+
+      /* Der geoeffnete Kontakt wird mitgezogen, nicht nur die Liste darunter.
+         Vorher hielt `gewaehlt` den Stand vom Oeffnen fest: Was gerade
+         gespeichert wurde, stand in der Liste, aber nicht in der Schublade
+         davor - man musste sie schliessen und neu aufmachen. Steht der
+         Kontakt nicht mehr in der Liste (Pool, andere Stufe), bleibt der
+         bisherige Stand stehen, statt die Schublade leerzuraeumen. */
+      setGewaehlt(g => (g ? (frisch.find(k => k.id === g.id) ?? g) : g))
+      /* Und der Verlauf fragt neu. Jede Speicherung ruft laden() - damit
+         haengt das Nachladen an einer Stelle statt an jedem Knopf. */
+      setNeuladen(n => n + 1)
     } catch (e) {
       setFehler(e.message)
     } finally {
@@ -673,7 +685,8 @@ function Setting() {
           link: gewaehlt.meeting_link
         } : null}
         uebergabe={gewaehlt && <Uebergabeblatt lead={gewaehlt} bereiche={[UEBERGABE_1]} />}
-        verlauf={gewaehlt && { hotLeadId: gewaehlt.id, leadId: gewaehlt.originalLeadId }}
+        verlauf={gewaehlt && { hotLeadId: gewaehlt.id, leadId: gewaehlt.originalLeadId,
+                               signal: neuladen }}
         arbeitsTitel="Beratungsgespräch"
         arbeitsIcon={Users}
         fuss={(gewaehlt && !gesperrt && !freigabeOffen) ? (

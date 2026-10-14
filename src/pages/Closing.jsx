@@ -222,6 +222,10 @@ function Closing() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedLead, setSelectedLead] = useState(null)
+  /* Zaehlt bei jedem Nachladen hoch und stoesst den Verlauf an. Ohne das
+     blieb ein gerade gespeicherter Eintrag unsichtbar, solange die
+     Schublade offen stand. */
+  const [neuladen, setNeuladen] = useState(0)
   const [editMode, setEditMode] = useState(false)
   // Ohne E-Mail geht weder Angebot noch Nachfassen raus - dieselbe Sperre wie
   // im Setting, damit dieselbe Maske überall gleich streng ist.
@@ -785,10 +789,16 @@ function Closing() {
           return dateB - dateA
         })
         setLeads(sortedLeads)
+        /* Den geoeffneten Kontakt mitziehen, nicht nur die Liste darunter:
+           Sonst zeigt die Schublade davor weiter den Stand vom Oeffnen.
+           Faellt er aus der Liste (andere Stufe, Pool), bleibt stehen, was
+           da war - eine leere Schublade waere schlimmer als eine alte. */
+        setSelectedLead(l => (l ? (sortedLeads.find(k => k.id === l.id) ?? l) : l))
       } else {
         setError(data.error || 'Fehler beim Laden')
         setLeads([])
       }
+      setNeuladen(n => n + 1)
     } catch (err) {
       console.error('Leads laden fehlgeschlagen:', err)
       setError('Verbindungsfehler')
@@ -1243,6 +1253,8 @@ function Closing() {
           : l
       ))
       setSelectedLead(prev => prev ? { ...prev, status: STATUS.NICHT_ERSCHIENEN, no_show_count: newNoShowCount, no_show_marked_at: new Date().toISOString(), no_show_keep_in_closing: noShowKeepInClosing } : null)
+      // Das Nichterscheinen steht jetzt im Verlauf - also nachfragen.
+      setNeuladen(n => n + 1)
 
       const toastMsg = noShowKeepInClosing
         ? 'Lead als nicht erschienen markiert. Du betreust ihn selbst weiter.'
@@ -1626,6 +1638,10 @@ function Closing() {
       }))
       setEditData(prev => ({ ...prev, neuerKommentar: '', kommentar: updatedKommentar }))
       setEditMode(false); setMailFehlt(false)
+      /* Den Verlauf darunter nachziehen. Kein loadLeads(): Die Liste wird
+         oben schon von Hand nachgefuehrt, ein zweiter Komplettabruf nur
+         fuer die Zeitleiste waere verschwendet. */
+      setNeuladen(n => n + 1)
       showToast('success', data.status === STATUS.GEWONNEN ? 'Deal gewonnen!' : hasTerminChange ? 'Termin verschoben' : 'Änderungen gespeichert')
       
       // Bei Status-Änderung Modal schließen (wie vorher)
@@ -2903,7 +2919,8 @@ function Closing() {
                     </h3>
 
                     <div className="mb-4">
-                      <Verlauf hotLeadId={selectedLead.id} leadId={selectedLead.originalLeadId} />
+                      <Verlauf hotLeadId={selectedLead.id} leadId={selectedLead.originalLeadId}
+                               signal={neuladen} />
                     </div>
 
                     {altbestand(selectedLead.kommentar) && (

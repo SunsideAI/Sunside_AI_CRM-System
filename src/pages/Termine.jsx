@@ -52,6 +52,10 @@ function Termine() {
   const [error, setError] = useState('')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedEvent, setSelectedEvent] = useState(null)
+  /* Zaehlt bei jedem Nachladen hoch und stoesst den Verlauf an: Ohne das
+     blieb ein gerade gespeicherter Eintrag unsichtbar, solange die
+     Schublade offen stand. */
+  const [neuladen, setNeuladen] = useState(0)
   // Mail-Modul ohne Stufen-Sperre: F23 verlangt ausdruecklich, dass Opener
   // und Setter in JEDER Stufe schreiben koennen, in jeder Ansicht.
   const [mailOffen, setMailOffen] = useState(false)
@@ -243,6 +247,8 @@ function Termine() {
         }))
       
       setTermine([...formattedTermine, ...formattedWiedervorlagen])
+      // Stoesst den Verlauf in der offenen Schublade an.
+      setNeuladen(n => n + 1)
       
     } catch (err) {
       setError(err.message)
@@ -811,7 +817,8 @@ function Termine() {
         } : null}
         verlauf={selectedEvent ? {
           hotLeadId: selectedEvent.hotLeadId,
-          leadId: selectedEvent.leadId || selectedEvent.lead?.originalLeadId
+          leadId: selectedEvent.leadId || selectedEvent.lead?.originalLeadId,
+          signal: neuladen
         } : null}
         arbeitsTitel="E-Mail an den Kontakt"
         arbeitsIcon={Mail}

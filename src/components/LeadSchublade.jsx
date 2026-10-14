@@ -339,7 +339,8 @@ export default function LeadSchublade({
       {/* 6 — Verlauf */}
       {!nurArbeit && verlauf && (
         <Abschnitt titel="Verlauf" icon={History}>
-          <Verlauf hotLeadId={verlauf.hotLeadId} leadId={verlauf.leadId} />
+          <Verlauf hotLeadId={verlauf.hotLeadId} leadId={verlauf.leadId}
+                   signal={verlauf.signal} />
           {verlauf.altbestand && (
             <>
               <div className="text-label-sm text-on-surface-variant">Ältere Notizen ohne Datum</div>

@@ -65,6 +65,10 @@ function FollowUp() {
   const [leads, setLeads] = useState([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  /* Zaehlt bei jedem Nachladen hoch und stoesst den Verlauf an: Ohne das
+     blieb ein gerade gespeicherter Eintrag unsichtbar, solange die
+     Schublade offen stand. */
+  const [neuladen, setNeuladen] = useState(0)
   const [searchTerm, setSearchTerm] = useState('')
   const [closerFilter, setCloserFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -146,9 +150,13 @@ function FollowUp() {
       const response = await fetch(`/.netlify/functions/follow-up?${params.toString()}`)
       const data = await response.json()
 
-      setLeads(data.leads || [])
+      const frisch = data.leads || []
+      setLeads(frisch)
       setTotalLeads(data.total || 0)
       setClosers(data.closers || [])
+      // Den geoeffneten Kontakt mitziehen, nicht nur die Liste darunter.
+      setSelectedLead(l => (l ? (frisch.find(k => k.id === l.id) ?? l) : l))
+      setNeuladen(n => n + 1)
     } catch (err) {
       console.error('Load error:', err)
     } finally {
@@ -247,6 +255,8 @@ function FollowUp() {
       ))
       setSelectedLead(prev => ({ ...prev, ...updates, kommentar: data.lead?.kommentar }))
       setEditData(prev => ({ ...prev, neuerKommentar: '' }))
+      // Den Verlauf darunter nachziehen.
+      setNeuladen(n => n + 1)
     } catch (err) {
       console.error('Save error:', err)
       meldung.fehler('Konnte nicht gespeichert werden: ' + err.message)
@@ -592,7 +602,8 @@ function FollowUp() {
         } : null}
         verlauf={selectedLead && {
           hotLeadId: selectedLead.id,
-          altbestand: altbestand(selectedLead.kommentar)
+          altbestand: altbestand(selectedLead.kommentar),
+          signal: neuladen
         }}
         arbeitsTitel="Follow-Up"
         arbeitsIcon={RotateCcw}
