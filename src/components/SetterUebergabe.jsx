@@ -24,9 +24,21 @@ import { useAuth } from '../context/AuthContext'
 // nur in diesem Auswahlfeld und wird nie gespeichert.
 const VERSCHOBEN = 'verschoben'
 
+/* Dasselbe fuer den ersten Termin. Kontakte, die ueber die Website anfragen,
+   kommen ohne Termin ins Setting - es gibt keinen, der verschoben werden
+   koennte. Der Weg dorthin steht in derselben Auswahl wie alles andere, statt
+   als eigener Knopf daneben: Hier sucht man ihn. */
+const TERMIN_BUCHEN = 'termin_buchen'
+
 // Deckungsgleich mit UEBERGAENGE[BERATUNG_VEREINBART] in shared/status.js.
 const AUSGAENGE = [
   { wert: '', name: 'Bitte wählen' },
+  {
+    wert: TERMIN_BUCHEN,
+    name: 'Beratungsgespräch buchen',
+    nurOhneTermin: true,
+    hinweis: 'Für Anfragen, die ohne Termin hereinkommen. Willst du stattdessen gleich sprechen, nimm „Setting starten“.'
+  },
   {
     wert: STATUS.BERATUNG_GEFUEHRT,
     name: 'Setting starten',
@@ -35,18 +47,22 @@ const AUSGAENGE = [
   {
     wert: STATUS.NICHT_ERSCHIENEN,
     name: 'Kunde nicht erschienen',
-    knopf: 'Als nicht erschienen festhalten'
+    knopf: 'Als nicht erschienen festhalten',
+    // Ohne Termin kann niemand nicht erschienen sein.
+    brauchtTermin: true
   },
   {
     wert: STATUS.TERMIN_ABGESAGT,
     name: 'Termin abgesagt',
     knopf: 'Absage festhalten',
-    hinweis: 'Sagt der Kunde über Calendly ab, trägt das System es selbst ein. Hier nur für Absagen am Telefon.'
+    hinweis: 'Sagt der Kunde über Calendly ab, trägt das System es selbst ein. Hier nur für Absagen am Telefon.',
+    brauchtTermin: true
   },
   {
     wert: VERSCHOBEN,
     name: 'Termin verschoben',
-    hinweis: 'Der neue Termin wird gleich hier gebucht; der Status bleibt „vereinbart".'
+    hinweis: 'Der neue Termin wird gleich hier gebucht; der Status bleibt „vereinbart".',
+    brauchtTermin: true
   }
 ]
 
@@ -103,6 +119,12 @@ export default function SetterUebergabe({
       ? { start: lead.termin_abschlussgespraech, meetingLink: lead.meeting_link_abschluss || null,
           terminart: 'Video' }
       : null)
+  /* Hat dieser Kontakt ueberhaupt einen Beratungstermin? Anfragen ueber die
+     Website kommen ohne herein. Davon haengt ab, welche Ausgaenge die Auswahl
+     unten zeigt: Ohne Termin gibt es nichts zu verschieben, abzusagen oder zu
+     verpassen, dafuer braucht es einen zu buchen. */
+  const hatTermin = Boolean(lead?.terminDatum)
+
   // Der geführte Ablauf der Übergabe: erst die Angaben, dann der Termin.
   // null = normale Maske, 'felder' = Schritt 1, 'termin' = Schritt 2.
   const [ablauf, setAblaufStand] = useState(null)
@@ -222,6 +244,7 @@ export default function SetterUebergabe({
     setAusgang(wert); setFehler(''); setMeldung('')
     // Zuerst die Fragen, das Ergebnis steht am Ende (Revision 25.09.).
     if (wert === STATUS.BERATUNG_GEFUEHRT) setAblauf('felder')
+    else if (wert === TERMIN_BUCHEN) setAblauf('termin_buchen')
     else if (wert === VERSCHOBEN) setAblauf('verschoben')
     else if ([STATUS.NICHT_ERSCHIENEN, STATUS.TERMIN_ABGESAGT].includes(wert)) setAblauf('geplatzt')
     else setAblauf(null)
@@ -532,6 +555,31 @@ export default function SetterUebergabe({
     )
   }
 
+  // ── Seite: Ersten Termin buchen ──────────────────────────────────────────
+  /* Getrennt von „verschoben", obwohl beide denselben Waehler zeigen: Dort
+     gibt es einen alten Termin, hier nicht. Die Ueberschrift und die Meldung
+     danach muessen das unterscheiden, sonst steht hinterher „Der Termin ist
+     neu gelegt" bei einem Kontakt, der nie einen hatte. */
+  if (ablauf === 'termin_buchen') {
+    return mitAktionen(
+      <div className="space-y-4">
+        {kopf('Termin für das Beratungsgespräch')}
+        <p className="text-xs text-gray-500">
+          Der Kontakt hat bisher keinen Termin. Nach dem Buchen steht er unter
+          „Anstehend“ und im Kalender.
+        </p>
+        <TerminPicker
+          zweck="beratung"
+          lead={leadFuerPicker}
+          hotLeadId={lead?.id}
+          onTerminBooked={() => { setAusgang(''); setAblauf(null); onGespeichert?.({ terminGebucht: true }) }}
+        />
+        {fehlerKasten}
+      </div>,
+      zurueckKnopf(null)
+    )
+  }
+
   // ── Seite: Termin verschoben ─────────────────────────────────────────────
   if (ablauf === 'verschoben') {
     return mitAktionen(
@@ -631,7 +679,11 @@ export default function SetterUebergabe({
         onChange={e => ausgangWaehlen(e.target.value)}
         className="input-field disabled:opacity-60 disabled:cursor-not-allowed"
       >
-        {AUSGAENGE.map(a => (
+        {/* Ohne Termin gibt es nichts zu verschieben, abzusagen oder zu
+            verpassen - und mit Termin braucht niemand einen ersten. */}
+        {AUSGAENGE
+          .filter(a => (a.nurOhneTermin ? !hatTermin : true) && (a.brauchtTermin ? hatTermin : true))
+          .map(a => (
           <option key={a.wert || 'offen'} value={a.wert}>{a.name}</option>
         ))}
       </select>

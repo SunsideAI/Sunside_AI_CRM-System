@@ -43,13 +43,9 @@ sagt(/trifft: l => imSetting\(l\) && l\.status === STATUS\.BERATUNG_VEREINBART &
   'Anstehend verlangt jetzt einen Termin')
 
 // ── Und man kann aus der Liste heraus handeln ────────────────────────────
-/* Ohne Buchen-Knopf waere die Liste eine Anklage ohne Ausweg. Der Knopf hing
-   vorher daran, dass vorher etwas geplatzt sein musste - eine Anfrage von der
-   Website hat aber nie einen Termin gehabt, der platzen koennte. */
-sagt(/gewaehlt\.status === STATUS\.BERATUNG_VEREINBART && !gewaehlt\.terminDatum && \(/.test(setting),
-  'Ein Kontakt ohne Termin lässt sich aus der Schublade heraus terminieren')
-sagt(/Beratungsgespräch buchen/.test(setting),
-  'Der Knopf heißt „buchen", nicht „neu buchen" — es gab ja keinen')
+/* Ohne einen Weg zum Termin waere die Liste eine Anklage ohne Ausweg. Wo der
+   Weg steht, pruefen die Zeilen weiter unten: in der Auswahl der
+   Gespraechsmaske, nicht als eigener Knopf daneben. */
 
 /* Der andere Weg muss offen bleiben: anrufen und sofort dokumentieren. Die
    Gespraechsmaske haengt an keiner Terminbedingung, und das soll so sein. */
@@ -84,6 +80,58 @@ for (const [name, lead, erwartet] of faelle) {
   sagt(ohneTermin(lead) === erwartet,
     `${erwartet ? 'Gefangen' : 'Nicht gefangen'}: ${name}`)
 }
+
+// ── Der Weg zum Termin steht in der Auswahl, nicht daneben ───────────────
+/* Ein eigener Knopf ueber der Maske war die erste Fassung. Paul wollte den
+   Weg dort, wo alle anderen Ausgaenge stehen - das ist auch der Ort, an dem
+   man ihn sucht, so wie im Opening. */
+const maskeDatei = fs.readFileSync('src/components/SetterUebergabe.jsx', 'utf8')
+
+sagt(/const TERMIN_BUCHEN = 'termin_buchen'/.test(maskeDatei),
+  'Die Buchung ist ein eigener Ausgang der Gesprächsmaske')
+sagt(/name: 'Beratungsgespräch buchen',\s*\n\s*nurOhneTermin: true/.test(maskeDatei),
+  'Sie erscheint nur bei Kontakten ohne Termin')
+sagt(/const hatTermin = Boolean\(lead\?\.terminDatum\)/.test(maskeDatei),
+  'Dafür wird geprüft, ob überhaupt ein Termin hinterlegt ist')
+sagt(/if \(ablauf === 'termin_buchen'\)/.test(maskeDatei),
+  'Die Auswahl öffnet den Terminwähler')
+sagt(/onGespeichert\?\.\(\{ terminGebucht: true \}\)/.test(maskeDatei),
+  'Und meldet den ersten Termin als eigenen Fall, nicht als Verschiebung')
+sagt(/ist gebucht und steht im Kalender/.test(setting),
+  'Die Rückmeldung sagt „gebucht“, nicht „neu gelegt“')
+
+/* Die Gegenrichtung: Was einen Termin voraussetzt, darf ohne Termin nicht in
+   der Auswahl stehen. Ohne Termin kann niemand nicht erschienen sein. */
+sagt(/brauchtTermin: true/.test(maskeDatei),
+  'Ausgänge, die einen Termin voraussetzen, sind als solche markiert')
+sagt(/\.filter\(a => \(a\.nurOhneTermin \? !hatTermin : true\) && \(a\.brauchtTermin \? hatTermin : true\)\)/.test(maskeDatei),
+  'Die Auswahl zeigt nur, was zum Zustand des Kontakts passt')
+
+/* Und der alte Knopf ist weg - sonst gaebe es zwei Wege zum selben Ziel. */
+sagt(!/<Calendar className="w-4 h-4" \/> Beratungsgespräch buchen/.test(setting),
+  'Der separate Knopf über der Maske ist entfernt')
+
+// Die Filterlogik durchgerechnet
+const auswahl = (hatTermin) => [
+  { name: 'Bitte wählen' },
+  { name: 'Beratungsgespräch buchen', nurOhneTermin: true },
+  { name: 'Setting starten' },
+  { name: 'Kunde nicht erschienen', brauchtTermin: true },
+  { name: 'Termin abgesagt', brauchtTermin: true },
+  { name: 'Termin verschoben', brauchtTermin: true },
+].filter(a => (a.nurOhneTermin ? !hatTermin : true) && (a.brauchtTermin ? hatTermin : true))
+  .map(a => a.name)
+
+const ohne = auswahl(false)
+const mit = auswahl(true)
+sagt(ohne.includes('Beratungsgespräch buchen') && ohne.includes('Setting starten'),
+  'Ohne Termin: buchen oder gleich sprechen')
+sagt(!ohne.some(n => ['Kunde nicht erschienen','Termin abgesagt','Termin verschoben'].includes(n)),
+  'Ohne Termin: nichts, was einen Termin voraussetzt')
+sagt(!mit.includes('Beratungsgespräch buchen'),
+  'Mit Termin: kein zweiter Ersttermin')
+sagt(mit.includes('Termin verschoben') && mit.includes('Kunde nicht erschienen'),
+  'Mit Termin: die gewohnten Ausgänge bleiben')
 
 if (befunde.length) {
   console.error('FEHLER:')

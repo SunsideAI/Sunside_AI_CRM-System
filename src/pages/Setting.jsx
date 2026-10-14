@@ -181,6 +181,11 @@ function Setting() {
       meldung.erfolg(`Der Termin mit ${name} ist neu gelegt.`)
     }
 
+    // Der erste Termin ueberhaupt - "neu gelegt" waere hier falsch.
+    if (updates?.terminGebucht) {
+      meldung.erfolg(`Das Beratungsgespräch mit ${name} ist gebucht und steht im Kalender.`)
+    }
+
     // Vertagt: kein Abschlusstermin, der Setter fasst selbst nach. Der Kontakt
     // bleibt in „Zu dokumentieren", damit er nicht aus dem Blick gerät.
     if (updates?.vertagt) {
@@ -832,28 +837,10 @@ function Setting() {
               </button>
             )}
 
-            {/* Nie ein Termin gebucht: Der Knopf hing bisher daran, dass vorher
-                etwas geplatzt sein musste. Eine Anfrage von der Website hat
-                aber nie einen Termin gehabt, der platzen koennte - sie liess
-                sich aus dem Setting heraus gar nicht terminieren. */}
-            {gewaehlt.status === STATUS.BERATUNG_VEREINBART && !gewaehlt.terminDatum && (
-              terminOffen ? (
-                <TerminPicker
-                  zweck="beratung"
-                  lead={{ id: gewaehlt.originalLeadId, unternehmensname: gewaehlt.unternehmen }}
-                  hotLeadId={gewaehlt.id}
-                  onTerminBooked={() => { setTerminOffen(false); setGewaehlt(null); laden() }}
-                  onCancel={() => setTerminOffen(false)}
-                />
-              ) : (
-                <button
-                  onClick={() => setTerminOffen(true)}
-                  className="btn-primary inline-flex items-center gap-2"
-                >
-                  <Calendar className="w-4 h-4" /> Beratungsgespräch buchen
-                </button>
-              )
-            )}
+            {/* Einen ersten Termin bucht man ueber die Gespraechsmaske unten,
+                nicht ueber einen eigenen Knopf hier oben: Dort stehen alle
+                Ausgaenge beieinander, und dort sucht man ihn. Siehe
+                TERMIN_BUCHEN in SetterUebergabe.jsx. */}
 
             {[STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(gewaehlt.status)
               && !gewaehlt.termin_abschlussgespraech && (
