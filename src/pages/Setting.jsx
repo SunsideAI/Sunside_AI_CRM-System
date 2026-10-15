@@ -109,7 +109,6 @@ function Setting() {
   // Nach der Übergabe: die Bestätigungsmail mit VSL zum eben übergebenen Kontakt.
   // Läuft die Übergabe an den Closer, zeigt die Schublade nur diesen Ablauf.
   const [ablaufLaeuft, setAblaufLaeuft] = useState(false)
-  const [terminOffen, setTerminOffen] = useState(false)
   // Kontaktdaten ändern — derselbe Ablauf wie in Opening und Closing:
   // „Bearbeiten" macht die Felder auf, unten stehen Abbrechen und Speichern.
   const [bearbeiten, setBearbeiten] = useState(false)
@@ -598,7 +597,7 @@ function Setting() {
               s.spalte === spalte ? { spalte, ab: !s.ab } : { spalte, ab: false }) }}
             badgeFarbe={(_, z) => statusFarbe(z.roh, 'setting')}
             onZeile={(z) => {
-              setGewaehlt(z.roh); setMailOffen(false); setTerminOffen(false)
+              setGewaehlt(z.roh); setMailOffen(false)
               bearbeitenAbbrechen()
             }}
           />
@@ -684,7 +683,7 @@ function Setting() {
                          anredeFehlt={!formular?.anrede} />
         )}
         onClose={() => {
-          setGewaehlt(null); setMailOffen(false); setTerminOffen(false); setFreigabeOffen(false)
+          setGewaehlt(null); setMailOffen(false); setFreigabeOffen(false)
           setAblaufLaeuft(false); bearbeitenAbbrechen()
         }}
         titel={gewaehlt?.unternehmen || 'Kontakt'}
@@ -842,25 +841,12 @@ function Setting() {
                 Ausgaenge beieinander, und dort sucht man ihn. Siehe
                 TERMIN_BUCHEN in SetterUebergabe.jsx. */}
 
-            {[STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(gewaehlt.status)
-              && !gewaehlt.termin_abschlussgespraech && (
-              terminOffen ? (
-                <TerminPicker
-                  zweck="beratung"
-                  lead={{ id: gewaehlt.originalLeadId, unternehmensname: gewaehlt.unternehmen }}
-                  hotLeadId={gewaehlt.id}
-                  onTerminBooked={() => { setTerminOffen(false); setGewaehlt(null); laden() }}
-                  onCancel={() => setTerminOffen(false)}
-                />
-              ) : (
-                <button
-                  onClick={() => setTerminOffen(true)}
-                  className="btn-primary inline-flex items-center gap-2"
-                >
-                  <Calendar className="w-4 h-4" /> Beratungsgespräch neu buchen
-                </button>
-              )
-            )}
+            {/* Auch ein geplatzter Beratungstermin wird unten in der
+                Gespraechsmaske neu gebucht, nicht ueber einen Knopf hier oben.
+                Ein geplatzter Termin ist dort dasselbe wie gar keiner: Es gibt
+                genau zwei Wege weiter, buchen oder gleich sprechen, und beide
+                stehen in derselben Auswahl. Siehe terminGeplatzt in
+                SetterUebergabe.jsx. */}
 
             <SetterUebergabe
               lead={gewaehlt}

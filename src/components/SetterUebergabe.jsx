@@ -119,11 +119,15 @@ export default function SetterUebergabe({
       ? { start: lead.termin_abschlussgespraech, meetingLink: lead.meeting_link_abschluss || null,
           terminart: 'Video' }
       : null)
-  /* Hat dieser Kontakt ueberhaupt einen Beratungstermin? Anfragen ueber die
-     Website kommen ohne herein. Davon haengt ab, welche Ausgaenge die Auswahl
-     unten zeigt: Ohne Termin gibt es nichts zu verschieben, abzusagen oder zu
-     verpassen, dafuer braucht es einen zu buchen. */
-  const hatTermin = Boolean(lead?.terminDatum)
+  /* Hat dieser Kontakt einen Termin, der noch gilt?
+
+     Anfragen ueber die Website kommen ohne Termin herein. Ein abgesagter oder
+     verpasster Termin ist aber genauso wenig ein Termin - er steht nur noch
+     als Datum in der Vergangenheit. Beide Faelle brauchen dasselbe: einen
+     neuen Termin oder ein Gespraech auf der Stelle. Deshalb behandelt die
+     Maske sie gleich. */
+  const terminGeplatzt = [STATUS.TERMIN_ABGESAGT, STATUS.NICHT_ERSCHIENEN].includes(status)
+  const hatTermin = Boolean(lead?.terminDatum) && !terminGeplatzt
 
   // Der geführte Ablauf der Übergabe: erst die Angaben, dann der Termin.
   // null = normale Maske, 'felder' = Schritt 1, 'termin' = Schritt 2.
@@ -563,10 +567,12 @@ export default function SetterUebergabe({
   if (ablauf === 'termin_buchen') {
     return mitAktionen(
       <div className="space-y-4">
-        {kopf('Termin für das Beratungsgespräch')}
+        {kopf(terminGeplatzt ? 'Neuer Termin für das Beratungsgespräch'
+                             : 'Termin für das Beratungsgespräch')}
         <p className="text-xs text-gray-500">
-          Der Kontakt hat bisher keinen Termin. Nach dem Buchen steht er unter
-          „Anstehend“ und im Kalender.
+          {terminGeplatzt
+            ? 'Der alte Termin ist geplatzt. Nach dem Buchen steht der Kontakt wieder unter „Anstehend“ und im Kalender.'
+            : 'Der Kontakt hat bisher keinen Termin. Nach dem Buchen steht er unter „Anstehend“ und im Kalender.'}
         </p>
         <TerminPicker
           zweck="beratung"
@@ -661,15 +667,23 @@ export default function SetterUebergabe({
     )
   }
 
-  if (status !== STATUS.BERATUNG_VEREINBART) return null
+  /* Bei einem geplatzten Termin zeigte die Maske bisher gar nichts, und der
+     Weg zu einem neuen Termin lag als eigener Knopf ueber ihr. Jetzt steht er
+     dort, wo auch alle anderen Ausgaenge stehen. */
+  if (status !== STATUS.BERATUNG_VEREINBART && !terminGeplatzt) return null
 
   return mitAktionen(
     <fieldset disabled={gesperrt} className="space-y-3 min-w-0">
       <p className="feld-hinweis mt-0">
-        Als Erstes ausfüllen. Mit „Setting starten" öffnest du die Fragen, auch schon
-        vor dem Anruf. Gezählt wird der Termin erst, wenn du am Ende das Ergebnis des
-        Gesprächs einträgst. Geht er nicht ran oder hat abgesagt, stell hier auf den
-        passenden Ausgang um.
+        {terminGeplatzt ? (
+          <>Der Termin ist nicht zustande gekommen. Buche einen neuen, oder nimm
+          „Setting starten“, wenn du ihn doch noch am Telefon hast.</>
+        ) : (
+          <>Als Erstes ausfüllen. Mit „Setting starten“ öffnest du die Fragen, auch schon
+          vor dem Anruf. Gezählt wird der Termin erst, wenn du am Ende das Ergebnis des
+          Gesprächs einträgst. Geht er nicht ran oder hat abgesagt, stell hier auf den
+          passenden Ausgang um.</>
+        )}
       </p>
 
       {/* Die Auswahl selbst ist der Weg weiter - einen Knopf daneben braucht
@@ -684,7 +698,10 @@ export default function SetterUebergabe({
         {AUSGAENGE
           .filter(a => (a.nurOhneTermin ? !hatTermin : true) && (a.brauchtTermin ? hatTermin : true))
           .map(a => (
-          <option key={a.wert || 'offen'} value={a.wert}>{a.name}</option>
+          <option key={a.wert || 'offen'} value={a.wert}>
+            {/* Nach einem geplatzten Termin ist es ein neuer, vorher der erste. */}
+            {a.wert === TERMIN_BUCHEN && terminGeplatzt ? 'Beratungsgespräch neu buchen' : a.name}
+          </option>
         ))}
       </select>
 

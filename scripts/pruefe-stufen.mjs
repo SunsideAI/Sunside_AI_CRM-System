@@ -69,10 +69,18 @@ sagt(/zweck="abschluss"/.test(closingSeite), 'Closing bucht das Abschlussgesprae
 sagt(/statusFuerStufe\(STUFE\.CLOSING\)/.test(closingSeite), 'Closing nimmt die Status seiner Stufe')
 sagt(!/Offene Beratungsgespräche/.test(closingSeite), 'Closer-Pool spricht vom Abschlussgespraech')
 
-// Die Setting-Seite darf beides: das Beratungsgespraech neu legen und das
-// Abschlussgespraech uebergeben.
+/* Das Setting darf beides: das Beratungsgespraech legen und das
+   Abschlussgespraech uebergeben.
+
+   Geprueft wird die Faehigkeit, nicht die Datei. Das Buchen des
+   Beratungsgespraechs ist am 14./15.10.2026 aus der Seite in die
+   Gespraechsmaske gewandert - erst der erste Termin, dann der nach einem
+   geplatzten. In Setting.jsx steht seitdem nur noch der Picker fuer das
+   Abschlussgespraech; beide Dateien zusammen sind das Setting. */
 const settingSeite = fs.readFileSync('src/pages/Setting.jsx', 'utf8')
-sagt(/zweck="beratung"/.test(settingSeite) && /zweck="abschluss"/.test(settingSeite),
+const settingMaske = fs.readFileSync('src/components/SetterUebergabe.jsx', 'utf8')
+sagt(/zweck="beratung"/.test(settingSeite + settingMaske)
+     && /zweck="abschluss"/.test(settingSeite + settingMaske),
   'Setting legt Beratungs- und Abschlussgespraech')
 
 // 6. Die Kalenderansicht muss dieselbe Stufe meinen wie der Rest.

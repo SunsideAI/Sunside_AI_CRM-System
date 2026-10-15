@@ -107,9 +107,23 @@ sagt(/brauchtTermin: true/.test(maskeDatei),
 sagt(/\.filter\(a => \(a\.nurOhneTermin \? !hatTermin : true\) && \(a\.brauchtTermin \? hatTermin : true\)\)/.test(maskeDatei),
   'Die Auswahl zeigt nur, was zum Zustand des Kontakts passt')
 
-/* Und der alte Knopf ist weg - sonst gaebe es zwei Wege zum selben Ziel. */
-sagt(!/<Calendar className="w-4 h-4" \/> Beratungsgespräch buchen/.test(setting),
-  'Der separate Knopf über der Maske ist entfernt')
+/* Und die alten Knoepfe sind weg - sonst gaebe es zwei Wege zum selben Ziel.
+   Zuerst fiel der fuer den ersten Termin, am 15.10.2026 auch der fuer den
+   geplatzten: Er stand als einziges Bedienelement in der Schublade, weil die
+   Maske bei geplatztem Status gar nicht rendert. */
+sagt(!/Beratungsgespräch buchen<\/button>|<Calendar className="w-4 h-4" \/> Beratungsgespräch/.test(setting),
+  'Kein eigener Buchen-Knopf mehr über der Maske')
+
+/* Ein geplatzter Termin ist kein Termin. Die Maske behandelt ihn wie gar
+   keinen: dieselben zwei Wege, buchen oder gleich sprechen. */
+sagt(/const terminGeplatzt = \[STATUS\.TERMIN_ABGESAGT, STATUS\.NICHT_ERSCHIENEN\]\.includes\(status\)/.test(maskeDatei),
+  'Ein abgesagter oder verpasster Termin ist als geplatzt erkannt')
+sagt(/const hatTermin = Boolean\(lead\?\.terminDatum\) && !terminGeplatzt/.test(maskeDatei),
+  'Und zählt damit nicht mehr als gültiger Termin')
+sagt(/if \(status !== STATUS\.BERATUNG_VEREINBART && !terminGeplatzt\) return null/.test(maskeDatei),
+  'Die Maske zeigt sich auch bei geplatztem Termin')
+sagt(/terminGeplatzt \? 'Beratungsgespräch neu buchen' : a\.name/.test(maskeDatei),
+  'Dort heißt der Eintrag „neu buchen“ — es gab ja einen')
 
 // Die Filterlogik durchgerechnet
 const auswahl = (hatTermin) => [
@@ -122,8 +136,8 @@ const auswahl = (hatTermin) => [
 ].filter(a => (a.nurOhneTermin ? !hatTermin : true) && (a.brauchtTermin ? hatTermin : true))
   .map(a => a.name)
 
-const ohne = auswahl(false)
-const mit = auswahl(true)
+const ohne = auswahl(false)   // nie ein Termin gebucht ODER geplatzt
+const mit = auswahl(true)     // gültiger Termin steht
 sagt(ohne.includes('Beratungsgespräch buchen') && ohne.includes('Setting starten'),
   'Ohne Termin: buchen oder gleich sprechen')
 sagt(!ohne.some(n => ['Kunde nicht erschienen','Termin abgesagt','Termin verschoben'].includes(n)),
@@ -132,6 +146,15 @@ sagt(!mit.includes('Beratungsgespräch buchen'),
   'Mit Termin: kein zweiter Ersttermin')
 sagt(mit.includes('Termin verschoben') && mit.includes('Kunde nicht erschienen'),
   'Mit Termin: die gewohnten Ausgänge bleiben')
+
+/* Nach einem geplatzten Termin ergibt dasselbe Bild Sinn wie ohne Termin:
+   Man kann nichts mehr absagen, verschieben oder verpassen - nur neu buchen
+   oder den Kunden doch noch ans Telefon bekommen. */
+const nachGeplatzt = auswahl(false)
+sagt(!nachGeplatzt.some(n => ['Kunde nicht erschienen','Termin abgesagt','Termin verschoben'].includes(n)),
+  'Nach einem geplatzten Termin: nichts, was einen Termin voraussetzt')
+sagt(nachGeplatzt.includes('Beratungsgespräch buchen'),
+  'Nach einem geplatzten Termin: neu buchen steht zur Wahl')
 
 if (befunde.length) {
   console.error('FEHLER:')
