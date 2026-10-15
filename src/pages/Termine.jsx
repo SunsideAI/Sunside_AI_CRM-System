@@ -40,6 +40,18 @@ const KUERZEL = {
   wiedervorlage:      'WV'
 }
 
+/* Wo ein Kontakt bearbeitet wird. Die Stufe entscheidet, nicht der Besitz:
+   Ein Admin, der den Termin eines fremden Closers oeffnete, landete im
+   Setting, weil `isMyClosing` false war - der Closer ist ja ein anderer.
+   Dort stand der Kontakt nie, und die Schublade blieb zu. */
+const SEITE_ZUR_STUFE = {
+  [STUFE.OPENING]: { pfad: '/setting', text: 'Im Setting öffnen' },
+  [STUFE.SETTING]: { pfad: '/setting', text: 'Im Setting öffnen' },
+  [STUFE.CLOSING]: { pfad: '/closing', text: 'Im Closing öffnen' },
+  [STUFE.GEWONNEN]: { pfad: '/closing', text: 'Im Closing öffnen' },
+  [STUFE.VERLOREN]: { pfad: '/closing', text: 'Im Closing öffnen' }
+}
+
 function Termine() {
   const { user, isAdmin, isSetter, isCloser } = useAuth()
   /* Beide Arten im Kalender hat, wer Setting und Closing haelt - und die
@@ -176,6 +188,8 @@ function Termine() {
           hotLeadId: lead.id,
           status: lead.status,
           isMyClosing, isMyBooking, isMySetting,
+          // Die Stufe bestimmt die Zielseite des Knopfes unten.
+          stufe,
           unternehmen: lead.unternehmen,
           ansprechpartner: `${lead.ansprechpartnerVorname || ''} ${lead.ansprechpartnerNachname || ''}`.trim(),
           email: lead.email,
@@ -827,19 +841,25 @@ function Termine() {
             <button onClick={() => setMailOffen(o => !o)} className="fuss-neben">
               <Mail className="w-4 h-4" /> E-Mail an den Kontakt
             </button>
-            {/* Gearbeitet wird in der Stufe, zu der der Termin gehört. */}
+            {/* Gearbeitet wird in der Stufe, zu der der Termin gehört. Eine
+                Wiedervorlage haengt an keinem Hot Lead, sie traegt nur
+                `leadId` - mit `hotLeadId` ging dort `undefined` mit. */
+            }
             <button
               onClick={() => {
-                const ziel = selectedEvent.source === 'wiedervorlage' ? '/opening'
-                  : selectedEvent.isMyClosing ? '/closing' : '/setting'
+                const ziel = selectedEvent.source === 'wiedervorlage'
+                  ? { pfad: '/opening', text: 'Im Opening öffnen' }
+                  : SEITE_ZUR_STUFE[selectedEvent.stufe] ?? SEITE_ZUR_STUFE[STUFE.SETTING]
+                const id = selectedEvent.source === 'wiedervorlage'
+                  ? selectedEvent.leadId : selectedEvent.hotLeadId
                 setSelectedEvent(null); setMailOffen(false)
-                routerNavigate(ziel, { state: { openLeadId: selectedEvent.hotLeadId } })
+                routerNavigate(ziel.pfad, { state: { openLeadId: id } })
               }}
               className="fuss-haupt"
             >
               <Building2 className="w-4 h-4" />
               {selectedEvent.source === 'wiedervorlage' ? 'Im Opening öffnen'
-                : selectedEvent.isMyClosing ? 'Im Closing öffnen' : 'Im Setting öffnen'}
+                : (SEITE_ZUR_STUFE[selectedEvent.stufe] ?? SEITE_ZUR_STUFE[STUFE.SETTING]).text}
             </button>
           </>
         )}

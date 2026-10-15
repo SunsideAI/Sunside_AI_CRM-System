@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useLocation } from 'react-router-dom'
 import { statusFarbe } from '../utils/statusfarbe'
 import {
   Search, Calendar, Phone, Video, Loader2, User as UserIcon,
@@ -98,6 +99,7 @@ function Setting() {
   const { user, isSetter, isAdmin } = useAuth()
   const meldung = useMeldung()
 
+  const location = useLocation()
   const [kontakte, setKontakte] = useState([])
   const [laedt, setLaedt] = useState(true)
   const [fehler, setFehler] = useState('')
@@ -205,6 +207,43 @@ function Setting() {
   const PRO_SEITE = 10
 
   useEffect(() => { laden(); poolZaehlen() }, [ansicht])
+
+  /* Aus dem Kalender heraus: Der Knopf „Im Setting öffnen" schickt die ID
+     des Kontakts mit. Dass eine Seite sie auswertet, war bis zum 15.10.2026
+     nur im Closing gebaut - hier passierte nach dem Klick gar nichts.
+
+     Und selbst dort scheiterte es bei fremden Kontakten: Beide Seiten
+     starten in „Meine", geladen wird dann mit `setterName=<ich>`. Der
+     Termin eines Kollegen steht in dieser Liste nicht. Also einmal in
+     „Alle" nachsehen, bevor wir aufgeben - das kann nur die Leitung.
+
+     Und wird er auch dort nicht gefunden, sagt die Seite das. Vorher
+     verschluckte sie den Fall stumm, was vom Fehler die Haelfte war: Man
+     klickte und wusste nicht, ob es laedt, haengt oder nichts tut. */
+  const ausKalender = useRef(null)
+  useEffect(() => {
+    const id = location.state?.openLeadId
+    if (!id || laedt) return
+
+    const treffer = kontakte.find(k => k.id === id)
+    if (treffer) {
+      setGewaehlt(treffer)
+      setAblaufLaeuft(false)
+      // Die ID aus der History werfen, sonst oeffnet jeder Re-Render neu.
+      window.history.replaceState({}, document.title)
+      ausKalender.current = null
+      return
+    }
+    // Nur ein Versuch pro ID, sonst dreht sich das Umschalten im Kreis.
+    if (isAdmin() && ansicht !== 'alle' && ausKalender.current !== id) {
+      ausKalender.current = id
+      setAnsicht('alle')
+      return
+    }
+    setFehler('Dieser Kontakt steht nicht in der Setting-Liste. Vermutlich ist er schon im Closing.')
+    window.history.replaceState({}, document.title)
+    ausKalender.current = null
+  }, [location.state?.openLeadId, kontakte, laedt, ansicht]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Die Zahl im Umschalter muss stimmen, BEVOR man umschaltet — sonst stünde
   // dort 0, und niemand sähe, dass etwas wartet. Dieselbe Bedingung wie im

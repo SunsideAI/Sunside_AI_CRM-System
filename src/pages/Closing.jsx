@@ -731,18 +731,37 @@ function Closing() {
     }
   }, [user])
 
-  // Lead öffnen wenn von Termine-Seite navigiert
+  /* Lead oeffnen, wenn von der Termine-Seite navigiert.
+
+     Dass die ID ankam, half lange nur dann, wenn der Kontakt auch in der
+     geladenen Liste stand - und die Seite startet in „Meine Leads", laedt
+     also mit `closerName=<ich>`. Oeffnete die Leitung den Termin eines
+     fremden Closers, fand `find` nichts und es passierte stumm gar nichts.
+     Jetzt wird einmal in „Alle" nachgesehen, und bleibt es dabei, sagt die
+     Seite es statt zu schweigen. Dasselbe steht in Setting.jsx. */
+  const ausKalender = useRef(null)
   useEffect(() => {
     const openLeadId = location.state?.openLeadId
-    if (openLeadId && leads.length > 0 && !loading) {
-      const leadToOpen = leads.find(l => l.id === openLeadId)
-      if (leadToOpen) {
-        setSelectedLead(leadToOpen)
-        // State clearen damit es nicht bei jedem Re-render öffnet
-        window.history.replaceState({}, document.title)
-      }
+    if (!openLeadId || loading) return
+
+    const leadToOpen = leads.find(l => l.id === openLeadId)
+    if (leadToOpen) {
+      setSelectedLead(leadToOpen)
+      // State clearen damit es nicht bei jedem Re-render öffnet
+      window.history.replaceState({}, document.title)
+      ausKalender.current = null
+      return
     }
-  }, [location.state?.openLeadId, leads, loading])
+    // Nur ein Versuch pro ID, sonst dreht sich das Umschalten im Kreis.
+    if (isAdmin() && viewMode !== 'all' && ausKalender.current !== openLeadId) {
+      ausKalender.current = openLeadId
+      setViewMode('all')
+      return
+    }
+    setError('Dieser Kontakt steht nicht in der Closing-Liste. Vermutlich liegt er noch im Setting.')
+    window.history.replaceState({}, document.title)
+    ausKalender.current = null
+  }, [location.state?.openLeadId, leads, loading, viewMode]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Nur die Anzahl der Pool-Leads laden (für Badge)
   const loadPoolCount = async () => {
